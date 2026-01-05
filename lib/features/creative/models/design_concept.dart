@@ -20,6 +20,9 @@ class DesignConcept {
   final String visualPrompt;
   final List<Moodboard> moodboards;
   final bool isApproved;
+  final String? finalCopy;
+  final String? finalImageURL;
+  final bool isFinalReady;
 
   DesignConcept({
     required this.id,
@@ -29,6 +32,9 @@ class DesignConcept {
     required this.visualPrompt,
     this.moodboards = const [],
     this.isApproved = false,
+    this.finalCopy,
+    this.finalImageURL,
+    this.isFinalReady = false,
   });
 
   DesignConcept copyWith({
@@ -39,6 +45,9 @@ class DesignConcept {
     String? visualPrompt,
     List<Moodboard>? moodboards,
     bool? isApproved,
+    String? finalCopy,
+    String? finalImageURL,
+    bool? isFinalReady,
   }) {
     return DesignConcept(
       id: id ?? this.id,
@@ -48,6 +57,9 @@ class DesignConcept {
       visualPrompt: visualPrompt ?? this.visualPrompt,
       moodboards: moodboards ?? this.moodboards,
       isApproved: isApproved ?? this.isApproved,
+      finalCopy: finalCopy ?? this.finalCopy,
+      finalImageURL: finalImageURL ?? this.finalImageURL,
+      isFinalReady: isFinalReady ?? this.isFinalReady,
     );
   }
 }

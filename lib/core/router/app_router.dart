@@ -6,6 +6,7 @@ import '../../features/campaigns/campaign_list_screen.dart';
 import '../../features/campaigns/campaign_wizard_screen.dart';
 import '../../features/campaigns/campaign_detail_screen.dart';
 import '../../features/creative/creative_studio_screen.dart';
+import '../../features/campaigns/screens/camera_capture_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
@@ -59,6 +60,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/analytics',
             builder: (context, state) => const Center(child: Text('Analytics - Coming Soon')),
+          ),
+          GoRoute(
+            path: '/camera-capture',
+            builder: (context, state) => const CameraCaptureScreen(),
           ),
         ],
       ),
