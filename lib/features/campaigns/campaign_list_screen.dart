@@ -71,9 +71,7 @@ class CampaignListScreen extends ConsumerWidget {
                       ],
                     ),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      // TODO: Navigate to campaign details
-                    },
+                    onTap: () => context.go('/campaigns/${campaign.id}'),
                   ),
                 );
               },

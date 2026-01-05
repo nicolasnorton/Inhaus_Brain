@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'package:inhaus_brain/features/campaigns/models/campaign.dart';
 import 'package:inhaus_brain/features/campaigns/providers/campaign_provider.dart';
+import 'package:inhaus_brain/core/services/edge_ai_service.dart';
 
 class CampaignWizardScreen extends ConsumerStatefulWidget {
   const CampaignWizardScreen({super.key});
@@ -26,19 +27,45 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      final newCampaign = Campaign(
-        id: const Uuid().v4(),
-        title: _titleController.text,
-        description: _descriptionController.text,
-        clientName: _clientController.text,
-        createdAt: DateTime.now(),
-        status: CampaignStatus.researching, // Start researching immediately
-      );
+    bool _isSubmitting = false;
 
-      ref.read(campaignListProvider.notifier).addCampaign(newCampaign);
-      context.pop();
+  void _submit() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isSubmitting = true);
+      try {
+        final title = _titleController.text;
+        final brief = _descriptionController.text;
+        
+        // Generate insights using Local/Edge AI
+        final insight1 = await EdgeAIService.generateText("Research target audience for a campaign: $title. Brief: $brief");
+        final insight2 = await EdgeAIService.generateText("Analyze competitor trends for: $title. Hub: $brief");
+        final insight3 = await EdgeAIService.generateText("Suggest platform strategy for: $title based on: $brief");
+
+        final newCampaign = Campaign(
+          id: const Uuid().v4(),
+          title: title,
+          description: brief,
+          clientName: _clientController.text,
+          createdAt: DateTime.now(),
+          status: CampaignStatus.researching,
+          insights: [
+            ResearchInsight(id: '1', content: insight1),
+            ResearchInsight(id: '2', content: insight2),
+            ResearchInsight(id: '3', content: insight3),
+          ],
+        );
+
+        await ref.read(campaignListProvider.notifier).addCampaign(newCampaign);
+        if (mounted) context.pop();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error creating campaign: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -106,8 +133,14 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _submit,
-                      child: const Text('Launch Research Agent'),
+                      onPressed: _isSubmitting ? null : _submit,
+                      child: _isSubmitting 
+                        ? const SizedBox(
+                            height: 20, 
+                            width: 20, 
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                          )
+                        : const Text('Launch Research Agent'),
                     ),
                   ),
                 ],

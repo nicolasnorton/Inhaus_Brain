@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/features/auth/models/user_model.dart';
+import 'package:inhaus_brain/features/auth/providers/auth_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final Widget child; // For nested navigation if using ShellRoute, but simplifying for now
@@ -20,8 +22,14 @@ class DashboardScreen extends ConsumerWidget {
             onDestinationSelected: (int index) => _onItemTapped(index, context),
             labelType: NavigationRailLabelType.all,
             leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
-              child: Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+              padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 48,
+                height: 48,
+                errorBuilder: (context, error, stackTrace) => 
+                    Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+              ),
             ),
             destinations: const [
               NavigationRailDestination(
@@ -41,6 +49,26 @@ class DashboardScreen extends ConsumerWidget {
                 label: Text('Analytics'),
               ),
             ],
+            trailing: Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildUserAvatar(ref),
+                      const SizedBox(height: 16),
+                      IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.white54),
+                        onPressed: () => ref.read(authProvider.notifier).logout(),
+                        tooltip: 'Logout',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
           const VerticalDivider(thickness: 1, width: 1),
           // Main Content Area
@@ -48,6 +76,23 @@ class DashboardScreen extends ConsumerWidget {
             child: child,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar(WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final roleName = user?.role.name.toUpperCase() ?? 'USER';
+    
+    return Tooltip(
+      message: 'Logged in as $roleName',
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white10,
+        child: Text(
+          roleName[0],
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
+        ),
       ),
     );
   }
@@ -79,26 +124,35 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 // Simple placeholder for the home view
-class DashboardHome extends StatelessWidget {
+class DashboardHome extends ConsumerWidget {
   const DashboardHome({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider);
+    final roleName = _formatRoleName(user?.role);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Welcome to Inhaus Brain',
+            'Welcome back, $roleName',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Text(
-            'Agentic Workflow Manager',
+            'Inhaus Brain is ready for your next campaign.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
           ),
         ],
       ),
     );
+  }
+
+  String _formatRoleName(UserRole? role) {
+    if (role == null) return 'Agent';
+    final name = role.name;
+    return name[0].toUpperCase() + name.substring(1).replaceAllMapped(RegExp(r'[A-Z]'), (match) => ' ${match.group(0)}');
   }
 }
