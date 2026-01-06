@@ -48,6 +48,19 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     ref.read(knowledgeProvider.notifier).addSource(newSource);
   }
 
+  void _addImageSource() async {
+    // Mock adding an image asset
+    final newSource = KnowledgeSource(
+      id: const Uuid().v4(),
+      title: 'Coffee_Ad_Variation_A.png',
+      content: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', // Mock 1x1 transparent pixel
+      type: KnowledgeSourceType.image,
+      createdAt: DateTime.now(),
+      metadata: {'dimensions': '1024x1024'},
+    );
+    ref.read(knowledgeProvider.notifier).addSource(newSource);
+  }
+
   void _addDriveSource() async {
      // TODO: Implement Google Picker API
      // Mock behaviour
