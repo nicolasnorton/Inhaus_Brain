@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/knowledge_provider.dart';
 import '../models/knowledge_source.dart';
+import '../../chat/providers/chat_provider.dart';
 
 class KnowledgeLibraryWidget extends ConsumerStatefulWidget {
   const KnowledgeLibraryWidget({super.key});
@@ -148,6 +149,13 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
                     ),
                     const SizedBox(width: 8),
                     _buildActionButton(
+                      onPressed: _addImageSource,
+                      icon: Icons.image,
+                      label: 'Image',
+                      color: Colors.purpleAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
                       onPressed: _addDriveSource,
                       icon: FontAwesomeIcons.googleDrive,
                       label: 'Drive',
@@ -244,6 +252,10 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
         icon = FontAwesomeIcons.fileLines;
         color = Colors.orangeAccent;
         break;
+      case KnowledgeSourceType.image:
+        icon = FontAwesomeIcons.image;
+        color = Colors.purpleAccent;
+        break;
     }
 
     return Container(
@@ -282,6 +294,26 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
               ],
             ),
           ),
+          if (source.type == KnowledgeSourceType.image)
+            IconButton(
+              icon: const Icon(Icons.psychology, size: 16, color: Colors.purpleAccent),
+              tooltip: 'Analyze with Vision Agent',
+              onPressed: () {
+                ref.read(chatProvider.notifier).sendMessage(
+                  'Analyze this visual asset: ${source.title}',
+                  attachments: [
+                    Attachment(
+                      id: const Uuid().v4(),
+                      type: AttachmentType.image,
+                      url: source.content,
+                      name: source.title,
+                      createdAt: DateTime.now(),
+                    )
+                  ],
+                );
+                Navigator.pop(context);
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 16, color: Colors.white38),
             onPressed: () => ref.read(knowledgeProvider.notifier).removeSource(source.id),
