@@ -254,6 +254,18 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         icon = FontAwesomeIcons.userCheck;
         color = Colors.orangeAccent;
         break;
+      case MessageSender.orchestratorAgent:
+        icon = FontAwesomeIcons.shieldHalved;
+        color = Colors.redAccent;
+        break;
+      case MessageSender.copywriterAgent:
+        icon = FontAwesomeIcons.penNib;
+        color = Colors.pinkAccent;
+        break;
+      case MessageSender.developerAgent:
+        icon = FontAwesomeIcons.code;
+        color = Colors.cyanAccent;
+        break;
       default:
         icon = FontAwesomeIcons.brain;
         color = Colors.blueAccent;
@@ -270,6 +282,9 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
       case MessageSender.researchAgent: return 'RESEARCH AGENT';
       case MessageSender.creativeAgent: return 'CREATIVE AGENT';
       case MessageSender.humanAgent: return 'HUMAN AGENT';
+      case MessageSender.orchestratorAgent: return 'ORCHESTRATOR';
+      case MessageSender.copywriterAgent: return 'COPYWRITER';
+      case MessageSender.developerAgent: return 'DEVELOPER';
       case MessageSender.system: return 'INHAUS BRAIN';
       default: return '';
     }

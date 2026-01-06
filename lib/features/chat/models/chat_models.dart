@@ -4,6 +4,9 @@ enum MessageSender {
   user,
   researchAgent,
   creativeAgent,
+  orchestratorAgent, // New Phase 5
+  copywriterAgent,   // New Phase 5
+  developerAgent,    // New Phase 5
   humanAgent,
   system
 }

@@ -1,0 +1,209 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_service.dart';
+import '../../core/router/app_router.dart';
+
+class AuthScreen extends ConsumerStatefulWidget {
+  const AuthScreen({super.key});
+
+  @override
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends ConsumerState<AuthScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  bool _isLogin = true;
+  bool _isLoading = false;
+
+  Future<void> _submit() async {
+    setState(() => _isLoading = true);
+    final auth = ref.read(authServiceProvider);
+    
+    try {
+      if (_isLogin) {
+        await auth.signInWithEmail(_emailController.text, _passwordController.text);
+      } else {
+        await auth.signUpWithEmail(
+          _emailController.text, 
+          _passwordController.text, 
+          _nameController.text
+        );
+      }
+      // If we are at the /login route, the app_router's redirect will handle the transition.
+      // If we were pushed manually (e.g. from Settings), we need to pop.
+      if (mounted) {
+        final router = ref.read(routerProvider);
+        final currentPath = router.routerDelegate.currentConfiguration.last.matchedLocation;
+        if (currentPath == '/login') {
+          // GoRouter will redirect us automatically due to auth state change.
+        } else if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Colors.black,
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 60,
+                  errorBuilder: (context, error, stackTrace) => 
+                      const FaIcon(FontAwesomeIcons.brain, size: 64, color: Colors.white),
+                ),
+                const SizedBox(height: 32),
+                const FaIcon(FontAwesomeIcons.brain, size: 56, color: Colors.white),
+                const SizedBox(height: 16),
+                const Text(
+                  'INHAUS BRAIN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 6.0,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                Text(
+                  _isLogin ? 'WELCOME BACK' : 'CREATE ACCOUNT',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _isLogin ? 'Sign in to access the agentic console' : 'Join the INHAUS ecosystem',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white38, fontSize: 13, letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 48),
+                
+                // Form
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Column(
+                    children: [
+                      if (!_isLogin) ...[
+                        _buildTextField('Full Name', _nameController, Icons.person_outline),
+                        const SizedBox(height: 16),
+                      ],
+                      _buildTextField('Email Address', _emailController, Icons.email_outlined),
+                      const SizedBox(height: 16),
+                      _buildTextField('Password', _passwordController, Icons.lock_outline, obscureText: true),
+                      const SizedBox(height: 32),
+                      
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            elevation: 0,
+                          ),
+                          child: _isLoading 
+                            ? const CircularProgressIndicator(color: Colors.black)
+                            : Text(_isLogin ? 'SIGN IN' : 'REGISTER', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                // Toggle
+                TextButton(
+                  onPressed: () => setState(() => _isLogin = !_isLogin),
+                  child: Text(
+                    _isLogin ? "NEW ACCOUNT" : "EXISTING USER? LOGIN",
+                    style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                const Text('OR', style: TextStyle(color: Colors.white24, fontSize: 10)),
+                const SizedBox(height: 16),
+                
+                // Google Sign In
+                OutlinedButton.icon(
+                  onPressed: () => ref.read(authServiceProvider).signInWithGoogle(),
+                  icon: const FaIcon(FontAwesomeIcons.google, size: 14),
+                  label: const Text('GOOGLE LOGIN', style: TextStyle(fontSize: 12, letterSpacing: 1.0)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white54,
+                    side: const BorderSide(color: Colors.white12),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool obscureText = false}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+        prefixIcon: Icon(icon, size: 18, color: Colors.white24),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.03),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: const BorderSide(color: Colors.white12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: const BorderSide(color: Colors.white, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+    );
+  }
+}

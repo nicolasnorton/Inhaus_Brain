@@ -1,0 +1,30 @@
+import '../agent_tool.dart';
+import '../../services/edge_ai_service.dart';
+
+class ImageGenerationTool extends AgentTool {
+  final String? imagenKey;
+  final String? bananaKey;
+
+  ImageGenerationTool({this.imagenKey, this.bananaKey})
+      : super(
+          name: 'image_generation',
+          description: 'Generate a production-grade image concept.',
+          inputSchema: {
+            'prompt': {
+              'type': 'string',
+              'description': 'The prompt to generate the image for.',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+    final prompt = parameters['prompt'] as String?;
+    if (prompt == null || prompt.isEmpty) {
+      return ToolResult.failure('Missing required parameter: prompt');
+    }
+
+    final url = await EdgeAIService.generateImage(prompt, imagenKey: imagenKey, bananaKey: bananaKey);
+    return ToolResult.success({'url': url});
+  }
+}

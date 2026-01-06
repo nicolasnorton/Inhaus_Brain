@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inhaus_brain/features/auth/models/user_model.dart';
-import 'package:inhaus_brain/features/auth/providers/auth_provider.dart';
+import 'package:inhaus_brain/core/auth/auth_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final Widget child; // For nested navigation if using ShellRoute, but simplifying for now
@@ -48,6 +47,10 @@ class DashboardScreen extends ConsumerWidget {
                 icon: Icon(FontAwesomeIcons.chartLine),
                 label: Text('Analytics'),
               ),
+              NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.gear),
+                label: Text('Settings'),
+              ),
             ],
             trailing: Expanded(
               child: Align(
@@ -61,7 +64,7 @@ class DashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       IconButton(
                         icon: const Icon(Icons.logout, color: Colors.white54),
-                        onPressed: () => ref.read(authProvider.notifier).logout(),
+                        onPressed: () => ref.read(authServiceProvider).signOut(),
                         tooltip: 'Logout',
                       ),
                     ],
@@ -81,18 +84,22 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildUserAvatar(WidgetRef ref) {
-    final user = ref.watch(authProvider);
-    final roleName = user?.role.name.toUpperCase() ?? 'USER';
+    final user = ref.watch(authStateProvider).value;
+    final roleName = user != null ? 'PRO' : 'GUEST';
     
     return Tooltip(
       message: 'Logged in as $roleName',
       child: CircleAvatar(
         radius: 18,
-        backgroundColor: Colors.white10,
-        child: Text(
-          roleName[0],
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
-        ),
+        backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
+        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+        onBackgroundImageError: (e, s) => debugPrint('Dashboard Avatar Error: $e'),
+        child: user?.photoURL == null 
+          ? Text(
+              (user?.displayName ?? user?.email ?? roleName)[0].toUpperCase(),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+            )
+          : null,
       ),
     );
   }
@@ -102,6 +109,7 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/campaigns')) return 1;
     if (location.startsWith('/creative')) return 2;
     if (location.startsWith('/analytics')) return 3;
+    if (location.startsWith('/settings')) return 4;
     return 0;
   }
 
@@ -119,6 +127,9 @@ class DashboardScreen extends ConsumerWidget {
       case 3:
         context.go('/analytics');
         break;
+      case 4:
+        context.go('/settings');
+        break;
     }
   }
 }
@@ -129,15 +140,15 @@ class DashboardHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider);
-    final roleName = _formatRoleName(user?.role);
+    final user = ref.watch(authStateProvider).value;
+    final displayName = user?.displayName ?? 'Agent';
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Welcome back, $roleName',
+            'Welcome back, $displayName',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -148,11 +159,5 @@ class DashboardHome extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String _formatRoleName(UserRole? role) {
-    if (role == null) return 'Agent';
-    final name = role.name;
-    return name[0].toUpperCase() + name.substring(1).replaceAllMapped(RegExp(r'[A-Z]'), (match) => ' ${match.group(0)}');
   }
 }

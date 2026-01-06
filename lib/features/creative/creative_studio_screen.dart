@@ -18,7 +18,7 @@ class CreativeStudioScreen extends ConsumerWidget {
         children: [
           // Main Content: Creative Concepts
           Expanded(
-            flex: 2,
+            flex: 3,
             child: CustomScrollView(
               slivers: [
                 SliverAppBar(
@@ -40,6 +40,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(FontAwesomeIcons.palette, size: 64, color: Colors.white12),
                           SizedBox(height: 16),
@@ -70,36 +71,46 @@ class CreativeStudioScreen extends ConsumerWidget {
             ),
           ),
           
-          // Side Panel: Agentic Chat
-          Container(
-            width: 400,
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
-            ),
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Row(
+          // Side Panel: Agentic Chat (Flexible width for smaller screens)
+          Flexible(
+            flex: 2,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
+                  constraints: const BoxConstraints(minWidth: 280, maxWidth: 500),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+                  ),
+                  child: Column(
                     children: [
-                      FaIcon(FontAwesomeIcons.commentDots, size: 16, color: Colors.blueAccent),
-                      SizedBox(width: 12),
-                      Text(
-                        'DESIGN FEEDBACK',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          color: Colors.white54,
+                      const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            FaIcon(FontAwesomeIcons.commentDots, size: 16, color: Colors.blueAccent),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'DESIGN FEEDBACK',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                  color: Colors.white54,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const Divider(height: 1),
+                      const Expanded(child: AgenticChatView()),
                     ],
                   ),
-                ),
-                const Divider(height: 1),
-                const Expanded(child: AgenticChatView()),
-              ],
+                );
+              }
             ),
           ),
         ],

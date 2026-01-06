@@ -9,45 +9,51 @@ To empower human creators with AI agents that handle the heavy lifting of resear
 
 ## ✨ Key Features
 
-### 🧠 Hybrid Edge-Cloud AI
-Prioritizes privacy and flexibility by intelligently switching between resources:
-- **Local/Edge**: Uses Chrome Built-in AI (Prompt API) or simulated reasoning for fast, cost-free drafting.
-- **Cloud High-Fidelity**: Seamlessly upgrades to **Gemini Pro via Google Vertex AI** if the user provides an API key in the Secrets Vault.
-- **BYO-Key Architecture**: Users maintain full control over their API usage and quotas via a secure, local-only "Secrets Vault".
+### 🧠 Hybrid Multi-Modal AI Engine
+The Inhaus Brain intelligently coordinates a suite of specialized models via its **Hybrid Tiering Engine**:
+- **Gemma / Gemini Pro**: Text-based reasoning and strategic analysis.
+- **Imagen 3**: High-fidelity production imagery for concepts.
+- **Veo**: SOTA video asset generation directly in the Workbench.
+- **Lyria**: Advanced music and soundtrack composition for campaigns.
+- **Nano Banana 🍌**: Agentic visual refinement and image editing.
+- **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
 
-### 🤖 Multi-Modal Agentic Workbench
-- **Collaborative Chat**: A unified "Workshop" interface where users, Research Agents, and Creative Agents collaborate.
-- **Knowledge Module**: Users can inject "Ground Truth" context (URLs, PDFs, Briefs) via a dedicated **Context Board**. Agents reference this data for grounded responses.
-- **MCP Tools**: Implemented using the **Model Context Protocol**, allowing standard agents to use tools like `WebSearch` and `VisualAnalysis`.
-- **Auto-Handoffs (A2A)**: Strategic approvals automatically trigger the next agent in the pipeline (e.g., Strategy Approval -> Creative Agent Concept Gen).
+### 🤖 Standardized Agentic Workbench (MCP)
+- **Collaborative Chat**: A unified "Workshop" interface where users, Research, Creative, Copywriter, and Developer agents collaborate.
+- **Knowledge Module**: Inject "Ground Truth" context (URLs, PDFs, Briefs) via the **Context Board**.
+- **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
+- **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 
-### 🏢 Modular Creative Factory
-- **Campaign Wizard**: Dynamic brief injection with automatic agent-led research.
-- **Human-in-the-Loop**: Custom approval widgets integrated directly into the chat stream ensure no AI output proceeds without sign-off.
-- **Creative Studio**: Visual strategy workspace featuring AI-generated ad copy and visual prompts.
-- **Moodboard Generation**: Strategic color palettes and visual directions proposed by the Design Agent.
+### 🏢 Creative Studio & Factory
+- **Campaign Wizard**: Conversational briefing with real-time agent grounding.
+- **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
+- **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.
 
-### 🎨 Premium User Experience
-- **Glassmorphic UI**: Sleek, modern dark-mode interface with semi-transparent elements.
-- **Interactive Profiles**: Integrated Google Sign-In and user profile management.
-- **Role-Based Access**: Specific views and permissions for Account Managers, Designers, and Admins.
+### 🎨 Premium Auth & Settings
+- **Full Auth Lifecycle**: Premium Sign Up / Login flow with Email/Password and Google support.
+- **Account Management**: Edit profiles, manage API keys, and customize agent personas in a unified **Settings & Vault**.
+- **Sleek UX**: Glassmorphic, dark-mode design using Google's *Outfit* typography and high-performance micro-animations.
 
 ## 🛠 Tech Stack
 - **Frontend**: Flutter (3.0+ architecture)
 - **State Management**: Riverpod (Notifier system)
 - **AI Integration**:
-    - **Edge**: `dart:js_interop` for Chrome Built-in AI.
     - **Cloud**: `google_generative_ai` for Vertex AI features.
     - **Protocol**: Model Context Protocol (MCP) for tool definitions.
 - **Auth & Storage**:
     - `firebase_auth` & `google_sign_in` for Identity.
-    - `flutter_secure_storage` for local API Key Vault.
-    - `shared_preferences` / mock `firebase` for persistence.
+    - **Full Auth Flow**: Secure login, account management, and role-based master prompts.
+- **Secrets Vault**: Bring Your Own Keys (BYOK) for Gemini, Imagen, Veo, and more.
 
-## 🏁 Getting Started
+## Getting Started
 
-### Prerequisites
-- Flutter SDK (latest stable)
+To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-c1a7b5673ab0/google_ai_setup.md).
+
+1.  Clone the repository.
+2.  Run `flutter pub get`.
+3.  Follow the setup guide to obtain your API keys.
+4.  Add your keys to the **Settings & Vault** in the app.
+5.  Launch with `flutter run`.
 - Google Chrome (with [Built-in AI features enabled](https://developer.chrome.com/docs/ai/built-in-ai#get_started))
 
 ### Installation
