@@ -8,23 +8,48 @@
 - **State Management**: Riverpod (Code Generation `flutter_riverpod` / `riverpod_annotation` preferred)
 - **Routing**: GoRouter
 - **Backend**: Firebase (Auth, Firestore, Storage) + Cloud Functions
-- **AI Integration**: Google Vertex AI (Gemini Pro/Flash, Imagen, Veo)
-- **Styling**: Custom "Premium" Dark Theme (Glassmorphism, Google Fonts 'Outfit')
+## AI Architecture: Hybrid Multi-Modal Suite
+The application coordinates several specialized models via the `EdgeAIService` and specialized **MCP Tools**:
 
-## Key Directories
-- `lib/core`: Shared utilities, theme, router.
-- `lib/features`: Feature-based architecture (e.g., `dashboard`, `campaigns`, `auth`).
-- `functions`: Firebase Cloud Functions (Node.js/Python).
+### 1. Multi-Modal Suite
+- **Gemma / Gemini (Pro/Flash)**: Primary reasoning engines for research, copywriting, and strategy auditing.
+- **Imagen 3**: Triggers via `ImageGenerationTool` for conceptual visual assets.
+- **Veo**: SOTA video generation interface via `VideoGenerationTool`.
+- **Lyria**: Advanced music/soundtrack composition via `AudioGenerationTool`.
+- **Nano Banana 🍌**: Agentic visual refinement and image editing.
+
+### 2. Model Context Protocol (MCP) Standards
+All agent capabilities are abstracted into the `AgentTool` (at `lib/core/mcp/`) class, providing a standardized input/output schema:
+- **`WebSearchTool`**: Drives the Research Agent; returns structured market snippets and URLs.
+- **`ImageGenerationTool`**: Interfaces with Imagen/Banana; returns generated asset URLs.
+- **`VideoGenerationTool` / `AudioGenerationTool`**: Specialized tool interfaces for multi-modal expansion.
+
+### 3. Agent Roster & Behavior
+The Inhaus Brain features an 11-step specialized agency roster:
+- **Trend Scout**: Analyzes real-time market signals and bolts.
+- **Account Director**: Manages client expectations and campaign high-level strategy.
+- **Strategist**: Synthesizes research into actionable concepts.
+- **Creative Agent**: Generates visual prompts and moodboards.
+- **Copywriter Agent**: Specialized text generation for social media and collateral.
+- **Editorial Manager**: Plans content calendars and ensures brand consistency.
+- **Media Buyer**: Optimizes ad spend and placement logic (Sensitive).
+- **Performance Analyst**: Evaluates campaign data and metrics.
+- **Developer Agent**: Generates code (Flutter/Gen UI).
+- **Data Engineer Agent**: Manages schemas and data flow (Sensitive).
+- **Security Agent**: Audits all pipeline inputs and final outputs.
+
+### 4. Agent Development Kit (ADK)
+- **`AdkService`**: Coordinates pipeline execution, tool invocation, and events.
+- **`PipelineContext`**: Maintains a shared memory of `AdkArtifact`s across steps.
+- **Streaming**: Full support for real-time token streaming and tool-usage feedback.
+
+## Authentication & Security
+- **Auth Flow**: Uses `AuthService` with `FirebaseAuth` and `GoogleSignIn`. Includes a `MockAuthService` fallback.
+- **Security Guardian**: Mandatory `SecurityAgent` audits on pipeline start and finish. Intercepts sensitive agents (Media Buyer, Data Eng).
+- **Secrets Vault**: Uses `SecretVaultService` for secure on-device API key storage.
+- **Master Prompts (Agent Brain)**: Managed via `SystemPromptsService`. Admin-only edits allow plumbing custom system instructions directly into each agent's execution flow.
 
 ## Coding Conventions
-- **Files**: Snake case (e.g., `campaign_list_screen.dart`).
-- **Widgets**: PascalCase.
-- **State**: Use `ConsumerWidget` or `ConsumerStatefulWidget` for Riverpod.
-- **Async**: Use `FutureBuilder` or Riverpod's `AsyncValue` for data fetching.
-- **UI**: Prioritize "WOW" factor — animations, gradients, glassmorphism.
-
-## Agents
-The system uses "Agents" to perform tasks.
-- **ResearchAgent**: Google Search/Trends.
-- **CreativeAgent**: Image/Video generation.
-- **AnalyticsAgent**: Performance monitoring.
+- **State Management**: Riverpod `StateNotifier` (e.g., `ChatNotifier`) coordinates agent logic.
+- **Multi-Modal Flow**: Attachments in `ChatMessage` are used to render generated images/videos in the chat stream.
+- **UI**: Premium dark-mode styling with Glassmorphism and micro-animations.

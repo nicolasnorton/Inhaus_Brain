@@ -6,11 +6,15 @@ import '../../features/campaigns/campaign_list_screen.dart';
 import '../../features/campaigns/campaign_wizard_screen.dart';
 import '../../features/campaigns/campaign_detail_screen.dart';
 import '../../features/creative/creative_studio_screen.dart';
-import '../../features/auth/login_screen.dart';
-import '../../features/auth/providers/auth_provider.dart';
+import '../../features/campaigns/screens/camera_capture_screen.dart';
+import '../../features/auth/auth_screen.dart';
+import '../../features/settings/profile_settings_screen.dart';
+import '../../features/adk/screens/pipeline_builder_screen.dart';
+import '../../features/clients/client_management_screen.dart';
+import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final authState = ref.watch(authStateProvider).value;
 
   return GoRouter(
     initialLocation: '/',
@@ -25,7 +29,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => const AuthScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -57,8 +61,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const CreativeStudioScreen(),
           ),
           GoRoute(
+            path: '/clients',
+            builder: (context, state) => const ClientManagementScreen(),
+          ),
+          GoRoute(
             path: '/analytics',
             builder: (context, state) => const Center(child: Text('Analytics - Coming Soon')),
+          ),
+          GoRoute(
+            path: '/pipelines',
+            builder: (context, state) => const PipelineBuilderScreen(),
+          ),
+          GoRoute(
+            path: '/camera-capture',
+            builder: (context, state) => const CameraCaptureScreen(),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const ProfileSettingsScreen(),
           ),
         ],
       ),

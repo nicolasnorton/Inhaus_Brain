@@ -3,6 +3,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../../features/campaigns/models/campaign.dart';
 import 'edge_ai_service.dart';
 
@@ -11,6 +12,13 @@ abstract class FirebaseService {
   Future<void> saveCampaign(Campaign campaign);
   Future<void> updateCampaign(Campaign campaign);
   Future<String> triggerAiResearch(String campaignId, String prompt);
+  
+  // High-Tier generation for final assets
+  Future<Map<String, dynamic>> generateFinalAssets({
+    required String campaignId,
+    required String creativeBrief,
+    required String visualPrompt,
+  });
 }
 
 class ProdFirebaseService implements FirebaseService {
@@ -54,7 +62,27 @@ class ProdFirebaseService implements FirebaseService {
       });
       return result.data['result'] as String;
     } catch (e) {
-      print('Firebase Function Error: $e');
+      debugPrint('Firebase Function Error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> generateFinalAssets({
+    required String campaignId,
+    required String creativeBrief,
+    required String visualPrompt,
+  }) async {
+    try {
+      final HttpsCallable callable = _functions.httpsCallable('generateFinalAssets');
+      final result = await callable.call({
+        'campaignId': campaignId,
+        'creativeBrief': creativeBrief,
+        'visualPrompt': visualPrompt,
+      });
+      return Map<String, dynamic>.from(result.data);
+    } catch (e) {
+      debugPrint('Firebase Function (Final Assets) Error: $e');
       rethrow;
     }
   }
@@ -70,19 +98,59 @@ class MockFirebaseService implements FirebaseService {
   }
 
   Future<void> _loadFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_storageKey);
-    if (data != null) {
-      final List<dynamic> decoded = jsonDecode(data);
-      _mockCampaigns = decoded.map((item) => Campaign.fromJson(item as Map<String, dynamic>)).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_storageKey);
+      if (data != null) {
+        final List<dynamic> decoded = jsonDecode(data);
+        _mockCampaigns = decoded.map((item) => Campaign.fromJson(item as Map<String, dynamic>)).toList();
+        debugPrint('MockFirebase: Loaded ${_mockCampaigns.length} campaigns from storage.');
+      } else {
+        // Initial Mock Data
+        _mockCampaigns = [
+          Campaign(
+            id: 'camp-1',
+            title: 'Coffee Revolution',
+            description: 'Organic coffee brand launch',
+            clientId: 'client-1',
+            clientName: 'Inhaus Studios',
+            createdAt: DateTime.now().subtract(const Duration(days: 5)),
+          ),
+          Campaign(
+            id: 'camp-2',
+            title: 'Sustainable Packaging',
+            description: 'Recycled materials campaign',
+            clientId: 'client-1',
+            clientName: 'Inhaus Studios',
+            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          ),
+          Campaign(
+            id: 'camp-3',
+            title: 'AI Tech Summit',
+            description: 'Global reach for tech events',
+            clientId: 'client-2',
+            clientName: 'Global Tech Corp',
+            createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          ),
+        ];
+        await _saveToStorage();
+      }
+      _campaignsController.add(List.from(_mockCampaigns));
+    } catch (e) {
+      debugPrint('MockFirebase ERROR: Failed to load from storage: $e');
+      _campaignsController.add([]);
     }
-    _campaignsController.add(List.from(_mockCampaigns));
   }
 
   Future<void> _saveToStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = jsonEncode(_mockCampaigns.map((c) => c.toJson()).toList());
-    await prefs.setString(_storageKey, data);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = jsonEncode(_mockCampaigns.map((c) => c.toJson()).toList());
+      await prefs.setString(_storageKey, data);
+      debugPrint('MockFirebase: Saved ${_mockCampaigns.length} campaigns to storage.');
+    } catch (e) {
+      debugPrint('MockFirebase ERROR: Failed to save to storage: $e');
+    }
   }
 
   @override
@@ -107,7 +175,23 @@ class MockFirebaseService implements FirebaseService {
 
   @override
   Future<String> triggerAiResearch(String campaignId, String prompt) async {
-    return EdgeAIService.generateText(prompt);
+    final result = await EdgeAIService.generateText(prompt);
+    return result.text;
+  }
+
+  @override
+  Future<Map<String, dynamic>> generateFinalAssets({
+    required String campaignId,
+    required String creativeBrief,
+    required String visualPrompt,
+  }) async {
+    await Future.delayed(const Duration(seconds: 3)); // Simulating Cloud Generation
+    return {
+      'status': 'success',
+      'finalCopy': 'PRO MOCK: Experience true sustainability with our recycled ocean plastic range. Durable, stylish, and ethical.',
+      'finalImageURL': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop',
+      'source': 'Mock Vertex AI'
+    };
   }
 }
 

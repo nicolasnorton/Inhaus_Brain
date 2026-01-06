@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'models/campaign.dart';
 import 'providers/campaign_provider.dart';
 import '../creative/providers/creative_provider.dart';
+import '../../core/widgets/ai_status_badge.dart';
 
 class CampaignDetailScreen extends ConsumerWidget {
   final String campaignId;
@@ -51,10 +52,7 @@ class CampaignDetailScreen extends ConsumerWidget {
                     await ref.read(campaignListProvider.notifier).updateCampaign(updatedCampaign);
                     
                     // Trigger Creative Agent to propose a concept
-                    await ref.read(creativeProvider.notifier).generateConceptForCampaign(
-                      campaign.id,
-                      campaign.title,
-                    );
+                    await ref.read(creativeProvider.notifier).generateConceptForCampaign(campaign);
                   },
                   child: const Text('Proceed to Design Plan'),
                 ),
@@ -82,10 +80,14 @@ class CampaignDetailScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.info_outline, color: Colors.blueAccent, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Campaign Strategy Brief',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'Campaign Strategy Brief',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const AIStatusBadge(),
             ],
           ),
           const SizedBox(height: 12),

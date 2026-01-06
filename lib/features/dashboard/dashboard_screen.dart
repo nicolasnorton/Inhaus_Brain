@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inhaus_brain/features/auth/models/user_model.dart';
-import 'package:inhaus_brain/features/auth/providers/auth_provider.dart';
+import 'package:inhaus_brain/core/auth/auth_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final Widget child; // For nested navigation if using ShellRoute, but simplifying for now
@@ -18,8 +17,8 @@ class DashboardScreen extends ConsumerWidget {
           // Sidebar (Navigation Rail) - Visible on larger screens or always for this "agentic console" feel
           NavigationRail(
             backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.3),
-            selectedIndex: _calculateSelectedIndex(context),
-            onDestinationSelected: (int index) => _onItemTapped(index, context),
+            selectedIndex: _calculateSelectedIndex(context, ref),
+            onDestinationSelected: (int index) => _onItemTapped(index, context, ref),
             labelType: NavigationRailLabelType.all,
             leading: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
@@ -31,22 +30,34 @@ class DashboardScreen extends ConsumerWidget {
                     Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
               ),
             ),
-            destinations: const [
-              NavigationRailDestination(
+            destinations: [
+              const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.gaugeHigh),
                 label: Text('Dashboard'),
               ),
-              NavigationRailDestination(
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.usersViewfinder),
+                label: Text('Clients'),
+              ),
+              const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.bullhorn),
                 label: Text('Campaigns'),
               ),
-              NavigationRailDestination(
+              const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.wandMagicSparkles), // Agent/Creative
                 label: Text('Creative'),
               ),
-              NavigationRailDestination(
+              const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.chartLine),
                 label: Text('Analytics'),
+              ),
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.diagramProject),
+                label: Text('Pipelines'),
+              ),
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.gear),
+                label: Text('Settings'),
               ),
             ],
             trailing: Expanded(
@@ -61,7 +72,7 @@ class DashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       IconButton(
                         icon: const Icon(Icons.logout, color: Colors.white54),
-                        onPressed: () => ref.read(authProvider.notifier).logout(),
+                        onPressed: () => ref.read(authServiceProvider).signOut(),
                         tooltip: 'Logout',
                       ),
                     ],
@@ -81,43 +92,62 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildUserAvatar(WidgetRef ref) {
-    final user = ref.watch(authProvider);
-    final roleName = user?.role.name.toUpperCase() ?? 'USER';
+    final user = ref.watch(authStateProvider).value;
+    final roleName = user != null ? 'PRO' : 'GUEST';
     
     return Tooltip(
       message: 'Logged in as $roleName',
       child: CircleAvatar(
         radius: 18,
-        backgroundColor: Colors.white10,
-        child: Text(
-          roleName[0],
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
-        ),
+        backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
+        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+        onBackgroundImageError: user?.photoURL != null 
+          ? (e, s) => debugPrint('Dashboard Avatar Error: $e') 
+          : null,
+        child: user?.photoURL == null 
+          ? Text(
+              (user?.displayName ?? user?.email ?? roleName)[0].toUpperCase(),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+            )
+          : null,
       ),
     );
   }
 
-  int _calculateSelectedIndex(BuildContext context) {
+  int _calculateSelectedIndex(BuildContext context, WidgetRef ref) {
     final String location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/campaigns')) return 1;
-    if (location.startsWith('/creative')) return 2;
-    if (location.startsWith('/analytics')) return 3;
+    
+    if (location.startsWith('/clients')) return 1;
+    if (location.startsWith('/campaigns')) return 2;
+    if (location.startsWith('/creative')) return 3;
+    if (location.startsWith('/analytics')) return 4;
+    if (location.startsWith('/pipelines')) return 5;
+    if (location.startsWith('/settings')) return 6;
     return 0;
   }
 
-  void _onItemTapped(int index, BuildContext context) {
+  void _onItemTapped(int index, BuildContext context, WidgetRef ref) {
     switch (index) {
       case 0:
         context.go('/');
         break;
       case 1:
-        context.go('/campaigns');
+        context.go('/clients');
         break;
       case 2:
-        context.go('/creative');
+        context.go('/campaigns');
         break;
       case 3:
+        context.go('/creative');
+        break;
+      case 4:
         context.go('/analytics');
+        break;
+      case 5:
+        context.go('/pipelines');
+        break;
+      case 6:
+        context.go('/settings');
         break;
     }
   }
@@ -129,15 +159,15 @@ class DashboardHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider);
-    final roleName = _formatRoleName(user?.role);
+    final user = ref.watch(authStateProvider).value;
+    final displayName = user?.displayName ?? 'Agent';
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            'Welcome back, $roleName',
+            'Welcome back, $displayName',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -148,11 +178,5 @@ class DashboardHome extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String _formatRoleName(UserRole? role) {
-    if (role == null) return 'Agent';
-    final name = role.name;
-    return name[0].toUpperCase() + name.substring(1).replaceAllMapped(RegExp(r'[A-Z]'), (match) => ' ${match.group(0)}');
   }
 }

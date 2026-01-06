@@ -9,34 +9,64 @@ To empower human creators with AI agents that handle the heavy lifting of resear
 
 ## ✨ Key Features
 
-### 🧠 Edge-First AI Strategy
-Prioritizes privacy and efficiency by utilizing on-device and in-browser AI resources:
-- **Chrome Prompt API**: Native in-browser text generation using local LLMs.
-- **On-Device Agents**: Research and Creative agents run locally to minimize latency and token consumption.
-- **Local Persistence**: Full campaign workflow persistence using `SharedPreferences`, enabling a backend-less initial experience.
+### 🧠 Hybrid Multi-Modal AI Engine
+The Inhaus Brain intelligently coordinates a suite of specialized models via its **Hybrid Tiering Engine**:
+- **Gemma / Gemini Pro**: Text-based reasoning and strategic analysis.
+- **Imagen 3**: High-fidelity production imagery for concepts.
+- **Veo**: SOTA video asset generation directly in the Workbench.
+- **Lyria**: Advanced music and soundtrack composition for campaigns.
+- **Nano Banana 🍌**: Agentic visual refinement and image editing.
+- **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
 
-### 🏢 Modular Creative Factory
-- **Campaign Wizard**: Dynamic brief injection with automatic agent-led research.
-- **Research Approval Loop**: Human review of AI-generated insights before proceeding.
-- **Creative Studio**: Visual strategy workspace featuring AI-generated ad copy and visual prompts.
-- **Moodboard Generation**: Strategic color palettes and visual directions proposed by the Design Agent.
+### 🤖 Standardized Agentic Workbench (MCP)
+- **Collaborative Chat**: A unified "Workshop" interface where users, Research, Creative, Copywriter, and Developer agents collaborate.
+- **Knowledge Module**: Inject "Ground Truth" context (URLs, PDFs, Briefs) via the **Context Board**.
+- **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
+- **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 
-### 🎨 Premium User Experience
-- **Glassmorphic UI**: Sleek, modern dark-mode interface with semi-transparent elements.
-- **Outfit Typography**: Modern and professional typography powered by Google Fonts.
-- **Role-Based Access**: Specific views and permissions for Account Managers, Designers, and Admins.
+### 🏗️ Agent Development Kit (ADK)
+A powerful orchestration layer that allows for complex, multi-step workflows:
+- **Pipeline Builder**: Drag-and-drop interface to assemble custom AI workflows using any agent in the registry.
+- **Master Agency Pipeline**: A factory-default, 11-step specialized workflow (Trend Scout -> Strategist -> Performance Analyst -> etc.) for end-to-end campaign automation.
+- **Control Flow**: Supports Sequential, Parallel, and Loop steps for advanced execution logic.
+
+### 🛡️ Security Guardian
+Enterprise-grade safety integrated directly into the agentic flow:
+- **Input Audit**: Mandatory safety scan of all user input before a pipeline begins.
+- **Sensitive Task Interception**: Automatically blocks or sanitizes high-stakes actions (Media Buying, Data Access) if they violate brand safety.
+- **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
+
+### 🏢 Creative Studio & Factory
+- **Campaign Wizard**: Conversational briefing with real-time agent grounding.
+- **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
+- **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.
+
+### 🎨 Premium Auth & Settings
+- **Full Auth Lifecycle**: Premium Sign Up / Login flow with Email/Password and Google support.
+- **Account Management**: Edit profiles, manage API keys, and customize agent personas in a unified **Settings & Vault**.
+- **Sleek UX**: Glassmorphic, dark-mode design using Google's *Outfit* typography and high-performance micro-animations.
 
 ## 🛠 Tech Stack
 - **Frontend**: Flutter (3.0+ architecture)
 - **State Management**: Riverpod (Notifier system)
-- **Navigation**: GoRouter (Declarative routing)
-- **AI Integration**: JS Interop for Chrome Built-in AI + local dynamic agents.
-- **Persistence**: SharedPreferences (On-device) / Firebase-Ready architecture.
+- **AI Integration**:
+    - **Cloud**: `google_generative_ai` for Vertex AI features.
+    - **Protocol**: Model Context Protocol (MCP) for tool definitions.
+- **Auth & Storage**:
+    - `firebase_auth` & `google_sign_in` for Identity.
+    - **Full Auth Flow**: Secure login, account management, and role-based master prompts.
+- **Secrets Vault**: Bring Your Own Keys (BYOK) for Gemini, Imagen, Veo, and more.
+- **Orchestration**: Agent Development Kit (ADK) with Event Bus and Artifact Framework.
 
-## 🏁 Getting Started
+## Getting Started
 
-### Prerequisites
-- Flutter SDK (latest stable)
+To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-c1a7b5673ab0/google_ai_setup.md).
+
+1.  Clone the repository.
+2.  Run `flutter pub get`.
+3.  Follow the setup guide to obtain your API keys.
+4.  Add your keys to the **Settings & Vault** in the app.
+5.  Launch with `flutter run`.
 - Google Chrome (with [Built-in AI features enabled](https://developer.chrome.com/docs/ai/built-in-ai#get_started))
 
 ### Installation
@@ -50,7 +80,7 @@ Prioritizes privacy and efficiency by utilizing on-device and in-browser AI reso
    ```
 3. Run the application:
    ```bash
-   flutter run -d chrome
+   flutter run -d chrome --web-port 8080
    ```
 
 ## 📂 Project Structure

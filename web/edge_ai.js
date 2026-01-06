@@ -1,13 +1,22 @@
+async function getAISystemStatus() {
+    if (!window.ai || !window.ai.assistant) return "unsupported";
+    try {
+        const capabilities = await window.ai.assistant.capabilities();
+        return capabilities.available; // 'readily', 'after-download', or 'no'
+    } catch (e) {
+        return "error";
+    }
+}
+
 async function promptBuiltInAI(query) {
+    console.log("EdgeAI: Prompting local model with:", query);
     if (!window.ai || !window.ai.assistant) {
-        console.warn("Chrome Built-in AI (Prompt API) not available.");
         return null;
     }
 
     try {
         const capabilities = await window.ai.assistant.capabilities();
         if (capabilities.available === 'no') {
-            console.warn("AI Assistant models not downloaded or available.");
             return null;
         }
 
@@ -16,9 +25,10 @@ async function promptBuiltInAI(query) {
         session.destroy();
         return response;
     } catch (e) {
-        console.error("Chrome AI Error:", e);
+        console.error("EdgeAI Error:", e);
         return null;
     }
 }
 
+window.getAISystemStatus = getAISystemStatus;
 window.promptBuiltInAI = promptBuiltInAI;
