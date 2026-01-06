@@ -266,6 +266,30 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         icon = FontAwesomeIcons.code;
         color = Colors.cyanAccent;
         break;
+      case MessageSender.clientOnboardingAgent:
+        icon = FontAwesomeIcons.userGear;
+        color = Colors.tealAccent;
+        break;
+      case MessageSender.extractorAgent:
+        icon = FontAwesomeIcons.fileExport;
+        color = Colors.amberAccent;
+        break;
+      case MessageSender.parserAgent:
+        icon = FontAwesomeIcons.table;
+        color = Colors.orangeAccent;
+        break;
+      case MessageSender.summarizerAgent:
+        icon = FontAwesomeIcons.listCheck;
+        color = Colors.lightBlueAccent;
+        break;
+      case MessageSender.securityAgent:
+        icon = FontAwesomeIcons.shieldCat;
+        color = Colors.deepOrangeAccent;
+        break;
+      case MessageSender.dataEngineerAgent:
+        icon = FontAwesomeIcons.database;
+        color = Colors.indigoAccent;
+        break;
       default:
         icon = FontAwesomeIcons.brain;
         color = Colors.blueAccent;
@@ -285,6 +309,12 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
       case MessageSender.orchestratorAgent: return 'ORCHESTRATOR';
       case MessageSender.copywriterAgent: return 'COPYWRITER';
       case MessageSender.developerAgent: return 'DEVELOPER';
+      case MessageSender.clientOnboardingAgent: return 'CLIENT CONCIERGE';
+      case MessageSender.extractorAgent: return 'EXTRACTOR';
+      case MessageSender.parserAgent: return 'PARSER';
+      case MessageSender.summarizerAgent: return 'SUMMARIZER';
+      case MessageSender.securityAgent: return 'SECURITY GUARDIAN';
+      case MessageSender.dataEngineerAgent: return 'DATA ENGINEER';
       case MessageSender.system: return 'INHAUS BRAIN';
       default: return '';
     }

@@ -7,6 +7,12 @@ enum MessageSender {
   orchestratorAgent, // New Phase 5
   copywriterAgent,   // New Phase 5
   developerAgent,    // New Phase 5
+  clientOnboardingAgent, // Phase 15
+  extractorAgent,    // Phase 15
+  parserAgent,       // Phase 15
+  summarizerAgent,   // Phase 15
+  securityAgent,     // Phase 15
+  dataEngineerAgent, // Phase 15
   humanAgent,
   system
 }

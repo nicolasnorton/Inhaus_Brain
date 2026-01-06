@@ -44,27 +44,18 @@ class AuthService {
   bool get isAdmin {
     final user = currentUser;
     if (user == null) return false;
-    // For this demo, we consider this specific email as the system admin
     return user.email == 'nnorton@inhauscorp.com';
+  }
+
+  bool get isClient {
+    final user = currentUser;
+    if (user == null) return false;
+    return user.email?.contains('client') ?? false; // Simple check for demo
   }
 
   Future<User?> signInWithGoogle() async {
     if (_isMock) {
-      // Simulate network delay
       await Future.delayed(const Duration(seconds: 1));
-      // Create a Mock User (We can't instantiate User directly easily, so we cast a Mock or use a workaround)
-      // Actually, we can't easily implement 'User' from firebase_auth as it's a complex class.
-      // But we can return 'null' and handle it in UI? 
-      // OR we can't return a real User object essentially without mocking properly.
-      // Let's rely on the UI checking 'currentUser' properties.
-      // A better way for the Demo: Just don't crash.
-      
-      // Since ProfileSettingsScreen expects a User object to show photoURL, we need something.
-      // However, creating a MockUser implementation is verbose.
-      // I will fallback to: returning null but printing a log, OR asking user to configure Firebase.
-      // BUT to allow "Vault" access (which is local), we don't strictly NEED a User object unless we enforce it.
-      // The ProfileSettingsScreen might require it.
-      
       print("AuthService: Starting Mock Sign In...");
       _mockUser = MockUser(
         uid: 'mock-123',
@@ -107,6 +98,13 @@ class AuthService {
           email: 'nnorton@inhauscorp.com',
           displayName: 'Nicolas Norton',
           photoURL: 'https://i.pravatar.cc/150?u=nicolas',
+        );
+      } else if (email.contains('client')) {
+         _mockUser = MockUser(
+          uid: 'mock-client-${email.hashCode}',
+          email: email,
+          displayName: 'Client User',
+          photoURL: 'https://i.pravatar.cc/150?u=client',
         );
       } else {
         _mockUser = MockUser(

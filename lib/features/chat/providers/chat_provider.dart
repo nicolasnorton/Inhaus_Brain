@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chat_models.dart';
@@ -12,6 +14,10 @@ import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/mcp/tools/image_generation_tool.dart';
 import '../../../core/mcp/tools/video_generation_tool.dart';
 import '../../../core/mcp/tools/audio_generation_tool.dart';
+import '../agents/utility_agents.dart';
+import '../agents/base_agent.dart';
+import '../../../core/services/memory_service.dart';
+import '../models/memory_models.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
@@ -74,28 +80,48 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
        return;
     }
 
+    // Get Memory Context
+    final memoryService = ref.read(memoryServiceProvider);
+    final memoryContext = memoryService.getContextString(campaignId: state!.campaignId);
+
     // Explicit Agent Calls (Strongest signal)
     if (lowerText.contains('@research') || lowerText.contains('research analysis')) {
-      await _handleResearchAgentResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     } else if (lowerText.contains('@creative') || lowerText.contains('visual concept')) {
-      await _handleCreativeAgentResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
     } else if (lowerText.contains('@copy') || lowerText.contains('write copy') || lowerText.contains('draft blog')) {
-      await _handleCopywriterResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     } else if (lowerText.contains('@dev') || lowerText.contains('generate code') || lowerText.contains('flutter widget')) {
-      await _handleDeveloperResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleDeveloperResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@client') || lowerText.contains('onboarding')) {
+      await _handleUtilityAgent(ClientOnboardingAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@extract')) {
+      await _handleUtilityAgent(ExtractorAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@parse')) {
+      await _handleUtilityAgent(ParserAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@summarize')) {
+      await _handleUtilityAgent(SummarizerAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@security') || lowerText.contains('audit')) {
+      await _handleUtilityAgent(SecurityAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@data') || lowerText.contains('schema')) {
+      await _handleUtilityAgent(DataEngineerAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
 
     // Implicit Intent Detection (Contextual)
     } else if (lowerText.contains('market') || lowerText.contains('competitor') || lowerText.contains('trend')) {
-      await _handleResearchAgentResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     } else if (lowerText.contains('design') || lowerText.contains('style') || lowerText.contains('moodboard')) {
-      await _handleCreativeAgentResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
     } else if (lowerText.contains('write') || lowerText.contains('script')) {
       // "Write" is ambiguous. Check context. Default to Copywriter if it looks like content.
-      await _handleCopywriterResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     } else {
       // Default to System/Orchestrator for general help
-      await _handleGeneralResponse(text, context: knowledgeContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleGeneralResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     }
+
+    // TRIGGER MEMORY HARVESTING (Post-Response)
+    // Run asynchronously to not block UI/Chat
+    _harvestInsights(text, apiKey: apiKey, gemmaKey: gemmaKey);
   }
 
   Future<void> _handleVideoGeneration(String userPrompt, {String? veoKey}) async {
@@ -159,7 +185,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleCopywriterResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleCopywriterResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
       content: 'Drafting high-conversion copy...',
@@ -172,13 +198,14 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
 
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getCopywriterPrompt();
-    final systemInstruction = masterPrompt != null && masterPrompt.isNotEmpty
+    final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Copywriting Agent. $masterPrompt. User Request: $userPrompt"
         : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.";
 
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
       context: context,
+      memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     );
@@ -199,7 +226,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleDeveloperResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleDeveloperResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
       content: 'Generating Flutter code...',
@@ -212,13 +239,14 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
 
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getDeveloperPrompt();
-    final systemInstruction = masterPrompt != null && masterPrompt.isNotEmpty
+    final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Developer Agent. $masterPrompt. User Request: $userPrompt"
         : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.";
 
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
       context: context,
+      memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     );
@@ -257,10 +285,13 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final imagenKey = await vault.getImagenKey();
     final bananaKey = await vault.getBananaKey();
     
-    await _handleCreativeAgentResponse(instruction, context: ref.read(knowledgeProvider), apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+    // FETCH MEMORY FOR HANDOFF
+    final memoryContext = ref.read(memoryServiceProvider).getContextString(campaignId: state!.campaignId);
+    
+    await _handleCreativeAgentResponse(instruction, context: ref.read(knowledgeProvider), memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
   }
 
-  Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
     // 1. Tool Usage Indicator
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
@@ -286,7 +317,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getResearchPrompt();
-    final systemInstruction = masterPrompt != null && masterPrompt.isNotEmpty
+    final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Research Agent. Research Results: $researchSummaray. $masterPrompt. User Context: $userPrompt"
         : "You are a Research Agent. User Request: '$userPrompt'. Research: $researchSummaray. Provide a strategic recommendation.";
 
@@ -294,6 +325,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
       context: context,
+      memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     );
@@ -324,7 +356,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleCreativeAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey}) async {
+  Future<void> _handleCreativeAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey}) async {
     // Visual Generation Check
     if (userPrompt.toLowerCase().contains('generate') || userPrompt.toLowerCase().contains('concept') || userPrompt.toLowerCase().contains('image')) {
        final toolMsg = ChatMessage(
@@ -372,13 +404,14 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
 
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getCreativePrompt();
-    final systemInstruction = masterPrompt != null && masterPrompt.isNotEmpty
+    final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Creative Agent. $masterPrompt. User Context: $userPrompt"
         : "You are a Creative Agent. Suggest a visual direction for: $userPrompt.";
 
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
       context: context,
+      memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     );
@@ -409,10 +442,11 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
     final aiRes = await EdgeAIService.generateText(
       "You are the Inhaus Brain assistant. Help the user with their campaign: $userPrompt",
       context: context,
+      memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     );
@@ -428,6 +462,92 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       messages: [...state!.messages, finalMsg],
       updatedAt: DateTime.now(),
     );
+  }
+
+  Future<void> _handleUtilityAgent(BaseAgent agent, String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+    final toolMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: '${agent.name} is working...',
+      sender: agent.type,
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': agent.name.toLowerCase().replaceAll(' ', '_')},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
+
+    // Execute Agent Logic
+    final resultText = await agent.execute(
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+    );
+
+    // Orchestrator Audit (Generic)
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(resultText, agent.name);
+
+    final finalMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: auditedContent,
+      sender: agent.type,
+      createdAt: DateTime.now(),
+    );
+
+    state = state!.copyWith(
+      messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  // --- Long Term Memory Harvesting ---
+  Future<void> _harvestInsights(String lastUserMessage, {String? apiKey, String? gemmaKey}) async {
+    if (state == null) return;
+    
+    debugPrint('MemoryService: Harvesting insights from session...');
+    
+    // Use the ExtractorAgent to pull facts
+    final harvester = ExtractorAgent();
+    final conversationHistory = state!.messages.takeLast(5).map((m) => "${m.sender.name}: ${m.content}").join("\n");
+    
+    final extractionPrompt = """
+Extract useful long-term memory facts from this conversation. 
+Look for: User preferences, brand constraints, specific campaign goals, and technical requirements.
+Return ONLY a JSON list of objects with 'key', 'value', and 'category'.
+Example: [{"key": "Brand Mood", "value": "Minimalist", "category": "preference"}]
+Conversation:
+$conversationHistory
+""";
+
+    try {
+      final resText = await harvester.execute(userPrompt: extractionPrompt, context: [], apiKey: apiKey, gemmaKey: gemmaKey);
+      
+      // Smart Parse (Lean)
+      final cleanJson = resText.contains('[') ? resText.substring(resText.indexOf('['), resText.lastIndexOf(']') + 1) : "[]";
+      final List<dynamic> harvested = json.decode(cleanJson);
+      
+      final memoryService = ref.read(memoryServiceProvider);
+      for (final item in harvested) {
+        final memoryItem = MemoryItem(
+          id: const Uuid().v4(),
+          key: item['key'],
+          value: item['value'],
+          category: item['category'] ?? 'fact',
+          createdAt: DateTime.now(),
+          campaignId: state!.campaignId,
+        );
+        await memoryService.addMemory(memoryItem);
+        debugPrint('MemoryService: Remembered ${memoryItem.key}');
+      }
+    } catch (e) {
+      debugPrint('MemoryService: Extraction failed or no insights found: $e');
+    }
+  }
+}
+
+extension ListExtensions<T> on List<T> {
+  List<T> takeLast(int n) {
+    if (length <= n) return this;
+    return sublist(length - n);
   }
 }
 

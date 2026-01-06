@@ -47,6 +47,20 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     ref.read(knowledgeProvider.notifier).addSource(newSource);
   }
 
+  void _addDriveSource() async {
+     // TODO: Implement Google Picker API
+     // Mock behaviour
+     final newSource = KnowledgeSource(
+      id: const Uuid().v4(),
+      title: 'Campaign_Brief_v3.gdoc',
+      content: 'https://docs.google.com/document/d/mock-doc-id',
+      type: KnowledgeSourceType.googleDrive,
+      createdAt: DateTime.now(),
+      metadata: {'owner': 'client@inhaus.ai'},
+    );
+    ref.read(knowledgeProvider.notifier).addSource(newSource);
+  }
+
   @override
   Widget build(BuildContext context) {
     final sources = ref.watch(knowledgeProvider);
@@ -142,6 +156,18 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _addDriveSource,
+                        icon: const FaIcon(FontAwesomeIcons.googleDrive, size: 16),
+                        label: const Text('Drive'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.greenAccent.withValues(alpha: 0.1),
+                          foregroundColor: Colors.greenAccent,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -185,6 +211,10 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
       case KnowledgeSourceType.url:
         icon = FontAwesomeIcons.globe;
         color = Colors.blueAccent;
+        break;
+      case KnowledgeSourceType.googleDrive:
+        icon = FontAwesomeIcons.googleDrive;
+        color = Colors.greenAccent;
         break;
       case KnowledgeSourceType.file:
       case KnowledgeSourceType.pdf:

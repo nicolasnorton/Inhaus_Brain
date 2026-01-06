@@ -35,9 +35,9 @@ class EdgeAIResult {
 }
 
 class EdgeAIService {
-  static Future<EdgeAIResult> generateText(String prompt, {List<KnowledgeSource> context = const [], String? apiKey, String? gemmaKey}) async {
-    final effectivePrompt = _buildPromptWithContext(prompt, context);
-    debugPrint('EdgeAI: Generating text. Context items: ${context.length}, API Key provided: ${apiKey != null}, Gemma Key: ${gemmaKey != null}');
+  static Future<EdgeAIResult> generateText(String prompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+    final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
+    debugPrint('EdgeAI: Generating text. Context items: ${context.length}, Memory provided: ${memoryContext != null}, API Key provided: ${apiKey != null}');
     
     // 1. BYO-Key Cloud Execution
     if (gemmaKey != null && gemmaKey.isNotEmpty) {
@@ -154,7 +154,7 @@ class EdgeAIService {
       final topic = _extractTopic(lowerPrompt);
       return "In-Browser Research: $topic competitors are currently over-indexing on high-contrast visuals. (Calculated on-device)";
     }
-
+    
     if (lowerPrompt.contains('strategy')) {
       final topic = _extractTopic(lowerPrompt);
       return "On-Device Simulation: $topic distribution should prioritize high-retention vertical video. (Edge Optimized)";
@@ -169,22 +169,28 @@ class EdgeAIService {
     return "this campaign";
   }
 
-  static String _buildPromptWithContext(String prompt, List<KnowledgeSource> context) {
-    if (context.isEmpty) return prompt;
-
-    final contextBuffer = StringBuffer();
-    contextBuffer.writeln('CONTEXT FROM KNOWLEDGE BASE:');
-    for (final source in context) {
-      contextBuffer.writeln('--- Source: ${source.title} (${source.type.name}) ---');
-      // Truncate content for simulation/size limits
-      final safeContent = source.content.length > 500 ? '${source.content.substring(0, 500)}...' : source.content;
-      contextBuffer.writeln(safeContent);
-      contextBuffer.writeln('--- End Source ---');
+  static String _buildPromptWithContext(String prompt, List<KnowledgeSource> context, {String? memoryContext}) {
+    final buffer = StringBuffer();
+    
+    if (memoryContext != null && memoryContext.isNotEmpty) {
+      buffer.writeln(memoryContext);
+      buffer.writeln('-----------------------------------');
     }
-    contextBuffer.writeln('\nUSER PROMPT:');
-    contextBuffer.writeln(prompt);
 
-    return contextBuffer.toString();
+    if (context.isNotEmpty) {
+      buffer.writeln('CONTEXT FROM KNOWLEDGE BASE:');
+      for (final source in context) {
+        buffer.writeln('--- Source: ${source.title} (${source.type.name}) ---');
+        final safeContent = source.content.length > 500 ? '${source.content.substring(0, 500)}...' : source.content;
+        buffer.writeln(safeContent);
+        buffer.writeln('--- End Source ---');
+      }
+    }
+    
+    buffer.writeln('\nUSER PROMPT:');
+    buffer.writeln(prompt);
+
+    return buffer.toString();
   }
 }
 

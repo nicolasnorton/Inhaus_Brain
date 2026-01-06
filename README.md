@@ -78,4 +78,10 @@ To use the full version of the app with live AI capabilities, please follow our 
 - `lib/core/services/edge_ai_service.dart`: The brain of the "Edge-First" implementation.
 
 ---
+
+## 📄 License
+
+This project is licensed under the **GNU Affero General Public License v3.0**. 
+See the [LICENSE](lib/LICENSE.md) file for more information.
+
 Built with ❤️ for the future of agency coordination.
