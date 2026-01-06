@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/auth/auth_service.dart';
 import 'providers/client_provider.dart';
 import 'models/client_model.dart';
 
@@ -9,7 +11,14 @@ class ClientManagementScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final clients = ref.watch(clientProvider);
+    final allClients = ref.watch(clientProvider);
+    final appUser = ref.watch(appUserProvider);
+    final isAdmin = ref.watch(authServiceProvider).isAdmin;
+    debugPrint('ClientManagementScreen: User=${appUser?.email}, Role=${appUser?.role}, IsAdmin=$isAdmin');
+
+    final clients = isAdmin 
+      ? allClients 
+      : allClients.where((c) => appUser?.assignedClientIds.contains(c.id) ?? false).toList();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -44,17 +53,18 @@ class ClientManagementScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddClientDialog(context, ref),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Client'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  if (isAdmin)
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddClientDialog(context, ref),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Client'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 48),
@@ -155,7 +165,9 @@ class ClientManagementScreen extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // TODO: Navigate to client details or campaign list filtered by client
+                  // Navigate to campaigns. 
+                  // Ideally we would pass a query param ?clientId=client.id but for now just navigate.
+                  context.go('/campaigns');
                 },
                 child: const Text('View Campaigns'),
               ),

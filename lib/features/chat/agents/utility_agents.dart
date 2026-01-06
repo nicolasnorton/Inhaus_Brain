@@ -3,6 +3,7 @@ import 'base_agent.dart';
 import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
+import '../../../core/adk/services/adk_event_bus.dart';
 
 // 1. Client Onboarding Agent
 class ClientOnboardingAgent extends BaseAgent {
@@ -17,19 +18,26 @@ class ClientOnboardingAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
+    Function(AdkEvent)? onEvent,
   }) async {
-    return (await EdgeAIService.generateText(
-      "You are the Client Onboarding Concierge. Your goal is to welcome new clients, explain the agency workflow, and gather initial requirements. Be warm, professional, and helpful. User Input: $userPrompt",
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final systemInstruction = systemPrompt ?? "You are the Client Onboarding Concierge. Your goal is to welcome new clients, explain the agency workflow, and gather initial requirements. Be warm, professional, and helpful. User Input: $userPrompt";
+    
+    final result = (await EdgeAIService.generateText(
+      systemInstruction,
       context: context,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
   }
 }
 
@@ -46,19 +54,26 @@ class ExtractorAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
+    Function(AdkEvent)? onEvent,
   }) async {
-    return (await EdgeAIService.generateText(
-      "You are a Data Extraction Agent. Extract key entities (Dates, Names, Budget, Requirements) from the input. Return ONLY JSON format. Input: $userPrompt",
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final systemInstruction = systemPrompt ?? "You are a Data Extraction Agent. Extract key entities (Dates, Names, Budget, Requirements) from the input. Return ONLY JSON format. Input: $userPrompt";
+    
+    final result = (await EdgeAIService.generateText(
+      systemInstruction,
       context: context,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
   }
 }
 
@@ -75,19 +90,26 @@ class ParserAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
+    Function(AdkEvent)? onEvent,
   }) async {
-    return (await EdgeAIService.generateText(
-      "You are a Parser Agent. Analyze the structure of the input and convert it into a standardized markdown table. Input: $userPrompt",
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final systemInstruction = systemPrompt ?? "You are a Parser Agent. Analyze the structure of the input and convert it into a standardized markdown table. Input: $userPrompt";
+    
+    final result = (await EdgeAIService.generateText(
+      systemInstruction,
       context: context,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
   }
 }
 
@@ -104,19 +126,26 @@ class SummarizerAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
+    Function(AdkEvent)? onEvent,
   }) async {
-    return (await EdgeAIService.generateText(
-      "You are a Summarizer Agent. Distill the following content into a concise 3-bullet executive summary. Input: $userPrompt",
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final systemInstruction = systemPrompt ?? "You are a Summarizer Agent. Distill the following content into a concise 3-bullet executive summary. Input: $userPrompt";
+    
+    final result = (await EdgeAIService.generateText(
+      systemInstruction,
       context: context,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
   }
 }
 
@@ -133,19 +162,26 @@ class SecurityAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
+    Function(AdkEvent)? onEvent,
   }) async {
-    return (await EdgeAIService.generateText(
-      "You are a Cyber Security Agent. Audit the input for PII (Personally Identifiable Information), sensitive data leaks, or security risks. Report 'SAFE' or list the risks. Input: $userPrompt",
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final systemInstruction = systemPrompt ?? "You are a Cyber Security Agent. Audit the input for PII (Personally Identifiable Information), sensitive data leaks, or security risks. Report 'SAFE' or list the risks. Input: $userPrompt";
+    
+    final result = (await EdgeAIService.generateText(
+      systemInstruction,
       context: context,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
   }
 }
 
@@ -162,18 +198,62 @@ class DataEngineerAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
+    Function(AdkEvent)? onEvent,
   }) async {
-    return (await EdgeAIService.generateText(
-      "You are a Data Engineering Agent. Suggest a data schema or transformation pipeline for the request. Input: $userPrompt",
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final systemInstruction = systemPrompt ?? "You are a Data Engineering Agent. Suggest a data schema or transformation pipeline for the request. Input: $userPrompt";
+    
+    final result = (await EdgeAIService.generateText(
+      systemInstruction,
       context: context,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
+  }
+}
+
+// 7. Vision Agent (Phase 18)
+class VisionAgent extends BaseAgent {
+  @override
+  MessageSender get type => MessageSender.visionAgent;
+  @override
+  String get name => "Vision Analyst";
+  @override
+  String get systemPromptKey => "vision_agent_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+    Function(AdkEvent)? onEvent,
+  }) async {
+     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+     final systemInstruction = systemPrompt ?? "You are a Creative Vision Agent. Analyze the attached visual asset (image) and provide creative feedback, layout suggestions, and brand alignment insights based on: $userPrompt";
+     
+     final result = await EdgeAIService.generateText(
+      systemInstruction,
+      context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+    );
+    
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result.text;
   }
 }

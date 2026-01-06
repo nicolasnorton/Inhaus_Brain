@@ -9,7 +9,19 @@ class SystemPromptsService {
   static const String _creativePromptKey = 'creative_prompt';
   static const String _copywriterPromptKey = 'copywriter_prompt';
   static const String _developerPromptKey = 'developer_prompt';
-  static const String _orchestratorPromptKey = 'orchestrator_prompt'; 
+  static const String _orchestratorPromptKey = 'orchestrator_prompt';
+  
+  // Phase 31 Agency Roles
+  static const String _trendScoutPromptKey = 'trend_scout_prompt';
+  static const String _accountDirectorPromptKey = 'account_director_prompt';
+  static const String _strategistPromptKey = 'strategist_prompt';
+  static const String _editorialManagerPromptKey = 'editorial_manager_prompt';
+  static const String _mediaBuyerPromptKey = 'media_buyer_prompt';
+  static const String _performanceAnalystPromptKey = 'performance_analyst_prompt';
+  
+  // Utility Roles
+  static const String _securityPromptKey = 'security_prompt';
+  static const String _dataEngPromptKey = 'data_eng_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -45,58 +57,95 @@ Your goal is to review and audit the outputs of all other agents.
 Ensure brand consistency, strategic alignment, and quality control before human review.
 """;
 
+  static const String originalTrendScoutPrompt = """
+You are the Trend Scout. Actively monitor market signals, cultural shifts, and competitor movements.
+Identify emerging opportunities before they become mainstream.
+""";
+
+  static const String originalAccountDirectorPrompt = """
+You are the Account Director. Manage the client relationship and ensure the project aligns with business objectives.
+Translate client needs into actionable agency briefs.
+""";
+
+  static const String originalStrategistPrompt = """
+You are the Brand Strategist. Connect the dots between market research and creative execution.
+Develop the 'Big Idea' and strategic positioning.
+""";
+
+  static const String originalEditorialManagerPrompt = """
+You are the Editorial Manager. Ensure all content is on-brand, consistent, and fits the content calendar.
+Review copy for voice, tone, and grammatical perfection.
+""";
+
+  static const String originalMediaBuyerPrompt = """
+You are the Media Buyer. Optimize ad placement, targeting, and budget across social platforms.
+Focus on maximizing ROI and reaching the right audience at the right time.
+""";
+
+  static const String originalPerformanceAnalystPrompt = """
+You are the Performance Analyst. Decipher complex campaign data into actionable optimization steps.
+Report on KPIs and suggest iterative improvements.
+""";
+
+  static const String originalSecurityPrompt = """
+You are a Cyber Security Agent. Audit the input for PII (Personally Identifiable Information), sensitive data leaks, or security risks. 
+Report 'SAFE' or list the risks.
+""";
+
+  static const String originalDataEngPrompt = """
+You are a Data Engineering Agent. Suggest a data schema or transformation pipeline for the request.
+Focus on scalability and data integrity.
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
-  Future<String> getResearchPrompt() async {
-    final stored = await _storage.read(key: _researchPromptKey);
-    if (stored != null) return stored;
-    try {
-      return await rootBundle.loadString('assets/prompts/research.md');
-    } catch (_) {
-      return originalResearchPrompt;
-    }
-  }
+  Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
   Future<void> saveCreativePrompt(String prompt) async => await _storage.write(key: _creativePromptKey, value: prompt);
-  Future<String> getCreativePrompt() async {
-    final stored = await _storage.read(key: _creativePromptKey);
-    if (stored != null) return stored;
-    try {
-      return await rootBundle.loadString('assets/prompts/creative.md');
-    } catch (_) {
-      return originalCreativePrompt;
-    }
-  }
+  Future<String> getCreativePrompt() async => await _getPrompt(_creativePromptKey, 'assets/prompts/creative.md', originalCreativePrompt);
 
   Future<void> saveCopywriterPrompt(String prompt) async => await _storage.write(key: _copywriterPromptKey, value: prompt);
-  Future<String> getCopywriterPrompt() async {
-    final stored = await _storage.read(key: _copywriterPromptKey);
-    if (stored != null) return stored;
-    try {
-      return await rootBundle.loadString('assets/prompts/copywriter.md');
-    } catch (_) {
-      return originalCopywriterPrompt;
-    }
-  }
+  Future<String> getCopywriterPrompt() async => await _getPrompt(_copywriterPromptKey, 'assets/prompts/copywriter.md', originalCopywriterPrompt);
 
   Future<void> saveDeveloperPrompt(String prompt) async => await _storage.write(key: _developerPromptKey, value: prompt);
-  Future<String> getDeveloperPrompt() async {
-    final stored = await _storage.read(key: _developerPromptKey);
-    if (stored != null) return stored;
-    try {
-      return await rootBundle.loadString('assets/prompts/developer.md');
-    } catch (_) {
-      return originalDeveloperPrompt;
-    }
-  }
+  Future<String> getDeveloperPrompt() async => await _getPrompt(_developerPromptKey, 'assets/prompts/developer.md', originalDeveloperPrompt);
 
   Future<void> saveOrchestratorPrompt(String prompt) async => await _storage.write(key: _orchestratorPromptKey, value: prompt);
-  Future<String> getOrchestratorPrompt() async {
-    final stored = await _storage.read(key: _orchestratorPromptKey);
+  Future<String> getOrchestratorPrompt() async => await _getPrompt(_orchestratorPromptKey, 'assets/prompts/orchestrator.md', originalOrchestratorPrompt);
+
+  // Agency Roles
+  Future<void> saveTrendScoutPrompt(String prompt) async => await _storage.write(key: _trendScoutPromptKey, value: prompt);
+  Future<String> getTrendScoutPrompt() async => await _getPrompt(_trendScoutPromptKey, 'assets/prompts/trend_scout.md', originalTrendScoutPrompt);
+
+  Future<void> saveAccountDirectorPrompt(String prompt) async => await _storage.write(key: _accountDirectorPromptKey, value: prompt);
+  Future<String> getAccountDirectorPrompt() async => await _getPrompt(_accountDirectorPromptKey, 'assets/prompts/account_director.md', originalAccountDirectorPrompt);
+
+  Future<void> saveStrategistPrompt(String prompt) async => await _storage.write(key: _strategistPromptKey, value: prompt);
+  Future<String> getStrategistPrompt() async => await _getPrompt(_strategistPromptKey, 'assets/prompts/strategist.md', originalStrategistPrompt);
+
+  Future<void> saveEditorialManagerPrompt(String prompt) async => await _storage.write(key: _editorialManagerPromptKey, value: prompt);
+  Future<String> getEditorialManagerPrompt() async => await _getPrompt(_editorialManagerPromptKey, 'assets/prompts/editorial_manager.md', originalEditorialManagerPrompt);
+
+  Future<void> saveMediaBuyerPrompt(String prompt) async => await _storage.write(key: _mediaBuyerPromptKey, value: prompt);
+  Future<String> getMediaBuyerPrompt() async => await _getPrompt(_mediaBuyerPromptKey, 'assets/prompts/media_buyer.md', originalMediaBuyerPrompt);
+
+  Future<void> savePerformanceAnalystPrompt(String prompt) async => await _storage.write(key: _performanceAnalystPromptKey, value: prompt);
+  Future<String> getPerformanceAnalystPrompt() async => await _getPrompt(_performanceAnalystPromptKey, 'assets/prompts/performance_analyst.md', originalPerformanceAnalystPrompt);
+
+  // Utility
+  Future<void> saveSecurityPrompt(String prompt) async => await _storage.write(key: _securityPromptKey, value: prompt);
+  Future<String> getSecurityPrompt() async => await _getPrompt(_securityPromptKey, 'assets/prompts/security.md', originalSecurityPrompt);
+
+  Future<void> saveDataEngPrompt(String prompt) async => await _storage.write(key: _dataEngPromptKey, value: prompt);
+  Future<String> getDataEngPrompt() async => await _getPrompt(_dataEngPromptKey, 'assets/prompts/data_engineer.md', originalDataEngPrompt);
+
+  // Helper
+  Future<String> _getPrompt(String storageKey, String assetPath, String fallback) async {
+    final stored = await _storage.read(key: storageKey);
     if (stored != null) return stored;
     try {
-      return await rootBundle.loadString('assets/prompts/orchestrator.md');
+      return await rootBundle.loadString(assetPath);
     } catch (_) {
-      return originalOrchestratorPrompt;
+      return fallback;
     }
   }
 }

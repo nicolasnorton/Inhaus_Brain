@@ -4,6 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/knowledge_provider.dart';
 import '../models/knowledge_source.dart';
+import '../../campaigns/models/campaign.dart';
+import '../../campaigns/models/campaign.dart';
 import '../../chat/providers/chat_provider.dart';
 
 class KnowledgeLibraryWidget extends ConsumerStatefulWidget {

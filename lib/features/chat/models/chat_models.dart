@@ -14,6 +14,16 @@ enum MessageSender {
   securityAgent,     // Phase 15
   dataEngineerAgent, // Phase 15
   visionAgent,       // Phase 18
+  routerAgent,       // Phase 23
+  
+  // Phase 31: Agency Model Alignment
+  trendScoutAgent,
+  accountDirectorAgent,
+  strategistAgent,
+  editorialManagerAgent,
+  mediaBuyerAgent,
+  performanceAnalystAgent,
+
   humanAgent,
   system
 }

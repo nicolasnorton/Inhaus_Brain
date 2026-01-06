@@ -56,6 +56,28 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
     return AttachmentType.file;
   }
 
+  Future<void> _pickFromDrive() async {
+    // Phase 21: Mock Drive Integration
+    await Future.delayed(const Duration(seconds: 1));
+    
+    if (!mounted) return;
+    
+    setState(() {
+      _attachments.add(Attachment(
+        id: const Uuid().v4(),
+        url: 'https://docs.google.com/document/d/mock_doc_id',
+        name: 'Market_Analysis_2026.gdoc',
+        type: AttachmentType.file,
+        createdAt: DateTime.now(),
+      ));
+    });
+    widget.onAttachmentsChanged(_attachments);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Linked file from Google Drive')),
+    );
+  }
+
   Future<void> _toggleRecording() async {
     if (_isRecording) {
       final path = await _audioRecorder.stop();
@@ -131,6 +153,12 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
               label: 'Upload',
               color: Colors.white10,
               onTap: _pickFiles,
+            ),
+            _buildActionButton(
+              icon: FontAwesomeIcons.googleDrive,
+              label: 'Drive',
+              color: Colors.white10,
+              onTap: _pickFromDrive,
             ),
           ],
         ),

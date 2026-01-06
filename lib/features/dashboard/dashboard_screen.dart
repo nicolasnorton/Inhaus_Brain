@@ -36,6 +36,10 @@ class DashboardScreen extends ConsumerWidget {
                 label: Text('Dashboard'),
               ),
               const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.usersViewfinder),
+                label: Text('Clients'),
+              ),
+              const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.bullhorn),
                 label: Text('Campaigns'),
               ),
@@ -43,14 +47,13 @@ class DashboardScreen extends ConsumerWidget {
                 icon: Icon(FontAwesomeIcons.wandMagicSparkles), // Agent/Creative
                 label: Text('Creative'),
               ),
-              if (ref.watch(authServiceProvider).isAdmin)
-                const NavigationRailDestination(
-                  icon: Icon(FontAwesomeIcons.usersViewfinder),
-                  label: Text('Clients'),
-                ),
               const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.chartLine),
                 label: Text('Analytics'),
+              ),
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.diagramProject),
+                label: Text('Pipelines'),
               ),
               const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.gear),
@@ -98,7 +101,9 @@ class DashboardScreen extends ConsumerWidget {
         radius: 18,
         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
         backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-        onBackgroundImageError: (e, s) => debugPrint('Dashboard Avatar Error: $e'),
+        onBackgroundImageError: user?.photoURL != null 
+          ? (e, s) => debugPrint('Dashboard Avatar Error: $e') 
+          : null,
         child: user?.photoURL == null 
           ? Text(
               (user?.displayName ?? user?.email ?? roleName)[0].toUpperCase(),
@@ -111,53 +116,38 @@ class DashboardScreen extends ConsumerWidget {
 
   int _calculateSelectedIndex(BuildContext context, WidgetRef ref) {
     final String location = GoRouterState.of(context).uri.toString();
-    final isAdmin = ref.read(authServiceProvider).isAdmin;
     
-    if (location.startsWith('/campaigns')) return 1;
-    if (location.startsWith('/creative')) return 2;
-    
-    if (isAdmin) {
-      if (location.startsWith('/clients')) return 3;
-      if (location.startsWith('/analytics')) return 4;
-      if (location.startsWith('/settings')) return 5;
-    } else {
-      if (location.startsWith('/analytics')) return 3;
-      if (location.startsWith('/settings')) return 4;
-    }
+    if (location.startsWith('/clients')) return 1;
+    if (location.startsWith('/campaigns')) return 2;
+    if (location.startsWith('/creative')) return 3;
+    if (location.startsWith('/analytics')) return 4;
+    if (location.startsWith('/pipelines')) return 5;
+    if (location.startsWith('/settings')) return 6;
     return 0;
   }
 
   void _onItemTapped(int index, BuildContext context, WidgetRef ref) {
-    final isAdmin = ref.read(authServiceProvider).isAdmin;
-    
     switch (index) {
       case 0:
         context.go('/');
         break;
       case 1:
-        context.go('/campaigns');
+        context.go('/clients');
         break;
       case 2:
-        context.go('/creative');
+        context.go('/campaigns');
         break;
       case 3:
-        if (isAdmin) {
-          context.go('/clients');
-        } else {
-          context.go('/analytics');
-        }
+        context.go('/creative');
         break;
       case 4:
-        if (isAdmin) {
-          context.go('/analytics');
-        } else {
-          context.go('/settings');
-        }
+        context.go('/analytics');
         break;
       case 5:
-        if (isAdmin) {
-          context.go('/settings');
-        }
+        context.go('/pipelines');
+        break;
+      case 6:
+        context.go('/settings');
         break;
     }
   }

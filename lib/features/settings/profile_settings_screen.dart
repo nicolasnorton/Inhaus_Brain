@@ -6,6 +6,9 @@ import '../../core/auth/auth_service.dart';
 import '../../core/auth/secret_vault_service.dart';
 import '../../core/services/system_prompts_service.dart';
 import '../auth/auth_screen.dart';
+import '../auth/models/user_model.dart';
+import '../clients/models/client_model.dart';
+import '../clients/providers/client_provider.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -26,12 +29,27 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _creativePromptController = TextEditingController();
   final _copyPromptController = TextEditingController();
   final _devPromptController = TextEditingController();
+  
+  // Phase 31 Agency Roles
+  final _trendScoutPromptController = TextEditingController();
+  final _accountDirectorPromptController = TextEditingController();
+  final _strategistPromptController = TextEditingController();
+  final _editorialManagerPromptController = TextEditingController();
+  final _mediaBuyerPromptController = TextEditingController();
+  final _performanceAnalystPromptController = TextEditingController();
+  
+  // Utility
+  final _securityPromptController = TextEditingController();
+  final _dataEngPromptController = TextEditingController();
 
   final _displayNameController = TextEditingController();
   final _emailEditController = TextEditingController();
 
   bool _isLoadingKeys = true;
   bool _isEditingProfile = false;
+  
+  UserRole? _selectedRole;
+  List<String> _selectedClientIds = [];
 
   @override
   void initState() {
@@ -50,15 +68,31 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _lyriaController.text = await vault.getLyriaKey() ?? '';
     _gemmaController.text = await vault.getGemmaKey() ?? '';
 
-    _researchPromptController.text = await prompts.getResearchPrompt() ?? '';
-    _creativePromptController.text = await prompts.getCreativePrompt() ?? '';
-    _copyPromptController.text = await prompts.getCopywriterPrompt() ?? '';
-    _devPromptController.text = await prompts.getDeveloperPrompt() ?? '';
+    _researchPromptController.text = await prompts.getResearchPrompt();
+    _creativePromptController.text = await prompts.getCreativePrompt();
+    _copyPromptController.text = await prompts.getCopywriterPrompt();
+    _devPromptController.text = await prompts.getDeveloperPrompt();
+    
+    // Agency Roles
+    _trendScoutPromptController.text = await prompts.getTrendScoutPrompt();
+    _accountDirectorPromptController.text = await prompts.getAccountDirectorPrompt();
+    _strategistPromptController.text = await prompts.getStrategistPrompt();
+    _editorialManagerPromptController.text = await prompts.getEditorialManagerPrompt();
+    _mediaBuyerPromptController.text = await prompts.getMediaBuyerPrompt();
+    _performanceAnalystPromptController.text = await prompts.getPerformanceAnalystPrompt();
+    
+    // Utility
+    _securityPromptController.text = await prompts.getSecurityPrompt();
+    _dataEngPromptController.text = await prompts.getDataEngPrompt();
 
     final user = ref.read(authServiceProvider).currentUser;
     if (user != null) {
       _displayNameController.text = user.displayName ?? '';
       _emailEditController.text = user.email ?? '';
+      
+      final profile = ref.read(authServiceProvider).getAppUser(user);
+      _selectedRole = profile.role;
+      _selectedClientIds = List.from(profile.assignedClientIds);
     }
 
     setState(() => _isLoadingKeys = false);
@@ -87,6 +121,18 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     await prompts.saveCopywriterPrompt(_copyPromptController.text);
     await prompts.saveDeveloperPrompt(_devPromptController.text);
     
+    // Agency Roles
+    await prompts.saveTrendScoutPrompt(_trendScoutPromptController.text);
+    await prompts.saveAccountDirectorPrompt(_accountDirectorPromptController.text);
+    await prompts.saveStrategistPrompt(_strategistPromptController.text);
+    await prompts.saveEditorialManagerPrompt(_editorialManagerPromptController.text);
+    await prompts.saveMediaBuyerPrompt(_mediaBuyerPromptController.text);
+    await prompts.savePerformanceAnalystPrompt(_performanceAnalystPromptController.text);
+    
+    // Utility
+    await prompts.saveSecurityPrompt(_securityPromptController.text);
+    await prompts.saveDataEngPrompt(_dataEngPromptController.text);
+    
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Master Prompts updated.')),
@@ -96,8 +142,19 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   Future<void> _updateProfile() async {
     final auth = ref.read(authServiceProvider);
-    await auth.updateDisplayName(_displayNameController.text);
-    // In a real app, email update is more complex (verification etc.)
+    final user = auth.currentUser;
+    if (user != null) {
+      await auth.updateDisplayName(_displayNameController.text);
+      
+      final profile = auth.getAppUser(user);
+      final updatedProfile = profile.copyWith(
+        displayName: _displayNameController.text,
+        role: _selectedRole,
+        assignedClientIds: _selectedClientIds,
+      );
+      await auth.updateAppUser(updatedProfile);
+    }
+    
     setState(() => _isEditingProfile = false);
     
     if (mounted) {
@@ -123,9 +180,15 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. User Profile Section
-              _buildUserProfile(user),
-              const SizedBox(height: 32),
+              if (user != null) ...[
+                _buildUserProfile(user),
+                const SizedBox(height: 32),
+                
+                // 1.5 Role & Assignment Section
+                _buildRoleAndClientManagement(user),
+                const SizedBox(height: 32),
+              ],
+
               const Divider(color: Colors.white24),
               const SizedBox(height: 32),
               
@@ -229,6 +292,42 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                           _buildPromptField('Copywriter Agent Prompt', _copyPromptController, FontAwesomeIcons.penNib, readOnly: !ref.read(authServiceProvider).isAdmin),
                           const SizedBox(height: 16),
                           _buildPromptField('Developer Agent Prompt', _devPromptController, FontAwesomeIcons.code, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          
+                          const Divider(color: Colors.white10),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Text(
+                              'AGENCY PIPELINE ROLES',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
+                            ),
+                          ),
+                          
+                          _buildPromptField('Trend Scout Prompt', _trendScoutPromptController, FontAwesomeIcons.bolt, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          _buildPromptField('Account Director Prompt', _accountDirectorPromptController, FontAwesomeIcons.userTie, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          _buildPromptField('Strategist Prompt', _strategistPromptController, FontAwesomeIcons.compass, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          _buildPromptField('Editorial Manager Prompt', _editorialManagerPromptController, FontAwesomeIcons.calendarCheck, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          _buildPromptField('Media Buyer Prompt', _mediaBuyerPromptController, FontAwesomeIcons.bullhorn, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          _buildPromptField('Performance Analyst Prompt', _performanceAnalystPromptController, FontAwesomeIcons.chartLine, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 24),
+                          
+                          const Divider(color: Colors.white10),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Text(
+                              'SECURITY & UTILITY',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
+                            ),
+                          ),
+                          
+                          _buildPromptField('Cyber Security Prompt', _securityPromptController, FontAwesomeIcons.shieldHalved, readOnly: !ref.read(authServiceProvider).isAdmin),
+                          const SizedBox(height: 16),
+                          _buildPromptField('Data Engineer Prompt', _dataEngPromptController, FontAwesomeIcons.database, readOnly: !ref.read(authServiceProvider).isAdmin),
                           const SizedBox(height: 24),
                           if (ref.read(authServiceProvider).isAdmin)
                             SizedBox(
@@ -349,9 +448,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               radius: 32,
               backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
               backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-              onBackgroundImageError: (exception, stackTrace) {
-                debugPrint('Avatar Load Error: $exception');
-              },
+              onBackgroundImageError: user.photoURL != null 
+                ? (exception, stackTrace) {
+                    debugPrint('Avatar Load Error: $exception');
+                  }
+                : null,
               child: user.photoURL == null 
                 ? Text(
                     (user.displayName ?? user.email ?? '?').substring(0, 1).toUpperCase(),
@@ -440,6 +541,114 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
+    );
+  }
+
+  Widget _buildRoleAndClientManagement(User user) {
+    final isAdmin = ref.read(authServiceProvider).isAdmin;
+    final allClients = ref.watch(clientProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ROLE & ASSIGNMENTS',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: Colors.white54,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Role Selector
+              const Text('User Role', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 8),
+              if (_isEditingProfile && isAdmin)
+                DropdownButtonFormField<UserRole>(
+                  initialValue: _selectedRole,
+                  dropdownColor: const Color(0xFF1A1A1A),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  ),
+                  items: UserRole.values.map((role) {
+                    return DropdownMenuItem(
+                      value: role,
+                      child: Text(role.name.toUpperCase()),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedRole = val),
+                )
+              else
+                Text(
+                  _selectedRole?.name.toUpperCase() ?? 'NONE',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              
+              const SizedBox(height: 24),
+              
+              // Assigned Clients
+              const Text('Assigned Clients', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 12),
+              if (_isEditingProfile && isAdmin)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: allClients.map((client) {
+                    final isSelected = _selectedClientIds.contains(client.id);
+                    return FilterChip(
+                      label: Text(client.name, style: const TextStyle(fontSize: 12)),
+                      selected: isSelected,
+                      selectedColor: Colors.blueAccent.withValues(alpha: 0.3),
+                      checkmarkColor: Colors.blueAccent,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedClientIds.add(client.id);
+                          } else {
+                            _selectedClientIds.remove(client.id);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _selectedClientIds.isEmpty 
+                    ? [const Text('No clients assigned', style: TextStyle(color: Colors.white24, fontSize: 12))]
+                    : _selectedClientIds.map((id) {
+                        final clientName = allClients.firstWhere((c) => c.id == id, orElse: () => Client(id: id, name: 'Unknown', industry: '')).name;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(clientName, style: const TextStyle(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                        );
+                      }).toList(),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

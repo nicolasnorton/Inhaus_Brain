@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
+import '../../features/auth/models/user_model.dart';
 
 class AuthService {
   // Check if Firebase is available. In this local demo, it is not initialized.
@@ -21,6 +22,7 @@ class AuthService {
   // Mock State
   final _mockUserStreamController = StreamController<User?>.broadcast();
   User? _mockUser;
+  final Map<String, AppUser> _mockUserProfiles = {};
 
   AuthService() {
     if (_isMock) {
@@ -44,22 +46,64 @@ class AuthService {
   bool get isAdmin {
     final user = currentUser;
     if (user == null) return false;
-    return user.email == 'nnorton@inhauscorp.com';
+    final profile = getAppUser(user);
+    return profile.role == UserRole.admin || 
+           user.email == 'nnorton@inhauscorp.com' || 
+           user.email == 'demo@inhaus.ai';
   }
 
   bool get isClient {
     final user = currentUser;
     if (user == null) return false;
-    return user.email?.contains('client') ?? false; // Simple check for demo
+    final profile = getAppUser(user);
+    // Any role other than admin for this simple demo could be considered a team/client role
+    return profile.role != UserRole.admin;
   }
 
   String? get userClientId {
     final user = currentUser;
     if (user == null) return null;
-    if (isAdmin) return null; // Admins have no specific client restriction
+    if (isAdmin) return null; 
+    
+    final profile = getAppUser(user);
+    if (profile.assignedClientIds.isNotEmpty) {
+      return profile.assignedClientIds.first;
+    }
+    
+    // Legacy mapping
     if (user.email == 'client@inhaus Studios.ai') return 'client-1';
     if (user.email == 'marketing@globaltech.com') return 'client-2';
     return null;
+  }
+
+  AppUser getAppUser(User user) {
+    if (!_mockUserProfiles.containsKey(user.uid)) {
+      // Default profile based on email
+      UserRole role = UserRole.accountManager;
+      List<String> clients = [];
+
+      if (user.email == 'nnorton@inhauscorp.com' || user.email == 'demo@inhaus.ai') {
+        role = UserRole.admin;
+      } else if (user.email == 'client@inhaus Studios.ai') {
+        clients = ['client-1'];
+      } else if (user.email == 'marketing@globaltech.com') {
+        clients = ['client-2'];
+      }
+
+      _mockUserProfiles[user.uid] = AppUser(
+        id: user.uid,
+        email: user.email ?? '',
+        displayName: user.displayName,
+        role: role,
+        assignedClientIds: clients,
+      );
+    }
+    return _mockUserProfiles[user.uid]!;
+  }
+
+  Future<void> updateAppUser(AppUser updatedUser) async {
+    _mockUserProfiles[updatedUser.id] = updatedUser;
+    // Notify listeners if necessary (though appUserProvider handles it via authState)
   }
 
   Future<User?> signInWithGoogle() async {
@@ -203,6 +247,12 @@ final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
 final authStateProvider = StreamProvider<User?>((ref) {
   return ref.watch(authServiceProvider).authStateChanges;
+});
+
+final appUserProvider = Provider<AppUser?>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return null;
+  return ref.watch(authServiceProvider).getAppUser(user);
 });
 
 class MockUser implements User {

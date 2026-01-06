@@ -25,16 +25,29 @@ All agent capabilities are abstracted into the `AgentTool` (at `lib/core/mcp/`) 
 - **`VideoGenerationTool` / `AudioGenerationTool`**: Specialized tool interfaces for multi-modal expansion.
 
 ### 3. Agent Roster & Behavior
-- **ResearchAgent**: Uses `WebSearchTool` and Knowledge Context to analyze trends.
-- **CreativeAgent**: Generates visual prompts and moodboards. Triggered via A2A handoff.
-- **CopywritingAgent**: Specialized text generation for social media and blogs.
-- **DeveloperAgent**: Code generation (Flutter/Gen UI).
-- **OrchestratorAgent**: Audits all responses for brand safety and strategic alignment before displaying to the user.
+The Inhaus Brain features an 11-step specialized agency roster:
+- **Trend Scout**: Analyzes real-time market signals and bolts.
+- **Account Director**: Manages client expectations and campaign high-level strategy.
+- **Strategist**: Synthesizes research into actionable concepts.
+- **Creative Agent**: Generates visual prompts and moodboards.
+- **Copywriter Agent**: Specialized text generation for social media and collateral.
+- **Editorial Manager**: Plans content calendars and ensures brand consistency.
+- **Media Buyer**: Optimizes ad spend and placement logic (Sensitive).
+- **Performance Analyst**: Evaluates campaign data and metrics.
+- **Developer Agent**: Generates code (Flutter/Gen UI).
+- **Data Engineer Agent**: Manages schemas and data flow (Sensitive).
+- **Security Agent**: Audits all pipeline inputs and final outputs.
+
+### 4. Agent Development Kit (ADK)
+- **`AdkService`**: Coordinates pipeline execution, tool invocation, and events.
+- **`PipelineContext`**: Maintains a shared memory of `AdkArtifact`s across steps.
+- **Streaming**: Full support for real-time token streaming and tool-usage feedback.
 
 ## Authentication & Security
-- **Auth Flow**: Uses `AuthService` with `FirebaseAuth` and `GoogleSignIn`. Includes a `MockAuthService` fallback with a persistent `MockUser` for offline/web prototyping.
-- **Secrets Vault**: Uses `flutter_secure_storage` via `SecretVaultService` to keep BYO-API keys local and secure.
-- **Master Prompts**: Managed via `SystemPromptsService` (`shared_preferences`), allowing user-defined overrides for every agent's system instruction.
+- **Auth Flow**: Uses `AuthService` with `FirebaseAuth` and `GoogleSignIn`. Includes a `MockAuthService` fallback.
+- **Security Guardian**: Mandatory `SecurityAgent` audits on pipeline start and finish. Intercepts sensitive agents (Media Buyer, Data Eng).
+- **Secrets Vault**: Uses `SecretVaultService` for secure on-device API key storage.
+- **Master Prompts (Agent Brain)**: Managed via `SystemPromptsService`. Admin-only edits allow plumbing custom system instructions directly into each agent's execution flow.
 
 ## Coding Conventions
 - **State Management**: Riverpod `StateNotifier` (e.g., `ChatNotifier`) coordinates agent logic.

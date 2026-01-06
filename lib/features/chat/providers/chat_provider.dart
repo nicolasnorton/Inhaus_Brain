@@ -16,8 +16,14 @@ import '../../../core/mcp/tools/video_generation_tool.dart';
 import '../../../core/mcp/tools/audio_generation_tool.dart';
 import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
+import '../agents/core_agents.dart';
+import '../agents/router_agent.dart';
+import '../agents/agency_agents.dart';
 import '../../../core/services/memory_service.dart';
 import '../models/memory_models.dart';
+import '../../../core/adk/services/adk_service.dart';
+import '../../../core/adk/models/pipeline_models.dart';
+import '../../adk/providers/pipeline_provider.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
@@ -84,47 +90,105 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final memoryService = ref.read(memoryServiceProvider);
     final memoryContext = memoryService.getContextString(campaignId: state!.campaignId);
 
-    // Explicit Agent Calls (Strongest signal)
-    if (lowerText.contains('@research') || lowerText.contains('research analysis')) {
-      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@creative') || lowerText.contains('visual concept')) {
-      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
-    } else if (lowerText.contains('@copy') || lowerText.contains('write copy') || lowerText.contains('draft blog')) {
-      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@dev') || lowerText.contains('generate code') || lowerText.contains('flutter widget')) {
-      await _handleDeveloperResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@client') || lowerText.contains('onboarding')) {
-      await _handleUtilityAgent(ClientOnboardingAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@extract')) {
-      await _handleUtilityAgent(ExtractorAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@parse')) {
-      await _handleUtilityAgent(ParserAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@summarize')) {
-      await _handleUtilityAgent(SummarizerAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@security') || lowerText.contains('audit')) {
-      await _handleUtilityAgent(SecurityAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@data') || lowerText.contains('schema')) {
-      await _handleUtilityAgent(DataEngineerAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('@vision') || attachments.any((a) => a.type == AttachmentType.image)) {
-      await _handleVisionAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    }
-
-    // Implicit Intent Detection (Contextual)
-    } else if (lowerText.contains('market') || lowerText.contains('competitor') || lowerText.contains('trend')) {
-      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
-    } else if (lowerText.contains('design') || lowerText.contains('style') || lowerText.contains('moodboard')) {
-      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
-    } else if (lowerText.contains('write') || lowerText.contains('script')) {
-      // "Write" is ambiguous. Check context. Default to Copywriter if it looks like content.
-      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    // --- INTELLIGENT ROUTING (Phase 23: Step 2 - The Engine) ---
+    // Respect explicit commands, but otherwise use the RouterAgent (The Front Door)
+    if (text.startsWith('@')) {
+      await _handleExplicitCommand(text, lowerText, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey);
     } else {
-      // Default to System/Orchestrator for general help
-      await _handleGeneralResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleIntelligentRouting(text, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey);
     }
 
     // TRIGGER MEMORY HARVESTING (Post-Response)
-    // Run asynchronously to not block UI/Chat
     _harvestInsights(text, apiKey: apiKey, gemmaKey: gemmaKey);
+  }
+
+  Future<void> _handleExplicitCommand(String text, String lowerText, List<KnowledgeSource> knowledgeContext, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey) async {
+    if (lowerText.contains('@research')) {
+      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@creative')) {
+      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+    } else if (lowerText.contains('@copy') || lowerText.contains('@write')) {
+      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@dev') || lowerText.contains('@code')) {
+      await _handleDeveloperResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@vision')) {
+      await _handleVisionAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@run:') || lowerText.contains('@pipeline:')) {
+      final pipelineName = text.split(':').last.trim();
+      await _handlePipelineExecution(pipelineName, text, context: knowledgeContext, memoryContext: memoryContext);
+    } else {
+      // Fallback for unknown @ command
+      await _handleGeneralResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    }
+  }
+
+  Future<void> _handleIntelligentRouting(String text, List<KnowledgeSource> context, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey) async {
+    // 1. Tool Usage Indicator
+    final toolMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: 'Determining best agent for your request...',
+      sender: MessageSender.orchestratorAgent,
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': 'root_router'},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
+
+    // 2. Call RouterAgent
+    try {
+      final router = RouterAgent();
+      final routerOutput = await router.execute(userPrompt: text, context: context, apiKey: apiKey);
+      
+      // Basic JSON parsing (Simulated for speed, in production wrap in jsonDecode)
+      final lowerOut = routerOutput.toLowerCase();
+      
+      if (lowerOut.contains('"research"') || lowerOut.contains('research')) {
+        await _handleResearchAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"creative"') || lowerOut.contains('creative')) {
+        await _handleCreativeAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+      } else if (lowerOut.contains('"copywriting"') || lowerOut.contains('copy')) {
+        await _handleCopywriterResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"development"') || lowerOut.contains('dev')) {
+        await _handleDeveloperResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"trend"') || lowerOut.contains('scout')) {
+        await _handleUtilityAgent(TrendScoutAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"strategy"') || lowerOut.contains('strategist')) {
+        await _handleUtilityAgent(StrategistAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"account"') || lowerOut.contains('director')) {
+        await _handleUtilityAgent(AccountDirectorAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"media"') || lowerOut.contains('buyer')) {
+        await _handleUtilityAgent(MediaBuyerAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"performance"') || lowerOut.contains('analyst')) {
+        await _handleUtilityAgent(PerformanceAnalystAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"editorial"') || lowerOut.contains('manager')) {
+        await _handleUtilityAgent(EditorialManagerAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      } else if (lowerOut.contains('"pipeline"')) {
+        // Try to find a matching pipeline by name in the output, or default to Research if triggered
+        final pipelines = ref.read(pipelineProvider);
+        Pipeline? bestMatch;
+        for (final p in pipelines) {
+          if (lowerOut.contains(p.name.toLowerCase())) {
+            bestMatch = p;
+            break;
+          }
+        }
+        
+        if (bestMatch != null) {
+          await _handlePipelineExecution(bestMatch.name, text, context: context, memoryContext: memoryContext);
+        } else if (text.toLowerCase().contains('deep research')) {
+          await _handlePipelineExecution('Research Deep Dive', text, context: context, memoryContext: memoryContext);
+        } else if (text.toLowerCase().contains('agency flow') || text.toLowerCase().contains('master workflow')) {
+          await _handlePipelineExecution('Master Agency Workflow', text, context: context, memoryContext: memoryContext);
+        } else {
+          await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+        }
+      } else {
+        await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      }
+    } catch (e) {
+      debugPrint('Router Error: $e. Falling back to general chat.');
+      await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    }
   }
 
   Future<void> _handleVideoGeneration(String userPrompt, {String? veoKey}) async {
@@ -206,7 +270,9 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.";
 
     final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+      systemPrompt ?? (masterPrompt.isNotEmpty
+        ? "You are a Copywriting Agent. $masterPrompt. User Request: $userPrompt"
+        : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold."),
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -247,7 +313,9 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.";
 
     final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+      systemPrompt ?? (masterPrompt.isNotEmpty
+        ? "You are a Developer Agent. $masterPrompt. User Request: $userPrompt"
+        : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks."),
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -538,10 +606,24 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
     state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
+    // 3. FETCH DYNAMIC SYSTEM PROMPT
+    final prompts = ref.read(systemPromptsProvider);
+    String? dynamicPrompt;
+    switch (agent.type) {
+      case MessageSender.trendScoutAgent: dynamicPrompt = await prompts.getTrendScoutPrompt(); break;
+      case MessageSender.accountDirectorAgent: dynamicPrompt = await prompts.getAccountDirectorPrompt(); break;
+      case MessageSender.strategistAgent: dynamicPrompt = await prompts.getStrategistPrompt(); break;
+      case MessageSender.editorialManagerAgent: dynamicPrompt = await prompts.getEditorialManagerPrompt(); break;
+      case MessageSender.mediaBuyerAgent: dynamicPrompt = await prompts.getMediaBuyerPrompt(); break;
+      case MessageSender.performanceAnalystAgent: dynamicPrompt = await prompts.getPerformanceAnalystPrompt(); break;
+      default: break;
+    }
+
     // Execute Agent Logic
     final resultText = await agent.execute(
       userPrompt: userPrompt,
       context: context,
+      systemPrompt: dynamicPrompt,
       imageBytes: null, // Utilities don't handle vision yet
       imageMimeType: null,
       apiKey: apiKey,
@@ -606,6 +688,81 @@ $conversationHistory
     } catch (e) {
       debugPrint('MemoryService: Extraction failed or no insights found: $e');
     }
+  }
+  // --- ADK Pipeline Execution ---
+  Future<void> _handlePipelineExecution(String pipelineName, String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext}) async {
+    // 1. Pipeline Lookup from Provider
+    final List<Pipeline> pipelines = ref.read(pipelineProvider);
+    final Pipeline pipeline;
+    
+    // Attempt exact match first
+    final exactMatch = pipelines.where((p) => p.name.toLowerCase() == pipelineName.toLowerCase() || p.id == pipelineName);
+    
+    if (exactMatch.isNotEmpty) {
+      pipeline = exactMatch.first;
+    } else {
+      // Attempt fuzzy match
+      final fuzzyMatch = pipelines.where((final p) => p.name.toLowerCase().contains(pipelineName.toLowerCase()));
+      if (fuzzyMatch.isNotEmpty) {
+        pipeline = fuzzyMatch.first;
+      } else {
+        pipeline = Pipeline(id: 'null', name: 'Not Found', description: 'Pipeline Not Found', steps: []);
+      }
+    }
+
+    if (pipeline.id == 'null') {
+      final errorMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: 'Pipeline "$pipelineName" not found. Try "@run:Research Deep Dive"',
+        sender: MessageSender.system,
+        createdAt: DateTime.now(),
+      );
+      state = state!.copyWith(messages: [...state!.messages, errorMsg]);
+      return;
+    }
+
+    // 2. Initial System Message
+    final startMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: 'Starting Pipeline: ${pipeline.name}...',
+      sender: MessageSender.orchestratorAgent, // Using Orchestrator as the runner persona
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': 'adk_pipeline_runner', 'pipeline': pipeline.name},
+    );
+    state = state!.copyWith(messages: [...state!.messages, startMsg]);
+
+    // 3. Execute via ADK Service
+    final adkService = ref.read(adkServiceProvider);
+    
+    // Clean input (remove command)
+    final cleanInput = userPrompt.replaceAll(RegExp(r'@run:\s*\w+'), '').trim();
+
+    final result = await adkService.executePipeline(
+      pipeline: pipeline, 
+      initialInput: cleanInput.isEmpty ? "Conduct research on current market trends" : cleanInput,
+      context: context,
+      memoryContext: memoryContext,
+      onStepLog: (stepName, log) {
+         debugPrint('ADK Log [$stepName]: $log');
+      }
+    );
+
+    // 4. Final Result
+    final finalMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: result.success ? result.output : "Pipeline Failed: ${result.output}",
+      // The final output comes from the Security Agent (which wraps the pipeline), 
+      // but showing it as Orchestrator is clearer for the "Runner" concept.
+      sender: MessageSender.orchestratorAgent,
+      createdAt: DateTime.now(),
+      metadata: {'logs': result.stepLogs}, // Store logs for detailed view
+    );
+
+    state = state!.copyWith(
+      messages: [...state!.messages.where((m) => m.id != startMsg.id), finalMsg],
+      updatedAt: DateTime.now(),
+    );
   }
 }
 

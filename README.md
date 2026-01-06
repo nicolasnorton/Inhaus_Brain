@@ -24,6 +24,18 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 
+### 🏗️ Agent Development Kit (ADK)
+A powerful orchestration layer that allows for complex, multi-step workflows:
+- **Pipeline Builder**: Drag-and-drop interface to assemble custom AI workflows using any agent in the registry.
+- **Master Agency Pipeline**: A factory-default, 11-step specialized workflow (Trend Scout -> Strategist -> Performance Analyst -> etc.) for end-to-end campaign automation.
+- **Control Flow**: Supports Sequential, Parallel, and Loop steps for advanced execution logic.
+
+### 🛡️ Security Guardian
+Enterprise-grade safety integrated directly into the agentic flow:
+- **Input Audit**: Mandatory safety scan of all user input before a pipeline begins.
+- **Sensitive Task Interception**: Automatically blocks or sanitizes high-stakes actions (Media Buying, Data Access) if they violate brand safety.
+- **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
+
 ### 🏢 Creative Studio & Factory
 - **Campaign Wizard**: Conversational briefing with real-time agent grounding.
 - **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
@@ -44,6 +56,7 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
     - `firebase_auth` & `google_sign_in` for Identity.
     - **Full Auth Flow**: Secure login, account management, and role-based master prompts.
 - **Secrets Vault**: Bring Your Own Keys (BYOK) for Gemini, Imagen, Veo, and more.
+- **Orchestration**: Agent Development Kit (ADK) with Event Bus and Artifact Framework.
 
 ## Getting Started
 

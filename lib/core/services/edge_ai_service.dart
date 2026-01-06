@@ -141,6 +141,58 @@ class EdgeAIService {
     return "assets/videos/mock_render.mp4";
   }
 
+  // --- STREAMING SUPPORT (Phase 22) ---
+  static Stream<EdgeAIResult> generateTextStream(
+    String prompt, {
+    List<KnowledgeSource> context = const [],
+    String? memoryContext,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async* {
+    final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
+
+    // 1. Cloud Streaming (Gemini)
+    if (apiKey != null && apiKey.isNotEmpty) {
+      try {
+        final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+        final List<Part> parts = [TextPart(effectivePrompt)];
+        if (imageBytes != null) {
+          parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+        }
+
+        final content = [Content.multi(parts)];
+        final responseStream = model.generateContentStream(content);
+
+        await for (final chunk in responseStream) {
+          if (chunk.text != null) {
+            yield EdgeAIResult(chunk.text!, AIProximity.cloud);
+          }
+        }
+        return;
+      } catch (e) {
+        debugPrint('EdgeAI Streaming Error: $e. Falling back to non-streaming.');
+      }
+    }
+
+    // 2. Local/Mock Fallback (Simulated Streaming)
+    if (kIsWeb || apiKey == null) {
+       yield EdgeAIResult("Thinking...", AIProximity.simulated);
+       await Future.delayed(const Duration(milliseconds: 500));
+       
+       final fullResponse = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+       // Simulate token streaming
+       final words = fullResponse.split(' ');
+       String buffer = "";
+       for (var word in words) {
+         await Future.delayed(const Duration(milliseconds: 50));
+         buffer = "$buffer $word";
+         yield EdgeAIResult(buffer, AIProximity.simulated);
+       }
+    }
+  }
+
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
     if (lyriaKey != null && lyriaKey.isNotEmpty) {
       await Future.delayed(const Duration(seconds: 3));
@@ -208,6 +260,39 @@ class EdgeAIService {
     buffer.writeln(prompt);
 
     return buffer.toString();
+  }
+
+  /// --- BIDI-STREAMING (Phase 26) ---
+  /// Prototype for Bi-directional token flow. 
+  /// In a production environment, this would handle real-time tool calls and 
+  /// adaptive user prompts mid-generation.
+  static Stream<EdgeAIResult> generateBidiStream(
+    String prompt, {
+    required Stream<String> userInterjection,
+    String? apiKey,
+  }) async* {
+    if (apiKey == null || apiKey.isEmpty) {
+      yield EdgeAIResult("Error: Bidi-streaming requires an active API Key.", AIProximity.simulated);
+      return;
+    }
+
+    final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+    final chat = model.startChat();
+    
+    // Initial request
+    final stream = chat.sendMessageStream(Content.text(prompt));
+    
+    await for (final response in stream) {
+      if (response.text != null) {
+        yield EdgeAIResult(response.text!, AIProximity.cloud);
+      }
+    }
+
+    // Monitoring for interjections (Simplified Prototype)
+    // In ADK, this would be a long-lived duplex connection.
+    userInterjection.listen((text) {
+       debugPrint("Bidi-Stream: User interjected with: $text. Adapting next turn...");
+    });
   }
 }
 
