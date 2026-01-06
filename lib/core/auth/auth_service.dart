@@ -53,6 +53,15 @@ class AuthService {
     return user.email?.contains('client') ?? false; // Simple check for demo
   }
 
+  String? get userClientId {
+    final user = currentUser;
+    if (user == null) return null;
+    if (isAdmin) return null; // Admins have no specific client restriction
+    if (user.email == 'client@inhaus Studios.ai') return 'client-1';
+    if (user.email == 'marketing@globaltech.com') return 'client-2';
+    return null;
+  }
+
   Future<User?> signInWithGoogle() async {
     if (_isMock) {
       await Future.delayed(const Duration(seconds: 1));
@@ -99,12 +108,19 @@ class AuthService {
           displayName: 'Nicolas Norton',
           photoURL: 'https://i.pravatar.cc/150?u=nicolas',
         );
-      } else if (email.contains('client')) {
+      } else if (email == 'studio@inhaus.ai') {
          _mockUser = MockUser(
-          uid: 'mock-client-${email.hashCode}',
-          email: email,
-          displayName: 'Client User',
-          photoURL: 'https://i.pravatar.cc/150?u=client',
+          uid: 'mock-client-1',
+          email: 'studio@inhaus.ai',
+          displayName: 'Inhaus Studio Admin',
+          photoURL: 'https://i.pravatar.cc/150?u=studio',
+        );
+      } else if (email == 'marketing@globaltech.com') {
+         _mockUser = MockUser(
+          uid: 'mock-client-2',
+          email: 'marketing@globaltech.com',
+          displayName: 'Global Tech Marketing',
+          photoURL: 'https://i.pravatar.cc/150?u=globaltech',
         );
       } else {
         _mockUser = MockUser(

@@ -66,7 +66,7 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     final sources = ref.watch(knowledgeProvider);
 
     return Container(
-      width: 300,
+      width: 400,
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
@@ -129,44 +129,29 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
                     autofocus: true,
                     onSubmitted: (_) => _addUrlSource(),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 Row(
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => setState(() => _isAdding = !_isAdding),
-                        icon: const Icon(Icons.link, size: 16),
-                        label: const Text('Add Link'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
-                          foregroundColor: Colors.blueAccent,
-                        ),
-                      ),
+                    _buildActionButton(
+                      onPressed: () => setState(() => _isAdding = !_isAdding),
+                      icon: Icons.link,
+                      label: 'Add Link',
+                      color: Colors.blueAccent,
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _addFileSource,
-                        icon: const Icon(Icons.upload_file, size: 16),
-                        label: const Text('Upload'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
+                    _buildActionButton(
+                      onPressed: _addFileSource,
+                      icon: Icons.upload_file,
+                      label: 'Upload',
+                      color: Colors.white70,
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _addDriveSource,
-                        icon: const FaIcon(FontAwesomeIcons.googleDrive, size: 16),
-                        label: const Text('Drive'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.greenAccent.withValues(alpha: 0.1),
-                          foregroundColor: Colors.greenAccent,
-                        ),
-                      ),
+                    _buildActionButton(
+                      onPressed: _addDriveSource,
+                      icon: FontAwesomeIcons.googleDrive,
+                      label: 'Drive',
+                      color: Colors.greenAccent,
                     ),
                   ],
                 ),
@@ -174,6 +159,43 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FaIcon(icon, size: 16, color: color),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

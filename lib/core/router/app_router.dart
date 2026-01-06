@@ -9,6 +9,7 @@ import '../../features/creative/creative_studio_screen.dart';
 import '../../features/campaigns/screens/camera_capture_screen.dart';
 import '../../features/auth/auth_screen.dart';
 import '../../features/settings/profile_settings_screen.dart';
+import '../../features/clients/client_management_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -57,6 +58,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/creative',
             builder: (context, state) => const CreativeStudioScreen(),
+          ),
+          GoRoute(
+            path: '/clients',
+            builder: (context, state) => const ClientManagementScreen(),
           ),
           GoRoute(
             path: '/analytics',

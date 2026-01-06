@@ -87,6 +87,7 @@ class Campaign {
   final String title;
   final String description;
   final String? clientName;
+  final String? clientId;
   final CampaignStatus status;
   final DateTime createdAt;
   final List<ResearchInsight> insights;
@@ -97,6 +98,7 @@ class Campaign {
     required this.title,
     required this.description,
     this.clientName,
+    this.clientId,
     this.status = CampaignStatus.draft,
     required this.createdAt,
     this.insights = const [],
@@ -121,6 +123,7 @@ class Campaign {
       title: json['title'] as String,
       description: json['description'] as String,
       clientName: json['clientName'] as String?,
+      clientId: json['clientId'] as String?,
       status: CampaignStatus.values.firstWhere(
         (e) => e.name == json['status'],
         orElse: () => CampaignStatus.draft,
@@ -140,6 +143,7 @@ class Campaign {
     'title': title,
     'description': description,
     'clientName': clientName,
+    'clientId': clientId,
     'status': status.name,
     'createdAt': createdAt.toIso8601String(),
     'insights': insights.map((i) => i.toJson()).toList(),
@@ -151,6 +155,7 @@ class Campaign {
     String? title,
     String? description,
     String? clientName,
+    String? clientId,
     CampaignStatus? status,
     DateTime? createdAt,
     List<ResearchInsight>? insights,
@@ -161,6 +166,7 @@ class Campaign {
       title: title ?? this.title,
       description: description ?? this.description,
       clientName: clientName ?? this.clientName,
+      clientId: clientId ?? this.clientId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       insights: insights ?? this.insights,

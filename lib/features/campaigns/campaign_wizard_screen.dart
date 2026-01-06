@@ -9,6 +9,7 @@ import 'package:inhaus_brain/features/campaigns/widgets/multi_modal_input_sectio
 import 'package:inhaus_brain/core/widgets/research_workbench.dart';
 import '../chat/providers/chat_provider.dart';
 import '../chat/agentic_chat_view.dart';
+import '../../core/auth/auth_service.dart';
 
 class CampaignWizardScreen extends ConsumerStatefulWidget {
   const CampaignWizardScreen({super.key});
@@ -192,6 +193,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
                   title: _titleController.text,
                   description: _descriptionController.text,
                   clientName: _clientController.text,
+                  clientId: ref.read(authServiceProvider).userClientId,
                   createdAt: DateTime.now(),
                   status: CampaignStatus.researching,
                   attachments: _attachments,

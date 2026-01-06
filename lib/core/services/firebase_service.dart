@@ -105,6 +105,35 @@ class MockFirebaseService implements FirebaseService {
         final List<dynamic> decoded = jsonDecode(data);
         _mockCampaigns = decoded.map((item) => Campaign.fromJson(item as Map<String, dynamic>)).toList();
         debugPrint('MockFirebase: Loaded ${_mockCampaigns.length} campaigns from storage.');
+      } else {
+        // Initial Mock Data
+        _mockCampaigns = [
+          Campaign(
+            id: 'camp-1',
+            title: 'Coffee Revolution',
+            description: 'Organic coffee brand launch',
+            clientId: 'client-1',
+            clientName: 'Inhaus Studios',
+            createdAt: DateTime.now().subtract(const Duration(days: 5)),
+          ),
+          Campaign(
+            id: 'camp-2',
+            title: 'Sustainable Packaging',
+            description: 'Recycled materials campaign',
+            clientId: 'client-1',
+            clientName: 'Inhaus Studios',
+            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          ),
+          Campaign(
+            id: 'camp-3',
+            title: 'AI Tech Summit',
+            description: 'Global reach for tech events',
+            clientId: 'client-2',
+            clientName: 'Global Tech Corp',
+            createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          ),
+        ];
+        await _saveToStorage();
       }
       _campaignsController.add(List.from(_mockCampaigns));
     } catch (e) {
