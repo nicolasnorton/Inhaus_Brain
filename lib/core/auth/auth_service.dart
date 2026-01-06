@@ -70,7 +70,7 @@ class AuthService {
         uid: 'mock-123',
         email: 'demo@inhaus.ai',
         displayName: 'Demo User',
-        photoURL: 'https://i.pravatar.cc/150?u=mock-123',
+        photoURL: null,
       );
       _mockUserStreamController.add(_mockUser);
       return _mockUser;
@@ -106,28 +106,28 @@ class AuthService {
           uid: 'mock-admin-001',
           email: 'nnorton@inhauscorp.com',
           displayName: 'Nicolas Norton',
-          photoURL: 'https://i.pravatar.cc/150?u=nicolas',
+          photoURL: null,
         );
       } else if (email == 'studio@inhaus.ai') {
          _mockUser = MockUser(
           uid: 'mock-client-1',
           email: 'studio@inhaus.ai',
           displayName: 'Inhaus Studio Admin',
-          photoURL: 'https://i.pravatar.cc/150?u=studio',
+          photoURL: null,
         );
       } else if (email == 'marketing@globaltech.com') {
          _mockUser = MockUser(
           uid: 'mock-client-2',
           email: 'marketing@globaltech.com',
           displayName: 'Global Tech Marketing',
-          photoURL: 'https://i.pravatar.cc/150?u=globaltech',
+          photoURL: null,
         );
       } else {
         _mockUser = MockUser(
           uid: 'mock-${email.hashCode}',
           email: email,
           displayName: email.split('@')[0],
-          photoURL: 'https://i.pravatar.cc/150?u=$email',
+          photoURL: null,
         );
       }
       _mockUserStreamController.add(_mockUser);

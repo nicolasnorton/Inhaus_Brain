@@ -105,6 +105,9 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       await _handleUtilityAgent(SecurityAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     } else if (lowerText.contains('@data') || lowerText.contains('schema')) {
       await _handleUtilityAgent(DataEngineerAgent(), text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    } else if (lowerText.contains('@vision') || attachments.any((a) => a.type == AttachmentType.image)) {
+      await _handleVisionAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+    }
 
     // Implicit Intent Detection (Contextual)
     } else if (lowerText.contains('market') || lowerText.contains('competitor') || lowerText.contains('trend')) {
@@ -442,6 +445,66 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
+  Future<void> _handleVisionAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+    final toolMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: 'Analyzing visual assets...',
+      sender: MessageSender.visionAgent,
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': 'vision_analysis'},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
+
+    // Find the latest image attachment in the session context if none in current message
+    Uint8List? imageBytes;
+    String? mimeType;
+    
+    // Check current message attachments first
+    if (state!.messages.isNotEmpty) {
+      final lastMsg = state!.messages.last;
+      final imageAttachment = lastMsg.attachments.firstWhere(
+        (a) => a.type == AttachmentType.image, 
+        orElse: () => Attachment(id: '', type: AttachmentType.file, url: '', name: '', createdAt: DateTime.now()),
+      );
+      
+      if (imageAttachment.id.isNotEmpty && imageAttachment.url.startsWith('data:')) {
+         try {
+           final uri = Uri.parse(imageAttachment.url);
+           imageBytes = uri.data?.contentAsBytes();
+           mimeType = uri.data?.mimeType;
+         } catch (e) {
+           debugPrint('VisionAgent: Failed to parse data URI: $e');
+         }
+      }
+    }
+
+    final agent = VisionAgent();
+    final resultText = await agent.execute(
+      userPrompt: userPrompt,
+      context: context,
+      imageBytes: imageBytes,
+      imageMimeType: mimeType,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+    );
+
+    // Orchestrator Audit
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(resultText, 'VisionAgent');
+
+    final finalMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: auditedContent,
+      sender: MessageSender.visionAgent,
+      createdAt: DateTime.now(),
+    );
+
+    state = state!.copyWith(
+      messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
+      updatedAt: DateTime.now(),
+    );
+  }
+
   Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
     final aiRes = await EdgeAIService.generateText(
       "You are the Inhaus Brain assistant. Help the user with their campaign: $userPrompt",
@@ -479,6 +542,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final resultText = await agent.execute(
       userPrompt: userPrompt,
       context: context,
+      imageBytes: null, // Utilities don't handle vision yet
+      imageMimeType: null,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     );

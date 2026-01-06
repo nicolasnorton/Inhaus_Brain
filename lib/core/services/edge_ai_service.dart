@@ -35,9 +35,17 @@ class EdgeAIResult {
 }
 
 class EdgeAIService {
-  static Future<EdgeAIResult> generateText(String prompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+  static Future<EdgeAIResult> generateText(
+    String prompt, {
+    List<KnowledgeSource> context = const [],
+    String? memoryContext,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
-    debugPrint('EdgeAI: Generating text. Context items: ${context.length}, Memory provided: ${memoryContext != null}, API Key provided: ${apiKey != null}');
+    debugPrint('EdgeAI: Generating text. Context items: ${context.length}, Memory provided: ${memoryContext != null}, Image provided: ${imageBytes != null}, API Key provided: ${apiKey != null}');
     
     // 1. BYO-Key Cloud Execution
     if (gemmaKey != null && gemmaKey.isNotEmpty) {
@@ -51,20 +59,25 @@ class EdgeAIService {
 
     if (apiKey != null && apiKey.isNotEmpty) {
        try {
-         // Try gemini-1.5-flash (standard stable string)
+         // Use gemini-1.5-flash for speed and multi-modal support
          final model = GenerativeModel(
            model: 'gemini-1.5-flash', 
            apiKey: apiKey,
          );
          
-         final content = [Content.text(effectivePrompt)];
+         final List<Part> parts = [TextPart(effectivePrompt)];
+         if (imageBytes != null) {
+           parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+         }
+
+         final content = [Content.multi(parts)];
          final response = await model.generateContent(content);
          
          if (response.text != null) {
            return EdgeAIResult(response.text!, AIProximity.cloud);
          }
        } catch (e) {
-         debugPrint('EdgeAI: Gemini-1.5-Flash Error: $e. Trying Gemini-1.5-Pro fallback...');
+         debugPrint('EdgeAI: Gemini Multi-modal Error: $e. Falling back to text-only Gemini-1.5-Pro...');
          try {
            final model = GenerativeModel(
              model: 'gemini-1.5-pro', 
@@ -80,8 +93,8 @@ class EdgeAIService {
        }
     }
 
-    // 2. Chrome Built-in AI (Local)
-    if (kIsWeb) {
+    // 2. Chrome Built-in AI (Local) - Note: Chrome Built-in AI currently only supports text
+    if (kIsWeb && imageBytes == null) {
       try {
         final statusPromise = getAISystemStatus();
         final status = (await statusPromise.toDart as JSString).toDart;
@@ -101,7 +114,7 @@ class EdgeAIService {
 
     // 3. Local Mock (Fallback)
     debugPrint('EdgeAI: Using Local Reasoning Mock...');
-    final mockResult = await _generateLocalMock(effectivePrompt);
+    final mockResult = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
     debugPrint('EdgeAI: Local Mock Success.');
     return EdgeAIResult(mockResult, AIProximity.simulated);
   }
@@ -139,10 +152,14 @@ class EdgeAIService {
 
 
 
-  static Future<String> _generateLocalMock(String prompt) async {
+  static Future<String> _generateLocalMock(String prompt, {bool hasImage = false}) async {
     await Future.delayed(const Duration(milliseconds: 800)); // Simulating local inference time
     
     final lowerPrompt = prompt.toLowerCase();
+    
+    if (hasImage) {
+      return "Local Vision Analysis: Image detected. This visual asset contains modern typography and a high-contrast color palette, suggesting a premium tech brand. (Simulated Vision)";
+    }
     
     // Agentic Local Reasoning
     if (lowerPrompt.contains('target audience')) {

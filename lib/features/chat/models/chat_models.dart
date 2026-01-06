@@ -13,6 +13,7 @@ enum MessageSender {
   summarizerAgent,   // Phase 15
   securityAgent,     // Phase 15
   dataEngineerAgent, // Phase 15
+  visionAgent,       // Phase 18
   humanAgent,
   system
 }

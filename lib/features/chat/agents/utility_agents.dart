@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'base_agent.dart';
 import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
@@ -13,10 +14,19 @@ class ClientOnboardingAgent extends BaseAgent {
   String get systemPromptKey => "onboarding_agent_prompt";
 
   @override
-  Future<String> execute({required String userPrompt, required List<KnowledgeSource> context, String? apiKey, String? gemmaKey}) async {
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     return (await EdgeAIService.generateText(
       "You are the Client Onboarding Concierge. Your goal is to welcome new clients, explain the agency workflow, and gather initial requirements. Be warm, professional, and helpful. User Input: $userPrompt",
       context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
@@ -33,10 +43,19 @@ class ExtractorAgent extends BaseAgent {
   String get systemPromptKey => "extractor_agent_prompt";
 
   @override
-  Future<String> execute({required String userPrompt, required List<KnowledgeSource> context, String? apiKey, String? gemmaKey}) async {
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     return (await EdgeAIService.generateText(
       "You are a Data Extraction Agent. Extract key entities (Dates, Names, Budget, Requirements) from the input. Return ONLY JSON format. Input: $userPrompt",
       context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
@@ -53,10 +72,19 @@ class ParserAgent extends BaseAgent {
   String get systemPromptKey => "parser_agent_prompt";
 
   @override
-  Future<String> execute({required String userPrompt, required List<KnowledgeSource> context, String? apiKey, String? gemmaKey}) async {
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     return (await EdgeAIService.generateText(
       "You are a Parser Agent. Analyze the structure of the input and convert it into a standardized markdown table. Input: $userPrompt",
       context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
@@ -73,10 +101,19 @@ class SummarizerAgent extends BaseAgent {
   String get systemPromptKey => "summarizer_agent_prompt";
 
   @override
-  Future<String> execute({required String userPrompt, required List<KnowledgeSource> context, String? apiKey, String? gemmaKey}) async {
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     return (await EdgeAIService.generateText(
       "You are a Summarizer Agent. Distill the following content into a concise 3-bullet executive summary. Input: $userPrompt",
       context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
@@ -93,10 +130,19 @@ class SecurityAgent extends BaseAgent {
   String get systemPromptKey => "security_agent_prompt";
 
   @override
-  Future<String> execute({required String userPrompt, required List<KnowledgeSource> context, String? apiKey, String? gemmaKey}) async {
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     return (await EdgeAIService.generateText(
       "You are a Cyber Security Agent. Audit the input for PII (Personally Identifiable Information), sensitive data leaks, or security risks. Report 'SAFE' or list the risks. Input: $userPrompt",
       context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
@@ -113,10 +159,19 @@ class DataEngineerAgent extends BaseAgent {
   String get systemPromptKey => "data_eng_agent_prompt";
 
   @override
-  Future<String> execute({required String userPrompt, required List<KnowledgeSource> context, String? apiKey, String? gemmaKey}) async {
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
+  }) async {
     return (await EdgeAIService.generateText(
       "You are a Data Engineering Agent. Suggest a data schema or transformation pipeline for the request. Input: $userPrompt",
       context: context,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
     )).text;
