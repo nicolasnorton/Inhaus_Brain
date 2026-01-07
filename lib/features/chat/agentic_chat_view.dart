@@ -8,6 +8,7 @@ import '../campaigns/models/campaign.dart';
 import '../knowledge/widgets/knowledge_library_widget.dart';
 import '../settings/profile_settings_screen.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/tokens/llm_provider.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
@@ -20,6 +21,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   List<Attachment> _pendingAttachments = [];
+  AIModelConfig _selectedModelConfig = AIModelConfig.geminiFlash;
 
   void _handleSend() {
     if (_textController.text.isEmpty && _pendingAttachments.isEmpty) return;
@@ -27,6 +29,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
     ref.read(chatProvider.notifier).sendMessage(
       _textController.text,
       attachments: _pendingAttachments,
+      modelConfig: _selectedModelConfig,
     );
     
     _textController.clear();
@@ -385,6 +388,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
             ],
             Row(
               children: [
+                _buildModelPicker(),
                 IconButton(
                   icon: const Icon(FontAwesomeIcons.bookOpen, size: 16, color: Colors.white54),
                   tooltip: 'Context Board',
@@ -485,6 +489,67 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         ),
       ),
     );
+  }
+
+  Widget _buildModelPicker() {
+    return PopupMenuButton<AIModelConfig>(
+      tooltip: 'Select AI Model',
+      color: const Color(0xFF1E1E1E),
+      offset: const Offset(0, -200),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(_getModelIcon(_selectedModelConfig), size: 12, color: Colors.blueAccent),
+            const SizedBox(width: 4),
+            Text(
+              _selectedModelConfig.displayName.split(' ').first, // Short name
+              style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+      itemBuilder: (context) => [
+        _buildModelMenuItem(AIModelConfig.geminiFlash, FontAwesomeIcons.bolt),
+        _buildModelMenuItem(AIModelConfig.geminiPro, FontAwesomeIcons.google),
+        _buildModelMenuItem(AIModelConfig.gpt4o, FontAwesomeIcons.microchip),
+        _buildModelMenuItem(AIModelConfig.claude3Sonnet, FontAwesomeIcons.brain),
+        _buildModelMenuItem(AIModelConfig.grok1, FontAwesomeIcons.xTwitter),
+      ],
+      onSelected: (config) {
+        setState(() => _selectedModelConfig = config);
+      },
+    );
+  }
+
+  PopupMenuItem<AIModelConfig> _buildModelMenuItem(AIModelConfig config, IconData icon) {
+    return PopupMenuItem<AIModelConfig>(
+      value: config,
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: _selectedModelConfig == config ? Colors.blueAccent : Colors.white54),
+          const SizedBox(width: 12),
+          Text(config.displayName, style: TextStyle(color: _selectedModelConfig == config ? Colors.blueAccent : Colors.white70, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+  
+  IconData _getModelIcon(AIModelConfig config) {
+    switch (config.provider) {
+      case AIProvider.gemini: return FontAwesomeIcons.google;
+      case AIProvider.openai: return FontAwesomeIcons.microchip;
+      case AIProvider.claude: return FontAwesomeIcons.brain;
+      case AIProvider.grok: return FontAwesomeIcons.xTwitter;
+      default: return FontAwesomeIcons.robot;
+    }
   }
 
   Widget _buildPendingAttachmentsBar() {

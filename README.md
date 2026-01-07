@@ -16,6 +16,7 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **Veo**: SOTA video asset generation directly in the Workbench.
 - **Lyria**: Advanced music and soundtrack composition for campaigns.
 - **Nano Banana 🍌**: Agentic visual refinement and image editing.
+- **Multi-Model Sovereignty**: Support for **OpenAI (GPT-4o)**, **Anthropic (Claude 3.5 Sonnet)**, and **xAI (Grok Beta)** via BYOK (Bring Your Own Keys).
 - **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
 
 ### 🤖 Standardized Agentic Workbench (MCP)
@@ -27,6 +28,7 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 ### 🏗️ Agent Development Kit (ADK)
 A powerful orchestration layer that allows for complex, multi-step workflows:
 - **Pipeline Builder**: Drag-and-drop interface to assemble custom AI workflows using any agent in the registry.
+- **Visual Workflow Canvas**: Infinite, node-based editor for designing complex DAG (Directed Acyclic Graph) agent networks.
 - **Master Agency Pipeline**: A factory-default, 11-step specialized workflow (Trend Scout -> Strategist -> Performance Analyst -> etc.) for end-to-end campaign automation.
 - **Control Flow**: Supports Sequential, Parallel, and Loop steps for advanced execution logic.
 

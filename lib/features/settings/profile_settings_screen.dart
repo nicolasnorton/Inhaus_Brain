@@ -24,6 +24,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _imagenController = TextEditingController();
   final _lyriaController = TextEditingController();
   final _gemmaController = TextEditingController();
+  
+  // Phase 35: Multi-Model Keys
+  final _openaiController = TextEditingController();
+  final _anthropicController = TextEditingController();
+  final _xaiController = TextEditingController();
+  final _midjourneyController = TextEditingController();
+  final _runwayController = TextEditingController();
 
   final _researchPromptController = TextEditingController();
   final _creativePromptController = TextEditingController();
@@ -67,6 +74,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _imagenController.text = await vault.getImagenKey() ?? '';
     _lyriaController.text = await vault.getLyriaKey() ?? '';
     _gemmaController.text = await vault.getGemmaKey() ?? '';
+    
+    // Phase 35
+    _openaiController.text = await vault.getOpenAIKey() ?? '';
+    _anthropicController.text = await vault.getAnthropicKey() ?? '';
+    _xaiController.text = await vault.getXAIKey() ?? '';
+    _midjourneyController.text = await vault.getMidjourneyKey() ?? '';
+    _runwayController.text = await vault.getRunwayKey() ?? '';
 
     _researchPromptController.text = await prompts.getResearchPrompt();
     _creativePromptController.text = await prompts.getCreativePrompt();
@@ -106,6 +120,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     await vault.saveImagenKey(_imagenController.text);
     await vault.saveLyriaKey(_lyriaController.text);
     await vault.saveGemmaKey(_gemmaController.text);
+    
+    // Phase 35
+    await vault.saveOpenAIKey(_openaiController.text);
+    await vault.saveAnthropicKey(_anthropicController.text);
+    await vault.saveXAIKey(_xaiController.text);
+    await vault.saveMidjourneyKey(_midjourneyController.text);
+    await vault.saveRunwayKey(_runwayController.text);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -232,7 +253,32 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                           const SizedBox(height: 16),
                           _buildKeyField('Lyria Music Gen Key', _lyriaController, FontAwesomeIcons.music),
                           const SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           _buildKeyField('Nano Banana 🍌 (Image Edit Key)', _bananaController, FontAwesomeIcons.wandMagicSparkles),
+                          
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.0),
+                            child: Divider(color: Colors.white24),
+                          ),
+                          const Text('MULTI-MODEL PROVIDERS (PHASE 35)', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10)),
+                          const SizedBox(height: 16),
+                          
+                          _buildKeyField('OpenAI API Key (GPT-4o)', _openaiController, FontAwesomeIcons.microchip),
+                          const SizedBox(height: 16),
+                          _buildKeyField('Anthropic API Key (Claude 3.5)', _anthropicController, FontAwesomeIcons.brain),
+                          const SizedBox(height: 16),
+                          _buildKeyField('xAI API Key (Grok)', _xaiController, FontAwesomeIcons.xTwitter),
+                          
+                           const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.0),
+                            child: Divider(color: Colors.white24),
+                          ),
+                          const Text('CREATIVE GENERATION', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10)),
+                          const SizedBox(height: 16),
+                          _buildKeyField('Midjourney API Key (Proxy)', _midjourneyController, FontAwesomeIcons.paintRoller),
+                          const SizedBox(height: 16),
+                          _buildKeyField('Runway API Key (Gen-2)', _runwayController, FontAwesomeIcons.film),
+                          
                           const SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,

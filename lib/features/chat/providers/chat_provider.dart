@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+
 import '../models/chat_models.dart';
 import '../../campaigns/models/campaign.dart';
-import '../../../core/services/edge_ai_service.dart';
-import '../../knowledge/providers/knowledge_provider.dart';
 import '../../knowledge/models/knowledge_source.dart';
+import '../../../core/services/edge_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
 import '../../../core/services/orchestrator_service.dart';
+import '../../../core/tokens/llm_provider.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/mcp/tools/image_generation_tool.dart';
@@ -16,7 +17,6 @@ import '../../../core/mcp/tools/video_generation_tool.dart';
 import '../../../core/mcp/tools/audio_generation_tool.dart';
 import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
-import '../agents/core_agents.dart';
 import '../agents/router_agent.dart';
 import '../agents/agency_agents.dart';
 import '../../../core/services/memory_service.dart';
@@ -24,6 +24,7 @@ import '../models/memory_models.dart';
 import '../../../core/adk/services/adk_service.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../adk/providers/pipeline_provider.dart';
+import '../../knowledge/providers/knowledge_provider.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
@@ -39,7 +40,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> sendMessage(String text, {List<Attachment> attachments = const []}) async {
+  Future<void> sendMessage(String text, {List<Attachment> attachments = const [], AIModelConfig? modelConfig}) async {
     if (state == null) return;
 
     final userMessage = ChatMessage(
@@ -66,6 +67,11 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final bananaKey = await vault.getBananaKey();
     final veoKey = await vault.getVeoKey();
     final lyriaKey = await vault.getLyriaKey();
+    
+    // Phase 35: Multi-Model Keys
+    final openAIKey = await vault.getOpenAIKey();
+    final anthropicKey = await vault.getAnthropicKey();
+    final xAIKey = await vault.getXAIKey();
 
     // A2A Handoff Logic: Trigger Creative Agent on Strategy Approval
     if (text.toLowerCase().contains('looks great. approved') && text.toLowerCase().contains('strategy')) {
@@ -93,24 +99,24 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     // --- INTELLIGENT ROUTING (Phase 23: Step 2 - The Engine) ---
     // Respect explicit commands, but otherwise use the RouterAgent (The Front Door)
     if (text.startsWith('@')) {
-      await _handleExplicitCommand(text, lowerText, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey);
+      await _handleExplicitCommand(text, lowerText, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey, openAIKey, anthropicKey, xAIKey, modelConfig);
     } else {
-      await _handleIntelligentRouting(text, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey);
+      await _handleIntelligentRouting(text, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey, openAIKey, anthropicKey, xAIKey, modelConfig);
     }
 
     // TRIGGER MEMORY HARVESTING (Post-Response)
     _harvestInsights(text, apiKey: apiKey, gemmaKey: gemmaKey);
   }
 
-  Future<void> _handleExplicitCommand(String text, String lowerText, List<KnowledgeSource> knowledgeContext, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey) async {
+  Future<void> _handleExplicitCommand(String text, String lowerText, List<KnowledgeSource> knowledgeContext, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config) async {
     if (lowerText.contains('@research')) {
-      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleResearchAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
     } else if (lowerText.contains('@creative')) {
-      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+      await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
     } else if (lowerText.contains('@copy') || lowerText.contains('@write')) {
-      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleCopywriterResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
     } else if (lowerText.contains('@dev') || lowerText.contains('@code')) {
-      await _handleDeveloperResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleDeveloperResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
     } else if (lowerText.contains('@vision')) {
       await _handleVisionAgentResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
     } else if (lowerText.contains('@run:') || lowerText.contains('@pipeline:')) {
@@ -118,11 +124,11 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       await _handlePipelineExecution(pipelineName, text, context: knowledgeContext, memoryContext: memoryContext);
     } else {
       // Fallback for unknown @ command
-      await _handleGeneralResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleGeneralResponse(text, context: knowledgeContext, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
     }
   }
 
-  Future<void> _handleIntelligentRouting(String text, List<KnowledgeSource> context, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey) async {
+  Future<void> _handleIntelligentRouting(String text, List<KnowledgeSource> context, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config) async {
     // 1. Tool Usage Indicator
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
@@ -137,19 +143,26 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     // 2. Call RouterAgent
     try {
       final router = RouterAgent();
-      final routerOutput = await router.execute(userPrompt: text, context: context, apiKey: apiKey);
+      final routerOutput = await router.execute(
+        userPrompt: text,
+        context: context,
+        systemPrompt: await ref.read(systemPromptsProvider).getRouterPrompt(),
+        apiKey: apiKey,
+        // Router always uses Gemini for speed/cost, unless overridden globally? 
+        // For now, keep Router on Gemini Flash to be fast.
+      );
       
       // Basic JSON parsing (Simulated for speed, in production wrap in jsonDecode)
       final lowerOut = routerOutput.toLowerCase();
       
       if (lowerOut.contains('"research"') || lowerOut.contains('research')) {
-        await _handleResearchAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+        await _handleResearchAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
       } else if (lowerOut.contains('"creative"') || lowerOut.contains('creative')) {
-        await _handleCreativeAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
+        await _handleCreativeAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
       } else if (lowerOut.contains('"copywriting"') || lowerOut.contains('copy')) {
-        await _handleCopywriterResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+        await _handleCopywriterResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
       } else if (lowerOut.contains('"development"') || lowerOut.contains('dev')) {
-        await _handleDeveloperResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+        await _handleDeveloperResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
       } else if (lowerOut.contains('"trend"') || lowerOut.contains('scout')) {
         await _handleUtilityAgent(TrendScoutAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else if (lowerOut.contains('"strategy"') || lowerOut.contains('strategist')) {
@@ -187,9 +200,11 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       }
     } catch (e) {
       debugPrint('Router Error: $e. Falling back to general chat.');
-      await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+      await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
     }
   }
+
+  // NOTE: Video/Audio handlers don't use LLM config yet (they are specialized models)
 
   Future<void> _handleVideoGeneration(String userPrompt, {String? veoKey}) async {
     final toolMsg = ChatMessage(
@@ -252,7 +267,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleCopywriterResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleCopywriterResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
       content: 'Drafting high-conversion copy...',
@@ -265,18 +280,19 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
 
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getCopywriterPrompt();
-    final systemInstruction = masterPrompt.isNotEmpty
-        ? "You are a Copywriting Agent. $masterPrompt. User Request: $userPrompt"
-        : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.";
 
     final aiRes = await EdgeAIService.generateText(
-      systemPrompt ?? (masterPrompt.isNotEmpty
+      masterPrompt.isNotEmpty
         ? "You are a Copywriting Agent. $masterPrompt. User Request: $userPrompt"
-        : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold."),
+        : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.",
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      openAIKey: openAIKey,
+      anthropicKey: anthropicKey,
+      xaiKey: xAIKey,
+      modelConfig: config,
     );
 
     // Orchestrator Audit
@@ -295,7 +311,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleDeveloperResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleDeveloperResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
       content: 'Generating Flutter code...',
@@ -308,14 +324,11 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
 
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getDeveloperPrompt();
-    final systemInstruction = masterPrompt.isNotEmpty
-        ? "You are a Developer Agent. $masterPrompt. User Request: $userPrompt"
-        : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.";
 
     final aiRes = await EdgeAIService.generateText(
-      systemPrompt ?? (masterPrompt.isNotEmpty
+      masterPrompt.isNotEmpty
         ? "You are a Developer Agent. $masterPrompt. User Request: $userPrompt"
-        : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks."),
+        : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.",
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -362,7 +375,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     await _handleCreativeAgentResponse(instruction, context: ref.read(knowledgeProvider), memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
   }
 
-  Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
     // 1. Tool Usage Indicator
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
@@ -427,7 +440,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleCreativeAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey}) async {
+  Future<void> _handleCreativeAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
     // Visual Generation Check
     if (userPrompt.toLowerCase().contains('generate') || userPrompt.toLowerCase().contains('concept') || userPrompt.toLowerCase().contains('image')) {
        final toolMsg = ChatMessage(
@@ -573,13 +586,17 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+  Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
     final aiRes = await EdgeAIService.generateText(
       "You are the Inhaus Brain assistant. Help the user with their campaign: $userPrompt",
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      openAIKey: openAIKey,
+      anthropicKey: anthropicKey,
+      xaiKey: xAIKey,
+      modelConfig: config,
     );
 
     final finalMsg = ChatMessage(

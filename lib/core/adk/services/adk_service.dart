@@ -12,6 +12,7 @@ import '../../../features/chat/agents/router_agent.dart';
 import '../../../features/chat/agents/agency_agents.dart'; // Phase 31
 import '../../../features/chat/models/chat_models.dart';
 import '../../../features/knowledge/models/knowledge_source.dart';
+import '../../services/system_prompts_service.dart';
 
 // Pipeline Execution Result
 class PipelineResult {

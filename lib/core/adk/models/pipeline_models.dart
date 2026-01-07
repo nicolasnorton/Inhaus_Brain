@@ -43,6 +43,8 @@ class PipelineStep {
   final PipelineStepType type;
   final List<PipelineStep>? parallelSteps; // Steps to run in parallel
   final String? loopCondition; // Descriptive condition for looping
+  final List<String> dependencies; // DAG: IDs of steps that must finish first
+  final Map<String, double>? uiPosition; // Canvas: {x: 100.0, y: 200.0}
 
   PipelineStep({
     required this.id,
@@ -52,6 +54,8 @@ class PipelineStep {
     this.type = PipelineStepType.sequential,
     this.parallelSteps,
     this.loopCondition,
+    this.dependencies = const [],
+    this.uiPosition,
   });
 
   factory PipelineStep.fromJson(Map<String, dynamic> json) {
@@ -70,6 +74,8 @@ class PipelineStep {
               .toList()
           : null,
       loopCondition: json['loopCondition'] as String?,
+      dependencies: (json['dependencies'] as List?)?.map((e) => e as String).toList() ?? [],
+      uiPosition: json['uiPosition'] != null ? Map<String, double>.from(json['uiPosition']) : null,
     );
   }
 
@@ -81,5 +87,7 @@ class PipelineStep {
     'type': type.name,
     if (parallelSteps != null) 'parallelSteps': parallelSteps!.map((e) => e.toJson()).toList(),
     if (loopCondition != null) 'loopCondition': loopCondition,
+    'dependencies': dependencies,
+    if (uiPosition != null) 'uiPosition': uiPosition,
   };
 }

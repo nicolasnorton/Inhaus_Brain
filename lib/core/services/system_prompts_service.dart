@@ -22,6 +22,7 @@ class SystemPromptsService {
   // Utility Roles
   static const String _securityPromptKey = 'security_prompt';
   static const String _dataEngPromptKey = 'data_eng_prompt';
+  static const String _routerPromptKey = 'router_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -97,6 +98,18 @@ You are a Data Engineering Agent. Suggest a data schema or transformation pipeli
 Focus on scalability and data integrity.
 """;
 
+  static const String originalRouterPrompt = """
+You are the Root Router for Inhaus Brain. Your goal is to classify user intent into one of these categories:
+- research: Fact finding, competitor analysis, market trends.
+- creative: Visual direction, logo concepts, art direction.
+- copywriting: Ad copy, social posts, writing tasks.
+- development: Coding, technical logic.
+- pipeline: Complex, multi-stage requests.
+- directChat: Casual conversation, clarifying questions.
+
+Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipeline": "optional_suggested_key"}
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
@@ -137,6 +150,9 @@ Focus on scalability and data integrity.
 
   Future<void> saveDataEngPrompt(String prompt) async => await _storage.write(key: _dataEngPromptKey, value: prompt);
   Future<String> getDataEngPrompt() async => await _getPrompt(_dataEngPromptKey, 'assets/prompts/data_engineer.md', originalDataEngPrompt);
+
+  Future<void> saveRouterPrompt(String prompt) async => await _storage.write(key: _routerPromptKey, value: prompt);
+  Future<String> getRouterPrompt() async => await _getPrompt(_routerPromptKey, 'assets/prompts/router.md', originalRouterPrompt);
 
   // Helper
   Future<String> _getPrompt(String storageKey, String assetPath, String fallback) async {

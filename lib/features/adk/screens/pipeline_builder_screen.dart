@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../chat/models/chat_models.dart';
 import '../providers/pipeline_provider.dart';
@@ -48,6 +49,11 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
         elevation: 0,
         actions: [
           IconButton(
+             icon: const Icon(FontAwesomeIcons.diagramProject, size: 18), // Visual Canvas
+             tooltip: 'Visual Workflow Builder',
+             onPressed: () => context.push('/workflow-canvas'),
+          ),
+          IconButton(
             icon: const Icon(Icons.save),
             onPressed: () {
               final name = _nameController.text.trim();
@@ -68,7 +74,11 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
               ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
               
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pipeline Saved Successfully!')));
-              Navigator.pop(context);
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
             },
           ),
         ],
@@ -121,7 +131,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
               },
               builder: (context, candidateData, rejectedData) {
                 return Container(
-                  color: candidateData.isNotEmpty ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.transparent,
+                  color: candidateData.isNotEmpty ? Colors.blueAccent.withOpacity(0.1) : Colors.transparent,
                   padding: const EdgeInsets.all(32),
                   child: Column(
                     children: [
@@ -144,7 +154,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.add_circle_outline, size: 48, color: Colors.white.withValues(alpha: 0.1)),
+                                Icon(Icons.add_circle_outline, size: 48, color: Colors.white.withOpacity(0.1)),
                                 const SizedBox(height: 16),
                                 const Text('Drag Agents here to build your flow', style: TextStyle(color: Colors.white24)),
                               ],

@@ -36,6 +36,7 @@ class RouterAgent extends BaseAgent {
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
+    String? systemPrompt,
     String? apiKey,
     String? gemmaKey,
     Uint8List? imageBytes,
