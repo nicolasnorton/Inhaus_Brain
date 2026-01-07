@@ -19,7 +19,11 @@ class WorkflowCanvasScreen extends ConsumerStatefulWidget {
 class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
   late List<PipelineStep> _steps;
   Offset _offset = Offset.zero; // Pan offset
-  double _scale = 1.0; // Zoom level
+  final double _scale = 1.0; // Zoom level
+  
+  // Pipeline Metadata
+  String _pipelineName = 'New Workflow';
+  String _pipelineDescription = 'Created via Visual Canvas';
 
   // Selection
   String? _selectedStepId;
@@ -39,6 +43,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       final pipelines = ref.read(pipelineProvider);
       final match = pipelines.firstWhere((p) => p.id == widget.pipelineId, orElse: () => Pipeline(id: '', name: '', description: '', steps: []));
       if (match.id.isNotEmpty) {
+        _pipelineName = match.name;
+        _pipelineDescription = match.description;
         // Deep copy to ensure mutability
         _steps = match.steps.map((s) => PipelineStep(
           id: s.id,
@@ -72,10 +78,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: () {
-               // Placeholder Save
-               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Canvas State Saved (In Memory)')));
-            },
+            onPressed: _showSaveDialog,
           )
         ],
       ),
@@ -304,6 +307,65 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSaveDialog() {
+    final nameController = TextEditingController(text: _pipelineName);
+    final descController = TextEditingController(text: _pipelineDescription);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Save Workflow', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Workflow Name',
+                labelStyle: TextStyle(color: Colors.white54),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                labelStyle: TextStyle(color: Colors.white54),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newPipeline = Pipeline(
+                id: widget.pipelineId ?? const Uuid().v4(),
+                name: nameController.text,
+                description: descController.text,
+                steps: _steps,
+              );
+              ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Workflow "${newPipeline.name}" saved!')),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

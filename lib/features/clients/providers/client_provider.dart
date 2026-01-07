@@ -27,7 +27,7 @@ class ClientNotifier extends StateNotifier<List<Client>> {
   }
 
   void addClient(String name, String industry, {String? email}) {
-    print('ClientNotifier: Adding client $name');
+
     final newClient = Client(
       id: const Uuid().v4(),
       name: name,
@@ -35,7 +35,7 @@ class ClientNotifier extends StateNotifier<List<Client>> {
       primaryContactEmail: email,
     );
     state = [...state, newClient];
-    print('ClientNotifier: State updated. Count: ${state.length}');
+
   }
 
   void updateClient(Client updatedClient) {

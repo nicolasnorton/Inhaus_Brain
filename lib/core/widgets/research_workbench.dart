@@ -18,9 +18,9 @@ class ResearchWorkbench extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blueAccent.withOpacity(0.05),
+            color: Colors.blueAccent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.blueAccent.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Row(
             children: [

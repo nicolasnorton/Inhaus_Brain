@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/chat/models/memory_models.dart';
@@ -9,7 +10,7 @@ class MemoryService {
   List<MemoryItem> _memory = [];
 
   MemoryService() {
-    _loadMemory();
+    if (!kIsWeb) _loadMemory();
   }
 
   Future<void> _loadMemory() async {
@@ -20,22 +21,26 @@ class MemoryService {
         final List<dynamic> jsonList = json.decode(content);
         _memory = jsonList.map((j) => MemoryItem.fromJson(j)).toList();
       }
-    } catch (e) {
-      print('MemoryService: Error loading memory: $e');
+    } catch (_) {
+      // Quiet fail for demo
     }
   }
 
   Future<void> _saveMemory() async {
+    if (kIsWeb) return; // Skip persistence on web for now
     try {
       final file = await _getMemoryFile();
       final jsonList = _memory.map((m) => m.toJson()).toList();
       await file.writeAsString(json.encode(jsonList));
-    } catch (e) {
-      print('MemoryService: Error saving memory: $e');
+    } catch (_) {
+      // Quiet fail for demo
     }
   }
 
   Future<File> _getMemoryFile() async {
+    if (kIsWeb) {
+      throw UnsupportedError('File IO not supported on web'); // Or handle gracefully
+    }
     final directory = await getApplicationDocumentsDirectory();
     return File('${directory.path}/$_fileName');
   }

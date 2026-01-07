@@ -101,7 +101,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
                 Expanded(
                   child: ListView.separated(
                     itemCount: _availableAgents.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final agent = _availableAgents[index];
                       return Draggable<MessageSender>(
@@ -119,7 +119,8 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
           // Right Canvas: Pipeline Assembly
           Expanded(
             child: DragTarget<MessageSender>(
-              onAccept: (agent) {
+              onAcceptWithDetails: (details) {
+                final agent = details.data;
                 ref.read(pipelineBuilderProvider.notifier).update((state) => [
                   ...state,
                   PipelineStep(
@@ -131,7 +132,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
               },
               builder: (context, candidateData, rejectedData) {
                 return Container(
-                  color: candidateData.isNotEmpty ? Colors.blueAccent.withOpacity(0.1) : Colors.transparent,
+                  color: candidateData.isNotEmpty ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.transparent,
                   padding: const EdgeInsets.all(32),
                   child: Column(
                     children: [
@@ -154,7 +155,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.add_circle_outline, size: 48, color: Colors.white.withOpacity(0.1)),
+                                Icon(Icons.add_circle_outline, size: 48, color: Colors.white.withValues(alpha: 0.1)),
                                 const SizedBox(height: 16),
                                 const Text('Drag Agents here to build your flow', style: TextStyle(color: Colors.white24)),
                               ],
@@ -311,7 +312,8 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
         const Text('Parallel Group (Drop Agents below)', style: TextStyle(color: Colors.white38, fontSize: 11)),
         const SizedBox(height: 8),
         DragTarget<MessageSender>(
-          onAccept: (agent) {
+          onAcceptWithDetails: (details) {
+             final agent = details.data;
              final List<PipelineStep> newSteps = List<PipelineStep>.from(step.parallelSteps ?? []);
              newSteps.add(PipelineStep(id: const Uuid().v4(), agentType: agent));
              ref.read(pipelineBuilderProvider.notifier).update((s) => s.map((e) => e.id == step.id ? PipelineStep(

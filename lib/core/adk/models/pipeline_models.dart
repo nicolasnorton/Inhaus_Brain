@@ -1,4 +1,4 @@
-import 'package:uuid/uuid.dart';
+
 import '../../../features/chat/models/chat_models.dart';
 
 class Pipeline {

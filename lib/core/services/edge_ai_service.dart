@@ -308,7 +308,7 @@ class EdgeAIService {
   // Same helper methods as before...
   static Future<EdgeAIResult> _generateLocalMock(String prompt, {bool hasImage = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    final lower = prompt.toLowerCase();
+    // Finalize mock response
     
     // Simulate simple responses
     return EdgeAIResult("Edge Mock: Analyzed '$prompt' locally.", AIProximity.simulated);

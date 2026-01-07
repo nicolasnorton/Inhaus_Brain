@@ -470,7 +470,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                             : null,
                         ),
                         loading: () => const SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 2)),
-                        error: (_,__) => const CircleAvatar(radius: 16, backgroundColor: Colors.red, child: Icon(Icons.error, size: 16)),
+                        error: (error, stack) => const CircleAvatar(radius: 16, backgroundColor: Colors.red, child: Icon(Icons.error, size: 16)),
                       ),
                     );
                   }
@@ -536,7 +536,13 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         children: [
           Icon(icon, size: 14, color: _selectedModelConfig == config ? Colors.blueAccent : Colors.white54),
           const SizedBox(width: 12),
-          Text(config.displayName, style: TextStyle(color: _selectedModelConfig == config ? Colors.blueAccent : Colors.white70, fontSize: 13)),
+          Flexible(
+            child: Text(
+              config.displayName,
+              style: TextStyle(color: _selectedModelConfig == config ? Colors.blueAccent : Colors.white70, fontSize: 13),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

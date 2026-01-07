@@ -109,7 +109,7 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     if (_isMock) {
       await Future.delayed(const Duration(seconds: 1));
-      print("AuthService: Starting Mock Sign In...");
+      // No localized logging for quiet demo
       _mockUser = MockUser(
         uid: 'mock-123',
         email: 'demo@inhaus.ai',
@@ -134,7 +134,7 @@ class AuthService {
       final UserCredential userCredential = await _auth!.signInWithCredential(credential);
       return userCredential.user;
     } catch (e) {
-      print("Error signing in with Google: $e");
+      // Quiet fail for demo
       return null;
     }
   }
@@ -142,7 +142,7 @@ class AuthService {
   Future<User?> signInWithEmail(String email, String password) async {
     if (_isMock) {
       await Future.delayed(const Duration(seconds: 1));
-      print("AuthService: Mock Sign In for $email");
+      // Quiet fail for demo
       
       // Special Mock Admin check
       if (email == 'nnorton@inhauscorp.com' && password == 'InhausBain333\$') {
@@ -184,7 +184,7 @@ class AuthService {
       );
       return userCredential.user;
     } catch (e) {
-      print("Error signing in with email: $e");
+      // Quiet fail for demo
       rethrow;
     }
   }
@@ -192,7 +192,7 @@ class AuthService {
   Future<User?> signUpWithEmail(String email, String password, String displayName) async {
     if (_isMock) {
       await Future.delayed(const Duration(seconds: 1));
-      print("AuthService: Mock Sign Up for $email");
+      // Quiet fail for demo
       _mockUser = MockUser(
         uid: 'mock-${email.hashCode}',
         email: email,
@@ -210,14 +210,14 @@ class AuthService {
       await userCredential.user?.updateDisplayName(displayName);
       return userCredential.user;
     } catch (e) {
-      print("Error signing up: $e");
+      // Quiet fail for demo
       rethrow;
     }
   }
 
   Future<void> updateDisplayName(String name) async {
     if (_isMock) {
-      print("AuthService: Mock Update Display Name to $name");
+      // Quiet fail for demo
       if (_mockUser != null) {
         _mockUser = MockUser(
           uid: _mockUser!.uid,
@@ -315,16 +315,21 @@ class MockUser implements User {
   Future<void> updateProfile({String? displayName, String? photoURL}) async {}
   @override
   Future<User> unlink(String providerId) async => this;
-  @override
+
   Future<void> updateEmail(String newEmail) async {}
+
   @override
   Future<void> updatePassword(String newPassword) async {}
+
   @override
   Future<void> updatePhoneNumber(PhoneAuthCredential credential) async {}
+
   @override
   Future<void> updatePhotoURL(String? photoURL) async {}
+
   @override
   Future<void> verifyBeforeUpdateEmail(String newEmail, [ActionCodeSettings? actionCodeSettings]) async {}
+
   @override
   Future<void> updateDisplayName(String? displayName) async {}
 }

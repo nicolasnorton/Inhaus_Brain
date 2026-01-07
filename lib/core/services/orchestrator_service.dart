@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'edge_ai_service.dart';
 
 class OrchestratorService {
   

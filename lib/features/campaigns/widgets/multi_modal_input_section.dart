@@ -203,7 +203,7 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: Column(
           children: [
@@ -237,6 +237,6 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
         color = Colors.greenAccent;
         break;
     }
-    return FaIcon(icon, size: 16, color: color.withOpacity(0.7));
+    return FaIcon(icon, size: 16, color: color.withValues(alpha: 0.7));
   }
 }
