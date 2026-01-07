@@ -55,3 +55,8 @@ The Inhaus Brain features an 11-step specialized agency roster:
 - **State Management**: Riverpod `StateNotifier` (e.g., `ChatNotifier`) coordinates agent logic.
 - **Multi-Modal Flow**: Attachments in `ChatMessage` are used to render generated images/videos in the chat stream.
 - **UI**: Premium dark-mode styling with Glassmorphism and micro-animations.
+
+## Deployment & Infrastructure (Step #4)
+- **Containerization**: Flutter Web is packaged into a multi-stage Docker image served by Nginx.
+- **CI/CD**: `cloudbuild.yaml` coordinates the transition from GitHub to Google Artifact Registry and Cloud Run.
+- **IaC**: Terraform models the infrastructure for repeatable, scalable environments.

@@ -48,6 +48,12 @@ Enterprise-grade safety integrated directly into the agentic flow:
 - **Account Management**: Edit profiles, manage API keys, and customize agent personas in a unified **Settings & Vault**.
 - **Sleek UX**: Glassmorphic, dark-mode design using Google's *Outfit* typography and high-performance micro-animations.
 
+### 🚀 Deployment & Scalability (Step #4)
+- **Containerized Infrastructure**: Production-grade `Dockerfile` using Nginx to serve the Flutter Web app.
+- **Automated CI/CD**: Pre-configured `cloudbuild.yaml` for seamless deployment via Google Cloud Build.
+- **Infrastructure as Code (IaC)**: Scaffolding for **Terraform** to provision Google Cloud Run services.
+- **Scalable Architecture**: Built for the Google Cloud "Agent Starter Pack" ecosystem.
+
 ## 🛠 Tech Stack
 - **Frontend**: Flutter (3.0+ architecture)
 - **State Management**: Riverpod (Notifier system)
@@ -84,6 +90,9 @@ To use the full version of the app with live AI capabilities, please follow our 
    ```bash
    flutter run -d chrome --web-port 8080
    ```
+
+### ☁️ Cloud Deployment
+See [DEPLOY.md](file:///Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
 
 ## 📂 Project Structure
 - `lib/core`: Theming, routing, and centralized services.
