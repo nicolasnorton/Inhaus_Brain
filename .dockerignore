@@ -1,0 +1,15 @@
+.dart_tool/
+.git/
+.github/
+.idea/
+.vscode/
+build/
+ios/
+android/
+macos/
+terraform/
+cloudbuild.yaml
+task.md
+walkthrough.md
+*.lock
+*.log
