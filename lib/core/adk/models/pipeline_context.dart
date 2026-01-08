@@ -17,6 +17,10 @@ class PipelineContext {
     this.session,
   });
 
+  factory PipelineContext.empty() {
+    return PipelineContext(pipelineId: 'empty_context');
+  }
+
   /// Adds a result from an agent step as an artifact
   void addArtifact(AdkArtifact artifact) {
     _artifacts.add(artifact);
