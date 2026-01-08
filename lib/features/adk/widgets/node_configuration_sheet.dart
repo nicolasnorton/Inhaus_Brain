@@ -26,6 +26,16 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     super.initState();
     step = widget.step;
   }
+
+  @override
+  void didUpdateWidget(NodeConfigurationSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.step.id != oldWidget.step.id) {
+       setState(() {
+         step = widget.step;
+       });
+    }
+  }
   
   void _updateStep(String id, {Map<String, dynamic>? config, String? instruction, Map<String, String>? inputMappings}) {
     setState(() {
@@ -164,13 +174,20 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
         return _buildListOperatorConfig(step);
       case WorkflowNodeType.httpRequest:
         return _buildHTTPConfig(step);
-      default:
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text("No configuration needed for this node type.", style: TextStyle(color: Colors.white38)),
-          ),
-        );
+      case WorkflowNodeType.userInput:
+        return _buildUserInputConfig(step);
+      case WorkflowNodeType.trigger:
+        return _buildTriggerConfig(step);
+      case WorkflowNodeType.answer:
+        return _buildAnswerConfig(step);
+      case WorkflowNodeType.output:
+        return _buildOutputConfig(step);
+      case WorkflowNodeType.agent:
+        return _buildAgentConfig(step);
+      case WorkflowNodeType.tool:
+        return _buildToolConfig(step);
+      case WorkflowNodeType.questionClassifier:
+        return _buildQuestionClassifierConfig(step);
     }
   }
 
@@ -796,6 +813,268 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
         );
      }
      return const SizedBox.shrink();
+  }
+
+   Widget _buildUserInputConfig(PipelineStep step) {
+    final fields = List<Map<String, dynamic>>.from(step.config['fields'] ?? []);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Input Fields"),
+        ...fields.asMap().entries.map((entry) => _buildUserInputFieldItem(step, fields, entry.key, entry.value)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+               final newFields = [...fields, {'name': 'variable', 'type': 'text', 'label': 'Label'}];
+               _updateStep(step.id, config: {...step.config, 'fields': newFields});
+            },
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text("Add Field"),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserInputFieldItem(PipelineStep step, List<Map<String, dynamic>> allFields, int index, Map<String, dynamic> field) {
+     return Container(
+       margin: const EdgeInsets.only(bottom: 12),
+       padding: const EdgeInsets.all(8),
+       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+       child: Column(
+         children: [
+           Row(
+             children: [
+               Expanded(child: _buildTextField(field['name'] ?? '', (val) {
+                  final newFields = [...allFields];
+                  newFields[index] = {...field, 'name': val};
+                  _updateStep(step.id, config: {...step.config, 'fields': newFields});
+               }, "Variable Name")),
+               const SizedBox(width: 8),
+               SizedBox(
+                 width: 100,
+                 child: _buildDropdown(["text", "paragraph", "select", "number", "checkbox"], field['type'] ?? 'text', (val) {
+                    final newFields = [...allFields];
+                    newFields[index] = {...field, 'type': val};
+                    _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                 }),
+               ),
+               IconButton(
+                 icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                 onPressed: () {
+                    final newFields = [...allFields]..removeAt(index);
+                    _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                 },
+               ),
+             ],
+           ),
+           const SizedBox(height: 8),
+           _buildTextField(field['label'] ?? '', (val) {
+              final newFields = [...allFields];
+              newFields[index] = {...field, 'label': val};
+              _updateStep(step.id, config: {...step.config, 'fields': newFields});
+           }, "Field Label"),
+         ],
+       ),
+     );
+  }
+
+  Widget _buildTriggerConfig(PipelineStep step) {
+    final triggerType = step.config['trigger_type'] ?? 'Schedule';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Trigger Type"),
+        _buildDropdown(["Schedule", "Webhook", "Plugin"], triggerType, (val) {
+           _updateStep(step.id, config: {...step.config, 'trigger_type': val});
+        }),
+        const SizedBox(height: 16),
+        if (triggerType == 'Schedule') ...[
+           _buildSubtitle("Cron Expression"),
+           _buildTextField(step.config['cron'] ?? '0 9 * * MON-FRI', (val) => _updateStep(step.id, config: {...step.config, 'cron': val})),
+        ] else if (triggerType == 'Webhook') ...[
+           _buildSubtitle("Webhook URL"),
+           const Text("https://api.inhaus.brain/webhook/xxx", style: TextStyle(color: Colors.blueAccent, fontSize: 10)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAnswerConfig(PipelineStep step) {
+    final template = step.config['answer_template'] ?? 'Result: {{llm_result}}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Final Answer Template"),
+        SizedBox(
+          height: 200,
+          child: _buildTextArea(template, (val) => _updateStep(step.id, config: {...step.config, 'answer_template': val})),
+        ),
+        const SizedBox(height: 8),
+        const Text("Use {{variable}} to inject workflow results.", style: TextStyle(color: Colors.white24, fontSize: 10)),
+      ],
+    );
+  }
+
+  Widget _buildOutputConfig(PipelineStep step) {
+    final outputs = List<Map<String, dynamic>>.from(step.config['outputs'] ?? []);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Workflow Outputs"),
+        ...outputs.asMap().entries.map((entry) => _buildOutputMappingItem(step, outputs, entry.key, entry.value)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+               final newOutputs = [...outputs, {'key': 'result', 'value': '{{llm_output}}'}];
+               _updateStep(step.id, config: {...step.config, 'outputs': newOutputs});
+            },
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text("Add Output Variable"),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOutputMappingItem(PipelineStep step, List<Map<String, dynamic>> allOutputs, int index, Map<String, dynamic> output) {
+     return Padding(
+       padding: const EdgeInsets.only(bottom: 8),
+       child: Row(
+         children: [
+           Expanded(child: _buildTextField(output['key'] ?? '', (val) {
+              final newOutputs = [...allOutputs];
+              newOutputs[index] = {...output, 'key': val};
+              _updateStep(step.id, config: {...step.config, 'outputs': newOutputs});
+           }, "Key (e.g. status)")),
+           const SizedBox(width: 8),
+           const Icon(Icons.arrow_right_alt, color: Colors.blueAccent, size: 14),
+           const SizedBox(width: 8),
+           Expanded(child: _buildTextField(output['value'] ?? '', (val) {
+              final newOutputs = [...allOutputs];
+              newOutputs[index] = {...output, 'value': val};
+              _updateStep(step.id, config: {...step.config, 'outputs': newOutputs});
+           }, "Variable (e.g. {{res}})")),
+           IconButton(
+             icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+             onPressed: () {
+                final newOutputs = [...allOutputs]..removeAt(index);
+                _updateStep(step.id, config: {...step.config, 'outputs': newOutputs});
+             },
+           ),
+         ],
+       ),
+     );
+  }
+
+  Widget _buildAgentConfig(PipelineStep step) {
+    final strategy = step.config['strategy'] ?? 'Function Calling';
+    final model = step.config['model'] ?? 'Gemini 1.5 Pro';
+    final maxIters = step.config['max_iterations'] ?? 5;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Reasoning Strategy"),
+        _buildDropdown(["Function Calling", "ReAct"], strategy, (val) => _updateStep(step.id, config: {...step.config, 'strategy': val})),
+        const SizedBox(height: 16),
+        _buildSubtitle("Model"),
+        _buildDropdown(["Gemini 1.5 Pro", "GPT-4o", "Claude 3.5 Sonnet"], model, (val) => _updateStep(step.id, config: {...step.config, 'model': val})),
+        const SizedBox(height: 16),
+        _buildSubtitle("Max Iterations: $maxIters"),
+        Slider(
+          value: maxIters.toDouble(),
+          min: 1, max: 20,
+          onChanged: (val) => _updateStep(step.id, config: {...step.config, 'max_iterations': val.toInt()}),
+          activeColor: Colors.blueAccent,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToolConfig(PipelineStep step) {
+     final toolId = step.config['tool_id'] ?? 'google_search';
+     final retries = step.config['retries'] ?? 3;
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Select Tool"),
+           _buildDropdown(["google_search", "web_scraper", "slack_notify", "gmail_send"], toolId, (val) => _updateStep(step.id, config: {...step.config, 'tool_id': val})),
+           const SizedBox(height: 16),
+           _buildSubtitle("Retry Attempts"),
+           _buildTextField(retries.toString(), (val) => _updateStep(step.id, config: {...step.config, 'retries': int.tryParse(val) ?? 3})),
+        ],
+     );
+  }
+
+  Widget _buildQuestionClassifierConfig(PipelineStep step) {
+    final categories = List<Map<String, dynamic>>.from(step.config['categories'] ?? []);
+    final inputVar = step.config['input_var'] ?? '{{input}}';
+
+    return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+          _buildSubtitle("Input Variable"),
+          _buildTextField(inputVar, (val) => _updateStep(step.id, config: {...step.config, 'input_var': val})),
+          const SizedBox(height: 16),
+          _buildSubtitle("Classification Categories"),
+          ...categories.asMap().entries.map((entry) => _buildClassifierCategoryItem(step, categories, entry.key, entry.value)),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                 final newCats = [...categories, {'name': 'billing', 'desc': 'User asking about money'}];
+                 _updateStep(step.id, config: {...step.config, 'categories': newCats});
+              },
+              icon: const Icon(Icons.add, size: 14),
+              label: const Text("Add Category"),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+            ),
+          ),
+       ],
+    );
+  }
+
+  Widget _buildClassifierCategoryItem(PipelineStep step, List<Map<String, dynamic>> allCats, int index, Map<String, dynamic> cat) {
+     return Container(
+       margin: const EdgeInsets.only(bottom: 12),
+       padding: const EdgeInsets.all(8),
+       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+       child: Column(
+         children: [
+            Row(
+              children: [
+                Expanded(child: _buildTextField(cat['name'] ?? '', (val) {
+                   final newCats = [...allCats];
+                   newCats[index] = {...cat, 'name': val};
+                   _updateStep(step.id, config: {...step.config, 'categories': newCats});
+                }, "Category Name")),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                  onPressed: () {
+                     final newCats = [...allCats]..removeAt(index);
+                     _updateStep(step.id, config: {...step.config, 'categories': newCats});
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildTextField(cat['desc'] ?? '', (val) {
+               final newCats = [...allCats];
+               newCats[index] = {...cat, 'desc': val};
+               _updateStep(step.id, config: {...step.config, 'categories': newCats});
+            }, "Description for LLM"),
+         ],
+       ),
+     );
   }
 
   Widget _buildKeyValueList(PipelineStep step, List<Map<String, dynamic>> items, String key) {

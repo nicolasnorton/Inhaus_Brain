@@ -46,16 +46,12 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       if (match.id.isNotEmpty) {
         _pipelineName = match.name;
         _pipelineDescription = match.description;
-        // Deep copy to ensure mutability
-        _steps = match.steps.map((s) => PipelineStep(
-          id: s.id,
-          agentType: s.agentType,
-          instruction: s.instruction,
-          type: s.type,
-          parallelSteps: s.parallelSteps,
-          loopCondition: s.loopCondition,
-          dependencies: List.from(s.dependencies), // Mutable copy
-          uiPosition: s.uiPosition != null ? Map.from(s.uiPosition!) : null,
+        // Deep copy using copyWith
+        _steps = match.steps.map((s) => s.copyWith(
+          dependencies: List.from(s.dependencies),
+          uiPosition: s.uiPosition != null ? Map<String, double>.from(s.uiPosition!) : null,
+          config: Map<String, dynamic>.from(s.config),
+          inputMappings: Map<String, String>.from(s.inputMappings),
         )).toList();
       } else {
         _steps = [];
@@ -200,7 +196,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
               right: 16,
               top: 16,
               bottom: 16,
-              width: 250,
+              width: 400,
               child: _buildPropertiesPanel(),
             ),
         ],
@@ -500,7 +496,6 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.output:
         return Colors.pinkAccent;
     }
-    return Colors.grey;
   }
 }
 
