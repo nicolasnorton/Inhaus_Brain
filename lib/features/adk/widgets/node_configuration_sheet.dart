@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/adk/models/pipeline_models.dart';
+import '../../chat/models/chat_models.dart';
 
 class NodeConfigurationSheet extends StatefulWidget {
   final PipelineStep step;
   final List<PipelineStep> allSteps; // Required for resolving dependency names
-  final Function(String stepId, {Map<String, dynamic>? config, String? instruction, Map<String, String>? inputMappings}) onUpdate;
+  final Function(String stepId, {Map<String, dynamic>? config, String? instruction, MessageSender? agentType, Map<String, String>? inputMappings}) onUpdate;
 
   const NodeConfigurationSheet({
     super.key,
@@ -37,13 +38,14 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     }
   }
   
-  void _updateStep(String id, {Map<String, dynamic>? config, String? instruction, Map<String, String>? inputMappings}) {
+  void _updateStep(String id, {Map<String, dynamic>? config, String? instruction, MessageSender? agentType, Map<String, String>? inputMappings}) {
     setState(() {
       if (config != null) step = step.copyWith(config: config);
       if (instruction != null) step = step.copyWith(instruction: instruction);
+      if (agentType != null) step = step.copyWith(agentType: agentType);
       if (inputMappings != null) step = step.copyWith(inputMappings: inputMappings);
     });
-    widget.onUpdate(id, config: config, instruction: instruction, inputMappings: inputMappings);
+    widget.onUpdate(id, config: config, instruction: instruction, agentType: agentType, inputMappings: inputMappings);
   }
 
   @override
@@ -979,9 +981,21 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     final model = step.config['model'] ?? 'Gemini 1.5 Pro';
     final maxIters = step.config['max_iterations'] ?? 5;
     
+    // Filter MessageSender values to only include agents
+    final agentBrains = MessageSender.values
+        .where((e) => e.name.contains('Agent'))
+        .map((e) => e.name)
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildSubtitle("Agent Brain"),
+        _buildDropdown(agentBrains, step.agentType?.name ?? MessageSender.researchAgent.name, (val) {
+           final sender = MessageSender.values.firstWhere((e) => e.name == val);
+           _updateStep(step.id, agentType: sender);
+        }),
+        const SizedBox(height: 16),
         _buildSubtitle("Reasoning Strategy"),
         _buildDropdown(["Function Calling", "ReAct"], strategy, (val) => _updateStep(step.id, config: {...step.config, 'strategy': val})),
         const SizedBox(height: 16),
