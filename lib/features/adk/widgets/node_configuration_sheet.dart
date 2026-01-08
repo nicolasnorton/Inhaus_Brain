@@ -256,14 +256,59 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   Widget _buildLLMConfig(PipelineStep step) {
     final prompts = List<Map<String, dynamic>>.from(step.config['prompts'] ?? [{'role': 'user', 'content': ''}]);
     final model = step.config['model'] ?? 'Gemini 1.5 Pro';
+    final temp = (step.config['temperature'] ?? 0.7).toDouble();
+    final topP = (step.config['top_p'] ?? 0.9).toDouble();
+    final jsonMode = step.config['json_mode'] ?? false;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSubtitle("Model"),
-        _buildDropdown(["Gemini 1.5 Pro", "Gemini 1.5 Flash", "Gemma 2b"], model, (val) {
+        _buildDropdown(["Gemini 1.5 Pro", "GPT-4o", "Claude 3.5 Sonnet", "Grok Beta"], model, (val) {
            _updateStep(step.id, config: {...step.config, 'model': val});
         }),
+        const SizedBox(height: 16),
+        _buildSubtitle("Parameters"),
+        Row(
+           children: [
+              const Text("Temp", style: TextStyle(color: Colors.white70, fontSize: 10)),
+              Expanded(
+                 child: Slider(
+                    value: temp, min: 0, max: 2, divisions: 20, 
+                    activeColor: Colors.blueAccent,
+                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'temperature': val})
+                 ),
+              ),
+              Text(temp.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 10)),
+           ],
+        ),
+        Row(
+           children: [
+              const Text("Top P", style: TextStyle(color: Colors.white70, fontSize: 10)),
+              Expanded(
+                 child: Slider(
+                    value: topP, min: 0, max: 1, divisions: 10,
+                    activeColor: Colors.blueAccent,
+                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'top_p': val})
+                 ),
+              ),
+              Text(topP.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 10)),
+           ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+           children: [
+              const Expanded(child: Text("Structured JSON Output", style: TextStyle(color: Colors.white70, fontSize: 11))),
+              Transform.scale(
+                 scale: 0.7,
+                 child: Switch(
+                    value: jsonMode,
+                    activeThumbColor: Colors.blueAccent,
+                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'json_mode': val}),
+                 ),
+              ),
+           ],
+        ),
         const SizedBox(height: 16),
         _buildPromptConfig(step, prompts),
       ],
@@ -333,6 +378,8 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   Widget _buildKnowledgeRetrievalConfig(PipelineStep step) {
     final query = step.config['query'] ?? '{{input}}';
     final topK = step.config['top_k'] ?? 3;
+    final scoreThreshold = (step.config['score_threshold'] ?? 0.7).toDouble();
+    final reranking = step.config['reranking'] ?? false;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,8 +387,28 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
         _buildSubtitle("Query Variable"),
         _buildTextField(query, (val) => _updateStep(step.id, config: {...step.config, 'query': val})),
         const SizedBox(height: 16),
-        _buildSubtitle("Top K Results"),
-        _buildTextField(topK.toString(), (val) => _updateStep(step.id, config: {...step.config, 'top_k': int.tryParse(val) ?? 3})),
+        _buildSubtitle("Retrieval Settings"),
+        Row(
+           children: [
+              Expanded(child: _buildTextField(topK.toString(), (val) => _updateStep(step.id, config: {...step.config, 'top_k': int.tryParse(val) ?? 3}), "Top K")),
+              const SizedBox(width: 8),
+              Expanded(child: _buildTextField(scoreThreshold.toString(), (val) => _updateStep(step.id, config: {...step.config, 'score_threshold': double.tryParse(val) ?? 0.7}), "Threshold")),
+           ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+           children: [
+              const Expanded(child: Text("Enable Reranking (Cohere)", style: TextStyle(color: Colors.white70, fontSize: 11))),
+              Transform.scale(
+                 scale: 0.7,
+                 child: Switch(
+                    value: reranking,
+                    activeThumbColor: Colors.blueAccent,
+                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'reranking': val}),
+                 ),
+              ),
+           ],
+        ),
       ],
     );
   }
@@ -447,22 +514,140 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   }
 
   Widget _buildIfElseConfig(PipelineStep step) {
-    // Simplified for brevity, reusing the existing logic structure
-    // This assumes _buildBranchConfig and _buildConditionItem are also moved or adapted
-    return const Center(child: Text("If/Else Config Placeholder - Implement Full Logic"));
+    final branches = List<Map<String, dynamic>>.from(step.config['branches'] ?? [{'conditions': [], 'label': 'IF'}]);
+    
+    return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+          ...branches.asMap().entries.map((entry) => _buildLogicBranch(step, branches, entry.key, entry.value)),
+          SizedBox(
+             width: double.infinity,
+             child: OutlinedButton.icon(
+                onPressed: () {
+                   final newBranches = [...branches, {'conditions': [], 'label': 'ELIF'}];
+                   _updateStep(step.id, config: {...step.config, 'branches': newBranches});
+                },
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text("Add Branch (ELIF)"),
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+             ),
+          ),
+       ],
+    );
+  }
+
+  Widget _buildLogicBranch(PipelineStep step, List<Map<String, dynamic>> allBranches, int index, Map<String, dynamic> branch) {
+     final conditions = List<Map<String, dynamic>>.from(branch['conditions'] ?? []);
+     final isElse = index > 0 && index == allBranches.length - 1 && (branch['label'] == 'ELSE');
+
+     return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+           border: Border.all(color: Colors.white10),
+           borderRadius: BorderRadius.circular(8)
+        ),
+        child: Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+              Row(
+                 children: [
+                    Text(branch['label'] ?? (index == 0 ? "IF" : "ELIF"), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purpleAccent)),
+                    const Spacer(),
+                    if (index > 0)
+                       IconButton(
+                          icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                          onPressed: () {
+                             final newBranches = [...allBranches]..removeAt(index);
+                             _updateStep(step.id, config: {...step.config, 'branches': newBranches});
+                          },
+                       )
+                 ],
+              ),
+              if (!isElse) ...[
+                 ...conditions.asMap().entries.map((entry) => _buildConditionItem(step, allBranches, index, conditions, entry.key, entry.value)),
+                 TextButton.icon(
+                    onPressed: () {
+                       final newConds = [...conditions, {'var': '', 'op': 'equals', 'val': ''}];
+                       final newBranches = [...allBranches];
+                       newBranches[index] = {...branch, 'conditions': newConds};
+                       _updateStep(step.id, config: {...step.config, 'branches': newBranches});
+                    },
+                    icon: const Icon(Icons.add, size: 12),
+                    label: const Text("Add Condition (AND)"),
+                 )
+              ] else
+                 const Text("Fallback path if no conditions match.", style: TextStyle(color: Colors.white24, fontSize: 10, fontStyle: FontStyle.italic)),
+           ],
+        ),
+     );
+  }
+
+  Widget _buildConditionItem(PipelineStep step, List<Map<String, dynamic>> allBranches, int branchIdx, List<Map<String, dynamic>> conditions, int condIdx, Map<String, dynamic> cond) {
+     return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+           children: [
+              Expanded(child: _buildTextField(cond['var'] ?? '', (val) {
+                 final newConds = [...conditions];
+                 newConds[condIdx] = {...cond, 'var': val};
+                 final newBranches = [...allBranches];
+                 newBranches[branchIdx] = {...allBranches[branchIdx], 'conditions': newConds};
+                 _updateStep(step.id, config: {...step.config, 'branches': newBranches});
+              }, "Variable")),
+              const SizedBox(width: 4),
+              SizedBox(width: 70, child: _buildDropdown(['equals', 'contains', 'starts_with', 'is_empty'], cond['op'] ?? 'equals', (val) {
+                 final newConds = [...conditions];
+                 newConds[condIdx] = {...cond, 'op': val};
+                 final newBranches = [...allBranches];
+                 newBranches[branchIdx] = {...allBranches[branchIdx], 'conditions': newConds};
+                 _updateStep(step.id, config: {...step.config, 'branches': newBranches});
+              })),
+              const SizedBox(width: 4),
+              Expanded(child: _buildTextField(cond['val'] ?? '', (val) {
+                 final newConds = [...conditions];
+                 newConds[condIdx] = {...cond, 'val': val};
+                 final newBranches = [...allBranches];
+                 newBranches[branchIdx] = {...allBranches[branchIdx], 'conditions': newConds};
+                 _updateStep(step.id, config: {...step.config, 'branches': newBranches});
+              }, "Value")),
+           ],
+        ),
+     );
   }
 
   Widget _buildCodeConfig(PipelineStep step) {
     final code = step.config['code'] ?? '// Write JavaScript code here\nreturn inputs.arg1 + " processed";';
-    return Column(
-      children: [
-        _buildSubtitle("Code (JavaScript)"),
-        Expanded(
-          child: _buildTextArea(code, (val) {
-             _updateStep(step.id, config: {...step.config, 'code': val});
-          }),
-        ),
-      ],
+    final inputs = List<Map<String, dynamic>>.from(step.config['inputs'] ?? []);
+    final outputs = List<Map<String, dynamic>>.from(step.config['outputs'] ?? []);
+    final retries = step.config['retries'] ?? 0;
+    
+    return SingleChildScrollView(
+       child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             _buildSubtitle("Input Variables"),
+             _buildKeyValueList(step, inputs, 'inputs'),
+             const SizedBox(height: 16),
+             
+             _buildSubtitle("Code (JavaScript)"),
+             SizedBox(
+               height: 300,
+               child: _buildTextArea(code, (val) {
+                  _updateStep(step.id, config: {...step.config, 'code': val});
+               }),
+             ),
+             const SizedBox(height: 16),
+             
+             _buildSubtitle("Output Variables"),
+             _buildKeyValueList(step, outputs, 'outputs'),
+             const SizedBox(height: 16),
+             
+             _buildSubtitle("Retry Attempts"),
+             _buildTextField(retries.toString(), (val) => _updateStep(step.id, config: {...step.config, 'retries': int.tryParse(val) ?? 0})),
+             const SizedBox(height: 24),
+          ],
+       ),
     );
   }
   
@@ -485,8 +670,85 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   }
 
   Widget _buildVariableAggregatorConfig(PipelineStep step) {
-     // Placeholder implementation to verify pattern
-     return const Center(child: Text("Aggregator Config Placeholder"));
+     final groups = List<Map<String, dynamic>>.from(step.config['groups'] ?? []);
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Aggregation Groups"),
+           const Text("Group variables from multiple branches.", style: TextStyle(color: Colors.white24, fontSize: 10)),
+           const SizedBox(height: 8),
+           ...groups.asMap().entries.map((entry) => _buildAggregatorGroupItem(step, groups, entry.key, entry.value)),
+           SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                 onPressed: () {
+                    final newGroups = [...groups, {'target': 'new_var', 'sources': []}];
+                    _updateStep(step.id, config: {...step.config, 'groups': newGroups});
+                 },
+                 icon: const Icon(Icons.add, size: 14),
+                 label: const Text("Add Aggregation Group"),
+                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+              ),
+           ),
+        ],
+     );
+  }
+
+  Widget _buildAggregatorGroupItem(PipelineStep step, List<Map<String, dynamic>> allGroups, int index, Map<String, dynamic> group) {
+     final sources = List<String>.from(group['sources'] ?? []);
+     
+     return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+        child: Column(
+           children: [
+              Row(
+                 children: [
+                    Expanded(child: _buildTextField(group['target'] ?? '', (val) {
+                       final newGroups = [...allGroups];
+                       newGroups[index] = {...group, 'target': val};
+                       _updateStep(step.id, config: {...step.config, 'groups': newGroups});
+                    }, "Target Variable")),
+                    IconButton(
+                       icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                       onPressed: () {
+                          final newGroups = [...allGroups]..removeAt(index);
+                          _updateStep(step.id, config: {...step.config, 'groups': newGroups});
+                       },
+                    ),
+                 ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                 spacing: 8,
+                 runSpacing: 4,
+                 children: [
+                    ...sources.map((s) => Chip(
+                       label: Text(s, style: const TextStyle(fontSize: 10)),
+                       onDeleted: () {
+                          final newSources = [...sources]..remove(s);
+                          final newGroups = [...allGroups];
+                          newGroups[index] = {...group, 'sources': newSources};
+                          _updateStep(step.id, config: {...step.config, 'groups': newGroups});
+                       },
+                       backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                       deleteIconColor: Colors.white54,
+                    )),
+                    ActionChip(
+                       label: const Text("+ Source"),
+                       onPressed: () {
+                           // Ideally this opens a dialog to pick a variable, simplifying to text input for now
+                           // In a real app, use a modal dialog.
+                           _updateStep(step.id, config: {...step.config}); // Force rebuild if state changes
+                       },
+                    )
+                 ],
+              )
+           ],
+        ),
+     );
   }
 
   Widget _buildDocumentExtractorConfig(PipelineStep step) {
@@ -512,13 +774,131 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   }
 
   Widget _buildVariableAssignerConfig(PipelineStep step) {
-     // Placeholder
-     return const Center(child: Text("Variable Assigner Config Placeholder"));
+     final assignments = List<Map<String, dynamic>>.from(step.config['assignments'] ?? []);
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Assignments"),
+           ...assignments.asMap().entries.map((entry) => _buildAssignmentItem(step, assignments, entry.key, entry.value)),
+           SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                 onPressed: () {
+                    final newAssigns = [...assignments, {'var': 'new_var', 'op': 'Set', 'val': ''}];
+                    _updateStep(step.id, config: {...step.config, 'assignments': newAssigns});
+                 },
+                 icon: const Icon(Icons.add, size: 14),
+                 label: const Text("Add Assignment"),
+                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+              ),
+           ),
+        ],
+     );
+  }
+
+  Widget _buildAssignmentItem(PipelineStep step, List<Map<String, dynamic>> allAssigns, int index, Map<String, dynamic> assign) {
+     return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+           children: [
+              Expanded(flex: 2, child: _buildTextField(assign['var'] ?? '', (val) {
+                 final newAssigns = [...allAssigns];
+                 newAssigns[index] = {...assign, 'var': val};
+                 _updateStep(step.id, config: {...step.config, 'assignments': newAssigns});
+              }, "Variable")),
+              const SizedBox(width: 4),
+              Expanded(flex: 2, child: _buildDropdown(['Set', 'Append', 'Extend', 'Clear'], assign['op'] ?? 'Set', (val) {
+                 final newAssigns = [...allAssigns];
+                 newAssigns[index] = {...assign, 'op': val};
+                 _updateStep(step.id, config: {...step.config, 'assignments': newAssigns});
+              })),
+              const SizedBox(width: 4),
+              Expanded(flex: 3, child: _buildTextField(assign['val'] ?? '', (val) {
+                  final newAssigns = [...allAssigns];
+                 newAssigns[index] = {...assign, 'val': val};
+                 _updateStep(step.id, config: {...step.config, 'assignments': newAssigns});
+              }, "Value")),
+               IconButton(
+                  icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                  onPressed: () {
+                     final newAssigns = [...allAssigns]..removeAt(index);
+                     _updateStep(step.id, config: {...step.config, 'assignments': newAssigns});
+                  },
+              )
+           ],
+        ),
+     );
   }
 
   Widget _buildParameterExtractorConfig(PipelineStep step) {
-     // Placeholder
-     return const Center(child: Text("Parameter Extractor Config Placeholder"));
+     final schema = List<Map<String, dynamic>>.from(step.config['schema'] ?? []);
+     final mode = step.config['mode'] ?? 'Function Calling';
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Extraction Mode"),
+           _buildDropdown(['Function Calling', 'Prompt Engineering'], mode, (val) {
+              _updateStep(step.id, config: {...step.config, 'mode': val});
+           }),
+           const SizedBox(height: 16),
+           _buildSubtitle("Schema Definition"),
+           ...schema.asMap().entries.map((entry) => _buildSchemaItem(step, schema, entry.key, entry.value)),
+           SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                 onPressed: () {
+                    final newSchema = [...schema, {'name': 'param', 'type': 'String', 'desc': ''}];
+                    _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+                 },
+                 icon: const Icon(Icons.add, size: 14),
+                 label: const Text("Add Parameter"),
+                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+              ),
+           ),
+        ],
+     );
+  }
+
+  Widget _buildSchemaItem(PipelineStep step, List<Map<String, dynamic>> allSchema, int index, Map<String, dynamic> item) {
+     return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(6)),
+        child: Column(
+           children: [
+              Row(
+                 children: [
+                    Expanded(child: _buildTextField(item['name'] ?? '', (val) {
+                       final newSchema = [...allSchema];
+                       newSchema[index] = {...item, 'name': val};
+                       _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+                    }, "Param Name")),
+                    const SizedBox(width: 8),
+                    SizedBox(width: 80, child: _buildDropdown(['String', 'Number', 'Boolean', 'Array', 'Object'], item['type'] ?? 'String', (val) {
+                       final newSchema = [...allSchema];
+                       newSchema[index] = {...item, 'type': val};
+                       _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+                    })),
+                    IconButton(
+                        icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                        onPressed: () {
+                           final newSchema = [...allSchema]..removeAt(index);
+                           _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+                        },
+                    )
+                 ],
+              ),
+              const SizedBox(height: 4),
+              _buildTextField(item['desc'] ?? '', (val) {
+                  final newSchema = [...allSchema];
+                  newSchema[index] = {...item, 'desc': val};
+                  _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+              }, "Description"),
+           ],
+        ),
+     );
   }
 
   Widget _buildListOperatorConfig(PipelineStep step) {
@@ -902,6 +1282,8 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
            _buildSubtitle("Webhook URL"),
            const Text("https://api.inhaus.brain/webhook/xxx", style: TextStyle(color: Colors.blueAccent, fontSize: 10)),
         ],
+        const SizedBox(height: 16),
+        const Text("System Variables: sys.timestamp, sys.user_id automatically populated.", style: TextStyle(color: Colors.white24, fontSize: 10, fontStyle: FontStyle.italic)),
       ],
     );
   }
@@ -1016,12 +1398,16 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   Widget _buildToolConfig(PipelineStep step) {
      final toolId = step.config['tool_id'] ?? 'google_search';
      final retries = step.config['retries'] ?? 3;
+     final customParams = List<Map<String, dynamic>>.from(step.config['params'] ?? []);
      
      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
            _buildSubtitle("Select Tool"),
-           _buildDropdown(["google_search", "web_scraper", "slack_notify", "gmail_send"], toolId, (val) => _updateStep(step.id, config: {...step.config, 'tool_id': val})),
+           _buildDropdown(["google_search", "web_scraper", "slack_notify", "gmail_send", "custom_webhook"], toolId, (val) => _updateStep(step.id, config: {...step.config, 'tool_id': val})),
+           const SizedBox(height: 16),
+           _buildSubtitle("Tool Parameters"),
+           _buildKeyValueList(step, customParams, 'params'),
            const SizedBox(height: 16),
            _buildSubtitle("Retry Attempts"),
            _buildTextField(retries.toString(), (val) => _updateStep(step.id, config: {...step.config, 'retries': int.tryParse(val) ?? 3})),
@@ -1032,12 +1418,16 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   Widget _buildQuestionClassifierConfig(PipelineStep step) {
     final categories = List<Map<String, dynamic>>.from(step.config['categories'] ?? []);
     final inputVar = step.config['input_var'] ?? '{{input}}';
+    final model = step.config['model'] ?? 'Gemini 1.5 Pro';
 
     return Column(
        crossAxisAlignment: CrossAxisAlignment.start,
        children: [
           _buildSubtitle("Input Variable"),
           _buildTextField(inputVar, (val) => _updateStep(step.id, config: {...step.config, 'input_var': val})),
+          const SizedBox(height: 16),
+          _buildSubtitle("Model"),
+          _buildDropdown(["Gemini 1.5 Pro", "GPT-4o", "Claude 3.5 Sonnet"], model, (val) => _updateStep(step.id, config: {...step.config, 'model': val})),
           const SizedBox(height: 16),
           _buildSubtitle("Classification Categories"),
           ...categories.asMap().entries.map((entry) => _buildClassifierCategoryItem(step, categories, entry.key, entry.value)),
