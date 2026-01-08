@@ -46,8 +46,9 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
             children: [
-              Icon(_getNodeIcon(step.type), color: Colors.blueAccent, size: 18),
+              Icon(_getNodeIcon(step.nodeType), color: Colors.blueAccent, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -106,8 +107,8 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   Widget _buildInputMappings(PipelineStep step) {
     return Column(
       children: step.dependencies.map((depId) {
-        final dep = widget.allSteps.firstWhere((s) => s.id == depId, orElse: () => PipelineStep(id: 'unknown', nodeType: WorkflowNodeType.trigger, instruction: 'Unknown', type: WorkflowNodeType.trigger, dependencies: [], uiPosition: {}, config: {}, inputMappings: {}));
-        final sourceLabel = dep.label.isNotEmpty ? dep.label : dep.type.name.toUpperCase();
+        final dep = widget.allSteps.firstWhere((s) => s.id == depId, orElse: () => PipelineStep(id: 'unknown', nodeType: WorkflowNodeType.trigger, instruction: 'Unknown'));
+        final sourceLabel = dep.label.isNotEmpty ? dep.label : dep.nodeType.name.toUpperCase();
         
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -136,7 +137,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   }
 
   Widget _buildConfigForm(PipelineStep step) {
-    switch (step.type) {
+    switch (step.nodeType) {
       case WorkflowNodeType.llm:
         return _buildLLMConfig(step);
       case WorkflowNodeType.knowledgeRetrieval:

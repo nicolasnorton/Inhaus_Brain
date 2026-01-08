@@ -89,6 +89,38 @@ class PipelineStep {
     this.inputMappings = const {},
   });
 
+  String get label => instruction.isNotEmpty ? instruction : nodeType.name.toUpperCase();
+
+  PipelineStep copyWith({
+    String? id,
+    WorkflowNodeType? nodeType,
+    MessageSender? agentType,
+    String? instruction,
+    bool? requiresApproval,
+    PipelineStepType? type,
+    List<PipelineStep>? parallelSteps,
+    String? loopCondition,
+    List<String>? dependencies,
+    Map<String, double>? uiPosition,
+    Map<String, dynamic>? config,
+    Map<String, String>? inputMappings,
+  }) {
+    return PipelineStep(
+      id: id ?? this.id,
+      nodeType: nodeType ?? this.nodeType,
+      agentType: agentType ?? this.agentType,
+      instruction: instruction ?? this.instruction,
+      requiresApproval: requiresApproval ?? this.requiresApproval,
+      type: type ?? this.type,
+      parallelSteps: parallelSteps ?? this.parallelSteps,
+      loopCondition: loopCondition ?? this.loopCondition,
+      dependencies: dependencies ?? this.dependencies,
+      uiPosition: uiPosition ?? this.uiPosition,
+      config: config ?? this.config,
+      inputMappings: inputMappings ?? this.inputMappings,
+    );
+  }
+
   factory PipelineStep.fromJson(Map<String, dynamic> json) {
     return PipelineStep(
       id: json['id'] as String,

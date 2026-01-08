@@ -431,23 +431,16 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         ),
       ),
     );
-
-
+  }
   void _updateStep(String id, {String? instruction, MessageSender? agentType, Map<String, dynamic>? config, Map<String, String>? inputMappings}) {
     setState(() {
       final index = _steps.indexWhere((s) => s.id == id);
       if (index != -1) {
-        final step = _steps[index];
-        _steps[index] = PipelineStep(
-           id: step.id,
-           nodeType: step.nodeType,
-           agentType: agentType ?? step.agentType,
-           instruction: instruction ?? step.instruction,
-           type: step.type,
-           dependencies: step.dependencies,
-           uiPosition: step.uiPosition,
-           config: config ?? step.config,
-           inputMappings: inputMappings ?? step.inputMappings,
+        _steps[index] = _steps[index].copyWith(
+           agentType: agentType,
+           instruction: instruction,
+           config: config,
+           inputMappings: inputMappings,
         );
       }
     });
@@ -476,7 +469,6 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.documentExtractor: return FontAwesomeIcons.filePdf;
       case WorkflowNodeType.variableAssigner: return FontAwesomeIcons.penToSquare;
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
-      default: return FontAwesomeIcons.circle;
     }
   }
 
@@ -507,8 +499,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.answer:
       case WorkflowNodeType.output:
         return Colors.pinkAccent;
-      default: return Colors.grey;
     }
+    return Colors.grey;
   }
 }
 
