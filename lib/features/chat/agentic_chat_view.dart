@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../core/services/voice_service.dart';
 import 'providers/chat_provider.dart';
 import 'models/chat_models.dart';
 import '../campaigns/widgets/multi_modal_input_section.dart';
@@ -9,6 +10,8 @@ import '../knowledge/widgets/knowledge_library_widget.dart';
 import '../settings/profile_settings_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/tokens/llm_provider.dart';
+import '../../core/services/voice_command_processor.dart';
+import 'widgets/voice_visualizer.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
@@ -22,6 +25,23 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   final _scrollController = ScrollController();
   List<Attachment> _pendingAttachments = [];
   AIModelConfig _selectedModelConfig = AIModelConfig.geminiFlash;
+  bool _isAutoReadEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(voiceServiceProvider).init());
+  }
+
+  @override
+  void dispose() {
+    // Silence any active voice/listening on exit
+    ref.read(voiceServiceProvider).stopSpeaking();
+    ref.read(voiceServiceProvider).stopListening();
+    _textController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _handleSend() {
     if (_textController.text.isEmpty && _pendingAttachments.isEmpty) return;
@@ -61,7 +81,12 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                   padding: const EdgeInsets.all(20),
                   itemCount: session.messages.length,
                   itemBuilder: (context, index) {
-                    return _buildMessageBubble(session.messages[index]);
+                    final message = session.messages[index];
+                    // Auto-read logic
+                    if (_isAutoReadEnabled && index == session.messages.length - 1 && message.sender != MessageSender.user) {
+                       ref.read(voiceServiceProvider).speak(message.content);
+                    }
+                    return _buildMessageBubble(message);
                   },
                 ),
         ),
@@ -386,6 +411,18 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                _buildPendingAttachmentsBar(),
                const SizedBox(height: 12),
             ],
+            
+            // Voice Visualizer
+            Consumer(
+              builder: (context, ref, _) {
+                final voiceSvc = ref.watch(voiceServiceProvider);
+                return VoiceVisualizer(
+                  isActive: voiceSvc.isListening || voiceSvc.isSpeaking,
+                  soundLevel: voiceSvc.soundLevel,
+                );
+              },
+            ),
+
             Row(
               children: [
                 _buildModelPicker(),
@@ -401,6 +438,15 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                       ),
                     );
                   },
+                ),
+                IconButton(
+                  icon: Icon(
+                    _isAutoReadEnabled ? Icons.volume_up : Icons.volume_off,
+                    size: 18,
+                    color: _isAutoReadEnabled ? Colors.blueAccent : Colors.white24,
+                  ),
+                  tooltip: 'Toggle Auto-Read',
+                  onPressed: () => setState(() => _isAutoReadEnabled = !_isAutoReadEnabled),
                 ),
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
@@ -439,6 +485,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      suffixIcon: _buildVoiceButton(),
                     ),
                   ),
                 ),
@@ -589,5 +636,74 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         },
       ),
     );
+  }
+
+  Widget _buildVoiceButton() {
+    return Consumer(
+      builder: (context, ref, _) {
+        final voiceSvc = ref.watch(voiceServiceProvider);
+        final isListening = voiceSvc.isListening;
+        final isEnglish = voiceSvc.currentLocale == 'en-US';
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Language Toggle
+            InkWell(
+              onTap: () {
+                final nextLocale = isEnglish ? 'es-EC' : 'en-US';
+                voiceSvc.setLocale(nextLocale);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  isEnglish ? "🇺🇸" : "🇪🇨",
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                isListening ? Icons.mic : Icons.mic_none,
+                color: isListening ? Colors.redAccent : Colors.white38,
+                size: 20,
+              ),
+              onPressed: () {
+                if (isListening) {
+                  voiceSvc.stopListening();
+                } else {
+                  voiceSvc.startListening((text) {
+                    if (!mounted) return;
+                    
+                    // INTENT PROCESSING
+                    final intent = VoiceCommandProcessor.process(text, voiceSvc.currentLocale);
+                    if (intent != null) {
+                      _handleVoiceIntent(intent);
+                    } else {
+                      _textController.text = text;
+                      _handleSend(); 
+                    }
+                  });
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _handleVoiceIntent(VoiceIntent intent) {
+    switch (intent.type) {
+      case VoiceIntentType.switchAgent:
+        setState(() => _selectedModelConfig = intent.data as AIModelConfig);
+        break;
+      case VoiceIntentType.clearChat:
+        // Future: Clear session logic
+        break;
+      case VoiceIntentType.sendText:
+        _handleSend();
+        break;
+    }
   }
 }

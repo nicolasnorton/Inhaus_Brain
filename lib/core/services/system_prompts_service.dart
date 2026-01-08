@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/chat/models/chat_models.dart';
 
 class SystemPromptsService {
   final _storage = const FlutterSecureStorage();
@@ -153,6 +154,26 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
 
   Future<void> saveRouterPrompt(String prompt) async => await _storage.write(key: _routerPromptKey, value: prompt);
   Future<String> getRouterPrompt() async => await _getPrompt(_routerPromptKey, 'assets/prompts/router.md', originalRouterPrompt);
+
+  Future<String> getPromptForSender(MessageSender sender) async {
+    switch (sender) {
+      case MessageSender.researchAgent: return getResearchPrompt();
+      case MessageSender.creativeAgent: return getCreativePrompt();
+      case MessageSender.copywriterAgent: return getCopywriterPrompt();
+      case MessageSender.developerAgent: return getDeveloperPrompt();
+      case MessageSender.orchestratorAgent: return getOrchestratorPrompt();
+      case MessageSender.trendScoutAgent: return getTrendScoutPrompt();
+      case MessageSender.accountDirectorAgent: return getAccountDirectorPrompt();
+      case MessageSender.strategistAgent: return getStrategistPrompt();
+      case MessageSender.editorialManagerAgent: return getEditorialManagerPrompt();
+      case MessageSender.mediaBuyerAgent: return getMediaBuyerPrompt();
+      case MessageSender.performanceAnalystAgent: return getPerformanceAnalystPrompt();
+      case MessageSender.securityAgent: return getSecurityPrompt();
+      case MessageSender.dataEngineerAgent: return getDataEngPrompt();
+      case MessageSender.routerAgent: return getRouterPrompt();
+      default: return "";
+    }
+  }
 
   // Helper
   Future<String> _getPrompt(String storageKey, String assetPath, String fallback) async {

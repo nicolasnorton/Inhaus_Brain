@@ -9,6 +9,7 @@ class PipelineContext {
   final List<AdkArtifact> _artifacts = [];
   final List<KnowledgeSource> sharedKnowledge;
   final AdkSession? session;
+  final Map<String, dynamic> _variables = {};
 
   PipelineContext({
     required this.pipelineId,
@@ -52,4 +53,14 @@ class PipelineContext {
   }
 
   List<AdkArtifact> get artifacts => List.unmodifiable(_artifacts);
+
+  void setVariable(String name, dynamic value) {
+    _variables[name] = value;
+  }
+
+  dynamic getVariable(String name) {
+    return _variables[name];
+  }
+
+  Map<String, dynamic> get variables => Map.unmodifiable(_variables);
 }

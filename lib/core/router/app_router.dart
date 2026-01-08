@@ -9,7 +9,6 @@ import '../../features/creative/creative_studio_screen.dart';
 import '../../features/campaigns/screens/camera_capture_screen.dart';
 import '../../features/auth/auth_screen.dart';
 import '../../features/settings/profile_settings_screen.dart';
-import '../../features/adk/screens/pipeline_builder_screen.dart';
 import '../../features/adk/screens/workflow_canvas_screen.dart';
 import '../../features/clients/client_management_screen.dart';
 import '../../core/auth/auth_service.dart';
@@ -69,10 +68,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/analytics',
             builder: (context, state) => const Center(child: Text('Analytics - Coming Soon')),
           ),
-          GoRoute(
-            path: '/pipelines',
-            builder: (context, state) => const PipelineBuilderScreen(),
-          ),
+          // GoRoute(
+          //   path: '/pipelines',
+          //   builder: (context, state) => const PipelineBuilderScreen(),
+          // ),
           GoRoute(
             path: '/workflow-canvas',
             builder: (context, state) => WorkflowCanvasScreen(pipelineId: state.uri.queryParameters['id']),

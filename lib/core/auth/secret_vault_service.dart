@@ -17,6 +17,7 @@ class SecretVaultService {
   static const String _xaiKey = 'xai_api_key';
   static const String _midjourneyKey = 'midjourney_api_key';
   static const String _runwayKey = 'runway_api_key';
+  static const String _elevenLabsKey = 'eleven_labs_api_key';
 
   Future<void> saveGeminiKey(String key) async => await _storage.write(key: _geminiKey, value: key);
   Future<String?> getGeminiKey() async => await _storage.read(key: _geminiKey);
@@ -52,6 +53,9 @@ class SecretVaultService {
   Future<void> saveRunwayKey(String key) async => await _storage.write(key: _runwayKey, value: key);
   Future<String?> getRunwayKey() async => await _storage.read(key: _runwayKey);
 
+  Future<void> saveElevenLabsKey(String key) async => await _storage.write(key: _elevenLabsKey, value: key);
+  Future<String?> getElevenLabsKey() async => await _storage.read(key: _elevenLabsKey);
+
   Future<void> clearAllKeys() async {
     await _storage.delete(key: _geminiKey);
     await _storage.delete(key: _veoKey);
@@ -64,6 +68,7 @@ class SecretVaultService {
     await _storage.delete(key: _xaiKey);
     await _storage.delete(key: _midjourneyKey);
     await _storage.delete(key: _runwayKey);
+    await _storage.delete(key: _elevenLabsKey);
   }
 }
 

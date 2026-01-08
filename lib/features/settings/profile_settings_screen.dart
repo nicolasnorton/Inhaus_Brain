@@ -5,9 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/auth/secret_vault_service.dart';
 import '../../core/services/system_prompts_service.dart';
-import '../auth/auth_screen.dart';
 import '../auth/models/user_model.dart';
-import '../clients/models/client_model.dart';
 import '../clients/providers/client_provider.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
@@ -31,6 +29,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _xaiController = TextEditingController();
   final _midjourneyController = TextEditingController();
   final _runwayController = TextEditingController();
+  final _elevenLabsController = TextEditingController();
 
   final _researchPromptController = TextEditingController();
   final _creativePromptController = TextEditingController();
@@ -52,7 +51,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _displayNameController = TextEditingController();
   final _emailEditController = TextEditingController();
 
-  bool _isLoadingKeys = true;
   bool _isEditingProfile = false;
   
   UserRole? _selectedRole;
@@ -81,6 +79,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _xaiController.text = await vault.getXAIKey() ?? '';
     _midjourneyController.text = await vault.getMidjourneyKey() ?? '';
     _runwayController.text = await vault.getRunwayKey() ?? '';
+    _elevenLabsController.text = await vault.getElevenLabsKey() ?? '';
 
     _researchPromptController.text = await prompts.getResearchPrompt();
     _creativePromptController.text = await prompts.getCreativePrompt();
@@ -109,7 +108,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       _selectedClientIds = List.from(profile.assignedClientIds);
     }
 
-    setState(() => _isLoadingKeys = false);
+    setState(() {});
   }
 
   Future<void> _saveKeys() async {
@@ -127,6 +126,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     await vault.saveXAIKey(_xaiController.text);
     await vault.saveMidjourneyKey(_midjourneyController.text);
     await vault.saveRunwayKey(_runwayController.text);
+    await vault.saveElevenLabsKey(_elevenLabsController.text);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,427 +185,406 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     }
   }
 
+  int _selectedIndex = 0;
+
+  final List<(String, IconData)> _sections = [
+    ('General', Icons.person_outline),
+    ('Agent Brain', FontAwesomeIcons.brain),
+    ('AI Models', FontAwesomeIcons.microchip),
+    ('Connectors', FontAwesomeIcons.plug),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-
     return Scaffold(
-      backgroundColor: Colors.black, // Assuming dark theme
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Settings & Vault'),
+        title: const Text('Operations Center'),
         backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: authState.when(
-        data: (user) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (user != null) ...[
-                _buildUserProfile(user),
-                const SizedBox(height: 32),
-                
-                // 1.5 Role & Assignment Section
-                _buildRoleAndClientManagement(user),
-                const SizedBox(height: 32),
-              ],
-
-              const Divider(color: Colors.white24),
-              const SizedBox(height: 32),
-              
-              // 2. Secrets Vault Section
-              const Text(
-                'SECRETS VAULT (BYO-KEYS)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: Colors.white54,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Your keys are stored securely on your device. Inhaus Brain uses them for high-tier agent actions.',
-                      style: TextStyle(color: Colors.white54, fontSize: 13),
+      body: Row(
+        children: [
+          // 1. Internal Settings Sidebar
+          Container(
+            width: 200,
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+            ),
+            child: ListView.builder(
+              itemCount: _sections.length,
+              itemBuilder: (context, index) {
+                final isSelected = _selectedIndex == index;
+                return ListTile(
+                  leading: Icon(_sections[index].$2, size: 18, color: isSelected ? Colors.blueAccent : Colors.white54),
+                  title: Text(
+                    _sections[index].$1,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
                     ),
-                    const SizedBox(height: 24),
-                    if (_isLoadingKeys)
-                      const CircularProgressIndicator()
-                    else
-                      Column(
-                        children: [
-                          _buildKeyField('Gemini Pro / Flash API Key', _geminiController, FontAwesomeIcons.google),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Gemma Model Key (Vertex/Local)', _gemmaController, FontAwesomeIcons.dna),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Imagen 3 Generation Key', _imagenController, FontAwesomeIcons.image),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Veo Video Gen Key', _veoController, FontAwesomeIcons.video),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Lyria Music Gen Key', _lyriaController, FontAwesomeIcons.music),
-                          const SizedBox(height: 16),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Nano Banana 🍌 (Image Edit Key)', _bananaController, FontAwesomeIcons.wandMagicSparkles),
-                          
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24.0),
-                            child: Divider(color: Colors.white24),
-                          ),
-                          const Text('MULTI-MODEL PROVIDERS (PHASE 35)', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10)),
-                          const SizedBox(height: 16),
-                          
-                          _buildKeyField('OpenAI API Key (GPT-4o)', _openaiController, FontAwesomeIcons.microchip),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Anthropic API Key (Claude 3.5)', _anthropicController, FontAwesomeIcons.brain),
-                          const SizedBox(height: 16),
-                          _buildKeyField('xAI API Key (Grok)', _xaiController, FontAwesomeIcons.xTwitter),
-                          
-                           const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24.0),
-                            child: Divider(color: Colors.white24),
-                          ),
-                          const Text('CREATIVE GENERATION', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10)),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Midjourney API Key (Proxy)', _midjourneyController, FontAwesomeIcons.paintRoller),
-                          const SizedBox(height: 16),
-                          _buildKeyField('Runway API Key (Gen-2)', _runwayController, FontAwesomeIcons.film),
-                          
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _saveKeys,
-                              icon: const Icon(Icons.lock_outline, size: 16),
-                              label: const Text('Save to Vault'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blueAccent,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 32),
-              
-              // 3. Agent Brain Section (Master Prompts)
-              const Text(
-                'AGENT BRAIN (MASTER PROMPTS)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: Colors.white54,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Define the system instructions for each agent. These master prompts guide their behavior and persona.',
-                      style: TextStyle(color: Colors.white54, fontSize: 13),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_isLoadingKeys) 
-                      const CircularProgressIndicator()
-                    else
-                      Column(
-                        children: [
-                          _buildPromptField('Research Agent Prompt', _researchPromptController, FontAwesomeIcons.magnifyingGlass, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Creative Agent Prompt', _creativePromptController, FontAwesomeIcons.palette, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Copywriter Agent Prompt', _copyPromptController, FontAwesomeIcons.penNib, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Developer Agent Prompt', _devPromptController, FontAwesomeIcons.code, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          
-                          const Divider(color: Colors.white10),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Text(
-                              'AGENCY PIPELINE ROLES',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
-                            ),
-                          ),
-                          
-                          _buildPromptField('Trend Scout Prompt', _trendScoutPromptController, FontAwesomeIcons.bolt, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Account Director Prompt', _accountDirectorPromptController, FontAwesomeIcons.userTie, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Strategist Prompt', _strategistPromptController, FontAwesomeIcons.compass, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Editorial Manager Prompt', _editorialManagerPromptController, FontAwesomeIcons.calendarCheck, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Media Buyer Prompt', _mediaBuyerPromptController, FontAwesomeIcons.bullhorn, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Performance Analyst Prompt', _performanceAnalystPromptController, FontAwesomeIcons.chartLine, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 24),
-                          
-                          const Divider(color: Colors.white10),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Text(
-                              'SECURITY & UTILITY',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
-                            ),
-                          ),
-                          
-                          _buildPromptField('Cyber Security Prompt', _securityPromptController, FontAwesomeIcons.shieldHalved, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 16),
-                          _buildPromptField('Data Engineer Prompt', _dataEngPromptController, FontAwesomeIcons.database, readOnly: !ref.read(authServiceProvider).isAdmin),
-                          const SizedBox(height: 24),
-                          if (ref.read(authServiceProvider).isAdmin)
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: _savePrompts,
-                                icon: const Icon(FontAwesomeIcons.brain, size: 16),
-                                label: const Text('Update Agent Brains'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.purpleAccent,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                ),
-                              ),
-                            )
-                          else
-                            const Padding(
-                              padding: EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                'Original prompts are protected. Only system admins can modify the Agent Brain.',
-                                style: TextStyle(color: Colors.white24, fontSize: 11, fontStyle: FontStyle.italic),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
+                  ),
+                  selected: isSelected,
+                  selectedTileColor: Colors.blueAccent.withValues(alpha: 0.1),
+                  onTap: () => setState(() => _selectedIndex = index),
+                );
+              },
+            ),
           ),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+          
+          // 2. Content Area
+          Expanded(
+            child: Container(
+              color: const Color(0xFF0F0F0F),
+              child: RefreshedWebLayout( // Helper for consistent padding
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(40),
+                  child: _buildSectionContent(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildSectionContent() {
+    final user = ref.watch(authStateProvider).value;
+    switch (_selectedIndex) {
+      case 0: return _buildGeneralSection(user);
+      case 1: return _buildBrainSection();
+      case 2: return _buildAIModelsSection();
+      case 3: return _buildConnectorsSection();
+      default: return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildGeneralSection(User? user) {
+    if (user == null) return _buildLoginPrompt();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader('PROFILE & ACCOUNT', 'Manage your identity and access levels.'),
+        const SizedBox(height: 32),
+        _buildUserProfile(user),
+        const SizedBox(height: 32),
+        _buildRoleAndClientManagement(user),
+      ],
+    );
+  }
+
+  Widget _buildBrainSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader('AGENT BRAIN (MASTER PROMPTS)', 'System instructions that define the agency persona.'),
+        const SizedBox(height: 32),
+        // ... prompt fields ...
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Column(
+             children: [
+                _buildPromptField('Research Agent Prompt', _researchPromptController, FontAwesomeIcons.magnifyingGlass, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Creative Agent Prompt', _creativePromptController, FontAwesomeIcons.palette, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Copywriter Agent Prompt', _copyPromptController, FontAwesomeIcons.penNib, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Developer Agent Prompt', _devPromptController, FontAwesomeIcons.code, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                
+                const Divider(color: Colors.white10),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'AGENCY PIPELINE ROLES',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
+                  ),
+                ),
+                
+                _buildPromptField('Trend Scout Prompt', _trendScoutPromptController, FontAwesomeIcons.bolt, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Account Director Prompt', _accountDirectorPromptController, FontAwesomeIcons.userTie, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Strategist Prompt', _strategistPromptController, FontAwesomeIcons.compass, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Editorial Manager Prompt', _editorialManagerPromptController, FontAwesomeIcons.calendarCheck, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Media Buyer Prompt', _mediaBuyerPromptController, FontAwesomeIcons.bullhorn, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Performance Analyst Prompt', _performanceAnalystPromptController, FontAwesomeIcons.chartLine, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 24),
+                
+                const Divider(color: Colors.white10),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'SECURITY & UTILITY',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
+                  ),
+                ),
+                
+                _buildPromptField('Cyber Security Prompt', _securityPromptController, FontAwesomeIcons.shieldHalved, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 16),
+                _buildPromptField('Data Engineer Prompt', _dataEngPromptController, FontAwesomeIcons.database, readOnly: !ref.read(authServiceProvider).isAdmin),
+                const SizedBox(height: 24),
+                
+                if (ref.read(authServiceProvider).isAdmin)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _savePrompts,
+                      icon: const Icon(FontAwesomeIcons.brain, size: 16),
+                      label: const Text('Update Agent Brains'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purpleAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIModelsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader('AI MODEL VAULT', 'Securely store API keys for external providers. Keys never leave your device.'),
+        const SizedBox(height: 32),
+        Container(
+           padding: const EdgeInsets.all(24),
+           decoration: BoxDecoration(
+             color: Colors.white.withValues(alpha: 0.05),
+             borderRadius: BorderRadius.circular(16),
+             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+           ),
+           child: Column(
+             children: [
+                _buildKeyField('Gemini Pro / Flash API Key', _geminiController, FontAwesomeIcons.google),
+                const SizedBox(height: 16),
+                _buildKeyField('OpenAI API Key (GPT-4o)', _openaiController, FontAwesomeIcons.microchip),
+                const SizedBox(height: 16),
+                _buildKeyField('Anthropic API Key (Claude 3.5)', _anthropicController, FontAwesomeIcons.brain),
+                const SizedBox(height: 16),
+                _buildKeyField('xAI / Grok API Key', _xaiController, FontAwesomeIcons.x),
+                const SizedBox(height: 16),
+                _buildKeyField('Runway API Key (Gen-3)', _runwayController, FontAwesomeIcons.film),
+                const SizedBox(height: 16),
+                _buildKeyField('Midjourney Auth Token', _midjourneyController, FontAwesomeIcons.palette),
+                const SizedBox(height: 16),
+                _buildKeyField('Eleven Labs API Key', _elevenLabsController, FontAwesomeIcons.microphone),
+                const SizedBox(height: 24),
+                SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _saveKeys, child: const Text('Save Keys')))
+             ],
+           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectorsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader('TOOL CONNECTORS', 'Integrate third-party services into your workflow.'),
+        const SizedBox(height: 32),
+        _buildConnectorCard('Google Search', FontAwesomeIcons.google, true, 'Active'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('Gmail', FontAwesomeIcons.envelope, false, 'Coming Soon'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('Slack', FontAwesomeIcons.slack, false, 'Coming Soon'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('Notion', FontAwesomeIcons.n, false, 'Coming Soon'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('Otter.ai', FontAwesomeIcons.earListen, false, 'Coming Soon'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('HubSpot', FontAwesomeIcons.hubspot, false, 'Coming Soon'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('GoHighLevel', FontAwesomeIcons.rocket, false, 'Coming Soon'),
+        const SizedBox(height: 16),
+        _buildConnectorCard('Google Drive', FontAwesomeIcons.googleDrive, false, 'Coming Soon'),
+      ],
+    );
+  }
+
+  Widget _buildConnectorCard(String name, IconData icon, bool isConnected, String status) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isConnected ? Colors.greenAccent.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(status, style: TextStyle(color: isConnected ? Colors.greenAccent : Colors.white24, fontSize: 11)),
+              ],
+            ),
+          ),
+          Switch(value: isConnected, onChanged: (val) {}, activeThumbColor: Colors.greenAccent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(String title, String subtitle) {
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+         const SizedBox(height: 8),
+         Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+       ], 
+     );
+  }
+
+  Widget _buildLoginPrompt() {
+    return Center(child: Text("Please log in to manage settings."));
   }
 
   Widget _buildPromptField(String label, TextEditingController controller, IconData icon, {bool readOnly = false}) {
-    return TextField(
-      controller: controller,
-      maxLines: 3,
-      readOnly: readOnly,
-      style: TextStyle(color: readOnly ? Colors.white38 : Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Padding(
-          padding: const EdgeInsets.only(bottom: 48), // Align top
-          child: Icon(icon, size: 16, color: readOnly ? Colors.white12 : Colors.white38),
-        ),
-        filled: true,
-        fillColor: readOnly ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-    );
-  }
-
-  Widget _buildUserProfile(User? user) {
-    if (user == null) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          children: [
-            const Icon(Icons.account_circle_outlined, size: 64, color: Colors.white24),
-            const SizedBox(height: 16),
-            const Text(
-              'Sign in to sync your agents and vault across devices',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen())),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Login / Sign Up'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => ref.read(authServiceProvider).signInWithGoogle(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white24),
-                    ),
-                    child: const Text('Google'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
-              backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-              onBackgroundImageError: user.photoURL != null 
-                ? (exception, stackTrace) {
-                    debugPrint('Avatar Load Error: $exception');
-                  }
-                : null,
-              child: user.photoURL == null 
-                ? Text(
-                    (user.displayName ?? user.email ?? '?').substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ) 
-                : null,
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.displayName ?? 'Brain User',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    user.email ?? 'not.logged@in.com',
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () => ref.read(authServiceProvider).signOut(),
-              icon: const Icon(Icons.logout, color: Colors.white38),
-              tooltip: 'Sign Out',
-            ),
+            Icon(icon, size: 14, color: Colors.white54),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
           ],
         ),
-        const SizedBox(height: 24),
-        if (!_isEditingProfile)
-          TextButton.icon(
-            onPressed: () => setState(() => _isEditingProfile = true),
-            icon: const Icon(Icons.edit, size: 14),
-            label: const Text('Edit Profile Details'),
-            style: TextButton.styleFrom(foregroundColor: Colors.blueAccent),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                _buildPromptField('Display Name', _displayNameController, Icons.person_outline),
-                const SizedBox(height: 12),
-                _buildPromptField('Email Address', _emailEditController, Icons.email_outlined),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => setState(() => _isEditingProfile = false),
-                      child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: _updateProfile,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-                      child: const Text('Update Profile'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          maxLines: 5,
+          readOnly: readOnly,
+          style: const TextStyle(fontSize: 13, color: Colors.white),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.black.withValues(alpha: 0.3),
+            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.purpleAccent)),
+            hintText: 'Enter agent instructions...',
+            hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
           ),
+        ),
       ],
     );
   }
 
   Widget _buildKeyField(String label, TextEditingController controller, IconData icon) {
-    return TextField(
-      controller: controller,
-      obscureText: true,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 16, color: Colors.white38),
-        filled: true,
-        fillColor: Colors.black.withValues(alpha: 0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: Colors.white54),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+          ],
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: true,
+          style: const TextStyle(fontSize: 13, color: Colors.white),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.black.withValues(alpha: 0.3),
+            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+            hintText: 'Enter API Key...',
+            hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserProfile(User user) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                child: Text(user.displayName?.isNotEmpty == true ? user.displayName![0].toUpperCase() : '?', 
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _isEditingProfile 
+                      ? TextField(controller: _displayNameController, style: const TextStyle(color: Colors.white))
+                      : Text(user.displayName ?? 'Unnamed User', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(user.email ?? '', style: const TextStyle(color: Colors.white38, fontSize: 13)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(_isEditingProfile ? Icons.check : Icons.edit, color: Colors.blueAccent),
+                onPressed: () {
+                  if (_isEditingProfile) {
+                    _updateProfile();
+                  } else {
+                    setState(() => _isEditingProfile = true);
+                  }
+                },
+              ),
+            ],
+          ),
+          if (_isEditingProfile) ...[
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () => setState(() => _isEditingProfile = false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+            ),
+          ],
+        ],
       ),
     );
   }
 
   Widget _buildRoleAndClientManagement(User user) {
-    final isAdmin = ref.read(authServiceProvider).isAdmin;
-    final allClients = ref.watch(clientProvider);
-
+    if (!ref.read(authServiceProvider).isAdmin) return const SizedBox.shrink();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'ROLE & ASSIGNMENTS',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-            color: Colors.white54,
-          ),
-        ),
+        const Text('TEAM ACCESS & ROLES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent, letterSpacing: 1)),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(24),
@@ -617,84 +596,77 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Role Selector
-              const Text('User Role', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(height: 8),
-              if (_isEditingProfile && isAdmin)
-                DropdownButtonFormField<UserRole>(
-                  initialValue: _selectedRole,
-                  dropdownColor: const Color(0xFF1A1A1A),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                  ),
-                  items: UserRole.values.map((role) {
-                    return DropdownMenuItem(
-                      value: role,
-                      child: Text(role.name.toUpperCase()),
-                    );
-                  }).toList(),
-                  onChanged: (val) => setState(() => _selectedRole = val),
-                )
-              else
-                Text(
-                  _selectedRole?.name.toUpperCase() ?? 'NONE',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              
-              const SizedBox(height: 24),
-              
-              // Assigned Clients
-              const Text('Assigned Clients', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const Text('System Role', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-              if (_isEditingProfile && isAdmin)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: allClients.map((client) {
-                    final isSelected = _selectedClientIds.contains(client.id);
-                    return FilterChip(
-                      label: Text(client.name, style: const TextStyle(fontSize: 12)),
-                      selected: isSelected,
-                      selectedColor: Colors.blueAccent.withValues(alpha: 0.3),
-                      checkmarkColor: Colors.blueAccent,
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedClientIds.add(client.id);
-                          } else {
-                            _selectedClientIds.remove(client.id);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                )
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _selectedClientIds.isEmpty 
-                    ? [const Text('No clients assigned', style: TextStyle(color: Colors.white24, fontSize: 12))]
-                    : _selectedClientIds.map((id) {
-                        final clientName = allClients.firstWhere((c) => c.id == id, orElse: () => Client(id: id, name: 'Unknown', industry: '')).name;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(clientName, style: const TextStyle(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.bold)),
-                        );
-                      }).toList(),
+              Wrap(
+                spacing: 8,
+                children: UserRole.values.map((role) {
+                  final isSelected = _selectedRole == role;
+                  return ChoiceChip(
+                    label: Text(role.name.toUpperCase(), style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : Colors.white)),
+                    selected: isSelected,
+                    selectedColor: Colors.blueAccent,
+                    backgroundColor: Colors.white10,
+                    onSelected: (val) {
+                      if (val) setState(() => _selectedRole = role);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              const Text('Assigned Clients', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Consumer(
+                builder: (context, ref, child) {
+                  final clients = ref.watch(clientProvider);
+                  if (clients.isEmpty) return const Text('No clients found.', style: TextStyle(color: Colors.white24, fontSize: 12));
+                  
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: clients.map((client) {
+                      final isSelected = _selectedClientIds.contains(client.id);
+                      return FilterChip(
+                        label: Text(client.name, style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : Colors.white)),
+                        selected: isSelected,
+                        selectedColor: Colors.greenAccent,
+                        backgroundColor: Colors.white10,
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              _selectedClientIds.add(client.id);
+                            } else {
+                              _selectedClientIds.remove(client.id);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _updateProfile,
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.black),
+                  child: const Text('Save Access Levels'),
                 ),
+              ),
             ],
           ),
         ),
       ],
     );
+  }
+}
+
+class RefreshedWebLayout extends StatelessWidget {
+  final Widget child;
+  const RefreshedWebLayout({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) {
+    return Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: child));
   }
 }

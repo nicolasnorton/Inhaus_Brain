@@ -254,9 +254,9 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
 
               const SizedBox(width: 8),
               if (step.type != PipelineStepType.parallel) ...[
-                Icon(_getIconForAgent(step.agentType), size: 18, color: Colors.white70),
+                Icon(_getIconForAgent(step.agentType ?? MessageSender.researchAgent), size: 18, color: Colors.white70),
                 const SizedBox(width: 8),
-                Text(step.agentType.name.toUpperCase().replaceAll('AGENT', ''), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                Text((step.agentType?.name ?? 'AGENT').toUpperCase().replaceAll('AGENT', ''), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
               ],
               const Spacer(),
               IconButton(
@@ -342,9 +342,9 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
-                        Icon(_getIconForAgent(pStep.agentType), size: 14, color: Colors.blueAccent),
+                        Icon(_getIconForAgent(pStep.agentType ?? MessageSender.researchAgent), size: 14, color: Colors.blueAccent),
                         const SizedBox(width: 8),
-                        Text(pStep.agentType.name.toUpperCase().replaceAll('AGENT', ''), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text((pStep.agentType?.name ?? 'AGENT').toUpperCase().replaceAll('AGENT', ''), style: const TextStyle(color: Colors.white70, fontSize: 12)),
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.close, size: 14, color: Colors.white24),
@@ -375,9 +375,9 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
       children: [
         Row(
           children: [
-            Icon(_getIconForAgent(step.agentType), size: 16, color: Colors.orangeAccent),
+            Icon(_getIconForAgent(step.agentType ?? MessageSender.researchAgent), size: 16, color: Colors.orangeAccent),
             const SizedBox(width: 8),
-            Text('LOOPING: ${step.agentType.name.replaceAll('Agent','')}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            Text('LOOPING: ${(step.agentType?.name ?? 'AGENT').replaceAll('Agent','')}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ],
         ),
         const SizedBox(height: 8),

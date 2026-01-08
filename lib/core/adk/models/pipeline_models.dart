@@ -33,22 +33,51 @@ class Pipeline {
   };
 }
 
+enum WorkflowNodeType {
+  userInput,
+  trigger,
+  llm,
+  knowledgeRetrieval,
+  answer,
+  output,
+  agent,
+  tool,
+  questionClassifier,
+  ifElse,
+  iteration,
+  loop,
+  code,
+  template,
+  variableAggregator,
+  documentExtractor,
+  variableAssigner,
+  parameterExtractor,
+  httpRequest,
+  listOperator
+}
+
 enum PipelineStepType { sequential, parallel, loop }
 
 class PipelineStep {
   final String id;
-  final MessageSender agentType;
-  final String instruction; // Override or specific instruction for this step
-  final bool requiresApproval; // If true, pauses pipeline for user action
+  final WorkflowNodeType nodeType;
+  final MessageSender? agentType; // Keep for legacy/agent nodes
+  final String instruction; 
+  final bool requiresApproval; 
   final PipelineStepType type;
-  final List<PipelineStep>? parallelSteps; // Steps to run in parallel
-  final String? loopCondition; // Descriptive condition for looping
-  final List<String> dependencies; // DAG: IDs of steps that must finish first
-  final Map<String, double>? uiPosition; // Canvas: {x: 100.0, y: 200.0}
+  final List<PipelineStep>? parallelSteps; 
+  final String? loopCondition; 
+  final List<String> dependencies; 
+  final Map<String, double>? uiPosition; 
+  
+  // New Dify-style fields
+  final Map<String, dynamic> config;
+  final Map<String, String> inputMappings; // node_id.output_name -> input_name
 
   PipelineStep({
     required this.id,
-    required this.agentType,
+    this.nodeType = WorkflowNodeType.agent,
+    this.agentType,
     this.instruction = '',
     this.requiresApproval = false,
     this.type = PipelineStepType.sequential,
@@ -56,12 +85,20 @@ class PipelineStep {
     this.loopCondition,
     this.dependencies = const [],
     this.uiPosition,
+    this.config = const {},
+    this.inputMappings = const {},
   });
 
   factory PipelineStep.fromJson(Map<String, dynamic> json) {
     return PipelineStep(
       id: json['id'] as String,
-      agentType: MessageSender.values.firstWhere((e) => e.name == json['agentType']),
+      nodeType: WorkflowNodeType.values.firstWhere(
+        (e) => e.name == (json['nodeType'] ?? 'agent'),
+        orElse: () => WorkflowNodeType.agent,
+      ),
+      agentType: json['agentType'] != null 
+          ? MessageSender.values.firstWhere((e) => e.name == json['agentType'])
+          : null,
       instruction: json['instruction'] as String? ?? '',
       requiresApproval: json['requiresApproval'] as bool? ?? false,
       type: PipelineStepType.values.firstWhere(
@@ -76,12 +113,15 @@ class PipelineStep {
       loopCondition: json['loopCondition'] as String?,
       dependencies: (json['dependencies'] as List?)?.map((e) => e as String).toList() ?? [],
       uiPosition: json['uiPosition'] != null ? Map<String, double>.from(json['uiPosition']) : null,
+      config: Map<String, dynamic>.from(json['config'] ?? {}),
+      inputMappings: Map<String, String>.from(json['inputMappings'] ?? {}),
     );
   }
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'agentType': agentType.name,
+    'nodeType': nodeType.name,
+    if (agentType != null) 'agentType': agentType!.name,
     'instruction': instruction,
     'requiresApproval': requiresApproval,
     'type': type.name,
@@ -89,5 +129,7 @@ class PipelineStep {
     if (loopCondition != null) 'loopCondition': loopCondition,
     'dependencies': dependencies,
     if (uiPosition != null) 'uiPosition': uiPosition,
+    'config': config,
+    'inputMappings': inputMappings,
   };
 }

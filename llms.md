@@ -17,7 +17,7 @@ The application coordinates several specialized models via the `EdgeAIService` a
 - **Veo**: SOTA video generation interface via `VideoGenerationTool`.
 - **Lyria**: Advanced music/soundtrack composition via `AudioGenerationTool`.
 - **Nano Banana 🍌**: Agentic visual refinement and image editing.
-- **External Providers**: Support for **OpenAI**, **Anthropic**, and **xAI** via `EdgeAIService` routing.
+- **External Providers**: Support for **OpenAI**, **Anthropic**, **xAI (Grok)**, **Runway**, **Midjourney**, and **Eleven Labs** via `EdgeAIService` routing.
 
 ### 2. Model Context Protocol (MCP) Standards
 All agent capabilities are abstracted into the `AgentTool` (at `lib/core/mcp/`) class, providing a standardized input/output schema:
@@ -44,6 +44,7 @@ The Inhaus Brain features an 11-step specialized agency roster:
 - **`PipelineContext`**: Maintains a shared memory of `AdkArtifact`s across steps.
 - **Streaming**: Full support for real-time token streaming and tool-usage feedback.
 - **Visual Canvas**: `WorkflowCanvasScreen` provides a node-based editor for DAG pipelines.
+- **User Input & Variables**: Persistent variable store in `PipelineContext` with dynamic resolution in `AdkService`.
 
 ## Authentication & Security
 - **Auth Flow**: Uses `AuthService` with `FirebaseAuth` and `GoogleSignIn`. Includes a `MockAuthService` fallback.

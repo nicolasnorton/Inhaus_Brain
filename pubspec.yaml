@@ -51,6 +51,7 @@ dependencies:
   camera: ^0.11.0+2
   speech_to_text: ^7.0.0
   video_player: ^2.9.1
+  flutter_tts: ^4.2.2
   record: ^5.2.0
   path_provider: ^2.1.5
   flutter_secure_storage: ^10.0.0

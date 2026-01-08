@@ -53,7 +53,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.diagramProject),
-                label: Text('Pipelines'),
+                label: Text('Workflows'),
               ),
               const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.gear),
@@ -121,7 +121,7 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/campaigns')) return 2;
     if (location.startsWith('/creative')) return 3;
     if (location.startsWith('/analytics')) return 4;
-    if (location.startsWith('/pipelines')) return 5;
+    if (location.startsWith('/workflow-canvas')) return 5;
     if (location.startsWith('/settings')) return 6;
     return 0;
   }
@@ -144,7 +144,7 @@ class DashboardScreen extends ConsumerWidget {
         context.go('/analytics');
         break;
       case 5:
-        context.go('/pipelines');
+        context.go('/workflow-canvas');
         break;
       case 6:
         context.go('/settings');
