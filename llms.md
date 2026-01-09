@@ -44,7 +44,24 @@ The Inhaus Brain features an 11-step specialized agency roster:
 - **`PipelineContext`**: Maintains a shared memory of `AdkArtifact`s across steps.
 - **Streaming**: Full support for real-time token streaming and tool-usage feedback.
 - **Visual Canvas**: `WorkflowCanvasScreen` provides a node-based editor for DAG pipelines.
+- **Advanced Flow Logic**: Support for `IfElseNode`, `SwitchCaseNode`, `ForEachLoopNode`, and `WhileLoopNode` with nested execution.
+- **Integrated Debug Tools**: 
+    - **`VariableInspector`**: Real-time tree view of `PipelineContext` variables with live editing.
+    - **`TestRunDialog`**: Sandbox for executing single nodes with custom inputs.
+    - **`RunHistory`**: Persistent logs of execution paths and performance metrics.
 - **User Input & Variables**: Persistent variable store in `PipelineContext` with dynamic resolution in `AdkService`.
+
+### 5. Publishing & Deployment
+The `PublishService` coordinates the deployment of workflows across multiple platforms:
+- **Web Applications**: Branded storefronts for workflow/chatflow applications.
+- **API Endpoints**: REST server with API key management and per-app rate limiting.
+- **Embed Widgets**: Client-side chat widget and iframe generation.
+- **MCP Server**: Exposure of workflows as tools via the Model Context Protocol.
+
+### 6. Workspace & Configuration
+- **Model Providers**: Unified BYOK system for LLM, Embedding, Rerank, and Voice providers.
+- **Plugins**: Modular extension system for integrating secondary AI services (e.g., LlamaCloud).
+- **Responsive Dashboard**: `DashboardHome` uses `LayoutBuilder` for adaptive navigation widgets (4 cols desktop / 3 cols mobile).
 
 ## Authentication & Security
 - **Auth Flow**: Uses `AuthService` with `FirebaseAuth` and `GoogleSignIn`. Includes a `MockAuthService` fallback.

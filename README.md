@@ -30,9 +30,18 @@ A powerful orchestration layer that allows for complex, multi-step workflows:
 - **Pipeline Builder**: Drag-and-drop interface to assemble custom AI workflows using any agent in the registry.
 - **Visual Workflow Canvas**: Infinite, node-based editor for designing complex DAG (Directed Acyclic Graph) agent networks.
 - **Master Agency Pipeline**: A factory-default, 11-step specialized workflow (Trend Scout -> Strategist -> Performance Analyst -> etc.) for end-to-end campaign automation.
-- **Control Flow**: Supports Sequential, Parallel, and Loop steps for advanced execution logic.
+- **Control Flow**: Advanced execution logic with **If-Else**, **Switch/Case**, and **Loop** (For Each/While) nodes.
+- **Integrated Debugging**: Real-time **Variable Inspector**, **Test Run** dialogs, and **Run History** logging directly within the ADK.
+- **Responsive Dashboard**: Premium home screen with intelligent quick-access widgets for all core modules.
 - **User Input Node**: Dify-style variable collection with support for Text, Select, Number, Checkbox, and Files.
 - **Variable Injection**: Dynamic mustache-style `{{variable}}` resolution across all node configurations.
+
+### 🚀 Publishing & Distribution
+Effortless deployment of your AI agents across multiple channels:
+- **Web Applications**: Generate standalone, branded web apps with full session management.
+- **API Integration**: RESTful endpoints with API key management and rate limiting.
+- **Website Embedding**: Seamless chat widgets and iframe embedding for existing sites.
+- **MCP Server Deployment**: Standardized tool integration via the Model Context Protocol.
 
 ### 🛡️ Security Guardian
 Enterprise-grade safety integrated directly into the agentic flow:
@@ -101,6 +110,8 @@ See [DEPLOY.md](file:///Users/nicolasnorton/AudioTherapy/audio_therapy_app/Inhau
 - `lib/features/auth`: Role-based login and session management.
 - `lib/features/campaigns`: Campaign creation, wizardry, and insight approval.
 - `lib/features/creative`: Creative Studio, design concepts, and moodboards.
+- `lib/features/workspace`: Management of Model Providers, Plugins, Apps, and Publishing.
+- `lib/features/adk`: The core Agent Development Kit, including workflow logic and debug tools.
 - `lib/core/services/edge_ai_service.dart`: The brain of the "Edge-First" implementation.
 
 ---
