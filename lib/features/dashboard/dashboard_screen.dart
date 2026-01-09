@@ -56,6 +56,22 @@ class DashboardScreen extends ConsumerWidget {
                 label: Text('Workflows'),
               ),
               const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.rocket),
+                label: Text('Publish'),
+              ),
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.bug),
+                label: Text('Debug'),
+              ),
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.book),
+                label: Text('Knowledge'),
+              ),
+              const NavigationRailDestination(
+                icon: Icon(FontAwesomeIcons.briefcase),
+                label: Text('Workspace'),
+              ),
+              const NavigationRailDestination(
                 icon: Icon(FontAwesomeIcons.gear),
                 label: Text('Settings'),
               ),
@@ -122,7 +138,11 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/creative')) return 3;
     if (location.startsWith('/analytics')) return 4;
     if (location.startsWith('/workflow-canvas')) return 5;
-    if (location.startsWith('/settings')) return 6;
+    if (location.startsWith('/publish')) return 6;
+    if (location.startsWith('/debug')) return 7;
+    if (location.startsWith('/knowledge')) return 8;
+    if (location.startsWith('/workspace')) return 9;
+    if (location.startsWith('/settings')) return 10;
     return 0;
   }
 
@@ -147,13 +167,25 @@ class DashboardScreen extends ConsumerWidget {
         context.go('/workflow-canvas');
         break;
       case 6:
+        context.go('/publish');
+        break;
+      case 7:
+        context.go('/debug');
+        break;
+      case 8:
+        context.go('/knowledge');
+        break;
+      case 9:
+        context.go('/workspace/model-providers');
+        break;
+      case 10:
         context.go('/settings');
         break;
     }
   }
 }
 
-// Simple placeholder for the home view
+// Enhanced dashboard home with navigation widgets
 class DashboardHome extends ConsumerWidget {
   const DashboardHome({super.key});
 
@@ -162,20 +194,166 @@ class DashboardHome extends ConsumerWidget {
     final user = ref.watch(authStateProvider).value;
     final displayName = user?.displayName ?? 'Agent';
 
-    return Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Welcome header
           Text(
             'Welcome back, $displayName',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
             'Inhaus Brain is ready for your next campaign.',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white70,
+                ),
+          ),
+          const SizedBox(height: 32),
+
+          // Quick access cards
+          Text(
+            'Quick Access',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Grid of navigation cards - responsive
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Use 4 columns on desktop (>1200px), 3 on smaller screens
+              final crossAxisCount = constraints.maxWidth > 1200 ? 4 : 3;
+              
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.1,
+                children: [
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.usersViewfinder,
+                    label: 'Clients',
+                    description: 'Manage your clients',
+                    onTap: () => context.go('/clients'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.bullhorn,
+                    label: 'Campaigns',
+                    description: 'Create campaigns',
+                    onTap: () => context.go('/campaigns'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.wandMagicSparkles,
+                    label: 'Creative',
+                    description: 'Design content',
+                    onTap: () => context.go('/creative'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.chartLine,
+                    label: 'Analytics',
+                    description: 'View insights',
+                    onTap: () => context.go('/analytics'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.diagramProject,
+                    label: 'Workflows',
+                    description: 'Build workflows',
+                    onTap: () => context.go('/workflow-canvas'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.rocket,
+                    label: 'Publish',
+                    description: 'Deploy your apps',
+                    onTap: () => context.go('/publish'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.bug,
+                    label: 'Debug',
+                    description: 'Test & debug',
+                    onTap: () => context.go('/debug'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.book,
+                    label: 'Knowledge',
+                    description: 'Manage knowledge',
+                    onTap: () => context.go('/knowledge'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.briefcase,
+                    label: 'Workspace',
+                    description: 'Configure workspace',
+                    onTap: () => context.go('/workspace/model-providers'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.gear,
+                    label: 'Settings',
+                    description: 'Personal settings',
+                    onTap: () => context.go('/settings'),
+                  ),
+                ],
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String description,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: Theme.of(context).primaryColor,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

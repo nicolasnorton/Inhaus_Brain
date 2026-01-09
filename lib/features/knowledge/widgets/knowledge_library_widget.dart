@@ -8,7 +8,9 @@ import '../../campaigns/models/campaign.dart';
 import '../../chat/providers/chat_provider.dart';
 
 class KnowledgeLibraryWidget extends ConsumerStatefulWidget {
-  const KnowledgeLibraryWidget({super.key});
+  final void Function(String kbName)? onSelectKB;
+  
+  const KnowledgeLibraryWidget({super.key, this.onSelectKB});
 
   @override
   ConsumerState<KnowledgeLibraryWidget> createState() => _KnowledgeLibraryWidgetState();
@@ -81,10 +83,8 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     final sources = ref.watch(knowledgeProvider);
 
     return Container(
-      width: 400,
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,18 +95,14 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'CONTEXT BOARD',
+                  'KNOWLEDGE BASE',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    color: Colors.white54,
+                    letterSpacing: 1.5,
+                    color: Colors.white,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  onPressed: () => Navigator.pop(context),
-                )
               ],
             ),
           ),

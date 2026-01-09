@@ -421,6 +421,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         child: NodeConfigurationSheet(
           step: step,
           allSteps: _steps,
+          onClose: () => setState(() => _selectedStepId = null),
           onUpdate: (id, {config, instruction, agentType, inputMappings}) {
              _updateStep(id, config: config, instruction: instruction, agentType: agentType, inputMappings: inputMappings);
           },

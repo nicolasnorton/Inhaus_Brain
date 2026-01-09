@@ -6,12 +6,14 @@ import '../../chat/models/chat_models.dart';
 class NodeConfigurationSheet extends StatefulWidget {
   final PipelineStep step;
   final List<PipelineStep> allSteps; // Required for resolving dependency names
+  final VoidCallback onClose;
   final Function(String stepId, {Map<String, dynamic>? config, String? instruction, MessageSender? agentType, Map<String, String>? inputMappings}) onUpdate;
 
   const NodeConfigurationSheet({
     super.key,
     required this.step,
     required this.allSteps,
+    required this.onClose,
     required this.onUpdate,
   });
 
@@ -70,7 +72,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
               ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white54),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: widget.onClose,
               ),
             ],
           ),
@@ -175,7 +177,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
       case WorkflowNodeType.listOperator:
         return _buildListOperatorConfig(step);
       case WorkflowNodeType.httpRequest:
-        return _buildHTTPConfig(step);
+        return _buildHttpRequestConfig(step);
       case WorkflowNodeType.userInput:
         return _buildUserInputConfig(step);
       case WorkflowNodeType.trigger:
@@ -254,163 +256,507 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   // --- Configuration Builders ---
 
   Widget _buildLLMConfig(PipelineStep step) {
-    final prompts = List<Map<String, dynamic>>.from(step.config['prompts'] ?? [{'role': 'user', 'content': ''}]);
-    final model = step.config['model'] ?? 'Gemini 1.5 Pro';
-    final temp = (step.config['temperature'] ?? 0.7).toDouble();
-    final topP = (step.config['top_p'] ?? 0.9).toDouble();
-    final jsonMode = step.config['json_mode'] ?? false;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSubtitle("Model"),
-        _buildDropdown(["Gemini 1.5 Pro", "GPT-4o", "Claude 3.5 Sonnet", "Grok Beta"], model, (val) {
-           _updateStep(step.id, config: {...step.config, 'model': val});
-        }),
-        const SizedBox(height: 16),
-        _buildSubtitle("Parameters"),
-        Row(
-           children: [
-              const Text("Temp", style: TextStyle(color: Colors.white70, fontSize: 10)),
-              Expanded(
-                 child: Slider(
-                    value: temp, min: 0, max: 2, divisions: 20, 
-                    activeColor: Colors.blueAccent,
-                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'temperature': val})
+     final prompts = List<Map<String, dynamic>>.from(step.config['prompts'] ?? [{'role': 'user', 'content': ''}]);
+     final model = step.config['model'] ?? 'gpt-4o';
+     final vision = step.config['vision'] ?? false;
+     final resolution = step.config['resolution'] ?? 'High';
+     final memory = step.config['memory'] ?? false;
+     final windowSize = step.config['window_size'] ?? 10;
+     final contextVar = step.config['context_variable'] ?? '';
+     final showParams = step.config['show_params'] ?? false;
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("MODEL"),
+           Row(
+              children: [
+                 Expanded(
+                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro", "grok-beta"], model, (val) {
+                       _updateStep(step.id, config: {...step.config, 'model': val});
+                    }),
                  ),
+                 const SizedBox(width: 8),
+                 IconButton(
+                    onPressed: () => _updateStep(step.id, config: {...step.config, 'show_params': !showParams}),
+                    icon: Icon(Icons.settings_outlined, size: 16, color: showParams ? Colors.blueAccent : Colors.white38),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                 ),
+              ],
+           ),
+           if (showParams) ...[
+              const SizedBox(height: 12),
+              _buildLLMParametersPanel(step),
+           ],
+           const SizedBox(height: 16),
+
+           _buildSubtitle("CONTEXT"),
+           Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                 children: [
+                    const Icon(Icons.data_object, size: 12, color: Colors.blueAccent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                       child: _buildTextField(contextVar, (val) {
+                          _updateStep(step.id, config: {...step.config, 'context_variable': val});
+                       }, "Set context variable..."),
+                    ),
+                 ],
               ),
-              Text(temp.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 10)),
+           ),
+           const SizedBox(height: 16),
+
+           _buildPromptConfig(step, prompts),
+           const SizedBox(height: 16),
+
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 _buildSubtitle("VISION"),
+                 Transform.scale(
+                    scale: 0.7,
+                    child: Switch(
+                       value: vision,
+                       activeThumbColor: Colors.blueAccent,
+                       onChanged: (val) => _updateStep(step.id, config: {...step.config, 'vision': val}),
+                    ),
+                 ),
+              ],
+           ),
+           if (vision) ...[
+              const SizedBox(height: 8),
+              Row(
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                 children: [
+                    const Text("RESOLUTION", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                    Container(
+                       decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(6)),
+                       padding: const EdgeInsets.all(2),
+                       child: Row(
+                          children: [
+                             _buildResolutionButton("High", resolution == "High", (val) {
+                                _updateStep(step.id, config: {...step.config, 'resolution': val});
+                             }),
+                             _buildResolutionButton("Low", resolution == "Low", (val) {
+                                _updateStep(step.id, config: {...step.config, 'resolution': val});
+                             }),
+                          ],
+                       ),
+                    ),
+                 ],
+              ),
+           ],
+           const SizedBox(height: 16),
+
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 _buildSubtitle("MEMORY"),
+                 Transform.scale(
+                    scale: 0.7,
+                    child: Switch(
+                       value: memory,
+                       activeThumbColor: Colors.blueAccent,
+                       onChanged: (val) => _updateStep(step.id, config: {...step.config, 'memory': val}),
+                    ),
+                 ),
+              ],
+           ),
+           if (memory) ...[
+              const SizedBox(height: 8),
+              Row(
+                 children: [
+                    const Expanded(child: Text("WINDOW SIZE", style: TextStyle(color: Colors.white38, fontSize: 10))),
+                    Text(windowSize.toString(), style: const TextStyle(color: Colors.white60, fontSize: 10)),
+                 ],
+              ),
+              Slider(
+                 value: windowSize.toDouble(),
+                 min: 1, max: 50, divisions: 49,
+                 activeColor: Colors.blueAccent,
+                 onChanged: (val) => _updateStep(step.id, config: {...step.config, 'window_size': val.toInt()}),
+              ),
+           ],
+           const SizedBox(height: 20),
+
+           _buildSubtitle("OUTPUT VARIABLES"),
+           Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                 border: Border.all(color: Colors.white10),
+                 borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                    Row(
+                       children: [
+                          Icon(Icons.text_fields, size: 10, color: Colors.blueAccent),
+                          SizedBox(width: 8),
+                          Text("text", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                          SizedBox(width: 8),
+                          Text("string", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                       ],
+                    ),
+                 ],
+              ),
+           ),
+        ],
+     );
+  }
+
+  Widget _buildResolutionButton(String label, bool isSelected, Function(String) onTap) {
+     return GestureDetector(
+        onTap: () => onTap(label),
+        child: Container(
+           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+           decoration: BoxDecoration(
+              color: isSelected ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: isSelected ? Colors.white10 : Colors.transparent),
+           ),
+           child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.white38, fontSize: 10)),
+        ),
+     );
+  }
+
+  Widget _buildLLMParametersPanel(PipelineStep step) {
+     final temp = (step.config['temperature'] ?? 0.7).toDouble();
+     final topP = (step.config['top_p'] ?? 0.9).toDouble();
+     final maxTokens = step.config['max_tokens'] ?? 4096;
+     
+     return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.02), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white10)),
+        child: Column(
+           children: [
+              _buildParamSlider("Temperature", temp, 0, 2, (val) => _updateStep(step.id, config: {...step.config, 'temperature': val})),
+              const SizedBox(height: 8),
+              _buildParamSlider("Top P", topP, 0, 1, (val) => _updateStep(step.id, config: {...step.config, 'top_p': val})),
+              const SizedBox(height: 8),
+              Row(
+                 children: [
+                    const Expanded(child: Text("Max Tokens", style: TextStyle(color: Colors.white38, fontSize: 10))),
+                    SizedBox(width: 60, child: _buildTextField(maxTokens.toString(), (val) {
+                       _updateStep(step.id, config: {...step.config, 'max_tokens': int.tryParse(val) ?? 4096});
+                    })),
+                 ],
+              ),
            ],
         ),
-        Row(
-           children: [
-              const Text("Top P", style: TextStyle(color: Colors.white70, fontSize: 10)),
-              Expanded(
-                 child: Slider(
-                    value: topP, min: 0, max: 1, divisions: 10,
-                    activeColor: Colors.blueAccent,
-                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'top_p': val})
-                 ),
-              ),
-              Text(topP.toStringAsFixed(1), style: const TextStyle(color: Colors.white, fontSize: 10)),
-           ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-           children: [
-              const Expanded(child: Text("Structured JSON Output", style: TextStyle(color: Colors.white70, fontSize: 11))),
-              Transform.scale(
-                 scale: 0.7,
-                 child: Switch(
-                    value: jsonMode,
-                    activeThumbColor: Colors.blueAccent,
-                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'json_mode': val}),
-                 ),
-              ),
-           ],
-        ),
-        const SizedBox(height: 16),
-        _buildPromptConfig(step, prompts),
-      ],
-    );
+     );
+  }
+
+  Widget _buildParamSlider(String label, double value, double min, double max, Function(double) onChanged) {
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                 Text(value.toStringAsFixed(2), style: const TextStyle(color: Colors.white60, fontSize: 10)),
+              ],
+           ),
+           Slider(
+              value: value, min: min, max: max,
+              activeColor: Colors.blueAccent,
+              onChanged: onChanged,
+           ),
+        ],
+     );
   }
 
   Widget _buildPromptConfig(PipelineStep step, List<Map<String, dynamic>> prompts) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSubtitle("Prompts"),
-        ...prompts.asMap().entries.map((entry) => _buildPromptMessageItem(step, prompts, entry.key, entry.value)),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () {
-               final newPrompts = [...prompts, {'role': 'user', 'content': ''}];
-               _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
-            },
-            icon: const Icon(Icons.add, size: 14),
-            label: const Text("Add Message"),
-            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
-          ),
-        ),
-      ],
-    );
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         _buildSubtitle("PROMPT"),
+         ...prompts.asMap().entries.map((entry) => _buildPromptMessageItem(step, prompts, entry.key, entry.value)),
+         const SizedBox(height: 8),
+         SizedBox(
+           width: double.infinity,
+           child: OutlinedButton.icon(
+             onPressed: () {
+                final newPrompts = [...prompts, {'role': 'user', 'content': ''}];
+                _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
+             },
+             icon: const Icon(Icons.add, size: 14),
+             label: const Text("Add Message", style: TextStyle(fontSize: 11)),
+             style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white10),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+             ),
+           ),
+         ),
+       ],
+     );
   }
 
   Widget _buildPromptMessageItem(PipelineStep step, List<Map<String, dynamic>> allPrompts, int index, Map<String, dynamic> prompt) {
+     final content = prompt['content'] ?? '';
+     final role = (prompt['role'] ?? 'user').toString().toUpperCase();
+     
      return Container(
-       margin: const EdgeInsets.only(bottom: 12),
-       padding: const EdgeInsets.all(8),
-       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
-       child: Column(
-         children: [
-           Row(
-             children: [
-               SizedBox(
-                 width: 80,
-                 child: _buildDropdown(["system", "user", "assistant"], prompt['role'] ?? 'user', (val) {
-                    final newPrompts = [...allPrompts];
-                    newPrompts[index] = {...prompt, 'role': val};
-                    _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
-                 }),
-               ),
-               const Spacer(),
-               IconButton(
-                 icon: const Icon(Icons.close, size: 14, color: Colors.white38),
-                 onPressed: () {
-                    final newPrompts = [...allPrompts]..removeAt(index);
-                    _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
-                 },
-               ),
-             ],
-           ),
-           const SizedBox(height: 8),
-           _buildTextArea(prompt['content'] ?? '', (val) {
-              final newPrompts = [...allPrompts];
-              newPrompts[index] = {...prompt, 'content': val};
-              _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
-           }, "Enter prompt message..."),
-         ],
-       ),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+           color: Colors.white.withValues(alpha: 0.02),
+           borderRadius: BorderRadius.circular(8),
+           border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
+           children: [
+              Container(
+                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                 decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.03),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                 ),
+                 child: Row(
+                    children: [
+                       Text(role, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                       const SizedBox(width: 4),
+                       const Icon(Icons.help_outline, size: 12, color: Colors.white24),
+                       const Spacer(),
+                       Text("${content.length}", style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                       const SizedBox(width: 8),
+                       const Icon(Icons.auto_awesome, size: 14, color: Colors.blueAccent),
+                       const SizedBox(width: 8),
+                       const Icon(Icons.data_object, size: 12, color: Colors.white24),
+                       const SizedBox(width: 8),
+                       const Icon(Icons.copy_outlined, size: 12, color: Colors.white24),
+                       const SizedBox(width: 8),
+                       const Icon(Icons.fullscreen, size: 14, color: Colors.white24),
+                       const SizedBox(width: 8),
+                       IconButton(
+                          onPressed: () {
+                             final newPrompts = [...allPrompts]..removeAt(index);
+                             _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
+                          },
+                          icon: const Icon(Icons.close, size: 14, color: Colors.white38),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                       ),
+                    ],
+                 ),
+              ),
+              Padding(
+                 padding: const EdgeInsets.all(8.0),
+                 child: Row(
+                    children: [
+                       Expanded(
+                          child: _buildTextArea(content, (val) {
+                             final newPrompts = [...allPrompts];
+                             newPrompts[index] = {...prompt, 'content': val};
+                             _updateStep(step.id, config: {...step.config, 'prompts': newPrompts});
+                          }, "Enter message content..."),
+                       ),
+                    ],
+                 ),
+              ),
+              if (index == allPrompts.length - 1)
+                 Padding(
+                    padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+                    child: Row(
+                       children: [
+                          Container(
+                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                             decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(4)),
+                             child: const Row(
+                                children: [
+                                   Icon(Icons.info_outline, size: 10, color: Colors.blueAccent),
+                                   SizedBox(width: 4),
+                                   Text("Start", style: TextStyle(color: Colors.white60, fontSize: 9)),
+                                   Text(" / ", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                                   Text("input_text", style: TextStyle(color: Colors.blueAccent, fontSize: 9)),
+                                ],
+                             ),
+                          ),
+                       ],
+                    ),
+                 ),
+           ],
+        ),
      );
   }
 
   Widget _buildKnowledgeRetrievalConfig(PipelineStep step) {
-    final query = step.config['query'] ?? '{{input}}';
-    final topK = step.config['top_k'] ?? 3;
-    final scoreThreshold = (step.config['score_threshold'] ?? 0.7).toDouble();
-    final reranking = step.config['reranking'] ?? false;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSubtitle("Query Variable"),
-        _buildTextField(query, (val) => _updateStep(step.id, config: {...step.config, 'query': val})),
-        const SizedBox(height: 16),
-        _buildSubtitle("Retrieval Settings"),
-        Row(
-           children: [
-              Expanded(child: _buildTextField(topK.toString(), (val) => _updateStep(step.id, config: {...step.config, 'top_k': int.tryParse(val) ?? 3}), "Top K")),
-              const SizedBox(width: 8),
-              Expanded(child: _buildTextField(scoreThreshold.toString(), (val) => _updateStep(step.id, config: {...step.config, 'score_threshold': double.tryParse(val) ?? 0.7}), "Threshold")),
-           ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-           children: [
-              const Expanded(child: Text("Enable Reranking (Cohere)", style: TextStyle(color: Colors.white70, fontSize: 11))),
-              Transform.scale(
-                 scale: 0.7,
-                 child: Switch(
-                    value: reranking,
-                    activeThumbColor: Colors.blueAccent,
-                    onChanged: (val) => _updateStep(step.id, config: {...step.config, 'reranking': val}),
+     final query = step.config['query'] ?? '{{sys.query}}';
+     final knowledgeBases = List<String>.from(step.config['knowledge_bases'] ?? []);
+     final topK = step.config['top_k'] ?? 3;
+     final scoreThreshold = (step.config['score_threshold'] ?? 0.7).toDouble();
+     final reranking = step.config['reranking'] ?? false;
+     final rerankModel = step.config['rerank_model'] ?? 'rerank-english-v3.0';
+     final weightedScore = (step.config['weighted_score'] ?? 0.5).toDouble();
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("QUERY VARIABLE"),
+           Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                 children: [
+                    Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                       decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(4)),
+                       child: const Row(
+                          children: [
+                             Icon(Icons.home_outlined, size: 10, color: Colors.blueAccent),
+                             SizedBox(width: 4),
+                             Text("Start", style: TextStyle(color: Colors.white60, fontSize: 9)),
+                          ],
+                       ),
+                    ),
+                    const Text(" / ", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                    Expanded(
+                       child: _buildTextField(query, (val) {
+                          _updateStep(step.id, config: {...step.config, 'query': val});
+                       }, "e.g. {{sys.query}}"),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text("String", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                 ],
+              ),
+           ),
+           const SizedBox(height: 16),
+
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 _buildSubtitle("SELECT KNOWLEDGE"),
+                 IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.add, size: 16, color: Colors.blueAccent),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                  ),
+              ],
+           ),
+           if (knowledgeBases.isEmpty)
+              Container(
+                 width: double.infinity,
+                 padding: const EdgeInsets.all(12),
+                 decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.02),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                 ),
+                 child: const Center(
+                    child: Text("No knowledge base selected", style: TextStyle(color: Colors.white24, fontSize: 10)),
+                 ),
+              )
+           else
+              ...knowledgeBases.map((kb) => Container(
+                 margin: const EdgeInsets.only(bottom: 8),
+                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                 decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+                 child: Row(
+                    children: [
+                       const Icon(Icons.menu_book, size: 12, color: Colors.greenAccent),
+                       const SizedBox(width: 8),
+                       Expanded(child: Text(kb, style: const TextStyle(color: Colors.white70, fontSize: 11))),
+                       IconButton(
+                          onPressed: () {
+                             final newKbs = [...knowledgeBases]..remove(kb);
+                             _updateStep(step.id, config: {...step.config, 'knowledge_bases': newKbs});
+                          },
+                          icon: const Icon(Icons.close, size: 12, color: Colors.white24),
+                       ),
+                    ],
+                 ),
+              )),
+           const SizedBox(height: 16),
+
+           _buildSubtitle("RETRIEVAL SETTING"),
+           _buildSwitchRow("Enable Reranking", reranking, (val) {
+              _updateStep(step.id, config: {...step.config, 'reranking': val});
+           }, "Re-score and reorder results based on relevance"),
+           
+           if (reranking) ...[
+              const SizedBox(height: 12),
+              const Text("RERANK MODEL", style: TextStyle(color: Colors.white38, fontSize: 9)),
+              const SizedBox(height: 4),
+              _buildDropdown(["rerank-english-v3.0", "rerank-multilingual-v3.0", "bge-reranker-v2-m3"], rerankModel, (val) {
+                 _updateStep(step.id, config: {...step.config, 'rerank_model': val});
+              }),
+              const SizedBox(height: 12),
+              Row(
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                 children: [
+                    const Text("WEIGHTED SCORE", style: TextStyle(color: Colors.white38, fontSize: 9)),
+                    Text(weightedScore.toStringAsFixed(1), style: const TextStyle(color: Colors.white60, fontSize: 10)),
+                 ],
+              ),
+              Slider(
+                 value: weightedScore, min: 0, max: 1, divisions: 10,
+                 activeColor: Colors.blueAccent,
+                 onChanged: (val) => _updateStep(step.id, config: {...step.config, 'weighted_score': val}),
               ),
            ],
-        ),
-      ],
-    );
+
+           const SizedBox(height: 16),
+           Row(
+              children: [
+                 Expanded(
+                    child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                          const Text("TOP K", style: TextStyle(color: Colors.white38, fontSize: 9)),
+                          _buildTextField(topK.toString(), (val) {
+                             _updateStep(step.id, config: {...step.config, 'top_k': int.tryParse(val) ?? 3});
+                          }),
+                       ],
+                    ),
+                 ),
+                 const SizedBox(width: 12),
+                 Expanded(
+                    child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                          const Text("SCORE THRESHOLD", style: TextStyle(color: Colors.white38, fontSize: 9)),
+                          _buildTextField(scoreThreshold.toString(), (val) {
+                             _updateStep(step.id, config: {...step.config, 'score_threshold': double.tryParse(val) ?? 0.7});
+                          }),
+                       ],
+                    ),
+                 ),
+              ],
+           ),
+           const SizedBox(height: 20),
+
+           _buildSubtitle("OUTPUT VARIABLES"),
+           Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                 border: Border.all(color: Colors.white10),
+                 borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                    Row(
+                       children: [
+                          Icon(Icons.list, size: 10, color: Colors.blueAccent),
+                          SizedBox(width: 8),
+                          Text("result", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                          SizedBox(width: 8),
+                          Text("array[object]", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                       ],
+                    ),
+                    SizedBox(height: 4),
+                    Text("Retrieved document chunks containing content and metadata.", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                 ],
+              ),
+           ),
+        ],
+     );
   }
 
   Widget _buildIterationConfig(PipelineStep step) {
@@ -446,43 +792,41 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     final termVal = step.config['term_val'] ?? '';
     final maxCount = step.config['max_count'] ?? 10;
     
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSubtitle("Loop Variables"),
-          const Text("Variables that persist across iterations.", style: TextStyle(color: Colors.white24, fontSize: 10)),
-          const SizedBox(height: 8),
-          ...variables.map((v) => _buildLoopVariableItem(step, variables, v)),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                final newVars = [...variables, {'name': 'count', 'value': '0'}];
-                _updateStep(step.id, config: {...step.config, 'variables': newVars});
-              },
-              icon: const Icon(Icons.add, size: 14),
-              label: const Text("Add Loop Variable", style: TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Loop Variables"),
+        const Text("Variables that persist across iterations.", style: TextStyle(color: Colors.white24, fontSize: 10)),
+        const SizedBox(height: 8),
+        ...variables.map((v) => _buildLoopVariableItem(step, variables, v)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              final newVars = [...variables, {'name': 'count', 'value': '0'}];
+              _updateStep(step.id, config: {...step.config, 'variables': newVars});
+            },
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text("Add Loop Variable", style: TextStyle(fontSize: 12)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
           ),
-          const SizedBox(height: 16),
-          _buildSubtitle("Termination Condition"),
-          Row(
-             children: [
-                Expanded(child: _buildTextField(termVar, (val) => _updateStep(step.id, config: {...step.config, 'term_var': val}), "Variable")),
-                const SizedBox(width: 8),
-                SizedBox(width: 80, child: _buildDropdown(["equals", "not equals", "greater", "less"], termOp, (val) => _updateStep(step.id, config: {...step.config, 'term_op': val}))),
-             ],
-          ),
-          const SizedBox(height: 8),
-          _buildTextField(termVal, (val) => _updateStep(step.id, config: {...step.config, 'term_val': val}), "Value"),
-          
-          const SizedBox(height: 16),
-          _buildSubtitle("Max Iterations"),
-          _buildTextField(maxCount.toString(), (val) => _updateStep(step.id, config: {...step.config, 'max_count': int.tryParse(val) ?? 10})),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        _buildSubtitle("Termination Condition"),
+        Row(
+           children: [
+              Expanded(child: _buildTextField(termVar, (val) => _updateStep(step.id, config: {...step.config, 'term_var': val}), "Variable")),
+              const SizedBox(width: 8),
+              SizedBox(width: 80, child: _buildDropdown(["equals", "not equals", "greater", "less"], termOp, (val) => _updateStep(step.id, config: {...step.config, 'term_op': val}))),
+           ],
+        ),
+        const SizedBox(height: 8),
+        _buildTextField(termVal, (val) => _updateStep(step.id, config: {...step.config, 'term_val': val}), "Value"),
+        
+        const SizedBox(height: 16),
+        _buildSubtitle("Max Iterations"),
+        _buildTextField(maxCount.toString(), (val) => _updateStep(step.id, config: {...step.config, 'max_count': int.tryParse(val) ?? 10})),
+      ],
     );
   }
 
@@ -622,8 +966,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     final outputs = List<Map<String, dynamic>>.from(step.config['outputs'] ?? []);
     final retries = step.config['retries'] ?? 0;
     
-    return SingleChildScrollView(
-       child: Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
              _buildSubtitle("Input Variables"),
@@ -647,8 +990,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
              _buildTextField(retries.toString(), (val) => _updateStep(step.id, config: {...step.config, 'retries': int.tryParse(val) ?? 0})),
              const SizedBox(height: 24),
           ],
-       ),
-    );
+       );
   }
   
   Widget _buildTemplateConfig(PipelineStep step) {
@@ -753,25 +1095,157 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
 
   Widget _buildDocumentExtractorConfig(PipelineStep step) {
      final mode = step.config['mode'] ?? 'single';
-     final variable = step.config['variable'] ?? '{{upload}}';
+     final variable = step.config['variable'] ?? '{{sys.files}}';
+     final showAdvanced = step.config['show_advanced'] ?? false;
+     final tableExtraction = step.config['table_extraction'] ?? true;
+     final enableChunking = step.config['enable_chunking'] ?? false;
      
      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           _buildSubtitle("Processing Mode"),
-           _buildDropdown(["single", "multiple"], mode, (val) {
-              _updateStep(step.id, config: {...step.config, 'mode': val});
-           }),
+           _buildSubtitle("Input Mode"),
+           SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<String>(
+                 segments: const [
+                    ButtonSegment(value: 'single', label: Text('Single', style: TextStyle(fontSize: 10)), icon: Icon(Icons.description_outlined, size: 14)),
+                    ButtonSegment(value: 'multiple', label: Text('Multiple', style: TextStyle(fontSize: 10)), icon: Icon(Icons.copy_all_outlined, size: 14)),
+                 ],
+                 selected: {mode},
+                 onSelectionChanged: (Set<String> newSelection) {
+                    _updateStep(step.id, config: {...step.config, 'mode': newSelection.first});
+                 },
+                 style: SegmentedButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    selectedBackgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                    selectedForegroundColor: Colors.blueAccent,
+                    visualDensity: VisualDensity.compact,
+                 ),
+              ),
+           ),
            const SizedBox(height: 16),
-           _buildSubtitle("Input File Variable"),
-           _buildTextField(variable, (val) {
-              _updateStep(step.id, config: {...step.config, 'variable': val});
-           }),
+           
+           _buildSubtitle("Input Variable"),
+           Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                 children: [
+                    Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(4)),
+                       child: const Row(
+                          children: [
+                             Icon(Icons.home_outlined, size: 10, color: Colors.blueAccent),
+                             SizedBox(width: 4),
+                             Text("Start", style: TextStyle(color: Colors.white60, fontSize: 9)),
+                          ],
+                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                       child: _buildTextField(variable, (val) {
+                          _updateStep(step.id, config: {...step.config, 'variable': val});
+                       }, "e.g. {{sys.files}}"),
+                    ),
+                 ],
+              ),
+           ),
            const SizedBox(height: 8),
-           const Text("Supported: PDF, DOCX, TXT, CSV, EML, etc.", style: TextStyle(color: Colors.white24, fontSize: 10)),
-        ],
-     );
-  }
+           Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(6)),
+              child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                    const Text("Supported Formats:", style: TextStyle(color: Colors.blueAccent, fontSize: 9, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(
+                       "Text: TXT, MD, HTML\nOffice: DOCX, XLSX, CSV, PPTX\nOthers: PDF, EPUB, VTT, EML",
+                       style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 9, height: 1.4),
+                    ),
+                 ],
+              ),
+           ),
+           const SizedBox(height: 20),
+           
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 _buildSubtitle("Advanced Settings"),
+                 Transform.scale(
+                    scale: 0.7,
+                    child: Switch(
+                       value: showAdvanced,
+                       activeThumbColor: Colors.blueAccent,
+                       onChanged: (val) => _updateStep(step.id, config: {...step.config, 'show_advanced': val}),
+                    ),
+                 ),
+              ],
+           ),
+           if (showAdvanced) ...[
+              const SizedBox(height: 8),
+              _buildSwitchRow("Table Extraction", tableExtraction, (val) {
+                 _updateStep(step.id, config: {...step.config, 'table_extraction': val});
+              }, "Convert data tables to Markdown format"),
+              _buildSwitchRow("Enable Chunking", enableChunking, (val) {
+                 _updateStep(step.id, config: {...step.config, 'enable_chunking': val});
+              }, "Split large documents for context limits"),
+           ],
+           const SizedBox(height: 20),
+           
+           _buildSubtitle("Output Variables"),
+           Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                 border: Border.all(color: Colors.white10),
+                 borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                    Row(
+                       children: [
+                          const Text("text", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                          const SizedBox(width: 8),
+                          Text(mode == 'single' ? "string" : "array[string]", style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                       ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text("The extracted raw text content from the document(s).", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                  ],
+               ),
+            ),
+         ],
+      );
+   }
+
+   Widget _buildSwitchRow(String label, bool value, Function(bool) onChanged, String subtitle) {
+      return Padding(
+         padding: const EdgeInsets.only(bottom: 12),
+         child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+               Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                     Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                     Transform.scale(
+                        scale: 0.7,
+                        child: Switch(
+                           value: value,
+                           activeThumbColor: Colors.blueAccent,
+                           onChanged: onChanged,
+                        ),
+                     ),
+                  ],
+               ),
+               Text(subtitle, style: const TextStyle(color: Colors.white24, fontSize: 9)),
+            ],
+         ),
+      );
+   }
 
   Widget _buildVariableAssignerConfig(PipelineStep step) {
      final assignments = List<Map<String, dynamic>>.from(step.config['assignments'] ?? []);
@@ -834,71 +1308,280 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   Widget _buildParameterExtractorConfig(PipelineStep step) {
      final schema = List<Map<String, dynamic>>.from(step.config['schema'] ?? []);
      final mode = step.config['mode'] ?? 'Function Calling';
+     final model = step.config['model'] ?? 'gpt-4o';
+     final inputVar = step.config['input_variable'] ?? '{{sys.query}}';
+     final instructions = step.config['instructions'] ?? '';
+     final memory = step.config['memory'] ?? false;
      
      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           _buildSubtitle("Extraction Mode"),
-           _buildDropdown(['Function Calling', 'Prompt Engineering'], mode, (val) {
-              _updateStep(step.id, config: {...step.config, 'mode': val});
-           }),
-           const SizedBox(height: 16),
-           _buildSubtitle("Schema Definition"),
-           ...schema.asMap().entries.map((entry) => _buildSchemaItem(step, schema, entry.key, entry.value)),
-           SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                 onPressed: () {
-                    final newSchema = [...schema, {'name': 'param', 'type': 'String', 'desc': ''}];
-                    _updateStep(step.id, config: {...step.config, 'schema': newSchema});
-                 },
-                 icon: const Icon(Icons.add, size: 14),
-                 label: const Text("Add Parameter"),
-                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+           _buildSubtitle("INPUT VARIABLE"),
+           Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                 children: [
+                    Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                       decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(4)),
+                       child: const Row(
+                          children: [
+                             Icon(Icons.info_outline, size: 10, color: Colors.blueAccent),
+                             SizedBox(width: 4),
+                             Text("Generate Subtitles", style: TextStyle(color: Colors.white60, fontSize: 9)),
+                          ],
+                       ),
+                    ),
+                    const Text(" / ", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                    Expanded(
+                       child: _buildTextField(inputVar, (val) {
+                          _updateStep(step.id, config: {...step.config, 'input_variable': val});
+                       }, "e.g. {{sys.query}}"),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text("String", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                 ],
               ),
            ),
+           const SizedBox(height: 16),
+
+           _buildSubtitle("MODEL"),
+           Row(
+              children: [
+                 Expanded(
+                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"], model, (val) {
+                       _updateStep(step.id, config: {...step.config, 'model': val});
+                    }),
+                 ),
+                 const SizedBox(width: 8),
+                 IconButton(
+                    onPressed: () {},
+                    icon: const Icon(Icons.settings_outlined, size: 16, color: Colors.white38),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                 ),
+              ],
+           ),
+           const SizedBox(height: 16),
+
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 _buildSubtitle("EXTRACT PARAMETERS"),
+                 Row(
+                    children: [
+                       TextButton(
+                          onPressed: () {},
+                          child: const Text("Import from tools", style: TextStyle(color: Colors.blueAccent, fontSize: 10)),
+                       ),
+                       IconButton(
+                          onPressed: () {
+                             final newSchema = [...schema, {'name': 'param', 'type': 'String', 'desc': '', 'required': true}];
+                             _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+                          },
+                          icon: const Icon(Icons.add, size: 16),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                       ),
+                    ],
+                 ),
+              ],
+           ),
+           const SizedBox(height: 8),
+           ...schema.asMap().entries.map((entry) => _buildSchemaItem(step, schema, entry.key, entry.value)),
+           const SizedBox(height: 16),
+
+           Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                 Row(
+                    children: [
+                       _buildSubtitle("INSTRUCTION"),
+                       const Icon(Icons.help_outline, size: 12, color: Colors.white24),
+                    ],
+                 ),
+                 Row(
+                    children: [
+                       Text("${instructions.length}", style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                       const SizedBox(width: 8),
+                       const Icon(Icons.abc_outlined, size: 14, color: Colors.white24),
+                       const SizedBox(width: 4),
+                       const Icon(Icons.copy_outlined, size: 12, color: Colors.white24),
+                       const SizedBox(width: 4),
+                       const Icon(Icons.fullscreen, size: 14, color: Colors.white24),
+                    ],
+                 ),
+              ],
+           ),
+           _buildTextArea(instructions, (val) {
+              _updateStep(step.id, config: {...step.config, 'instructions': val});
+           }, "Clear instructions describing what to extract and how to format it..."),
+           const SizedBox(height: 16),
+
+            Theme(
+               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+               child: ExpansionTile(
+                  title: const Text("ADVANCED SETTING", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 12),
+                  iconColor: Colors.white38,
+                  collapsedIconColor: Colors.white38,
+                  children: [
+                     SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                           segments: const [
+                              ButtonSegment(value: 'Function Calling', label: Text('Function Call', style: TextStyle(fontSize: 10)), icon: Icon(Icons.code_outlined, size: 14)),
+                              ButtonSegment(value: 'Prompt Engineering', label: Text('Prompt-based', style: TextStyle(fontSize: 10)), icon: Icon(Icons.abc_outlined, size: 14)),
+                           ],
+                           selected: {mode},
+                           onSelectionChanged: (Set<String> newSelection) {
+                              _updateStep(step.id, config: {...step.config, 'mode': newSelection.first});
+                           },
+                           style: SegmentedButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(alpha: 0.05),
+                              selectedBackgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                              selectedForegroundColor: Colors.blueAccent,
+                              visualDensity: VisualDensity.compact,
+                           ),
+                        ),
+                     ),
+                     const SizedBox(height: 12),
+                     _buildSwitchRow("Enable Memory", memory, (val) {
+                        _updateStep(step.id, config: {...step.config, 'memory': val});
+                     }, "Include conversation history for better context understanding"),
+                  ],
+               ),
+            ),
+            const SizedBox(height: 16),
+
+            Theme(
+               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+               child: ExpansionTile(
+                  title: const Text("OUTPUT VARIABLES", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                  tilePadding: EdgeInsets.zero,
+                  iconColor: Colors.white38,
+                  collapsedIconColor: Colors.white38,
+                  children: [
+                     Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                           border: Border.all(color: Colors.white10),
+                           borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                              ...schema.map((s) => Padding(
+                                 padding: const EdgeInsets.only(bottom: 6),
+                                 child: Row(
+                                    children: [
+                                       const Icon(Icons.check_box_outline_blank, size: 10, color: Colors.blueAccent),
+                                       const SizedBox(width: 8),
+                                       Text(s['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                                       const SizedBox(width: 8),
+                                       Text((s['type'] ?? 'String').toLowerCase(), style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                                       if (s['required'] == true) ...[
+                                          const SizedBox(width: 4),
+                                          const Text("*", style: TextStyle(color: Colors.redAccent, fontSize: 10)),
+                                       ],
+                                    ],
+                                 ),
+                              )),
+                              const Divider(color: Colors.white10, height: 16),
+                              const Row(
+                                 children: [
+                                    Text("__is_success", style: TextStyle(color: Colors.white70, fontSize: 10, fontFamily: 'monospace')),
+                                    SizedBox(width: 8),
+                                    Text("boolean", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                                 ],
+                              ),
+                              const SizedBox(height: 4),
+                              const Row(
+                                 children: [
+                                    Text("__reason", style: TextStyle(color: Colors.white70, fontSize: 10, fontFamily: 'monospace')),
+                                    SizedBox(width: 8),
+                                    Text("string", style: TextStyle(color: Colors.white24, fontSize: 9)),
+                                 ],
+                              ),
+                           ],
+                        ),
+                     ),
+                  ],
+               ),
+            ),
         ],
      );
   }
 
   Widget _buildSchemaItem(PipelineStep step, List<Map<String, dynamic>> allSchema, int index, Map<String, dynamic> item) {
+     
      return Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(
+           color: Colors.white.withValues(alpha: 0.02),
+           borderRadius: BorderRadius.circular(8),
+           border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
         child: Column(
            children: [
               Row(
                  children: [
+                    const Icon(Icons.check_box_outline_blank, size: 12, color: Colors.blueAccent),
+                    const SizedBox(width: 8),
                     Expanded(child: _buildTextField(item['name'] ?? '', (val) {
                        final newSchema = [...allSchema];
                        newSchema[index] = {...item, 'name': val};
                        _updateStep(step.id, config: {...step.config, 'schema': newSchema});
-                    }, "Param Name")),
+                    }, "Name")),
                     const SizedBox(width: 8),
-                    SizedBox(width: 80, child: _buildDropdown(['String', 'Number', 'Boolean', 'Array', 'Object'], item['type'] ?? 'String', (val) {
-                       final newSchema = [...allSchema];
-                       newSchema[index] = {...item, 'type': val};
-                       _updateStep(step.id, config: {...step.config, 'schema': newSchema});
-                    })),
+                    Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                       decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                       child: Text(item['type'] ?? 'String', style: const TextStyle(color: Colors.white38, fontSize: 9)),
+                    ),
                     IconButton(
                         icon: const Icon(Icons.close, size: 14, color: Colors.white24),
                         onPressed: () {
                            final newSchema = [...allSchema]..removeAt(index);
                            _updateStep(step.id, config: {...step.config, 'schema': newSchema});
                         },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                     )
                  ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               _buildTextField(item['desc'] ?? '', (val) {
                   final newSchema = [...allSchema];
                   newSchema[index] = {...item, 'desc': val};
                   _updateStep(step.id, config: {...step.config, 'schema': newSchema});
               }, "Description"),
-           ],
-        ),
-     );
+              const SizedBox(height: 8),
+              Row(
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                     const Text("Required", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                     Transform.scale(
+                        scale: 0.6,
+                        child: Switch(
+                           value: item['required'] ?? true,
+                           onChanged: (val) {
+                              final newSchema = [...allSchema];
+                              newSchema[index] = {...item, 'required': val};
+                              _updateStep(step.id, config: {...step.config, 'schema': newSchema});
+                           },
+                           activeThumbColor: Colors.blueAccent,
+                        ),
+                     ),
+                  ],
+               ),
+            ],
+         ),
+      );
   }
 
   Widget _buildListOperatorConfig(PipelineStep step) {
@@ -909,65 +1592,63 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     final selection = step.config['selection'] ?? 'All';
     final takeN = step.config['take_n'] ?? 10;
     
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSubtitle("Input Variable"),
-          _buildTextField(inputVar, (val) => _updateStep(step.id, config: {...step.config, 'input_var': val}), "{{array_var}}"),
-          const SizedBox(height: 16),
-          
-          _buildSubtitle("Filter Conditions"),
-          const Text("Filter elements by their attributes.", style: TextStyle(color: Colors.white24, fontSize: 10)),
-          const SizedBox(height: 8),
-          ...filters.asMap().entries.map((entry) => _buildListFilterItem(step, filters, entry.key, entry.value)),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                final newFilters = [...filters, {'attr': 'type', 'op': 'equals', 'val': 'image'}];
-                _updateStep(step.id, config: {...step.config, 'filters': newFilters});
-              },
-              icon: const Icon(Icons.add, size: 14),
-              label: const Text("Add Filter"),
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Input Variable"),
+        _buildTextField(inputVar, (val) => _updateStep(step.id, config: {...step.config, 'input_var': val}), "{{array_var}}"),
+        const SizedBox(height: 16),
+        
+        _buildSubtitle("Filter Conditions"),
+        const Text("Filter elements by their attributes.", style: TextStyle(color: Colors.white24, fontSize: 10)),
+        const SizedBox(height: 8),
+        ...filters.asMap().entries.map((entry) => _buildListFilterItem(step, filters, entry.key, entry.value)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              final newFilters = [...filters, {'attr': 'type', 'op': 'equals', 'val': 'image'}];
+              _updateStep(step.id, config: {...step.config, 'filters': newFilters});
+            },
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text("Add Filter"),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
           ),
-          const SizedBox(height: 16),
-          
-          _buildSubtitle("Sorting"),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDropdown(["None", "name", "size", "type", "extension"], sortAttr, (val) {
-                  _updateStep(step.id, config: {...step.config, 'sort_attr': val});
+        ),
+        const SizedBox(height: 16),
+        
+        _buildSubtitle("Sorting"),
+        Row(
+          children: [
+            Expanded(
+              child: _buildDropdown(["None", "name", "size", "type", "extension"], sortAttr, (val) {
+                _updateStep(step.id, config: {...step.config, 'sort_attr': val});
+              }),
+            ),
+            const SizedBox(width: 8),
+            if (sortAttr != 'None')
+              SizedBox(
+                width: 80,
+                child: _buildDropdown(["ASC", "DESC"], sortOrder, (val) {
+                  _updateStep(step.id, config: {...step.config, 'sort_order': val});
                 }),
               ),
-              const SizedBox(width: 8),
-              if (sortAttr != 'None')
-                SizedBox(
-                  width: 80,
-                  child: _buildDropdown(["ASC", "DESC"], sortOrder, (val) {
-                    _updateStep(step.id, config: {...step.config, 'sort_order': val});
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          _buildSubtitle("Selection"),
-          _buildDropdown(["All", "First Record", "Last Record", "Take First N"], selection, (val) {
-            _updateStep(step.id, config: {...step.config, 'selection': val});
-          }),
-          if (selection == 'Take First N') ...[
-            const SizedBox(height: 8),
-            _buildTextField(takeN.toString(), (val) {
-              _updateStep(step.id, config: {...step.config, 'take_n': int.tryParse(val) ?? 10});
-            }, "Number of items (e.g. 5)"),
           ],
-          const SizedBox(height: 24),
+        ),
+        const SizedBox(height: 16),
+        
+        _buildSubtitle("Selection"),
+        _buildDropdown(["All", "First Record", "Last Record", "Take First N"], selection, (val) {
+          _updateStep(step.id, config: {...step.config, 'selection': val});
+        }),
+        if (selection == 'Take First N') ...[
+          const SizedBox(height: 8),
+          _buildTextField(takeN.toString(), (val) {
+            _updateStep(step.id, config: {...step.config, 'take_n': int.tryParse(val) ?? 10});
+          }, "Number of items (e.g. 5)"),
         ],
-      ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -1027,7 +1708,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     );
   }
 
-  Widget _buildHTTPConfig(PipelineStep step) {
+  Widget _buildHttpRequestConfig(PipelineStep step) {
     final method = step.config['method'] ?? 'GET';
     final url = step.config['url'] ?? '';
     final headers = List<Map<String, dynamic>>.from(step.config['headers'] ?? []);
@@ -1036,10 +1717,9 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     final body = step.config['body'] ?? '';
     final authType = step.config['auth_type'] ?? 'No Auth';
     
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           _buildSubtitle("URL"),
           Row(
             children: [
@@ -1088,8 +1768,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
           _buildSubtitle("Advanced Settings"),
           _buildAdvancedSettings(step),
           const SizedBox(height: 24),
-        ],
-      ),
+      ],
     );
   }
 
@@ -1135,7 +1814,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
                      onChanged: (val) {
                        _updateStep(step.id, config: {...step.config, 'ssl_verify': val});
                      },
-                     activeColor: Colors.blueAccent,
+                     activeThumbColor: Colors.blueAccent,
                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                    ),
                  ),
@@ -1203,13 +1882,16 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildSubtitle("System Variables"),
+        const Text("userinput.files (Legacy), userinput.query (Chatflow)", style: TextStyle(color: Colors.white24, fontSize: 10, fontStyle: FontStyle.italic)),
+        const SizedBox(height: 16),
         _buildSubtitle("Input Fields"),
         ...fields.asMap().entries.map((entry) => _buildUserInputFieldItem(step, fields, entry.key, entry.value)),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () {
-               final newFields = [...fields, {'name': 'variable', 'type': 'text', 'label': 'Label'}];
+               final newFields = [...fields, {'name': 'variable', 'type': 'text', 'label': 'Label', 'required': true, 'hidden': false}];
                _updateStep(step.id, config: {...step.config, 'fields': newFields});
             },
             icon: const Icon(Icons.add, size: 14),
@@ -1222,46 +1904,96 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   }
 
   Widget _buildUserInputFieldItem(PipelineStep step, List<Map<String, dynamic>> allFields, int index, Map<String, dynamic> field) {
-     return Container(
-       margin: const EdgeInsets.only(bottom: 12),
-       padding: const EdgeInsets.all(8),
-       decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
-       child: Column(
-         children: [
-           Row(
-             children: [
-               Expanded(child: _buildTextField(field['name'] ?? '', (val) {
-                  final newFields = [...allFields];
-                  newFields[index] = {...field, 'name': val};
-                  _updateStep(step.id, config: {...step.config, 'fields': newFields});
-               }, "Variable Name")),
-               const SizedBox(width: 8),
-               SizedBox(
-                 width: 100,
-                 child: _buildDropdown(["text", "paragraph", "select", "number", "checkbox"], field['type'] ?? 'text', (val) {
-                    final newFields = [...allFields];
-                    newFields[index] = {...field, 'type': val};
-                    _updateStep(step.id, config: {...step.config, 'fields': newFields});
-                 }),
-               ),
-               IconButton(
-                 icon: const Icon(Icons.close, size: 14, color: Colors.white24),
-                 onPressed: () {
-                    final newFields = [...allFields]..removeAt(index);
-                    _updateStep(step.id, config: {...step.config, 'fields': newFields});
-                 },
-               ),
-             ],
-           ),
-           const SizedBox(height: 8),
-           _buildTextField(field['label'] ?? '', (val) {
-              final newFields = [...allFields];
-              newFields[index] = {...field, 'label': val};
-              _updateStep(step.id, config: {...step.config, 'fields': newFields});
-           }, "Field Label"),
-         ],
-       ),
-     );
+      final type = field['type'] ?? 'text';
+      final isRequired = field['required'] ?? true;
+      final isHidden = field['hidden'] ?? false;
+      final options = List<String>.from(field['options'] ?? []);
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: _buildTextField(field['name'] ?? '', (val) {
+                   final newFields = [...allFields];
+                   newFields[index] = {...field, 'name': val};
+                   _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                }, "Variable Name")),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 100,
+                  child: _buildDropdown(["text", "paragraph", "select", "number", "checkbox", "file", "file_list"], type, (val) {
+                     final newFields = [...allFields];
+                     newFields[index] = {...field, 'type': val};
+                     _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                  }),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                  onPressed: () {
+                     final newFields = [...allFields]..removeAt(index);
+                     _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _buildTextField(field['label'] ?? '', (val) {
+               final newFields = [...allFields];
+               newFields[index] = {...field, 'label': val};
+               _updateStep(step.id, config: {...step.config, 'fields': newFields});
+            }, "Field Label"),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text("Required", style: TextStyle(color: Colors.white60, fontSize: 10)),
+                Transform.scale(
+                  scale: 0.6,
+                  child: Switch(
+                    value: isRequired, 
+                    activeThumbColor: Colors.blueAccent,
+                    onChanged: (val) {
+                      final newFields = [...allFields];
+                      newFields[index] = {...field, 'required': val};
+                      _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                    }
+                  ),
+                ),
+                const Spacer(),
+                const Text("Hidden", style: TextStyle(color: Colors.white60, fontSize: 10)),
+                Transform.scale(
+                  scale: 0.6,
+                  child: Switch(
+                    value: isHidden, 
+                    activeThumbColor: Colors.blueAccent,
+                    onChanged: isRequired ? null : (val) {
+                      final newFields = [...allFields];
+                      newFields[index] = {...field, 'hidden': val};
+                      _updateStep(step.id, config: {...step.config, 'fields': newFields});
+                    }
+                  ),
+                ),
+              ],
+            ),
+            if (type == 'select') ...[
+              const SizedBox(height: 8),
+              _buildSubtitle("Options (comma separated)"),
+              _buildTextField(options.join(', '), (val) {
+                final newFields = [...allFields];
+                newFields[index] = {...field, 'options': val.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()};
+                _updateStep(step.id, config: {...step.config, 'fields': newFields});
+              }, "Option 1, Option 2, etc"),
+            ],
+            if (type == 'file' || type == 'file_list') ...[
+              const SizedBox(height: 4),
+              const Text("Files will be accessible as metadata objects.", style: TextStyle(color: Colors.white24, fontSize: 9)),
+            ]
+          ],
+        ),
+      );
   }
 
   Widget _buildTriggerConfig(PipelineStep step) {
@@ -1275,17 +2007,276 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
            _updateStep(step.id, config: {...step.config, 'trigger_type': val});
         }),
         const SizedBox(height: 16),
+        
         if (triggerType == 'Schedule') ...[
-           _buildSubtitle("Cron Expression"),
-           _buildTextField(step.config['cron'] ?? '0 9 * * MON-FRI', (val) => _updateStep(step.id, config: {...step.config, 'cron': val})),
+           _buildScheduleConfig(step),
         ] else if (triggerType == 'Webhook') ...[
-           _buildSubtitle("Webhook URL"),
-           const Text("https://api.inhaus.brain/webhook/xxx", style: TextStyle(color: Colors.blueAccent, fontSize: 10)),
+           _buildWebhookConfig(step),
+        ] else if (triggerType == 'Plugin') ...[
+           _buildPluginConfig(step),
         ],
+        
         const SizedBox(height: 16),
         const Text("System Variables: sys.timestamp, sys.user_id automatically populated.", style: TextStyle(color: Colors.white24, fontSize: 10, fontStyle: FontStyle.italic)),
       ],
     );
+  }
+
+  Widget _buildScheduleConfig(PipelineStep step) {
+     final mode = step.config['schedule_mode'] ?? 'Cron'; // Cron or Frequency
+     final cron = step.config['cron'] ?? '0 9 * * MON-FRI';
+     final freq = step.config['frequency'] ?? 'Daily';
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           Row(
+              children: [
+                 _buildSubtitle("Schedule Mode"),
+                 const Spacer(),
+                 SegmentedButton<String>(
+                    segments: const [
+                       ButtonSegment(value: 'Frequency', label: Text('Freq', style: TextStyle(fontSize: 10))),
+                       ButtonSegment(value: 'Cron', label: Text('Cron', style: TextStyle(fontSize: 10))),
+                    ],
+                    selected: {mode},
+                    onSelectionChanged: (val) {
+                       _updateStep(step.id, config: {...step.config, 'schedule_mode': val.first});
+                    },
+                    style: SegmentedButton.styleFrom(
+                       visualDensity: VisualDensity.compact,
+                       padding: EdgeInsets.zero,
+                       backgroundColor: Colors.black26,
+                       selectedBackgroundColor: Colors.blueAccent.withValues(alpha: 0.3),
+                    ),
+                 ),
+              ],
+           ),
+           const SizedBox(height: 12),
+           if (mode == 'Frequency') ...[
+              _buildDropdown(['Hourly', 'Daily', 'Weekly', 'Monthly'], freq, (val) {
+                 _updateStep(step.id, config: {...step.config, 'frequency': val});
+              }),
+              if (freq == 'Weekly') ...[
+                 const SizedBox(height: 8),
+                 _buildSubtitle("On Days"),
+                 _buildTextField(step.config['days'] ?? 'MON, WED, FRI', (val) => _updateStep(step.id, config: {...step.config, 'days': val}), "e.g. MON, TUE"),
+              ],
+              if (freq == 'Monthly') ...[
+                 const SizedBox(height: 8),
+                 _buildSubtitle("On Dates"),
+                 _buildTextField(step.config['dates'] ?? '1, 15', (val) => _updateStep(step.id, config: {...step.config, 'dates': val}), "e.g. 1, 15, L"),
+              ],
+           ] else ...[
+              _buildTextField(cron, (val) => _updateStep(step.id, config: {...step.config, 'cron': val}), "0 9 * * *"),
+              const SizedBox(height: 8),
+              Wrap(
+                 spacing: 4,
+                 children: ['@hourly', '@daily', '@weekly', '@monthly', '@yearly'].map((e) => ActionChip(
+                    label: Text(e, style: const TextStyle(fontSize: 9)),
+                    onPressed: () => _updateStep(step.id, config: {...step.config, 'cron': e}),
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    padding: EdgeInsets.zero,
+                 )).toList(),
+              ),
+           ],
+        ],
+     );
+  }
+
+  Widget _buildPluginConfig(PipelineStep step) {
+     final plugin = step.config['plugin_id'] ?? 'Github';
+     final event = step.config['event_type'] ?? 'Star Event';
+     final auth = step.config['auth_method'] ?? 'OAuth';
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Plugin"),
+           _buildDropdown(['Github', 'Slack', 'Gmail', 'Notion'], plugin, (val) {
+              _updateStep(step.id, config: {...step.config, 'plugin_id': val});
+           }),
+           const SizedBox(height: 12),
+           _buildSubtitle("Event Type"),
+           _buildDropdown(['Star Event', 'New Message', 'Form Submitted', 'Webhook Incoming'], event, (val) {
+              _updateStep(step.id, config: {...step.config, 'event_type': val});
+           }),
+           const SizedBox(height: 12),
+           _buildSubtitle("Authentication"),
+           _buildDropdown(['OAuth', 'API Key', 'Personal Access Token'], auth, (val) {
+              _updateStep(step.id, config: {...step.config, 'auth_method': val});
+           }),
+           const SizedBox(height: 12),
+           OutlinedButton.icon(
+              onPressed: () {}, 
+              icon: const Icon(Icons.add, size: 14),
+              label: const Text("Manage Subscriptions", style: TextStyle(fontSize: 11)),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10)),
+           ),
+        ],
+     );
+  }
+
+  Widget _buildWebhookConfig(PipelineStep step) {
+     final method = step.config['method'] ?? 'POST';
+     final contentType = step.config['content_type'] ?? 'application/json';
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Endpoint"),
+           const Text("Production URL", style: TextStyle(color: Colors.white60, fontSize: 10)),
+           const Text("https://api.inhaus.brain/webhook/prod-xxx", style: TextStyle(color: Colors.blueAccent, fontSize: 11)),
+           const SizedBox(height: 8),
+           const Text("Test URL", style: TextStyle(color: Colors.white60, fontSize: 10)),
+           const Text("https://api.inhaus.brain/webhook/test-xxx", style: TextStyle(color: Colors.blueAccent, fontSize: 11)),
+           const SizedBox(height: 16),
+           
+           Row(
+              children: [
+                 Expanded(
+                    child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                          _buildSubtitle("HTTP Method"),
+                          _buildDropdown(['POST', 'GET', 'PUT', 'DELETE'], method, (val) {
+                             _updateStep(step.id, config: {...step.config, 'method': val});
+                          }),
+                       ],
+                    ),
+                 ),
+                 const SizedBox(width: 12),
+                 Expanded(
+                    child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                          _buildSubtitle("Content Type"),
+                          _buildDropdown(['application/json', 'multipart/form-data', 'application/x-www-form-urlencoded', 'text/plain'], contentType, (val) {
+                             _updateStep(step.id, config: {...step.config, 'content_type': val});
+                          }),
+                       ],
+                    ),
+                 ),
+              ],
+           ),
+           const SizedBox(height: 16),
+           
+           _buildSubtitle("Parameter Extraction"),
+           _buildWebhookParameterList(step, 'header', "Header Parameters"),
+           const SizedBox(height: 12),
+           _buildWebhookParameterList(step, 'query', "Query Parameters"),
+           const SizedBox(height: 12),
+           _buildWebhookParameterList(step, 'body', "Body Parameters"),
+           
+           const SizedBox(height: 16),
+           _buildWebhookResponseConfig(step),
+        ],
+     );
+  }
+
+  Widget _buildWebhookParameterList(PipelineStep step, String category, String label) {
+     final key = 'webhook_$category';
+     final params = List<Map<String, dynamic>>.from(step.config[key] ?? []);
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+           const SizedBox(height: 8),
+           ...params.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final param = entry.value;
+              return Container(
+                 margin: const EdgeInsets.only(bottom: 8),
+                 padding: const EdgeInsets.all(8),
+                 decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(6)),
+                 child: Column(
+                    children: [
+                       Row(
+                          children: [
+                             Expanded(child: _buildTextField(param['name'] ?? '', (val) {
+                                final newParams = [...params];
+                                newParams[idx] = {...param, 'name': val};
+                                _updateStep(step.id, config: {...step.config, key: newParams});
+                             }, "Key")),
+                             const SizedBox(width: 8),
+                             if (category != 'header') 
+                                SizedBox(width: 80, child: _buildDropdown(['String', 'Number', 'Boolean', 'Object', 'Array', 'File'], param['type'] ?? 'String', (val) {
+                                   final newParams = [...params];
+                                   newParams[idx] = {...param, 'type': val};
+                                   _updateStep(step.id, config: {...step.config, key: newParams});
+                                })),
+                             IconButton(
+                                icon: const Icon(Icons.close, size: 14, color: Colors.white24),
+                                onPressed: () {
+                                   final newParams = [...params]..removeAt(idx);
+                                   _updateStep(step.id, config: {...step.config, key: newParams});
+                                },
+                             ),
+                          ],
+                       ),
+                       Row(
+                          children: [
+                             const Text("Required", style: TextStyle(color: Colors.white60, fontSize: 10)),
+                             Transform.scale(
+                                scale: 0.6,
+                                child: Switch(
+                                   value: param['required'] ?? true,
+                                   activeThumbColor: Colors.blueAccent,
+                                   onChanged: (val) {
+                                      final newParams = [...params];
+                                      newParams[idx] = {...param, 'required': val};
+                                      _updateStep(step.id, config: {...step.config, key: newParams});
+                                   },
+                                ),
+                             ),
+                          ],
+                       ),
+                    ],
+                 ),
+              );
+           }),
+           OutlinedButton.icon(
+              onPressed: () {
+                 final newParams = [...params, {'name': '', 'type': 'String', 'required': true}];
+                 _updateStep(step.id, config: {...step.config, key: newParams});
+              },
+              icon: const Icon(Icons.add, size: 12),
+              label: const Text("Add Parameter", style: TextStyle(fontSize: 10)),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white10), minimumSize: const Size(0, 32)),
+           ),
+        ],
+     );
+  }
+
+  Widget _buildWebhookResponseConfig(PipelineStep step) {
+     final code = step.config['response_code'] ?? 200;
+     final body = step.config['response_body'] ?? '{"message": "OK"}';
+     
+     return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+           _buildSubtitle("Custom Response"),
+           Row(
+              children: [
+                 const Text("Status Code", style: TextStyle(color: Colors.white60, fontSize: 10)),
+                 const SizedBox(width: 12),
+                 SizedBox(
+                    width: 60,
+                    child: _buildTextField(code.toString(), (val) {
+                       _updateStep(step.id, config: {...step.config, 'response_code': int.tryParse(val) ?? 200});
+                    }),
+                 ),
+              ],
+           ),
+           const SizedBox(height: 12),
+           const Text("Response Body", style: TextStyle(color: Colors.white60, fontSize: 10)),
+           const SizedBox(height: 4),
+           _buildTextArea(body, (val) {
+              _updateStep(step.id, config: {...step.config, 'response_body': val});
+           }, "JSON or plain text"),
+        ],
+     );
   }
 
   Widget _buildAnswerConfig(PipelineStep step) {

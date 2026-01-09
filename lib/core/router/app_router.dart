@@ -8,9 +8,15 @@ import '../../features/campaigns/campaign_detail_screen.dart';
 import '../../features/creative/creative_studio_screen.dart';
 import '../../features/campaigns/screens/camera_capture_screen.dart';
 import '../../features/auth/auth_screen.dart';
-import '../../features/settings/profile_settings_screen.dart';
+import '../../features/settings/screens/personal_settings_screen.dart';
 import '../../features/adk/screens/workflow_canvas_screen.dart';
 import '../../features/clients/client_management_screen.dart';
+import '../../features/knowledge/knowledge_management_screen.dart';
+import '../../features/workspace/screens/model_providers_screen.dart';
+import '../../features/workspace/screens/plugins_screen.dart';
+import '../../features/workspace/screens/manage_apps_screen.dart';
+import '../../features/workspace/screens/publish_dashboard_screen.dart';
+import '../../features/adk/screens/debug_tools_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -77,12 +83,38 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => WorkflowCanvasScreen(pipelineId: state.uri.queryParameters['id']),
           ),
           GoRoute(
+            path: '/publish',
+            builder: (context, state) => PublishDashboardScreen(
+              appId: state.uri.queryParameters['appId'] ?? 'default-app',
+            ),
+          ),
+          GoRoute(
+            path: '/debug',
+            builder: (context, state) => const DebugToolsScreen(),
+          ),
+          GoRoute(
+            path: '/knowledge',
+            builder: (context, state) => const KnowledgeManagementScreen(),
+          ),
+          GoRoute(
             path: '/camera-capture',
             builder: (context, state) => const CameraCaptureScreen(),
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const ProfileSettingsScreen(),
+            builder: (context, state) => const PersonalSettingsScreen(),
+          ),
+          GoRoute(
+            path: '/workspace/model-providers',
+            builder: (context, state) => const ModelProvidersScreen(),
+          ),
+          GoRoute(
+            path: '/workspace/plugins',
+            builder: (context, state) => const PluginsScreen(),
+          ),
+          GoRoute(
+            path: '/workspace/apps',
+            builder: (context, state) => const ManageAppsScreen(),
           ),
         ],
       ),

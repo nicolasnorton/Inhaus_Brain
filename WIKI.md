@@ -33,6 +33,12 @@ This is where you talk to the AI. You can chat with specialized agents like a **
 ### 3. 📚 Knowledge Base (The Library)
 You can upload your own PDFs, documents, or website links here. The AI will "read" them and use that information to make sure its answers are accurate and specific to your business.
 
+### 4. 🚀 Publish Dashboard (Deployment)
+This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
+
+### 5. 🐛 Debug Tools (The Inspector)
+This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
+
 ---
 
 ## 🧱 Node Reference (The Building Blocks)
@@ -48,6 +54,8 @@ Here is a simple explanation of every block you can use in the **Workflow Canvas
 *   **LLM (AI Model)**: The "Basic Brain." You give it a prompt, and it gives you an answer.
 *   **Agent**: A "Specialized Brain" with a job (like a Researcher). It can use tools to find information.
 *   **If-Else**: A fork in the road. "If the answer is 'Yes', go this way; if 'No', go that way."
+*   **Switch/Case**: Multiple paths. Go to different steps based on specific values (e.g., Category A, B, or C).
+*   **Loops (For Each/While)**: Repeats a series of steps for every item in a list or until a goal is met.
 *   **Classifier**: Automatically puts information into categories (e.g., "Is this a complaint or a compliment?").
 
 ### ⚙️ Operations
@@ -60,6 +68,7 @@ Here is a simple explanation of every block you can use in the **Workflow Canvas
 *   **HTTP Request**: Connects to other websites or apps to send or receive data.
 *   **Tool**: Specific built-in actions like "Google Search" or "Check Weather."
 *   **Knowledge Retrieval**: Searches your private **Knowledge Base** for answers.
+*   **MCP Tools**: Connects to advanced external tools using the Model Context Protocol.
 
 ### 📤 Outputs
 *   **Answer**: The final message shown to the user.
@@ -79,8 +88,10 @@ If you have a **User Input** block called "Topic", you can use that information 
 1.  **Set Up**: Add your API keys in **Settings** (this is like putting fuel in the engine).
 2.  **Gather Knowledge**: Upload any relevant documents to the **Library**.
 3.  **Design**: Use the **Canvas** to draw your process.
-4.  **Run**: Click play! Watch the AI move through each block.
-5.  **Approve**: Sometimes the AI will stop and ask "Does this look right?" You just click **Approve** to let it continue.
+4.  **Debug**: Use the **Debug Tools** to test your workflow and fix any issues.
+5.  **Publish**: Use the **Publish Dashboard** to share your app with others.
+6.  **Analyze**: Monitor your app's performance in the **Dashboard** analytics.
+7.  **Approve**: Sometimes the AI will stop and ask "Does this look right?" You just click **Approve** to let it continue.
 
 ---
 

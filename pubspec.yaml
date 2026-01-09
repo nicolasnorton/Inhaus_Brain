@@ -56,6 +56,7 @@ dependencies:
   path_provider: ^2.1.5
   flutter_secure_storage: ^10.0.0
   http: ^1.6.0
+  timeago: ^3.7.1
 
 dev_dependencies:
   flutter_test:
@@ -82,6 +83,7 @@ flutter:
   assets:
     - assets/images/
     - assets/prompts/
+    - assets/providers/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
