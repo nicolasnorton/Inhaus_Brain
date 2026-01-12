@@ -195,23 +195,24 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     }
 
     // Show recent commands
-    return ListView(
+    return ListView.builder(
       shrinkWrap: true,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Text(
-            'Recent',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white60,
-              fontWeight: FontWeight.bold,
+      itemCount: commands.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              'Recent',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.white60,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ),
-        ...commands.asMap().entries.map((entry) {
-          return _buildCommandItem(entry.value, entry.key, theme);
-        }),
-      ],
+          );
+        }
+        return _buildCommandItem(commands[index - 1], index - 1, theme);
+      },
     );
   }
 

@@ -604,6 +604,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       content: aiRes.text,
       sender: MessageSender.system,
       createdAt: DateTime.now(),
+      suggestedPrompts: await _generateSuggestedPrompts(aiRes.text, apiKey: apiKey),
     );
 
     state = state!.copyWith(
@@ -704,6 +705,26 @@ $conversationHistory
       }
     } catch (e) {
       debugPrint('MemoryService: Extraction failed or no insights found: $e');
+    }
+  }
+
+  Future<List<String>> _generateSuggestedPrompts(String lastResponse, {String? apiKey}) async {
+    // Audit Rec: Add follow-up suggestions
+    final prompt = """
+Based on the following AI response, generate 3 short, helpful follow-up questions the user might want to ask.
+Keep them under 10 words each.
+Return ONLY a JSON list of strings.
+
+Response:
+$lastResponse
+""";
+
+    try {
+      final res = await EdgeAIService.generateText(prompt, apiKey: apiKey);
+      final List<dynamic> list = json.decode(res.text.contains('[') ? res.text.substring(res.text.indexOf('['), res.text.lastIndexOf(']') + 1) : "[]");
+      return list.cast<String>();
+    } catch (e) {
+      return ["Explain this further", "What are the next steps?", "Show me more examples"];
     }
   }
   // --- ADK Pipeline Execution ---

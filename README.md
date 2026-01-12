@@ -81,13 +81,16 @@ Enterprise-grade safety integrated directly into the agentic flow:
 
 ## Getting Started
 
-To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-c1a7b5673ab0/google_ai_setup.md).
+To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-1a7b5673ab0/google_ai_setup.md).
 
-1.  Clone the repository.
-2.  Run `flutter pub get`.
-3.  Follow the setup guide to obtain your API keys.
-4.  Add your keys to the **Settings & Vault** in the app.
-5.  Launch with `flutter run`.
+ 1.  Clone the repository.
+ 2.  Run `flutter pub get`.
+ 3.  **Environment Setup**: Copy `.env.example` to `.env` and add your keys:
+    ```bash
+    cp .env.example .env
+    ```
+ 4.  Follow the setup guide to obtain your API keys if you haven't yet.
+ 5.  Launch with `flutter run`.
 - Google Chrome (with [Built-in AI features enabled](https://developer.chrome.com/docs/ai/built-in-ai#get_started))
 
 ### Installation

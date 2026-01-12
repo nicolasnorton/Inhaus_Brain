@@ -40,6 +40,8 @@ class EdgeAIResult {
 }
 
 class EdgeAIService {
+  static bool forceMock = false;
+
   static Future<EdgeAIResult> generateText(
     String prompt, {
     List<KnowledgeSource> context = const [],
@@ -59,6 +61,10 @@ class EdgeAIService {
     final config = modelConfig ?? AIModelConfig.geminiFlash;
     
     debugPrint('EdgeAI: Generating text via ${config.displayName}...');
+
+    if (forceMock) {
+      return await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+    }
 
     try {
       switch (config.provider) {

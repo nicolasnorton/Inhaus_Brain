@@ -5,6 +5,7 @@ import 'package:record/record.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/campaign.dart';
+import '../../../core/utils/sanitization_utils.dart';
 
 class MultiModalInputSection extends StatefulWidget {
   final Function(List<Attachment>) onAttachmentsChanged;
@@ -30,6 +31,18 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
     if (result != null) {
       setState(() {
         for (var file in result.files) {
+          // Audit Recommendation: Validate file size and type
+          if (!SanitizationUtils.isValidFile(
+            file.name,
+            file.size,
+            maxSizeBytes: 20 * 1024 * 1024, // 20MB limit
+          )) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('File ${file.name} exceeds size limit or has invalid type.')),
+            );
+            continue;
+          }
+
           final type = _getAttachmentType(file.extension);
           // On web, path is null. We use name for now as a placeholder.
           final safePath = kIsWeb ? 'web_upload://${file.name}' : (file.path ?? '');

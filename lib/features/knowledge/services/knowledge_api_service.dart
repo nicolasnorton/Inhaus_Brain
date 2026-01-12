@@ -12,6 +12,11 @@ class KnowledgeApiService {
 
   static const Duration _timeout = Duration(seconds: 30);
 
+  // In-memory cache for performance (Recommendation #2)
+  final Map<String, dynamic> _cache = {};
+  final Map<String, DateTime> _cacheTime = {};
+  static const Duration _cacheDuration = Duration(minutes: 5);
+
   KnowledgeApiService({
     required this.baseUrl,
     required this.apiKey,
@@ -47,7 +52,14 @@ class KnowledgeApiService {
   Future<List<KnowledgeBase>> listKnowledgeBases({
     int page = 1,
     int limit = 20,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey = 'datasets_p${page}_l$limit';
+    
+    if (!forceRefresh && _isCacheValid(cacheKey)) {
+      return _cache[cacheKey] as List<KnowledgeBase>;
+    }
+
     final uri = Uri.parse('$baseUrl/v1/datasets').replace(
       queryParameters: {
         'page': page.toString(),
@@ -62,7 +74,10 @@ class KnowledgeApiService {
     _checkResponse(response);
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final data = json['data'] as List;
-    return data.map((item) => KnowledgeBase.fromJson(item as Map<String, dynamic>)).toList();
+    final result = data.map((item) => KnowledgeBase.fromJson(item as Map<String, dynamic>)).toList();
+    
+    _setCache(cacheKey, result);
+    return result;
   }
 
   /// Delete a knowledge base
@@ -470,8 +485,22 @@ class KnowledgeApiService {
     }
   }
 
+  void _setCache(String key, dynamic value) {
+    _cache[key] = value;
+    _cacheTime[key] = DateTime.now();
+  }
+
+  bool _isCacheValid(String key) {
+    if (!_cache.containsKey(key)) return false;
+    final time = _cacheTime[key];
+    if (time == null) return false;
+    return DateTime.now().difference(time) < _cacheDuration;
+  }
+
   void dispose() {
     _client.close();
+    _cache.clear();
+    _cacheTime.clear();
   }
 }
 

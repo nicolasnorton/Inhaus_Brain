@@ -4,6 +4,7 @@ import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
+import '../../../core/utils/sanitization_utils.dart';
 
 enum RouterIntent {
   research,    // Competitive analysis, trends, facts
@@ -54,7 +55,7 @@ You are the Root Router for Inhaus Brain. Your goal is to classify user intent i
 - directChat: Casual conversation, clarifying questions.
 
 Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipeline": "optional_suggested_key"}
-User Input: $userPrompt
+User Input: ${SanitizationUtils.escapePrompt(userPrompt)}
 """;
 
     final aiRes = await EdgeAIService.generateText(

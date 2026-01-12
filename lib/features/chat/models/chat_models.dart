@@ -43,6 +43,7 @@ class ChatMessage {
   final DateTime createdAt;
   final List<Attachment> attachments;
   final Map<String, dynamic>? metadata; // For tool usage or widget data
+  final List<String>? suggestedPrompts; // Phase 1195 - Audit Rec
 
   ChatMessage({
     required this.id,
@@ -52,6 +53,7 @@ class ChatMessage {
     required this.createdAt,
     this.attachments = const [],
     this.metadata,
+    this.suggestedPrompts,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class ChatMessage {
           .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
           .toList(),
       metadata: json['metadata'] as Map<String, dynamic>?,
+      suggestedPrompts: (json['suggestedPrompts'] as List?)?.cast<String>(),
     );
   }
 
@@ -76,6 +79,7 @@ class ChatMessage {
     'createdAt': createdAt.toIso8601String(),
     'attachments': attachments.map((a) => a.toJson()).toList(),
     'metadata': metadata,
+    'suggestedPrompts': suggestedPrompts,
   };
 }
 

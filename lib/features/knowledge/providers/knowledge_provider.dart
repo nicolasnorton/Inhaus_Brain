@@ -44,12 +44,12 @@ final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
 
 final selectedDatasetIdProvider = StateProvider<String?>((ref) => null);
 
-final knowledgeBasesProvider = FutureProvider<List<KnowledgeBase>>((ref) async {
+final knowledgeBasesProvider = FutureProvider.autoDispose<List<KnowledgeBase>>((ref) async {
   final service = ref.watch(knowledgeApiServiceProvider);
   return service.listKnowledgeBases();
 });
 
-final documentsProvider = FutureProvider.family<List<KnowledgeDocument>, String>((ref, datasetId) async {
+final documentsProvider = FutureProvider.autoDispose.family<List<KnowledgeDocument>, String>((ref, datasetId) async {
   final service = ref.watch(knowledgeApiServiceProvider);
   return service.listDocuments(datasetId: datasetId);
 });

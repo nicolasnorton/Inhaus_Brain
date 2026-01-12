@@ -203,9 +203,44 @@ class AppDSL {
     this.includeSecrets = false,
   });
 
+  String _toYamlValue(dynamic value, int indent) {
+    if (value is Map) {
+      final buffer = StringBuffer();
+      value.forEach((k, v) {
+        buffer.writeln();
+        buffer.write('  ' * indent);
+        buffer.write('$k: ${_toYamlValue(v, indent + 1)}');
+      });
+      return buffer.toString();
+    } else if (value is List) {
+      if (value.isEmpty) return '[]';
+      final buffer = StringBuffer();
+      for (var item in value) {
+        buffer.writeln();
+        buffer.write('  ' * indent);
+        buffer.write('- ${_toYamlValue(item, indent + 1)}');
+      }
+      return buffer.toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   String toYAML() {
-    // ... existing YAML implementation (kept for backward compatibility if needed)
-    return toJsonString(); // For now, let's prefer JSON as requested
+    final buffer = StringBuffer();
+    buffer.writeln('version: $version');
+    buffer.writeln('kind: $kind');
+    buffer.write('app:');
+    app.toJson().forEach((k, v) {
+      buffer.writeln();
+      buffer.write('  $k: $v');
+    });
+    buffer.write('\nworkflow:');
+    workflow.forEach((k, v) {
+      buffer.writeln();
+      buffer.write('  $k: ${_toYamlValue(v, 2)}');
+    });
+    return buffer.toString();
   }
 
   String toJsonString() {

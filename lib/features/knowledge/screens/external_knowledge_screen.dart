@@ -116,22 +116,24 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
         const SizedBox(height: 32),
         
         Expanded(
-          child: ListView(
-            children: [
-              if (connections.isEmpty)
-                _buildEmptyConnectionsState()
-              else
-                ...connections.map((conn) => Column(
-                  children: [
-                    _buildAPIConnectionItem(conn),
-                    const SizedBox(height: 16),
-                  ],
-                )),
-              
-              const SizedBox(height: 24),
-              if (connections.isNotEmpty) _buildRetrievalSandbox(),
-            ],
-          ),
+          child: connections.isEmpty
+              ? _buildEmptyConnectionsState()
+              : ListView.builder(
+                  itemCount: connections.length + (connections.isNotEmpty ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index < connections.length) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildAPIConnectionItem(connections[index]),
+                      );
+                    } else {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 24),
+                        child: _buildRetrievalSandbox(),
+                      );
+                    }
+                  },
+                ),
         ),
       ],
     );

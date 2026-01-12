@@ -133,24 +133,29 @@ class DashboardScreen extends ConsumerWidget {
     final isSelected = _calculateSelectedIndex(context, ref) == index;
     final color = isSelected ? Theme.of(context).primaryColor : Colors.white54;
     
-    return InkWell(
-      onTap: () => _onItemTapped(index, context, ref),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
-        width: double.infinity,
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11, // Slightly smaller to fit
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return Semantics(
+      label: 'Navigate to $label',
+      selected: isSelected,
+      button: true,
+      child: InkWell(
+        onTap: () => _onItemTapped(index, context, ref),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          width: double.infinity,
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11, // Slightly smaller to fit
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SecretVaultService {
   final _storage = const FlutterSecureStorage();
@@ -20,7 +21,15 @@ class SecretVaultService {
   static const String _elevenLabsKey = 'eleven_labs_api_key';
 
   Future<void> saveGeminiKey(String key) async => await _storage.write(key: _geminiKey, value: key);
-  Future<String?> getGeminiKey() async => await _storage.read(key: _geminiKey);
+  
+  Future<String?> getGeminiKey() async {
+    // Priority 1: Environment Variable (Production/CI)
+    final envKey = dotenv.maybeGet('GEMINI_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+
+    // Priority 2: Secure Storage (User BYOK)
+    return await _storage.read(key: _geminiKey);
+  }
 
   Future<void> saveVeoKey(String key) async => await _storage.write(key: _veoKey, value: key);
   Future<String?> getVeoKey() async => await _storage.read(key: _veoKey);
@@ -39,10 +48,20 @@ class SecretVaultService {
 
   // New Providers
   Future<void> saveOpenAIKey(String key) async => await _storage.write(key: _openaiKey, value: key);
-  Future<String?> getOpenAIKey() async => await _storage.read(key: _openaiKey);
+  
+  Future<String?> getOpenAIKey() async {
+    final envKey = dotenv.maybeGet('OPENAI_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    return await _storage.read(key: _openaiKey);
+  }
 
   Future<void> saveAnthropicKey(String key) async => await _storage.write(key: _anthropicKey, value: key);
-  Future<String?> getAnthropicKey() async => await _storage.read(key: _anthropicKey);
+  
+  Future<String?> getAnthropicKey() async {
+    final envKey = dotenv.maybeGet('ANTHROPIC_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    return await _storage.read(key: _anthropicKey);
+  }
 
   Future<void> saveXAIKey(String key) async => await _storage.write(key: _xaiKey, value: key);
   Future<String?> getXAIKey() async => await _storage.read(key: _xaiKey);

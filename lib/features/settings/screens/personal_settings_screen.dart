@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/user_models.dart';
 import '../providers/user_provider.dart';
+import 'package:inhaus_brain/core/services/edge_ai_service.dart';
 
 /// Personal settings screen with tabs
 class PersonalSettingsScreen extends ConsumerStatefulWidget {
@@ -19,6 +20,7 @@ class _PersonalSettingsScreenState
   late TabController _tabController;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -158,31 +160,34 @@ class _PersonalSettingsScreenState
           Row(
             children: [
               // Avatar
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.primaryColor,
-                ),
-                child: Center(
-                  child: user.avatarUrl != null
-                      ? ClipOval(
-                          child: Image.network(
-                            user.avatarUrl!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
+              Semantics(
+                label: 'Profile picture for ${user.name}',
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.primaryColor,
+                  ),
+                  child: Center(
+                    child: user.avatarUrl != null
+                        ? ClipOval(
+                            child: Image.network(
+                              user.avatarUrl!,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Text(
+                            user.initials,
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        )
-                      : Text(
-                          user.initials,
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                  ),
                 ),
               ),
               const SizedBox(width: 24),
@@ -198,39 +203,48 @@ class _PersonalSettingsScreenState
             ],
           ),
           const SizedBox(height: 32),
-          // Name
-          Text(
-            'Display Name',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              hintText: 'Enter your name',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Email
-          Text(
-            'Email Address',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _emailController,
-            decoration: InputDecoration(
-              hintText: 'Enter your email',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Name cannot be empty';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Email
+                Text(
+                  'Email Address',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || !value.contains('@')) return 'Invalid email';
+                    return null;
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -263,9 +277,11 @@ class _PersonalSettingsScreenState
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                ref.read(currentUserProvider.notifier).updateName(_nameController.text);
-                ref.read(currentUserProvider.notifier).updateEmail(_emailController.text);
-                _showSnackBar('Profile updated successfully');
+                if (_formKey.currentState!.validate()) {
+                  ref.read(currentUserProvider.notifier).updateName(_nameController.text);
+                  ref.read(currentUserProvider.notifier).updateEmail(_emailController.text);
+                  _showSnackBar('Profile updated successfully');
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
@@ -324,6 +340,44 @@ class _PersonalSettingsScreenState
             value: preferences.emailNotifications,
             onChanged: (value) {
               ref.read(userPreferencesProvider.notifier).toggleEmailNotifications();
+            },
+          ),
+          const SizedBox(height: 12),
+          // Dark Mode Toggle
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            subtitle: const Text('Use a high-contrast dark theme'),
+            secondary: Icon(
+              preferences.darkMode ? Icons.dark_mode : Icons.light_mode,
+              color: theme.primaryColor,
+            ),
+            value: preferences.darkMode,
+            onChanged: (value) {
+              ref.read(userPreferencesProvider.notifier).toggleDarkMode();
+            },
+          ),
+          const Divider(height: 48),
+          // Developer Settings
+          Text(
+            'Developer Settings',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: const Text('Mock AI Models'),
+            subtitle: const Text('Force all generative AI to use simulated edge mock for testing'),
+            secondary: Icon(
+              Icons.bug_report,
+              color: theme.primaryColor,
+            ),
+            value: EdgeAIService.forceMock,
+            onChanged: (value) {
+              setState(() {
+                EdgeAIService.forceMock = value;
+              });
+              _showSnackBar('AI Mock Mode: ${value ? 'ON' : 'OFF'}');
             },
           ),
         ],

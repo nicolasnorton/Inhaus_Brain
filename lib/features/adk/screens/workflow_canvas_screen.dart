@@ -232,6 +232,9 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       padding: const EdgeInsets.only(bottom: 20),
       child: Tooltip(
         message: label,
+      child: Semantics(
+        label: 'Workflow Tool: $label',
+        button: true,
         child: Draggable<WorkflowNodeType>(
           data: type,
           feedback: Material(
@@ -247,6 +250,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
           ),
           child: Icon(icon, color: Colors.white70, size: 20),
         ),
+      ),
       ),
     );
   }
@@ -277,74 +281,82 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
           }
         });
       },
-      child: Container(
-        width: 160,
-        height: 90,
-        decoration: BoxDecoration(
-          color: const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? Colors.blueAccent : Colors.white.withValues(alpha: 0.1),
-            width: isSelected ? 2 : 1
+      child: Semantics(
+        label: '${step.nodeType.name} node: ${step.instruction.isEmpty ? 'Unconfigured' : step.instruction}',
+        selected: isSelected,
+        child: Container(
+          width: 160,
+          height: 90,
+          decoration: BoxDecoration(
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? Colors.blueAccent : Colors.white.withValues(alpha: 0.1),
+              width: isSelected ? 2 : 1
+            ),
+            boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 8, offset: const Offset(0, 4))],
           ),
-          boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 8, offset: const Offset(0, 4))],
-        ),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              height: 30,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              alignment: Alignment.centerLeft,
-              child: Row(
-                children: [
-                  Icon(_getNodeIcon(step.nodeType), size: 12, color: _getNodeColor(step.nodeType)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      step.nodeType == WorkflowNodeType.agent && step.agentType != null
-                        ? step.agentType!.name.toUpperCase().replaceAll('AGENT', '')
-                        : step.nodeType.name.toUpperCase(), 
-                      style: TextStyle(color: _getNodeColor(step.nodeType), fontWeight: FontWeight.bold, fontSize: 10),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // Connection Point
-                  GestureDetector(
-                    onTap: () {
-                       setState(() {
-                         _connectingFromId = step.id;
-                       });
-                    },
-                    child: Container(
-                      width: 12, height: 12,
-                      decoration: BoxDecoration(
-                        color: _connectingFromId == step.id ? Colors.greenAccent : Colors.white24,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black)
+          child: Column(
+            children: [
+              // Header
+              Container(
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    Icon(_getNodeIcon(step.nodeType), size: 12, color: _getNodeColor(step.nodeType)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        step.nodeType == WorkflowNodeType.agent && step.agentType != null
+                          ? step.agentType!.name.toUpperCase().replaceAll('AGENT', '')
+                          : step.nodeType.name.toUpperCase(), 
+                        style: TextStyle(color: _getNodeColor(step.nodeType), fontWeight: FontWeight.bold, fontSize: 10),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // Body
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Text(
-                  step.instruction.isEmpty ? "Config: ${step.config.keys.length} params" : step.instruction, 
-                  maxLines: 3, 
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white54, fontSize: 10)
+                    // Connection Point
+                    GestureDetector(
+                      onTap: () {
+                         setState(() {
+                           _connectingFromId = step.id;
+                         });
+                      },
+                      child: Semantics(
+                        label: 'Connection point',
+                        button: true,
+                        child: Container(
+                          width: 12, height: 12,
+                          decoration: BoxDecoration(
+                            color: _connectingFromId == step.id ? Colors.greenAccent : Colors.white24,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black)
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              // Body
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Text(
+                    step.instruction.isEmpty ? "Config: ${step.config.keys.length} params" : step.instruction, 
+                    maxLines: 3, 
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white54, fontSize: 10)
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
