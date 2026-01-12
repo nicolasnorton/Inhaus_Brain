@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/globals.dart';
 import '../../workspace/models/app_models.dart';
 import '../../workspace/providers/apps_provider.dart';
 import '../../workspace/widgets/create_app_dialog.dart';
@@ -58,9 +59,9 @@ class WorkflowStartScreen extends ConsumerWidget {
                 final service = WorkflowExchangeService(ref);
                 final success = await service.importApp();
                 if (success && context.mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('App imported successfully!')),
-                  );
+                   scaffoldMessengerKey.currentState?.showSnackBar(
+                     const SnackBar(content: Text('Workflow imported successfully!'))
+                   );
                 }
               },
               icon: const Icon(Icons.upload_file, size: 18, color: Colors.white70),
@@ -146,7 +147,7 @@ class WorkflowStartScreen extends ConsumerWidget {
         side: const BorderSide(color: Colors.white10),
       ),
       child: InkWell(
-        onTap: () => context.go('/workflow-canvas?id=${app.id}'),
+        onTap: () => context.go('/app-editor?id=${app.id}'),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -188,10 +189,16 @@ class WorkflowStartScreen extends ConsumerWidget {
                     onSelected: (value) {
                       if (value == 'export') {
                         final service = WorkflowExchangeService(ref);
-                        service.exportApp(app.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                           SnackBar(content: Text('Exporting ${app.name}...')),
-                        );
+                        try {
+                          service.exportApp(app.id);
+                          scaffoldMessengerKey.currentState?.showSnackBar(
+                             SnackBar(content: Text('Exporting ${app.name}...')),
+                          );
+                        } catch (e) {
+                          scaffoldMessengerKey.currentState?.showSnackBar(
+                            SnackBar(content: Text('Error: $e'))
+                          );
+                        }
                       }
                     },
                     itemBuilder: (context) => [

@@ -11,13 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'package:firebase_core/firebase_core.dart';
 // import 'firebase_options.dart';
-// Actually, since we haven't run flutterfire configure, this import will fail.
-// I will temporarily verify without firebase init or handle it gracefully.
-// For the purpose of this first run, I'll comment out Firebase init to get the UI running first.
-
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'features/settings/providers/user_provider.dart';
+import 'core/services/hotkey_service.dart';
+import 'core/commands/widgets/command_palette.dart';
+import 'core/widgets/hotkey_cheat_sheet.dart';
+import 'package:flutter/services.dart';
+import 'core/globals.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,12 +44,47 @@ class InhausBrainApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final preferences = ref.watch(userPreferencesProvider);
+    final hotkeyService = ref.watch(hotkeyProvider);
 
-    return MaterialApp.router(
-      title: 'Inhaus Brain',
-      debugShowCheckedModeBanner: false,
-      theme: preferences.darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-      routerConfig: router,
+    // Register global hotkeys
+    hotkeyService.register(
+      const Hotkey(
+        key: LogicalKeyboardKey.keyK,
+        meta: true, // Use meta for Cmd on Mac, Ctrl on others (simplified for now)
+        label: 'Command Palette',
+        description: 'Open the universal search and command palette',
+      ),
+      (context) {
+        showDialog(
+          context: context,
+          builder: (context) => const CommandPalette(),
+        );
+      },
+    );
+
+    hotkeyService.register(
+      const Hotkey(
+        key: LogicalKeyboardKey.slash,
+        meta: true,
+        label: 'Keyboard Shortcuts',
+        description: 'Show the keyboard shortcuts cheat sheet',
+      ),
+      (context) {
+        showDialog(
+          context: context,
+          builder: (context) => const HotkeyCheatSheet(),
+        );
+      },
+    );
+
+    return GlobalHotkeyListener(
+      child: MaterialApp.router(
+        title: 'Inhaus Brain',
+        debugShowCheckedModeBanner: false,
+        theme: preferences.darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+        routerConfig: router,
+        scaffoldMessengerKey: scaffoldMessengerKey,
+      ),
     );
   }
 }

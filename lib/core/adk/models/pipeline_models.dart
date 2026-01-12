@@ -34,6 +34,7 @@ class Pipeline {
 }
 
 enum WorkflowNodeType {
+  start,
   userInput,
   trigger,
   llm,
@@ -53,7 +54,8 @@ enum WorkflowNodeType {
   variableAssigner,
   parameterExtractor,
   httpRequest,
-  listOperator
+  listOperator,
+  note
 }
 
 enum PipelineStepType { sequential, parallel, loop }

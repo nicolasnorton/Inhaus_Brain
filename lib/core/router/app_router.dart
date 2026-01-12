@@ -12,6 +12,7 @@ import '../../features/settings/screens/personal_settings_screen.dart';
 import '../../features/adk/screens/workflow_canvas_screen.dart';
 import '../../features/adk/screens/workflow_start_screen.dart';
 import '../../features/clients/client_management_screen.dart';
+import '../../features/clients/screens/client_detail_screen.dart';
 import '../../features/knowledge/knowledge_management_screen.dart';
 import '../../features/workspace/screens/model_providers_screen.dart';
 import '../../features/workspace/screens/plugins_screen.dart';
@@ -20,6 +21,8 @@ import '../../features/workspace/screens/publish_dashboard_screen.dart';
 import '../../features/adk/screens/debug_tools_screen.dart';
 import '../../features/monitor/screens/monitor_dashboard_screen.dart';
 import '../../features/monitor/screens/logs_screen.dart';
+import '../../features/adk/screens/app_editor_dispatcher_screen.dart';
+import '../../features/adk/screens/run_history_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -72,6 +75,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/clients',
             builder: (context, state) => const ClientManagementScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ClientDetailScreen(
+                  clientId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/analytics',
@@ -88,6 +99,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/workflow-canvas',
             builder: (context, state) => WorkflowCanvasScreen(pipelineId: state.uri.queryParameters['id']),
+          ),
+          GoRoute(
+            path: '/app-editor',
+            builder: (context, state) => AppEditorDispatcherScreen(appId: state.uri.queryParameters['id']!),
+          ),
+          GoRoute(
+            path: '/run-history/:appId',
+            builder: (context, state) => RunHistoryScreen(appId: state.pathParameters['appId']!),
           ),
           GoRoute(
             path: '/publish',

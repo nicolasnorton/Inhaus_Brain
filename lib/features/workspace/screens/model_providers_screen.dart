@@ -5,6 +5,7 @@ import '../models/model_provider_models.dart';
 import '../providers/model_providers_provider.dart';
 import '../widgets/provider_card.dart';
 import '../widgets/provider_config_dialog.dart';
+import '../widgets/system_default_model_dialog.dart';
 import '../services/model_provider_service.dart';
 
 /// Main screen for managing model providers
@@ -31,6 +32,13 @@ class _ModelProvidersScreenState extends ConsumerState<ModelProvidersScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _showSystemDefaultsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const SystemDefaultModelDialog(),
+    );
   }
 
   void _showConfigDialog(ProviderConfig config) {
@@ -222,6 +230,19 @@ class _ModelProvidersScreenState extends ConsumerState<ModelProvidersScreen>
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _showSystemDefaultsDialog,
+                  icon: const Icon(FontAwesomeIcons.gears, size: 14),
+                  label: const Text('System Defaults'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ],

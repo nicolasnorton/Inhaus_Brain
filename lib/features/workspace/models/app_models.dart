@@ -104,6 +104,7 @@ class App {
   final List<String> tags;
   final String? createdBy;
   final bool hasUnsavedChanges;
+  final Map<String, dynamic> config;
 
   const App({
     required this.id,
@@ -118,6 +119,7 @@ class App {
     this.tags = const [],
     this.createdBy,
     this.hasUnsavedChanges = false,
+    this.config = const {},
   });
 
   App copyWith({
@@ -133,6 +135,7 @@ class App {
     List<String>? tags,
     String? createdBy,
     bool? hasUnsavedChanges,
+    Map<String, dynamic>? config,
   }) {
     return App(
       id: id ?? this.id,
@@ -147,6 +150,7 @@ class App {
       tags: tags ?? this.tags,
       createdBy: createdBy ?? this.createdBy,
       hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
+      config: config ?? this.config,
     );
   }
 
@@ -163,6 +167,7 @@ class App {
         'tags': tags,
         if (createdBy != null) 'created_by': createdBy,
         'has_unsaved_changes': hasUnsavedChanges,
+        'config': config,
       };
 
   factory App.fromJson(Map<String, dynamic> json) {
@@ -179,6 +184,7 @@ class App {
       tags: (json['tags'] as List?)?.cast<String>() ?? [],
       createdBy: json['created_by'] as String?,
       hasUnsavedChanges: json['has_unsaved_changes'] as bool? ?? false,
+      config: Map<String, dynamic>.from(json['config'] ?? {}),
     );
   }
 }

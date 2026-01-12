@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/globals.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../chat/models/chat_models.dart';
 import '../providers/pipeline_provider.dart';
@@ -58,7 +59,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
             onPressed: () {
               final name = _nameController.text.trim();
               if (name.isEmpty || steps.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                scaffoldMessengerKey.currentState?.showSnackBar(
                   const SnackBar(content: Text('Please enter a name and add at least one step.'))
                 );
                 return;
@@ -73,7 +74,7 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
 
               ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
               
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pipeline Saved Successfully!')));
+              scaffoldMessengerKey.currentState?.showSnackBar(const SnackBar(content: Text('Pipeline Saved Successfully!')));
               if (context.canPop()) {
                 context.pop();
               } else {

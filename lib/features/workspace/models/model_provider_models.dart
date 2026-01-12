@@ -220,6 +220,7 @@ class ProviderConfig {
   final ModelConfig? defaultModel;
   final ProviderStatus status;
   final String? errorMessage;
+  final UsageQuota? quota;
   final bool enabled;
 
   const ProviderConfig({
@@ -229,6 +230,7 @@ class ProviderConfig {
     this.defaultModel,
     this.status = ProviderStatus.disconnected,
     this.errorMessage,
+    this.quota,
     this.enabled = true,
   });
 
@@ -238,6 +240,7 @@ class ProviderConfig {
     ModelConfig? defaultModel,
     ProviderStatus? status,
     String? errorMessage,
+    UsageQuota? quota,
     bool? enabled,
   }) {
     return ProviderConfig(
@@ -247,6 +250,7 @@ class ProviderConfig {
       defaultModel: defaultModel ?? this.defaultModel,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
+      quota: quota ?? this.quota,
       enabled: enabled ?? this.enabled,
     );
   }

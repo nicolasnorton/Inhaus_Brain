@@ -43,6 +43,12 @@ This is where you turn your workflows into real applications. You can publish th
 ### 6. 🐛 Debug Tools (The Inspector)
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
+### 7. 🏢 Client Module (Portfolio Management)
+This module allows you to manage your client relationships and projects:
+*   **Projects**: Organize work into specific project plans for each client.
+*   **Task Board**: Track task status (Todo, In-Progress, Review, Done) and set due dates.
+*   **Integrations**: Connect client workspaces to **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to automate communication and data syncing.
+
 ---
 
 ## 🧱 Node Reference (The Building Blocks)

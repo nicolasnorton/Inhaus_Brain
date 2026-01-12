@@ -51,7 +51,9 @@ Enterprise-grade safety integrated directly into the agentic flow:
 - **Sensitive Task Interception**: Automatically blocks or sanitizes high-stakes actions (Media Buying, Data Access) if they violate brand safety.
 - **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
 
-### 🏢 Creative Studio & Factory
+### 🏢 Creative Studio & Client Factory
+- **Client Module**: Comprehensive portfolio management with **Project Plans**, **Task Boards**, and real-time tracking.
+- **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to sync agent activity with external tools.
 - **Campaign Wizard**: Conversational briefing with real-time agent grounding.
 - **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
 - **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.

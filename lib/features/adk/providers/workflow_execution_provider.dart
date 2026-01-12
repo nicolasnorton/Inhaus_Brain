@@ -64,6 +64,33 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
     state = state.copyWith(lastRunLogs: updatedLogs);
   }
 
+  /// Execute a single node
+  Future<void> executeNode(String appId, String nodeId, Map<String, dynamic> inputs) async {
+    updateNodeStatus(nodeId, ExecutionStatus.running);
+    
+    // Simulate execution
+    await Future.delayed(const Duration(seconds: 1));
+    
+    try {
+      // Mock success for now
+      final outputs = {"result": "Successfully executed $nodeId"};
+      updateCachedVariable(nodeId, outputs);
+      updateNodeStatus(nodeId, ExecutionStatus.success);
+      
+      addRunLog(RunLog(
+        nodeId: nodeId,
+        nodeName: nodeId, // In a real app, look up the name
+        timestamp: DateTime.now(),
+        status: ExecutionStatus.success,
+        inputs: inputs,
+        outputs: outputs,
+        executionTimeMs: 1000,
+      ));
+    } catch (e) {
+      updateNodeStatus(nodeId, ExecutionStatus.error);
+    }
+  }
+
   /// Clear execution state
   void clear() {
     state = const WorkflowExecutionState();

@@ -165,11 +165,9 @@ class ClientManagementScreen extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // Navigate to campaigns. 
-                  // Ideally we would pass a query param ?clientId=client.id but for now just navigate.
-                  context.go('/campaigns');
+                  context.go('/clients/${client.id}');
                 },
-                child: const Text('View Campaigns'),
+                child: const Text('Manage Client'),
               ),
             ],
           ),

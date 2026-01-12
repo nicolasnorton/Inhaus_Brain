@@ -111,12 +111,37 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
   /// Get default providers list
   static List<ProviderConfig> _getDefaultProviders() {
     return [
-      ProviderConfig(provider: ModelProvider.openai),
-      ProviderConfig(provider: ModelProvider.anthropic),
-      ProviderConfig(provider: ModelProvider.google),
-      ProviderConfig(provider: ModelProvider.cohere),
-      ProviderConfig(provider: ModelProvider.mistral),
-      ProviderConfig(provider: ModelProvider.groq),
+      ProviderConfig(
+        provider: ModelProvider.openai,
+        status: ProviderStatus.connected,
+        quota: UsageQuota(
+          requestsUsed: 450,
+          requestsLimit: 1000,
+          tokensUsed: 120000,
+          tokensLimit: 500000,
+          resetAt: DateTime(2026, 2, 1),
+        ),
+      ),
+      ProviderConfig(
+        provider: ModelProvider.anthropic,
+        status: ProviderStatus.connected,
+        quota: UsageQuota(
+          requestsUsed: 850,
+          requestsLimit: 1000,
+          tokensUsed: 420000,
+          tokensLimit: 500000,
+          resetAt: DateTime(2026, 2, 1),
+        ),
+      ),
+      const ProviderConfig(provider: ModelProvider.google),
+      const ProviderConfig(provider: ModelProvider.groq),
+      const ProviderConfig(provider: ModelProvider.together),
+      const ProviderConfig(provider: ModelProvider.mistral),
+      const ProviderConfig(provider: ModelProvider.cohere),
+      const ProviderConfig(provider: ModelProvider.replicate),
+      const ProviderConfig(provider: ModelProvider.huggingface),
+      const ProviderConfig(provider: ModelProvider.ollama),
+      const ProviderConfig(provider: ModelProvider.custom),
     ];
   }
 }

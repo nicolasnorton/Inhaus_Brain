@@ -9,6 +9,16 @@ import '../providers/pipeline_provider.dart';
 import '../../chat/models/chat_models.dart';
 import '../../workspace/models/app_models.dart';
 import '../../workspace/providers/apps_provider.dart';
+import '../widgets/workflow_history_sidebar.dart';
+import '../../../core/services/version_control_service.dart';
+import '../../../core/models/version_control_models.dart';
+import '../../settings/providers/user_provider.dart';
+import '../widgets/variable_inspector.dart';
+import '../widgets/share_app_dialog.dart';
+import '../widgets/mcp_server_config_dialog.dart';
+import '../providers/workflow_execution_provider.dart';
+import '../models/workflow_execution_models.dart';
+import '../../../core/globals.dart';
 
 class WorkflowCanvasScreen extends ConsumerStatefulWidget {
   final String? pipelineId; // Optional: Launch with existing pipeline
@@ -34,6 +44,9 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
   // Connection Creation
   String? _connectingFromId;
   Offset? _mousePos;
+
+  // History Sidebar
+  bool _showHistorySidebar = false;
 
   @override
   void initState() {
@@ -72,9 +85,35 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         backgroundColor: const Color(0xFF1E1E1E),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_edu),
+            onPressed: () => context.push('/run-history/${widget.pipelineId ?? 'new-app'}'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () => setState(() => _showHistorySidebar = !_showHistorySidebar),
+          ),
+          IconButton(
+            icon: const Icon(Icons.commit),
+            onPressed: _showCommitDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.dns, size: 20, color: Colors.tealAccent),
+            onPressed: () => _showMCPServerDialog(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.rocket_launch, color: Colors.blueAccent),
+            onPressed: () => _showPublishDialog(),
+          ),
           IconButton(
             icon: const Icon(Icons.save),
             onPressed: _showSaveDialog,
@@ -195,12 +234,61 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
 
           if (_selectedStepId != null)
             Positioned(
-              right: 16,
+              right: _showHistorySidebar ? 316 : 16,
               top: 16,
               bottom: 16,
-              width: 400,
-              child: _buildPropertiesPanel(),
+              width: 350,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 20)],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: NodeConfigurationSheet(
+                    step: _steps.firstWhere((s) => s.id == _selectedStepId),
+                    allSteps: _steps,
+                    onClose: () => setState(() => _selectedStepId = null),
+                    onUpdate: (id, {config, instruction, agentType, inputMappings}) {
+                      setState(() {
+                        final index = _steps.indexWhere((s) => s.id == id);
+                        if (index != -1) {
+                          _steps[index] = _steps[index].copyWith(
+                            config: config,
+                            instruction: instruction,
+                            agentType: agentType,
+                            inputMappings: inputMappings,
+                          );
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ),
             ),
+          
+          if (_showHistorySidebar)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: WorkflowHistorySidebar(
+                appId: widget.pipelineId ?? 'new-app',
+                onClose: () => setState(() => _showHistorySidebar = false),
+                onRollback: (commit) {
+                  _rollbackTo(commit);
+                },
+              ),
+            ),
+
+          // Variable Inspector (Bottom)
+          const Positioned(
+            left: 112, // After sidebars
+            right: 0,
+            bottom: 0,
+            child: VariableInspector(),
+          ),
         ],
       ),
     );
@@ -320,6 +408,23 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    // Run Status & Button
+                    _buildNodeStatusIcon(step.id),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.play_arrow, size: 10),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      color: Colors.white54,
+                      onPressed: () {
+                         ref.read(workflowExecutionProvider.notifier).executeNode(
+                           widget.pipelineId ?? 'new-app',
+                           step.id,
+                           step.config,
+                         );
+                      },
+                    ),
+                    const SizedBox(width: 8),
                     // Connection Point
                     GestureDetector(
                       onTap: () {
@@ -358,6 +463,26 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showPublishDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => ShareAppDialog(
+        appId: widget.pipelineId ?? 'new-app',
+        appName: _pipelineName,
+      ),
+    );
+  }
+
+  void _showMCPServerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => MCPServerConfigDialog(
+        appId: widget.pipelineId ?? 'new-app',
+        appName: _pipelineName,
       ),
     );
   }
@@ -443,7 +568,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
               }
 
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              scaffoldMessengerKey.currentState?.showSnackBar(
                 SnackBar(content: Text('Workflow "${newPipeline.name}" saved!')),
               );
             },
@@ -454,28 +579,86 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
     );
   }
 
-  Widget _buildPropertiesPanel() {
-    final step = _steps.firstWhere((s) => s.id == _selectedStepId);
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 20)],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: NodeConfigurationSheet(
-          step: step,
-          allSteps: _steps,
-          onClose: () => setState(() => _selectedStepId = null),
-          onUpdate: (id, {config, instruction, agentType, inputMappings}) {
-             _updateStep(id, config: config, instruction: instruction, agentType: agentType, inputMappings: inputMappings);
-          },
+  void _showCommitDialog() {
+    final messageController = TextEditingController();
+    final user = ref.read(currentUserProvider);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Commit Changes', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Enter a commit message to save this version of the workflow.', 
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: messageController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Commit Message',
+                hintText: 'e.g., Added IF/ELSE logic',
+                labelStyle: TextStyle(color: Colors.white54),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+              ),
+            ),
+          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final appId = widget.pipelineId ?? 'new-app';
+              final message = messageController.text.isEmpty ? 'Manual Commit' : messageController.text;
+              
+              final dsl = {
+                'id': appId,
+                'name': _pipelineName,
+                'description': _pipelineDescription,
+                'steps': _steps.map((s) => s.toJson()).toList(),
+              };
+
+              ref.read(versionControlProvider.notifier).commit(
+                appId, 
+                message, 
+                user.name, 
+                dsl
+              );
+
+              Navigator.pop(context);
+              scaffoldMessengerKey.currentState?.showSnackBar(
+                const SnackBar(content: Text('Workflow version committed!')),
+              );
+            },
+            child: const Text('Commit'),
+          ),
+        ],
       ),
     );
   }
+
+  void _rollbackTo(WorkflowCommit commit) {
+    setState(() {
+      _pipelineName = commit.dslSnapshot['name'] ?? 'Restored Workflow';
+      _pipelineDescription = commit.dslSnapshot['description'] ?? '';
+      _steps = (commit.dslSnapshot['steps'] as List)
+          .map((s) => PipelineStep.fromJson(s as Map<String, dynamic>))
+          .toList();
+      _selectedStepId = null;
+    });
+    
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text('Restored to version: ${commit.message}')),
+    );
+  }
+
   void _updateStep(String id, {String? instruction, MessageSender? agentType, Map<String, dynamic>? config, Map<String, String>? inputMappings}) {
     setState(() {
       final index = _steps.indexWhere((s) => s.id == id);
@@ -493,6 +676,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
 
   IconData _getNodeIcon(WorkflowNodeType type) {
     switch (type) {
+      case WorkflowNodeType.start: return FontAwesomeIcons.play;
       case WorkflowNodeType.userInput: return FontAwesomeIcons.keyboard;
       case WorkflowNodeType.trigger: return FontAwesomeIcons.bolt;
       case WorkflowNodeType.llm: return FontAwesomeIcons.brain;
@@ -513,11 +697,14 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.documentExtractor: return FontAwesomeIcons.filePdf;
       case WorkflowNodeType.variableAssigner: return FontAwesomeIcons.penToSquare;
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
+      case WorkflowNodeType.note: return FontAwesomeIcons.stickyNote;
     }
   }
 
   Color _getNodeColor(WorkflowNodeType type) {
     switch (type) {
+      case WorkflowNodeType.start:
+        return Colors.blueAccent;
       case WorkflowNodeType.userInput:
       case WorkflowNodeType.trigger:
         return Colors.greenAccent;
@@ -543,9 +730,32 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.answer:
       case WorkflowNodeType.output:
         return Colors.pinkAccent;
+      case WorkflowNodeType.note:
+        return Colors.amberAccent;
+    }
+  }
+
+  Widget _buildNodeStatusIcon(String nodeId) {
+    final status = ref.watch(workflowExecutionProvider).nodeStatuses[nodeId] ?? ExecutionStatus.idle;
+    
+    switch (status) {
+      case ExecutionStatus.running:
+        return const SizedBox(
+          width: 10, height: 10,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
+        );
+      case ExecutionStatus.success:
+        return const Icon(Icons.check_circle, size: 12, color: Colors.greenAccent);
+      case ExecutionStatus.error:
+        return const Icon(Icons.error, size: 12, color: Colors.redAccent);
+      case ExecutionStatus.skipped:
+        return const Icon(Icons.skip_next, size: 12, color: Colors.white24);
+      case ExecutionStatus.idle:
+        return const SizedBox.shrink();
     }
   }
 }
+
 
 class GridPainter extends CustomPainter {
   final Offset offset;

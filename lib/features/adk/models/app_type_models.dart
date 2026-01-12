@@ -1,6 +1,7 @@
 /// Models for Dify app types and configurations
 
 import '../../workspace/models/app_models.dart' show AppType;
+export '../../workspace/models/app_models.dart' show AppType;
 
 /// Extension on AppType for Dify-specific logic
 extension AppTypeExtensions on AppType {

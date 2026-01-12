@@ -7,6 +7,8 @@ import '../providers/apps_provider.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../adk/widgets/app_type_selector.dart';
+import '../../adk/widgets/start_node_selector.dart';
+import '../../adk/models/app_type_models.dart' as adk;
 
 class CreateAppDialog extends ConsumerStatefulWidget {
   const CreateAppDialog({super.key});
@@ -22,6 +24,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
   final _descriptionController = TextEditingController();
   String _selectedIcon = '🤖';
   AppTemplate? _selectedTemplate;
+  adk.StartNodeType _startNodeType = adk.StartNodeType.userInput;
 
   @override
   void dispose() {
@@ -32,13 +35,22 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
 
   void _onNext() {
     setState(() {
-      _currentStep++;
+      // If we selected Chatflow or other non-workflow type, skip StartNodeSelector step (step 2)
+      if (_currentStep == 1 && _selectedType != AppType.workflow) {
+        _currentStep = 3;
+      } else {
+        _currentStep++;
+      }
     });
   }
 
   void _onBack() {
     setState(() {
-      _currentStep--;
+      if (_currentStep == 3 && _selectedType != AppType.workflow) {
+        _currentStep = 1;
+      } else {
+        _currentStep--;
+      }
     });
   }
 
@@ -60,13 +72,54 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
 
     ref.read(appsProvider.notifier).createApp(newApp);
 
-    // Initialize Pipeline if template selected
+    // Initialize Pipeline
+    List<PipelineStep> initialSteps = [];
     if (_selectedTemplate != null && _selectedTemplate!.pipelineSteps != null) {
+      initialSteps = _selectedTemplate!.pipelineSteps!;
+    } else {
+      // Default nodes based on type
+      if (_selectedType == AppType.workflow) {
+        if (_startNodeType == adk.StartNodeType.userInput) {
+          initialSteps = [
+            PipelineStep(
+              id: 'start-node',
+              nodeType: WorkflowNodeType.userInput,
+              instruction: 'User Input',
+              uiPosition: {'x': 100, 'y': 200},
+              config: {'fields': []},
+            ),
+          ];
+        } else {
+          initialSteps = [
+            PipelineStep(
+              id: 'start-node',
+              nodeType: WorkflowNodeType.trigger,
+              instruction: 'Trigger',
+              uiPosition: {'x': 100, 'y': 200},
+              config: {'trigger_type': 'Schedule'},
+            ),
+          ];
+        }
+      } else if (_selectedType == AppType.chatflow) {
+        initialSteps = [
+          PipelineStep(
+            id: 'start-node',
+            nodeType: WorkflowNodeType.start,
+            instruction: 'Start',
+            uiPosition: {'x': 100, 'y': 200},
+            config: {'fields': []},
+          ),
+        ];
+      }
+      // TODO: Handle chatbot, agent, text generator initialization if they use pipelines
+    }
+
+    if (initialSteps.isNotEmpty) {
       final newPipeline = Pipeline(
         id: id,
         name: newApp.name,
         description: newApp.description,
-        steps: _selectedTemplate!.pipelineSteps!,
+        steps: initialSteps,
       );
       ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
     }
@@ -98,7 +151,9 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
                 Text(
                   _currentStep == 0 
                     ? 'Start from Template' 
-                    : (_currentStep == 1 ? 'Choose App Type' : 'Configure App'),
+                    : (_currentStep == 1 
+                        ? 'Choose App Type' 
+                        : (_currentStep == 2 ? 'Start Point' : 'Configure App')),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -118,7 +173,9 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
                 ? 'Select a template or start from scratch'
                 : (_currentStep == 1
                     ? 'Choose an app type to get started'
-                    : 'Set the basic information for your ${_selectedType?.displayName}'),
+                    : (_currentStep == 2
+                        ? 'Define how your workflow begins'
+                        : 'Set the basic information for your ${_selectedType?.displayName}')),
               style: const TextStyle(color: Colors.white38, fontSize: 14),
             ),
             const SizedBox(height: 32),
@@ -141,8 +198,10 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
                       // If step 0 and no template selected, go to type selection (scratch)
                       // If step 0 and template selected, skip type selection and go to config
                       if (_currentStep == 0) {
-                         _onNext(); // Just proceed logic inside onNext handles skip
+                         _onNext(); 
                       } else if (_currentStep == 1 && _selectedType != null) {
+                        _onNext();
+                      } else if (_currentStep == 2) {
                         _onNext();
                       }
                     },
@@ -152,7 +211,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: Text(_currentStep == 0 ? 'Start from Scratch' : 'Next'),
+                    child: Text(_currentStep == 0 ? 'Start from Scratch' : (_currentStep == 2 ? 'Continue' : 'Next')),
                   )
                 else
                   ElevatedButton(
@@ -178,6 +237,8 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
       return _buildTemplateSelection();
     } else if (_currentStep == 1) {
       return _buildTypeSelection();
+    } else if (_currentStep == 2) {
+      return _buildStartNodeSelection();
     } else {
       return _buildAppConfiguration();
     }
@@ -259,6 +320,18 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
           setState(() {
             _selectedType = type;
             _selectedIcon = type.icon;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildStartNodeSelection() {
+    return SingleChildScrollView(
+      child: StartNodeSelector(
+        onTypeSelected: (adk.StartNodeType type) {
+          setState(() {
+            _startNodeType = type;
           });
         },
       ),

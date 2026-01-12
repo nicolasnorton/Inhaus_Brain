@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/globals.dart';
 
 /// Registry of tools available to the AI Assistant
 class AssistantTools {
@@ -25,14 +26,14 @@ class AssistantTools {
 
   /// Just for fun/demo - show a snackbar or similar
   void _throwConfetti(Map<String, dynamic> args) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessengerKey.currentState?.showSnackBar(
       const SnackBar(content: Text('🎉 Confetti! (Imagine it raining down) 🎉')),
     );
   }
 
   /// Mock creating a campaign
   void _createCampaign(Map<String, dynamic> args) {
-     ScaffoldMessenger.of(context).showSnackBar(
+     scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(content: Text('Creating campaign: ${args['title'] ?? 'Untitled'}')),
     );
     context.go('/campaigns/create');
@@ -50,7 +51,7 @@ class AssistantTools {
     // 5. Navigate to app detail
     
     // Simulating the action:
-    ScaffoldMessenger.of(context).showSnackBar(
+    scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(content: Text('Creating app from template: ${args['template_id']}')),
     );
     // context.go('/app/${newAppId}'); // Mock navigation
