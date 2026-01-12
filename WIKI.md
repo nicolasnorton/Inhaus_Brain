@@ -36,7 +36,11 @@ You can upload your own PDFs, documents, or website links here. The AI will "rea
 ### 4. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
 
-### 5. 🐛 Debug Tools (The Inspector)
+### 5. 🛠️ Templates & Sharing
+*   **Workflow Templates**: Don't start from scratch! Use professionally designed blueprints (like "Simple Chatbot" or "Twitter Account Analyzer") to jumpstart your project.
+*   **Import/Export**: Move your workflows between workspaces or share them with others using the **Export JSON** and **Import** features.
+
+### 6. 🐛 Debug Tools (The Inspector)
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
 ---

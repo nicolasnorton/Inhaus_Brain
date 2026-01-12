@@ -32,6 +32,8 @@ A powerful orchestration layer that allows for complex, multi-step workflows:
 - **Master Agency Pipeline**: A factory-default, 11-step specialized workflow (Trend Scout -> Strategist -> Performance Analyst -> etc.) for end-to-end campaign automation.
 - **Control Flow**: Advanced execution logic with **If-Else**, **Switch/Case**, and **Loop** (For Each/While) nodes.
 - **Integrated Debugging**: Real-time **Variable Inspector**, **Test Run** dialogs, and **Run History** logging directly within the ADK.
+- **Workflow Templates**: One-click creation of complex apps using pre-configured blueprints (Simple Chatbot, Twitter Analyzer, Customer Service Bot, etc.).
+- **Import/Export (DSL)**: Full interoperability through JSON-based Domain Specific Language (DSL). Export your entire app configuration and import it into other environments.
 - **Responsive Dashboard**: Premium home screen with intelligent quick-access widgets for all core modules.
 - **User Input Node**: Dify-style variable collection with support for Text, Select, Number, Checkbox, and Files.
 - **Variable Injection**: Dynamic mustache-style `{{variable}}` resolution across all node configurations.

@@ -10,6 +10,7 @@ import '../../features/campaigns/screens/camera_capture_screen.dart';
 import '../../features/auth/auth_screen.dart';
 import '../../features/settings/screens/personal_settings_screen.dart';
 import '../../features/adk/screens/workflow_canvas_screen.dart';
+import '../../features/adk/screens/workflow_start_screen.dart';
 import '../../features/clients/client_management_screen.dart';
 import '../../features/knowledge/knowledge_management_screen.dart';
 import '../../features/workspace/screens/model_providers_screen.dart';
@@ -17,6 +18,8 @@ import '../../features/workspace/screens/plugins_screen.dart';
 import '../../features/workspace/screens/manage_apps_screen.dart';
 import '../../features/workspace/screens/publish_dashboard_screen.dart';
 import '../../features/adk/screens/debug_tools_screen.dart';
+import '../../features/monitor/screens/monitor_dashboard_screen.dart';
+import '../../features/monitor/screens/logs_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -79,6 +82,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           //   builder: (context, state) => const PipelineBuilderScreen(),
           // ),
           GoRoute(
+            path: '/workflows',
+            builder: (context, state) => const WorkflowStartScreen(),
+          ),
+          GoRoute(
             path: '/workflow-canvas',
             builder: (context, state) => WorkflowCanvasScreen(pipelineId: state.uri.queryParameters['id']),
           ),
@@ -116,11 +123,35 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/workspace/apps',
             builder: (context, state) => const ManageAppsScreen(),
           ),
+          GoRoute(
+            path: '/monitor',
+            builder: (context, state) => MonitorDashboardScreen(
+              appId: state.uri.queryParameters['appId'] ?? 'default-app',
+            ),
+            routes: [
+              GoRoute(
+                path: 'logs',
+                builder: (context, state) => LogsLayer(
+                  appId: state.uri.queryParameters['appId'] ?? 'default-app',
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     ],
   );
 });
+
+class LogsLayer extends StatelessWidget {
+  final String appId;
+  const LogsLayer({super.key, required this.appId});
+
+  @override
+  Widget build(BuildContext context) {
+    return LogsScreen(appId: appId);
+  }
+}
 
 
 

@@ -65,7 +65,7 @@ class AppCard extends ConsumerWidget {
                       height: 48,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: theme.primaryColor.withValues(alpha: 0.1),
+                        color: app.type.color.withValues(alpha: 0.1),
                       ),
                       child: Center(
                         child: Text(

@@ -1,13 +1,9 @@
 /// Models for Dify app types and configurations
 
-/// App type enum
-enum AppType {
-  workflow,
-  chatflow,
-  chatbot,
-  agent,
-  textGenerator;
+import '../../workspace/models/app_models.dart' show AppType;
 
+/// Extension on AppType for Dify-specific logic
+extension AppTypeExtensions on AppType {
   String get apiValue {
     switch (this) {
       case AppType.workflow:
@@ -20,21 +16,6 @@ enum AppType {
         return 'agent';
       case AppType.textGenerator:
         return 'completion';
-    }
-  }
-
-  String get displayName {
-    switch (this) {
-      case AppType.workflow:
-        return 'Workflow';
-      case AppType.chatflow:
-        return 'Chatflow';
-      case AppType.chatbot:
-        return 'Chatbot';
-      case AppType.agent:
-        return 'Agent';
-      case AppType.textGenerator:
-        return 'Text Generator';
     }
   }
 

@@ -7,6 +7,8 @@ import 'package:inhaus_brain/features/adk/widgets/node_configuration_sheet.dart'
 import '../../../core/adk/models/pipeline_models.dart';
 import '../providers/pipeline_provider.dart';
 import '../../chat/models/chat_models.dart';
+import '../../workspace/models/app_models.dart';
+import '../../workspace/providers/apps_provider.dart';
 
 class WorkflowCanvasScreen extends ConsumerStatefulWidget {
   final String? pipelineId; // Optional: Launch with existing pipeline
@@ -388,13 +390,46 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
           ),
           ElevatedButton(
             onPressed: () {
+              final String appId = widget.pipelineId ?? const Uuid().v4();
+              
               final newPipeline = Pipeline(
-                id: widget.pipelineId ?? const Uuid().v4(),
+                id: appId,
                 name: nameController.text,
                 description: descController.text,
                 steps: _steps,
               );
+              
+              // 1. Save Pipeline
               ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
+              
+              // 2. Sync with AppsProvider
+              final apps = ref.read(appsProvider);
+              final existingAppIndex = apps.indexWhere((a) => a.id == appId);
+              
+              if (existingAppIndex != -1) {
+                final existingApp = apps[existingAppIndex];
+                ref.read(appsProvider.notifier).updateApp(
+                  appId,
+                  existingApp.copyWith(
+                    name: nameController.text,
+                    description: descController.text,
+                  ),
+                );
+              } else {
+                ref.read(appsProvider.notifier).createApp(
+                  App(
+                    id: appId,
+                    name: nameController.text,
+                    type: AppType.workflow,
+                    description: descController.text,
+                    icon: AppType.workflow.icon,
+                    status: AppStatus.draft,
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  ),
+                );
+              }
+
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Workflow "${newPipeline.name}" saved!')),

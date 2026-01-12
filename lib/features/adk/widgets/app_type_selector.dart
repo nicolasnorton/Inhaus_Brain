@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../workspace/models/app_models.dart' show AppType;
 import '../models/app_type_models.dart';
 
 /// Widget for selecting app type during app creation
@@ -41,7 +42,7 @@ class _AppTypeSelectorState extends State<AppTypeSelector> {
               child: _buildTypeCard(
                 type: AppType.workflow,
                 icon: Icons.account_tree,
-                color: const Color(0xFF6366F1),
+                color: AppType.workflow.color,
               ),
             ),
             const SizedBox(width: 16),
@@ -49,7 +50,7 @@ class _AppTypeSelectorState extends State<AppTypeSelector> {
               child: _buildTypeCard(
                 type: AppType.chatflow,
                 icon: Icons.chat_bubble_outline,
-                color: const Color(0xFF3B82F6),
+                color: AppType.chatflow.color,
               ),
             ),
           ],
@@ -88,7 +89,7 @@ class _AppTypeSelectorState extends State<AppTypeSelector> {
                 child: _buildTypeCard(
                   type: AppType.chatbot,
                   icon: Icons.smart_toy_outlined,
-                  color: const Color(0xFF8B5CF6),
+                  color: AppType.chatbot.color,
                   isLegacy: true,
                 ),
               ),
@@ -97,7 +98,7 @@ class _AppTypeSelectorState extends State<AppTypeSelector> {
                 child: _buildTypeCard(
                   type: AppType.agent,
                   icon: Icons.psychology_outlined,
-                  color: const Color(0xFFA855F7),
+                  color: AppType.agent.color,
                   isLegacy: true,
                 ),
               ),
@@ -106,7 +107,7 @@ class _AppTypeSelectorState extends State<AppTypeSelector> {
                 child: _buildTypeCard(
                   type: AppType.textGenerator,
                   icon: Icons.description_outlined,
-                  color: const Color(0xFF10B981),
+                  color: AppType.textGenerator.color,
                   isLegacy: true,
                 ),
               ),

@@ -2,108 +2,90 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inhaus_brain/core/auth/auth_service.dart';
+import '../../core/auth/auth_service.dart';
+import '../assistant/widgets/ai_assistant_button.dart';
+import '../assistant/widgets/ai_assistant_overlay.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  final Widget child; // For nested navigation if using ShellRoute, but simplifying for now
+  final Widget child;
   
   const DashboardScreen({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          // Sidebar (Navigation Rail) - Visible on larger screens or always for this "agentic console" feel
-          NavigationRail(
-            backgroundColor: Theme.of(context).cardColor.withValues(alpha: 0.3),
-            selectedIndex: _calculateSelectedIndex(context, ref),
-            onDestinationSelected: (int index) => _onItemTapped(index, context, ref),
-            labelType: NavigationRailLabelType.all,
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 48,
-                height: 48,
-                errorBuilder: (context, error, stackTrace) => 
-                    Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+          Row(
+            children: [
+            // Custom Scrollable Sidebar
+            Container(
+              width: 80,
+              color: Theme.of(context).cardColor.withValues(alpha: 0.3),
+              child: Column(
+                children: [
+                   Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 48,
+                      height: 48,
+                      errorBuilder: (context, error, stackTrace) => 
+                          Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, 'Dashboard', ref),
+                          _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, 'Clients', ref),
+                          _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, 'Campaigns', ref),
+                          _buildNavItem(context, 3, FontAwesomeIcons.wandMagicSparkles, 'Creative', ref),
+                          _buildNavItem(context, 4, FontAwesomeIcons.chartLine, 'Analytics', ref),
+                          _buildNavItem(context, 5, FontAwesomeIcons.diagramProject, 'Workflows', ref),
+                          _buildNavItem(context, 6, FontAwesomeIcons.rocket, 'Publish', ref),
+                          _buildNavItem(context, 7, FontAwesomeIcons.bug, 'Debug', ref),
+                          _buildNavItem(context, 8, FontAwesomeIcons.book, 'Knowledge', ref),
+                          _buildNavItem(context, 9, FontAwesomeIcons.briefcase, 'Workspace', ref),
+                          _buildNavItem(context, 10, FontAwesomeIcons.chartLine, 'Monitor', ref),
+                          _buildNavItem(context, 11, FontAwesomeIcons.gear, 'Settings', ref),
+                          const SizedBox(height: 20), // Spacing at the end of scroll
+                        ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildUserAvatar(ref),
+                        const SizedBox(height: 16),
+                        IconButton(
+                          icon: const Icon(Icons.logout, color: Colors.white54),
+                          onPressed: () => ref.read(authServiceProvider).signOut(),
+                          tooltip: 'Logout',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            destinations: [
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.gaugeHigh),
-                label: Text('Dashboard'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.usersViewfinder),
-                label: Text('Clients'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.bullhorn),
-                label: Text('Campaigns'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.wandMagicSparkles), // Agent/Creative
-                label: Text('Creative'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.chartLine),
-                label: Text('Analytics'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.diagramProject),
-                label: Text('Workflows'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.rocket),
-                label: Text('Publish'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.bug),
-                label: Text('Debug'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.book),
-                label: Text('Knowledge'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.briefcase),
-                label: Text('Workspace'),
-              ),
-              const NavigationRailDestination(
-                icon: Icon(FontAwesomeIcons.gear),
-                label: Text('Settings'),
+              const VerticalDivider(thickness: 1, width: 1),
+              // Main Content Area
+              Expanded(
+                child: child,
               ),
             ],
-            trailing: Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildUserAvatar(ref),
-                      const SizedBox(height: 16),
-                      IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.white54),
-                        onPressed: () => ref.read(authServiceProvider).signOut(),
-                        tooltip: 'Logout',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ),
-          const VerticalDivider(thickness: 1, width: 1),
-          // Main Content Area
-          Expanded(
-            child: child,
-          ),
+          
+          // AI Assistant Overlay (Global)
+          const AiAssistantOverlay(),
         ],
       ),
+      floatingActionButton: const AiAssistantButton(),
     );
   }
 
@@ -137,13 +119,41 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/campaigns')) return 2;
     if (location.startsWith('/creative')) return 3;
     if (location.startsWith('/analytics')) return 4;
-    if (location.startsWith('/workflow-canvas')) return 5;
+    if (location.startsWith('/workflows') || location.startsWith('/workflow-canvas')) return 5;
     if (location.startsWith('/publish')) return 6;
     if (location.startsWith('/debug')) return 7;
     if (location.startsWith('/knowledge')) return 8;
     if (location.startsWith('/workspace')) return 9;
-    if (location.startsWith('/settings')) return 10;
+    if (location.startsWith('/monitor')) return 10;
+    if (location.startsWith('/settings')) return 11;
     return 0;
+  }
+
+  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, WidgetRef ref) {
+    final isSelected = _calculateSelectedIndex(context, ref) == index;
+    final color = isSelected ? Theme.of(context).primaryColor : Colors.white54;
+    
+    return InkWell(
+      onTap: () => _onItemTapped(index, context, ref),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        width: double.infinity,
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11, // Slightly smaller to fit
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _onItemTapped(int index, BuildContext context, WidgetRef ref) {
@@ -164,7 +174,7 @@ class DashboardScreen extends ConsumerWidget {
         context.go('/analytics');
         break;
       case 5:
-        context.go('/workflow-canvas');
+        context.go('/workflows');
         break;
       case 6:
         context.go('/publish');
@@ -179,13 +189,15 @@ class DashboardScreen extends ConsumerWidget {
         context.go('/workspace/model-providers');
         break;
       case 10:
+        context.go('/monitor');
+        break;
+      case 11:
         context.go('/settings');
         break;
     }
   }
 }
 
-// Enhanced dashboard home with navigation widgets
 class DashboardHome extends ConsumerWidget {
   const DashboardHome({super.key});
 
@@ -199,7 +211,6 @@ class DashboardHome extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Welcome header
           Text(
             'Welcome back, $displayName',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -214,8 +225,6 @@ class DashboardHome extends ConsumerWidget {
                 ),
           ),
           const SizedBox(height: 32),
-
-          // Quick access cards
           Text(
             'Quick Access',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -223,13 +232,9 @@ class DashboardHome extends ConsumerWidget {
                 ),
           ),
           const SizedBox(height: 16),
-          
-          // Grid of navigation cards - responsive
           LayoutBuilder(
             builder: (context, constraints) {
-              // Use 4 columns on desktop (>1200px), 3 on smaller screens
               final crossAxisCount = constraints.maxWidth > 1200 ? 4 : 3;
-              
               return GridView.count(
                 crossAxisCount: crossAxisCount,
                 shrinkWrap: true,
@@ -242,70 +247,60 @@ class DashboardHome extends ConsumerWidget {
                     context,
                     icon: FontAwesomeIcons.usersViewfinder,
                     label: 'Clients',
-                    description: 'Manage your clients',
                     onTap: () => context.go('/clients'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.bullhorn,
                     label: 'Campaigns',
-                    description: 'Create campaigns',
                     onTap: () => context.go('/campaigns'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.wandMagicSparkles,
                     label: 'Creative',
-                    description: 'Design content',
                     onTap: () => context.go('/creative'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.chartLine,
                     label: 'Analytics',
-                    description: 'View insights',
                     onTap: () => context.go('/analytics'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.diagramProject,
                     label: 'Workflows',
-                    description: 'Build workflows',
-                    onTap: () => context.go('/workflow-canvas'),
+                    onTap: () => context.go('/workflows'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.rocket,
                     label: 'Publish',
-                    description: 'Deploy your apps',
                     onTap: () => context.go('/publish'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.bug,
                     label: 'Debug',
-                    description: 'Test & debug',
                     onTap: () => context.go('/debug'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.book,
                     label: 'Knowledge',
-                    description: 'Manage knowledge',
                     onTap: () => context.go('/knowledge'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.briefcase,
                     label: 'Workspace',
-                    description: 'Configure workspace',
                     onTap: () => context.go('/workspace/model-providers'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.gear,
                     label: 'Settings',
-                    description: 'Personal settings',
                     onTap: () => context.go('/settings'),
                   ),
                 ],
@@ -321,7 +316,6 @@ class DashboardHome extends ConsumerWidget {
     BuildContext context, {
     required IconData icon,
     required String label,
-    required String description,
     required VoidCallback onTap,
   }) {
     return Card(
@@ -335,18 +329,11 @@ class DashboardHome extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 24,
-                color: Theme.of(context).primaryColor,
-              ),
+              Icon(icon, size: 24, color: Theme.of(context).primaryColor),
               const SizedBox(height: 6),
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

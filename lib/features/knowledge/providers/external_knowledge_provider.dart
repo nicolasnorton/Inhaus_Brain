@@ -65,6 +65,53 @@ class ExternalConnectionsNotifier extends StateNotifier<List<ExternalConnection>
     }
   }
 
+  /// Test a connection
+  Future<bool> testConnection(WidgetRef ref, String connectionId) async {
+    final connection = getConnection(connectionId);
+    if (connection == null) return false;
+
+    updateConnectionStatus(connectionId, ConnectionStatus.pending);
+    
+    final service = ref.read(externalKnowledgeServiceProvider);
+    final success = await service.testConnection(connection.endpoint, connection.apiKey);
+    
+    if (success) {
+      updateConnectionStatus(connectionId, ConnectionStatus.active, lastSync: DateTime.now());
+    } else {
+      updateConnectionStatus(connectionId, ConnectionStatus.error);
+    }
+    
+    return success;
+  }
+
+  /// Perform a knowledge query
+  Future<void> queryKnowledge(WidgetRef ref, String connectionId, String query) async {
+    final connection = getConnection(connectionId);
+    if (connection == null) return;
+
+    final service = ref.read(externalKnowledgeServiceProvider);
+    
+    try {
+      final request = ExternalKnowledgeRequest(
+        query: query,
+        knowledgeId: connection.knowledgeId!,
+        retrievalSetting: const RetrievalSetting(topK: 5, scoreThreshold: 0.5),
+      );
+      
+      final response = await service.queryKnowledge(
+        request: request,
+        endpoint: connection.endpoint,
+        apiKey: connection.apiKey,
+      );
+      
+      ref.read(queryResultsProvider.notifier).state = response;
+    } catch (e) {
+      // In a real app, we'd handle this with a specific error state
+      ref.read(queryResultsProvider.notifier).state = null;
+      updateConnectionStatus(connectionId, ConnectionStatus.error);
+    }
+  }
+
   /// Create a new LlamaCloud connection
   ExternalConnection createLlamaCloudConnection({
     required String apiKey,

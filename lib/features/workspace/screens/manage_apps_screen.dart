@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/app_models.dart';
 import '../providers/apps_provider.dart';
 import '../widgets/app_card.dart';
+import '../widgets/create_app_dialog.dart';
 
 /// Main screen for managing apps
 class ManageAppsScreen extends ConsumerStatefulWidget {
@@ -245,7 +246,10 @@ class _ManageAppsScreenState extends ConsumerState<ManageAppsScreen> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () => _showSnackBar('Create app coming soon'),
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (context) => const CreateAppDialog(),
+                  ),
                   icon: const Icon(FontAwesomeIcons.plus),
                   label: const Text('New App'),
                   style: ElevatedButton.styleFrom(

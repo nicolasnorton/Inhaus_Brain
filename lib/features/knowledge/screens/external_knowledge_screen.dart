@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/external_knowledge_models.dart';
+import '../providers/external_knowledge_provider.dart';
 
 class ExternalKnowledgeScreen extends ConsumerStatefulWidget {
   const ExternalKnowledgeScreen({super.key});
@@ -10,6 +12,11 @@ class ExternalKnowledgeScreen extends ConsumerStatefulWidget {
 
 class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _queryController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _endpointController = TextEditingController();
+  final TextEditingController _apiKeyController = TextEditingController();
+  final TextEditingController _knowledgeIdController = TextEditingController();
 
   @override
   void initState() {
@@ -20,6 +27,11 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
   @override
   void dispose() {
     _tabController.dispose();
+    _queryController.dispose();
+    _nameController.dispose();
+    _endpointController.dispose();
+    _apiKeyController.dispose();
+    _knowledgeIdController.dispose();
     super.dispose();
   }
 
@@ -74,6 +86,8 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
   }
 
   Widget _buildAPIConnectionsTab() {
+    final connections = ref.watch(externalConnectionsProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -104,33 +118,215 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
         Expanded(
           child: ListView(
             children: [
-              _buildAPIConnectionItem(
-                'Enterprise SharePoint API',
-                'https://sharepoint.corp.example.com/v1',
-                'Active',
-                Colors.greenAccent,
-                lastSync: '2 hours ago',
-              ),
-              const SizedBox(height: 16),
-              _buildAPIConnectionItem(
-                'AWS Bedrock Knowledge Base',
-                'https://bedrock-runtime.us-east-1.amazonaws.com',
-                'Active',
-                Colors.greenAccent,
-                lastSync: '5 minutes ago',
-              ),
-              const SizedBox(height: 16),
-              _buildAPIConnectionItem(
-                'Legacy Internal Wiki',
-                'https://wiki.internal.example.com/api/v2',
-                'Error',
-                Colors.redAccent,
-                lastSync: 'Failed',
-              ),
+              if (connections.isEmpty)
+                _buildEmptyConnectionsState()
+              else
+                ...connections.map((conn) => Column(
+                  children: [
+                    _buildAPIConnectionItem(conn),
+                    const SizedBox(height: 16),
+                  ],
+                )),
+              
+              const SizedBox(height: 24),
+              if (connections.isNotEmpty) _buildRetrievalSandbox(),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRetrievalSandbox() {
+    final selectedConnId = ref.watch(selectedConnectionProvider);
+    final results = ref.watch(queryResultsProvider);
+    final connections = ref.watch(externalConnectionsProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Retrieval Sandbox',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Test your retrieval settings and view raw chunks returned by the API.',
+            style: TextStyle(color: Colors.white38, fontSize: 13),
+          ),
+          const SizedBox(height: 24),
+          
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select Connection', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedConnId,
+                          hint: const Text('Choose a connection', style: TextStyle(color: Colors.white24, fontSize: 14)),
+                          dropdownColor: const Color(0xFF1C2128),
+                          isExpanded: true,
+                          items: connections.map((conn) => DropdownMenuItem(
+                            value: conn.id,
+                            child: Text(conn.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                          )).toList(),
+                          onChanged: (val) => ref.read(selectedConnectionProvider.notifier).state = val,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Query', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _queryController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter search query...',
+                        hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.03),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: ElevatedButton(
+                  onPressed: (selectedConnId != null && _queryController.text.isNotEmpty)
+                      ? () => ref.read(externalConnectionsProvider.notifier).queryKnowledge(ref, selectedConnId, _queryController.text)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  ),
+                  child: const Text('Search'),
+                ),
+              ),
+            ],
+          ),
+          
+          if (results != null) ...[
+            const SizedBox(height: 32),
+            const Text(
+              'Retrieval Results',
+              style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ...results.records.map((record) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.01),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        record.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Score: ${record.score.toStringAsFixed(3)}',
+                          style: const TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    record.content,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12, height: 1.5),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (record.metadata?.isNotEmpty ?? false) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: record.metadata!.entries.map((e) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text('${e.key}: ${e.value}', style: const TextStyle(color: Colors.white24, fontSize: 9)),
+                      )).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyConnectionsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.api_outlined, size: 64, color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 16),
+          const Text(
+            'No connections configured',
+            style: TextStyle(color: Colors.white38, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _showAddAPIDialog,
+            child: const Text('Add your first connection'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -183,7 +379,11 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
     );
   }
 
-  Widget _buildAPIConnectionItem(String name, String url, String status, Color statusColor, {String? lastSync}) {
+  Widget _buildAPIConnectionItem(ExternalConnection connection) {
+    final statusColor = _getStatusColor(connection.status);
+    final statusText = _getStatusText(connection.status);
+    final lastSyncText = _formatLastSync(connection.lastSync);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -206,12 +406,12 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(connection.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(url, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                if (lastSync != null) ...[
+                Text(connection.endpoint, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                if (lastSyncText != null) ...[
                   const SizedBox(height: 4),
-                  Text('Last sync: $lastSync', style: const TextStyle(color: Colors.white24, fontSize: 11)),
+                  Text('Last sync: $lastSyncText', style: const TextStyle(color: Colors.white24, fontSize: 11)),
                 ],
               ],
             ),
@@ -223,14 +423,20 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 0.5),
             ),
-            child: Text(
-              status,
-              style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-            ),
+            child: connection.status == ConnectionStatus.pending
+                ? const SizedBox(
+                    width: 10,
+                    height: 10,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
+                  )
+                : Text(
+                    statusText,
+                    style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
           ),
           const SizedBox(width: 16),
           IconButton(
-            onPressed: () {},
+            onPressed: () => _testConnection(connection.id),
             icon: const Icon(Icons.refresh, color: Colors.white38, size: 18),
             tooltip: 'Test Connection',
           ),
@@ -240,11 +446,58 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
             tooltip: 'Configure',
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => ref.read(externalConnectionsProvider.notifier).removeConnection(connection.id),
             icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
             tooltip: 'Remove',
           ),
         ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(ConnectionStatus status) {
+    switch (status) {
+      case ConnectionStatus.active:
+        return Colors.greenAccent;
+      case ConnectionStatus.error:
+        return Colors.redAccent;
+      case ConnectionStatus.pending:
+        return Colors.blueAccent;
+      default:
+        return Colors.white38;
+    }
+  }
+
+  String _getStatusText(ConnectionStatus status) {
+    switch (status) {
+      case ConnectionStatus.active:
+        return 'Active';
+      case ConnectionStatus.error:
+        return 'Error';
+      case ConnectionStatus.pending:
+        return 'Testing...';
+      default:
+        return 'Disconnected';
+    }
+  }
+
+  String? _formatLastSync(DateTime? lastSync) {
+    if (lastSync == null) return null;
+    final diff = DateTime.now().difference(lastSync);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  Future<void> _testConnection(String id) async {
+    final success = await ref.read(externalConnectionsProvider.notifier).testConnection(ref, id);
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Connection successful!' : 'Connection failed. Check your settings.'),
+        backgroundColor: success ? Colors.green : Colors.red,
       ),
     );
   }
@@ -307,6 +560,11 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
   }
 
   void _showAddAPIDialog() {
+    _nameController.clear();
+    _endpointController.clear();
+    _apiKeyController.clear();
+    _knowledgeIdController.clear();
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -321,11 +579,13 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
             children: [
               const Text('Add API Connection', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              _buildDialogField('Connection Name', 'e.g., My Knowledge Base'),
+              _buildDialogField('Connection Name', 'e.g., My Knowledge Base', controller: _nameController),
               const SizedBox(height: 16),
-              _buildDialogField('API Endpoint', 'https://api.example.com/v1/retrieve'),
+              _buildDialogField('API Endpoint', 'https://api.example.com/v1/retrieve', controller: _endpointController),
               const SizedBox(height: 16),
-              _buildDialogField('API Key', 'sk-...', isPassword: true),
+              _buildDialogField('Knowledge ID (Optional)', 'Internal reference ID', controller: _knowledgeIdController),
+              const SizedBox(height: 16),
+              _buildDialogField('API Key', 'sk-...', isPassword: true, controller: _apiKeyController),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -362,7 +622,22 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      if (_nameController.text.isEmpty || _endpointController.text.isEmpty) {
+                        return;
+                      }
+                      
+                      final conn = ref.read(externalConnectionsProvider.notifier).createCustomConnection(
+                        name: _nameController.text,
+                        endpoint: _endpointController.text,
+                        apiKey: _apiKeyController.text,
+                        knowledgeId: _knowledgeIdController.text,
+                      );
+                      
+                      ref.read(externalConnectionsProvider.notifier).addConnection(conn);
+                      Navigator.pop(context);
+                      _testConnection(conn.id);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
                       foregroundColor: Colors.white,
@@ -461,13 +736,14 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
     );
   }
 
-  Widget _buildDialogField(String label, String hint, {bool isPassword = false}) {
+  Widget _buildDialogField(String label, String hint, {bool isPassword = false, TextEditingController? controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           obscureText: isPassword,
           decoration: InputDecoration(
             hintText: hint,
