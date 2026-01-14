@@ -1,0 +1,167 @@
+{
+  "@@locale": "en",
+  "appTitle": "Inhaus Brain",
+  "@appTitle": {
+    "description": "The title of the application"
+  },
+  "settingsTitle": "Personal Settings",
+  "@settingsTitle": {
+    "description": "Title for the settings screen"
+  },
+  "settingsSubtitle": "Manage your profile and preferences across all workspaces",
+  "@settingsSubtitle": {
+    "description": "Subtitle for the settings screen"
+  },
+  "tabProfile": "Profile",
+  "@tabProfile": {
+    "description": "Label for the Profile tab"
+  },
+  "tabPreferences": "Preferences",
+  "@tabPreferences": {
+    "description": "Label for the Preferences tab"
+  },
+  "tabSecurity": "Security",
+  "@tabSecurity": {
+    "description": "Label for the Security tab"
+  },
+  "profilePicture": "Profile Picture",
+  "@profilePicture": {
+    "description": "Label for profile picture section"
+  },
+  "uploadNewPicture": "Upload New Picture",
+  "@uploadNewPicture": {
+    "description": "Button text to upload a new picture"
+  },
+  "uploadComingSoon": "Avatar upload coming soon",
+  "@uploadComingSoon": {
+    "description": "Snackbar message for avatar upload"
+  },
+  "nameLabel": "Name",
+  "@nameLabel": {
+    "description": "Label for name field"
+  },
+  "nameHint": "Enter your name",
+  "@nameHint": {
+    "description": "Hint text for name field"
+  },
+  "nameEmptyError": "Name cannot be empty",
+  "@nameEmptyError": {
+    "description": "Error message for empty name"
+  },
+  "emailLabel": "Email Address",
+  "@emailLabel": {
+    "description": "Label for email field"
+  },
+  "emailHint": "Enter your email",
+  "@emailHint": {
+    "description": "Hint text for email field"
+  },
+  "emailInvalidError": "Invalid email",
+  "@emailInvalidError": {
+    "description": "Error message for invalid email"
+  },
+  "emailChangeWarning": "Changing your email affects all workspaces",
+  "@emailChangeWarning": {
+    "description": "Warning text about changing email"
+  },
+  "saveChanges": "Save Changes",
+  "@saveChanges": {
+    "description": "Button text to save changes"
+  },
+  "profileUpdated": "Profile updated successfully",
+  "@profileUpdated": {
+    "description": "Snackbar message for successful profile update"
+  },
+  "displayLanguage": "Display Language",
+  "@displayLanguage": {
+    "description": "Label for display language setting"
+  },
+  "languageUpdated": "Language updated to {language}",
+  "@languageUpdated": {
+    "description": "Snackbar message for language update",
+    "placeholders": {
+      "language": {
+        "type": "String",
+        "example": "English"
+      }
+    }
+  },
+  "emailNotifications": "Email Notifications",
+  "@emailNotifications": {
+    "description": "Label for email notifications toggle"
+  },
+  "emailNotificationsSubtitle": "Receive updates and alerts via email",
+  "@emailNotificationsSubtitle": {
+    "description": "Subtitle for email notifications toggle"
+  },
+  "darkMode": "Dark Mode",
+  "@darkMode": {
+    "description": "Label for dark mode toggle"
+  },
+  "darkModeSubtitle": "Use a high-contrast dark theme",
+  "@darkModeSubtitle": {
+    "description": "Subtitle for dark mode toggle"
+  },
+  "developerSettings": "Developer Settings",
+  "@developerSettings": {
+    "description": "Header for developer settings"
+  },
+  "mockAIModels": "Mock AI Models",
+  "@mockAIModels": {
+    "description": "Label for mock AI models toggle"
+  },
+  "mockAIModelsSubtitle": "Force all generative AI to use simulated edge mock for testing",
+  "@mockAIModelsSubtitle": {
+    "description": "Subtitle for mock AI models toggle"
+  },
+  "aiMockMode": "AI Mock Mode: {status}",
+  "@aiMockMode": {
+    "description": "Snackbar message for AI mock mode toggle",
+    "placeholders": {
+      "status": {
+        "type": "String",
+        "example": "ON"
+      }
+    }
+  },
+  "connectedAccounts": "Connected Accounts",
+  "@connectedAccounts": {
+    "description": "Header for connected accounts section"
+  },
+  "connected": "Connected",
+  "@connected": {
+    "description": "Status text for connected account"
+  },
+  "notConnected": "Not connected",
+  "@notConnected": {
+    "description": "Status text for disconnected account"
+  },
+  "disconnect": "Disconnect",
+  "@disconnect": {
+    "description": "Button text to disconnect an account"
+  },
+  "connect": "Connect",
+  "@connect": {
+    "description": "Button text to connect an account"
+  },
+  "accountDisconnected": "{account} disconnected",
+  "@accountDisconnected": {
+    "description": "Snackbar message for account disconnection",
+    "placeholders": {
+      "account": {
+        "type": "String",
+        "example": "GitHub"
+      }
+    }
+  },
+  "accountConnected": "{account} connected",
+  "@accountConnected": {
+    "description": "Snackbar message for account connection",
+    "placeholders": {
+      "account": {
+        "type": "String",
+        "example": "GitHub"
+      }
+    }
+  }
+}

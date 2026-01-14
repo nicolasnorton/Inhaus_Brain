@@ -7,6 +7,8 @@
 // (at your option) any later version.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'package:firebase_core/firebase_core.dart';
@@ -84,6 +86,17 @@ class InhausBrainApp extends ConsumerWidget {
         theme: preferences.darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
         routerConfig: router,
         scaffoldMessengerKey: scaffoldMessengerKey,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en'), // English
+          Locale('es'), // Spanish
+        ],
+        locale: Locale(preferences.language.code),
       ),
     );
   }

@@ -32,6 +32,10 @@ class CampaignListNotifier extends Notifier<List<Campaign>> {
   Future<void> updateCampaign(Campaign campaign) async {
     await ref.read(firebaseServiceProvider).updateCampaign(campaign);
   }
+
+  Future<void> deleteCampaign(String campaignId) async {
+    await ref.read(firebaseServiceProvider).deleteCampaign(campaignId);
+  }
 }
 
 final campaignListProvider = NotifierProvider<CampaignListNotifier, List<Campaign>>(CampaignListNotifier.new);

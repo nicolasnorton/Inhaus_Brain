@@ -18,6 +18,11 @@ class CampaignListScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Creative Studio',
+            onPressed: () => context.go('/creative'),
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'New Campaign',
             onPressed: () => context.go('/campaigns/create'),

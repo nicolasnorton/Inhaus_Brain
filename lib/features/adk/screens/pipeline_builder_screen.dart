@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -7,6 +9,7 @@ import '../../../core/globals.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../chat/models/chat_models.dart';
 import '../providers/pipeline_provider.dart';
+import '../../workspace/services/workflow_exchange_service.dart';
 
 // Temporary state provider for the builder
 final pipelineBuilderProvider = StateProvider<List<PipelineStep>>((ref) => []);
@@ -39,6 +42,13 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
   ];
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+
+  @override
   Widget build(BuildContext context) {
     final steps = ref.watch(pipelineBuilderProvider);
 
@@ -53,6 +63,36 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
              icon: const Icon(FontAwesomeIcons.diagramProject, size: 18), // Visual Canvas
              tooltip: 'Visual Workflow Builder',
              onPressed: () => context.push('/workflow-canvas'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Export JSON',
+            onPressed: () async {
+              final name = _nameController.text.trim();
+              if (steps.isEmpty) {
+                 scaffoldMessengerKey.currentState?.showSnackBar(const SnackBar(content: Text('Cannot export empty pipeline.')));
+                 return;
+              }
+              
+              final tempPipeline = Pipeline(
+                id: const Uuid().v4(),
+                name: name.isEmpty ? 'Untitled Pipeline' : name,
+                description: 'Exported from Inhaus Brain',
+                steps: steps,
+              );
+              
+              final service = WorkflowExchangeService(ref);
+              try {
+                await service.exportPipeline(tempPipeline);
+                scaffoldMessengerKey.currentState?.showSnackBar(
+                  const SnackBar(content: Text('Pipeline exported successfully.')),
+                );
+              } catch (e) {
+                scaffoldMessengerKey.currentState?.showSnackBar(
+                  SnackBar(content: Text('Export failed: $e')),
+                );
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.save),
@@ -284,7 +324,9 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
   }
 
   Widget _buildSequentialContent(PipelineStep step) {
-    return TextField(
+    return _ManagedTextField(
+      initialValue: step.instruction,
+      hintText: 'Enter specific instructions for this step (Optional)...',
       onChanged: (val) {
         ref.read(pipelineBuilderProvider.notifier).update((s) => s.map((e) => e.id == step.id ? PipelineStep(
           id: e.id,
@@ -293,16 +335,6 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
           type: e.type,
         ) : e).toList());
       },
-      controller: TextEditingController(text: step.instruction)..selection = TextSelection.collapsed(offset: step.instruction.length),
-      style: const TextStyle(color: Colors.white70, fontSize: 13),
-      decoration: InputDecoration(
-        hintText: 'Enter specific instructions for this step (Optional)...',
-        hintStyle: const TextStyle(color: Colors.white24),
-        filled: true,
-        fillColor: Colors.black.withValues(alpha: 0.2),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      ),
     );
   }
 
@@ -382,7 +414,9 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        TextField(
+        _ManagedTextField(
+          initialValue: step.loopCondition ?? '',
+          hintText: 'Enter loop condition (e.g. "Until text is polished")...',
           onChanged: (val) {
             ref.read(pipelineBuilderProvider.notifier).update((s) => s.map((e) => e.id == step.id ? PipelineStep(
               id: e.id,
@@ -392,16 +426,6 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
               loopCondition: val,
             ) : e).toList());
           },
-          controller: TextEditingController(text: step.loopCondition)..selection = TextSelection.collapsed(offset: step.loopCondition?.length ?? 0),
-          style: const TextStyle(color: Colors.white70, fontSize: 13),
-          decoration: InputDecoration(
-            hintText: 'Enter loop condition (e.g. "Until text is polished")...',
-            hintStyle: const TextStyle(color: Colors.white24),
-            filled: true,
-            fillColor: Colors.black.withValues(alpha: 0.2),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          ),
         ),
       ],
     );
@@ -420,5 +444,61 @@ class _PipelineBuilderScreenState extends ConsumerState<PipelineBuilderScreen> {
       case MessageSender.developerAgent: return FontAwesomeIcons.code;
       default: return FontAwesomeIcons.robot;
     }
+  }
+}
+
+class _ManagedTextField extends StatefulWidget {
+  final String initialValue;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+
+  const _ManagedTextField({
+    required this.initialValue,
+    required this.hintText,
+    required this.onChanged,
+  });
+
+  @override
+  State<_ManagedTextField> createState() => _ManagedTextFieldState();
+}
+
+class _ManagedTextFieldState extends State<_ManagedTextField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_ManagedTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      onChanged: widget.onChanged,
+      style: const TextStyle(color: Colors.white70, fontSize: 13),
+      decoration: InputDecoration(
+        hintText: widget.hintText,
+        hintStyle: const TextStyle(color: Colors.white24),
+        filled: true,
+        fillColor: Colors.black.withValues(alpha: 0.2),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
   }
 }

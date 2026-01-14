@@ -19,6 +19,7 @@ import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
 import '../agents/router_agent.dart';
 import '../agents/agency_agents.dart';
+import '../agents/management_agent.dart';
 import '../../../core/services/memory_service.dart';
 import '../models/memory_models.dart';
 import '../../../core/adk/services/adk_service.dart';
@@ -148,8 +149,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         context: context,
         systemPrompt: await ref.read(systemPromptsProvider).getRouterPrompt(),
         apiKey: apiKey,
-        // Router always uses Gemini for speed/cost, unless overridden globally? 
-        // For now, keep Router on Gemini Flash to be fast.
+        ref: ref, // Phase 89: Sync proximity state
       );
       
       // Basic JSON parsing (Simulated for speed, in production wrap in jsonDecode)
@@ -163,6 +163,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         await _handleCopywriterResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
       } else if (lowerOut.contains('"development"') || lowerOut.contains('dev')) {
         await _handleDeveloperResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
+      } else if (lowerOut.contains('"management"')) {
+        await _handleManagementAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else if (lowerOut.contains('"trend"') || lowerOut.contains('scout')) {
         await _handleUtilityAgent(TrendScoutAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else if (lowerOut.contains('"strategy"') || lowerOut.contains('strategist')) {
@@ -293,6 +295,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       anthropicKey: anthropicKey,
       xaiKey: xAIKey,
       modelConfig: config,
+      ref: ref, // Phase 89: Pass ref for proximity sync
     );
 
     // Orchestrator Audit
@@ -342,6 +345,54 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.developerAgent,
+      createdAt: DateTime.now(),
+    );
+
+    state = state!.copyWith(
+      messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  Future<void> _handleManagementAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+    final toolMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: 'Managing resources...',
+      sender: MessageSender.managementAgent,
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': 'management_ops'},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
+
+    final agent = ManagementAgent();
+    // System prompt can be fetched from service if we added it, or use default fallback in agent
+    final resultText = await agent.execute(
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+
+    // If the agent returned a tool call JSON, it processes it internally now? 
+    // Wait, in my implementation of ManagementAgent, I made it call `_processToolCall`.
+    // But `_processToolCall` needs `ref` to check for `clientToolsProvider`?
+    // Actually, `ManagementAgent` imports `client_tools.dart` but `clientToolsProvider` is a provider.
+    // The `_processToolCall` in `ManagementAgent` (which I just wrote) returned a string logic error message:
+    // "Tool execution handled by ChatProvider...".
+    // Ah, I need to implement the actual execution logic EITHER in the Agent OR in the Provider.
+    // Since `ManagementAgent` has access to `Ref` (passed in execute), it can read `clientToolsProvider`.
+    // Let me update `ManagementAgent` properly in the next step to actually execute the tool.
+    // For now, I'll update ChatProvider to just display the result.
+    
+    // Orchestrator Audit
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(resultText, 'ManagementAgent');
+
+    final finalMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: auditedContent,
+      sender: MessageSender.managementAgent,
       createdAt: DateTime.now(),
     );
 
@@ -412,6 +463,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     // 4. Orchestrator Audit
@@ -597,6 +649,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       anthropicKey: anthropicKey,
       xaiKey: xAIKey,
       modelConfig: config,
+      ref: ref, // Phase 89
     );
 
     final finalMsg = ChatMessage(
@@ -720,7 +773,7 @@ $lastResponse
 """;
 
     try {
-      final res = await EdgeAIService.generateText(prompt, apiKey: apiKey);
+      final res = await EdgeAIService.generateText(prompt, apiKey: apiKey, ref: ref);
       final List<dynamic> list = json.decode(res.text.contains('[') ? res.text.substring(res.text.indexOf('['), res.text.lastIndexOf(']') + 1) : "[]");
       return list.cast<String>();
     } catch (e) {

@@ -175,6 +175,26 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
     }
   }
 
+  Future<void> savePromptForSender(MessageSender sender, String prompt) async {
+    switch (sender) {
+      case MessageSender.researchAgent: await saveResearchPrompt(prompt); break;
+      case MessageSender.creativeAgent: await saveCreativePrompt(prompt); break;
+      case MessageSender.copywriterAgent: await saveCopywriterPrompt(prompt); break;
+      case MessageSender.developerAgent: await saveDeveloperPrompt(prompt); break;
+      case MessageSender.orchestratorAgent: await saveOrchestratorPrompt(prompt); break;
+      case MessageSender.trendScoutAgent: await saveTrendScoutPrompt(prompt); break;
+      case MessageSender.accountDirectorAgent: await saveAccountDirectorPrompt(prompt); break;
+      case MessageSender.strategistAgent: await saveStrategistPrompt(prompt); break;
+      case MessageSender.editorialManagerAgent: await saveEditorialManagerPrompt(prompt); break;
+      case MessageSender.mediaBuyerAgent: await saveMediaBuyerPrompt(prompt); break;
+      case MessageSender.performanceAnalystAgent: await savePerformanceAnalystPrompt(prompt); break;
+      case MessageSender.securityAgent: await saveSecurityPrompt(prompt); break;
+      case MessageSender.dataEngineerAgent: await saveDataEngPrompt(prompt); break;
+      case MessageSender.routerAgent: await saveRouterPrompt(prompt); break;
+      default: break;
+    }
+  }
+
   // Helper
   Future<String> _getPrompt(String storageKey, String assetPath, String fallback) async {
     final stored = await _storage.read(key: storageKey);

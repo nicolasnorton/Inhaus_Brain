@@ -172,20 +172,47 @@ class App {
 
   factory App.fromJson(Map<String, dynamic> json) {
     return App(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      type: AppType.values.byName(json['type'] as String),
-      description: json['description'] as String,
-      icon: json['icon'] as String,
-      status: AppStatus.values.byName(json['status'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      id: (json['id'] ?? '') as String,
+      name: (json['name'] ?? 'Untitled App') as String,
+      type: _parseAppType(json['type']),
+      description: (json['description'] ?? '') as String,
+      icon: (json['icon'] ?? '⚡') as String,
+      status: _parseAppStatus(json['status']),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
       runCount: json['run_count'] as int? ?? 0,
       tags: (json['tags'] as List?)?.cast<String>() ?? [],
       createdBy: json['created_by'] as String?,
       hasUnsavedChanges: json['has_unsaved_changes'] as bool? ?? false,
       config: Map<String, dynamic>.from(json['config'] ?? {}),
     );
+  }
+
+  static AppType _parseAppType(dynamic value) {
+    if (value is! String) return AppType.workflow;
+    try {
+      return AppType.values.byName(value);
+    } catch (_) {
+      return AppType.workflow;
+    }
+  }
+
+  static AppStatus _parseAppStatus(dynamic value) {
+    if (value is! String) return AppStatus.draft;
+    try {
+      return AppStatus.values.byName(value);
+    } catch (_) {
+      return AppStatus.draft;
+    }
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is! String) return DateTime.now();
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }
 
@@ -264,16 +291,21 @@ class AppDSL {
   static AppDSL? fromJsonString(String jsonString) {
     try {
       final json = jsonDecode(jsonString);
+      if (json is! Map<String, dynamic>) return null;
+
+      final appJson = json['app'];
+      if (appJson == null || appJson is! Map<String, dynamic>) return null;
+
       return AppDSL(
-        version: json['version'] ?? '0.0.1',
-        kind: json['kind'] ?? 'app',
-        app: App.fromJson(json['app']),
-        workflow: json['workflow'] ?? {},
-        knowledge: List<Map<String, dynamic>>.from(json['knowledge'] ?? []),
-        environment: List<Map<String, dynamic>>.from(json['environment'] ?? []),
+        version: (json['version'] ?? '0.0.1') as String,
+        kind: (json['kind'] ?? 'app') as String,
+        app: App.fromJson(appJson),
+        workflow: (json['workflow'] ?? {}) as Map<String, dynamic>,
+        knowledge: (json['knowledge'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
+        environment: (json['environment'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
       );
     } catch (e) {
-      print('Error parsing DSL: $e');
+      debugPrint('Error parsing AppDSL: $e');
       return null;
     }
   }

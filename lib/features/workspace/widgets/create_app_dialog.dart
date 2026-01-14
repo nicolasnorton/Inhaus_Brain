@@ -100,7 +100,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
             ),
           ];
         }
-      } else if (_selectedType == AppType.chatflow) {
+      } else if (_selectedType == AppType.chatflow || _selectedType == AppType.chatbot) {
         initialSteps = [
           PipelineStep(
             id: 'start-node',
@@ -109,9 +109,56 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
             uiPosition: {'x': 100, 'y': 200},
             config: {'fields': []},
           ),
+          PipelineStep(
+            id: 'llm-node',
+            nodeType: WorkflowNodeType.llm,
+            instruction: 'LLM',
+            uiPosition: {'x': 400, 'y': 200},
+            config: {'model': 'gemini-pro'},
+          ),
+          PipelineStep(
+            id: 'answer-node',
+            nodeType: WorkflowNodeType.answer, 
+            instruction: 'Answer',
+            uiPosition: {'x': 700, 'y': 200},
+            config: {},
+          ),
+        ];
+      } else if (_selectedType == AppType.agent) {
+         initialSteps = [
+          PipelineStep(
+            id: 'start-node',
+            nodeType: WorkflowNodeType.start,
+            instruction: 'Start',
+            uiPosition: {'x': 100, 'y': 200},
+            config: {'fields': []},
+          ),
+          PipelineStep(
+            id: 'agent-node', 
+            nodeType: WorkflowNodeType.agent, // Assuming agent node exists or generic LLM
+            instruction: 'Agent',
+            uiPosition: {'x': 400, 'y': 200},
+            config: {'mode': 'agent', 'tools': ['search', 'calculator']},
+          ),
+        ];
+      } else if (_selectedType == AppType.textGenerator) {
+        initialSteps = [
+           PipelineStep(
+            id: 'start-node',
+            nodeType: WorkflowNodeType.userInput,
+            instruction: 'User Input',
+            uiPosition: {'x': 100, 'y': 200},
+            config: {'fields': []},
+          ),
+           PipelineStep(
+            id: 'generator-node',
+            nodeType: WorkflowNodeType.llm,
+            instruction: 'Text Generator',
+            uiPosition: {'x': 400, 'y': 200},
+            config: {'model': 'gemini-pro'},
+          ),
         ];
       }
-      // TODO: Handle chatbot, agent, text generator initialization if they use pipelines
     }
 
     if (initialSteps.isNotEmpty) {
@@ -338,6 +385,44 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
     );
   }
 
+  void _showIconPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C2128),
+        title: const Text('Choose Icon', style: TextStyle(color: Colors.white)),
+        content: SizedBox(
+          width: 300,
+          height: 300,
+          child: GridView.count(
+            crossAxisCount: 5,
+            padding: const EdgeInsets.all(8),
+            children: [
+              '🤖', '🧠', '💼', '🎨', '📝', 
+              '📊', '🔐', '🌐', '🎮', '🎵',
+              '🎥', '⚙️', '🔍', '💡', '💬',
+              '🚀', '⭐', '🔥', '❤️', '✅'
+            ].map((emoji) => InkWell(
+              onTap: () {
+                setState(() => _selectedIcon = emoji);
+                Navigator.pop(context);
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _selectedIcon == emoji ? Colors.blueAccent.withValues(alpha: 0.3) : null,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(emoji, style: const TextStyle(fontSize: 24)),
+              ),
+            )).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAppConfiguration() {
     return SingleChildScrollView(
       child: Column(
@@ -351,7 +436,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white10),
                 ),
@@ -364,9 +449,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
               ),
               const SizedBox(width: 16),
               TextButton(
-                onPressed: () {
-                  // TODO: Implement icon picker
-                },
+                onPressed: _showIconPicker, // Connect the new picker
                 child: const Text('Change Icon'),
               ),
             ],
@@ -379,7 +462,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
             decoration: InputDecoration(
               hintText: 'Enter app name...',
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.white.withValues(alpha: 0.05),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -396,7 +479,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
             decoration: InputDecoration(
               hintText: 'What does this app do?',
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.white.withValues(alpha: 0.05),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,

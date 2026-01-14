@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -38,19 +39,40 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     setState(() => _isAdding = false);
   }
 
-  // Placeholder for file picking logic
   void _addFileSource() async {
-     // TODO: Implement file picker
-     // For now, simulate adding a text file
-     final newSource = KnowledgeSource(
-      id: const Uuid().v4(),
-      title: 'Brand_Guidelines_2026.pdf',
-      content: 'Simulated content of brand guidelines...',
-      type: KnowledgeSourceType.file,
-      createdAt: DateTime.now(),
-      metadata: {'fileSize': '2.4MB'},
-    );
-    ref.read(knowledgeProvider.notifier).addSource(newSource);
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'txt', 'md', 'json', 'csv'],
+        withData: true, // Needed for web or to get bytes directly
+      );
+
+      if (result != null) {
+        final file = result.files.single;
+        final String content = file.bytes != null 
+             ? String.fromCharCodes(file.bytes!) 
+             : 'File content not available directly. Path: ${file.path}';
+
+        final newSource = KnowledgeSource(
+          id: const Uuid().v4(),
+          title: file.name,
+          content: content,
+          type: KnowledgeSourceType.file,
+          createdAt: DateTime.now(),
+          metadata: {
+            'fileSize': '${(file.size / 1024).toStringAsFixed(2)} KB',
+            'extension': file.extension ?? 'unknown',
+          },
+        );
+        ref.read(knowledgeProvider.notifier).addSource(newSource);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking file: $e')),
+        );
+      }
+    }
   }
 
   void _addImageSource() async {
@@ -67,17 +89,24 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
   }
 
   void _addDriveSource() async {
-     // TODO: Implement Google Picker API
-     // Mock behaviour
-     final newSource = KnowledgeSource(
-      id: const Uuid().v4(),
-      title: 'Campaign_Brief_v3.gdoc',
-      content: 'https://docs.google.com/document/d/mock-doc-id',
-      type: KnowledgeSourceType.googleDrive,
-      createdAt: DateTime.now(),
-      metadata: {'owner': 'client@inhaus.ai'},
+     // Show "Coming Soon" dialog as per plan
+     showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1C2128),
+        title: const Text('Google Drive Integration', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Direct Google Drive integration is coming soon. Please download your files and upload them manually for now.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
     );
-    ref.read(knowledgeProvider.notifier).addSource(newSource);
   }
 
   @override

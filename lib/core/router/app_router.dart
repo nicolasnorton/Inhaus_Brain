@@ -13,6 +13,7 @@ import '../../features/adk/screens/workflow_canvas_screen.dart';
 import '../../features/adk/screens/workflow_start_screen.dart';
 import '../../features/clients/client_management_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
+import '../../features/clients/screens/client_create_screen.dart';
 import '../../features/knowledge/knowledge_management_screen.dart';
 import '../../features/workspace/screens/model_providers_screen.dart';
 import '../../features/workspace/screens/plugins_screen.dart';
@@ -23,6 +24,8 @@ import '../../features/monitor/screens/monitor_dashboard_screen.dart';
 import '../../features/monitor/screens/logs_screen.dart';
 import '../../features/adk/screens/app_editor_dispatcher_screen.dart';
 import '../../features/adk/screens/run_history_screen.dart';
+import '../../features/analytics/screens/analytics_monitor_screen.dart';
+import '../../features/adk/screens/pipeline_builder_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -77,6 +80,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ClientManagementScreen(),
             routes: [
               GoRoute(
+                path: 'new',
+                builder: (context, state) => const ClientCreateScreen(),
+              ),
+              GoRoute(
                 path: ':id',
                 builder: (context, state) => ClientDetailScreen(
                   clientId: state.pathParameters['id']!,
@@ -86,12 +93,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/analytics',
-            builder: (context, state) => const Center(child: Text('Analytics - Coming Soon')),
+            builder: (context, state) => AnalyticsMonitorScreen(
+              appId: state.uri.queryParameters['appId'] ?? 'default-app',
+            ),
           ),
-          // GoRoute(
-          //   path: '/pipelines',
-          //   builder: (context, state) => const PipelineBuilderScreen(),
-          // ),
+          GoRoute(
+            path: '/pipelines',
+            builder: (context, state) => const PipelineBuilderScreen(),
+          ),
           GoRoute(
             path: '/workflows',
             builder: (context, state) => const WorkflowStartScreen(),
@@ -144,7 +153,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/monitor',
-            builder: (context, state) => MonitorDashboardScreen(
+            builder: (context, state) => AnalyticsMonitorScreen(
               appId: state.uri.queryParameters['appId'] ?? 'default-app',
             ),
             routes: [

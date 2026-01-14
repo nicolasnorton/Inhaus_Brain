@@ -1,10 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import '../models/task_model.dart';
+import 'package:inhaus_brain/features/clients/models/task_model.dart';
+import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 
 class TaskNotifier extends StateNotifier<List<ProjectTask>> {
-  TaskNotifier() : super([]) {
-    _loadMockTasks();
+  final LocalPersistenceService _persistenceService;
+
+  TaskNotifier(this._persistenceService) : super([]) {
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    final tasks = await _persistenceService.getTasks();
+    if (tasks.isEmpty) {
+      _loadMockTasks();
+    } else {
+      state = tasks;
+    }
   }
 
   void _loadMockTasks() {
@@ -34,9 +46,10 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
         dueDate: DateTime.now().add(const Duration(days: 7)),
       ),
     ];
+    _persistenceService.saveTasks(state);
   }
 
-  void addTask(String projectId, String title, String description, {DateTime? dueDate, String? assigneeId}) {
+  Future<void> addTask(String projectId, String title, String description, {DateTime? dueDate, String? assigneeId}) async {
     final newTask = ProjectTask(
       id: const Uuid().v4(),
       projectId: projectId,
@@ -46,17 +59,20 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
       assigneeId: assigneeId,
     );
     state = [...state, newTask];
+    await _persistenceService.saveTasks(state);
   }
 
-  void updateTask(ProjectTask updatedTask) {
+  Future<void> updateTask(ProjectTask updatedTask) async {
     state = [
       for (final task in state)
         if (task.id == updatedTask.id) updatedTask else task
     ];
+    await _persistenceService.saveTasks(state);
   }
 
-  void deleteTask(String taskId) {
+  Future<void> deleteTask(String taskId) async {
     state = state.where((t) => t.id != taskId).toList();
+    await _persistenceService.saveTasks(state);
   }
 
   List<ProjectTask> getTasksForProject(String projectId) {
@@ -64,4 +80,7 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
   }
 }
 
-final taskProvider = StateNotifierProvider<TaskNotifier, List<ProjectTask>>((ref) => TaskNotifier());
+final taskProvider = StateNotifierProvider<TaskNotifier, List<ProjectTask>>((ref) {
+  final persistence = ref.watch(persistenceServiceProvider);
+  return TaskNotifier(persistence);
+});

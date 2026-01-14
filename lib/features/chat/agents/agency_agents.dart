@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../features/knowledge/models/knowledge_source.dart';
@@ -17,6 +18,7 @@ Future<String> _simpleExecute({
   Uint8List? imageBytes,
   String? imageMimeType,
   Function(AdkEvent)? onEvent,
+  Ref? ref, // Phase 89
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
   
@@ -31,6 +33,7 @@ Future<String> _simpleExecute({
     imageMimeType: imageMimeType,
     apiKey: apiKey,
     gemmaKey: gemmaKey,
+    ref: ref,
   );
   
   onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
@@ -58,6 +61,7 @@ class TrendScoutAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -70,6 +74,7 @@ class TrendScoutAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      ref: ref,
     );
   }
 }
@@ -95,6 +100,7 @@ class AccountDirectorAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -107,6 +113,7 @@ class AccountDirectorAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      ref: ref,
     );
   }
 }
@@ -132,6 +139,7 @@ class StrategistAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -144,6 +152,7 @@ class StrategistAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      ref: ref,
     );
   }
 }
@@ -169,6 +178,7 @@ class EditorialManagerAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -181,6 +191,7 @@ class EditorialManagerAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      ref: ref,
     );
   }
 }
@@ -206,6 +217,7 @@ class MediaBuyerAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -218,6 +230,7 @@ class MediaBuyerAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      ref: ref,
     );
   }
 }
@@ -243,6 +256,7 @@ class PerformanceAnalystAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -255,6 +269,7 @@ class PerformanceAnalystAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      ref: ref,
     );
   }
 }

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/user_models.dart';
 import '../providers/user_provider.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:inhaus_brain/core/services/edge_ai_service.dart';
+import 'package:go_router/go_router.dart';
 
 /// Personal settings screen with tabs
 class PersonalSettingsScreen extends ConsumerStatefulWidget {
@@ -25,7 +27,7 @@ class _PersonalSettingsScreenState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -89,14 +91,14 @@ class _PersonalSettingsScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Personal Settings',
+                            AppLocalizations.of(context)!.settingsTitle,
                             style: theme.textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Manage your profile and preferences across all workspaces',
+                            AppLocalizations.of(context)!.settingsSubtitle,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white70,
                             ),
@@ -113,10 +115,11 @@ class _PersonalSettingsScreenState
                   labelColor: theme.primaryColor,
                   unselectedLabelColor: Colors.white60,
                   indicatorColor: theme.primaryColor,
-                  tabs: const [
-                    Tab(text: 'Profile'),
-                    Tab(text: 'Preferences'),
-                    Tab(text: 'Security'),
+                  tabs: [
+                    Tab(text: AppLocalizations.of(context)!.tabProfile),
+                    Tab(text: AppLocalizations.of(context)!.tabPreferences),
+                    Tab(text: AppLocalizations.of(context)!.tabSecurity),
+                    const Tab(text: 'Workspace'),
                   ],
                 ),
               ],
@@ -127,12 +130,13 @@ class _PersonalSettingsScreenState
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Profile Tab
                 _buildProfileTab(user),
                 // Preferences Tab
                 _buildPreferencesTab(preferences),
                 // Security Tab
                 _buildSecurityTab(user),
+                // Workspace Tab
+                _buildWorkspaceTab(),
               ],
             ),
           ),
@@ -151,7 +155,7 @@ class _PersonalSettingsScreenState
         children: [
           // Avatar Section
           Text(
-            'Profile Picture',
+            AppLocalizations.of(context)!.profilePicture,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -192,9 +196,9 @@ class _PersonalSettingsScreenState
               ),
               const SizedBox(width: 24),
               ElevatedButton.icon(
-                onPressed: () => _showSnackBar('Avatar upload coming soon'),
+                onPressed: () => _showSnackBar(AppLocalizations.of(context)!.uploadComingSoon),
                 icon: const Icon(FontAwesomeIcons.upload),
-                label: const Text('Upload New Picture'),
+                label: Text(AppLocalizations.of(context)!.uploadNewPicture),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,
@@ -212,20 +216,20 @@ class _PersonalSettingsScreenState
                 TextFormField(
                   controller: _nameController,
                   decoration: InputDecoration(
-                    hintText: 'Enter your name',
+                    hintText: AppLocalizations.of(context)!.nameHint,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Name cannot be empty';
+                    if (value == null || value.isEmpty) return AppLocalizations.of(context)!.nameEmptyError;
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
                 // Email
                 Text(
-                  'Email Address',
+                  AppLocalizations.of(context)!.emailLabel,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -234,13 +238,13 @@ class _PersonalSettingsScreenState
                 TextFormField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    hintText: 'Enter your email',
+                    hintText: AppLocalizations.of(context)!.emailHint,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || !value.contains('@')) return 'Invalid email';
+                    if (value == null || !value.contains('@')) return AppLocalizations.of(context)!.emailInvalidError;
                     return null;
                   },
                 ),
@@ -262,7 +266,7 @@ class _PersonalSettingsScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Changing your email affects all workspaces',
+                    AppLocalizations.of(context)!.emailChangeWarning,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.orange,
                     ),
@@ -280,7 +284,7 @@ class _PersonalSettingsScreenState
                 if (_formKey.currentState!.validate()) {
                   ref.read(currentUserProvider.notifier).updateName(_nameController.text);
                   ref.read(currentUserProvider.notifier).updateEmail(_emailController.text);
-                  _showSnackBar('Profile updated successfully');
+                  _showSnackBar(AppLocalizations.of(context)!.profileUpdated);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -288,7 +292,7 @@ class _PersonalSettingsScreenState
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Save Changes'),
+              child: Text(AppLocalizations.of(context)!.saveChanges),
             ),
           ),
         ],
@@ -306,7 +310,7 @@ class _PersonalSettingsScreenState
         children: [
           // Language
           Text(
-            'Display Language',
+            AppLocalizations.of(context)!.displayLanguage,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -328,15 +332,15 @@ class _PersonalSettingsScreenState
             onChanged: (value) {
               if (value != null) {
                 ref.read(userPreferencesProvider.notifier).updateLanguage(value);
-                _showSnackBar('Language updated to ${value.displayName}');
+                _showSnackBar(AppLocalizations.of(context)!.languageUpdated(value.displayName));
               }
             },
           ),
           const SizedBox(height: 24),
           // Email Notifications
           SwitchListTile(
-            title: const Text('Email Notifications'),
-            subtitle: const Text('Receive updates and alerts via email'),
+            title: Text(AppLocalizations.of(context)!.emailNotifications),
+            subtitle: Text(AppLocalizations.of(context)!.emailNotificationsSubtitle),
             value: preferences.emailNotifications,
             onChanged: (value) {
               ref.read(userPreferencesProvider.notifier).toggleEmailNotifications();
@@ -345,8 +349,8 @@ class _PersonalSettingsScreenState
           const SizedBox(height: 12),
           // Dark Mode Toggle
           SwitchListTile(
-            title: const Text('Dark Mode'),
-            subtitle: const Text('Use a high-contrast dark theme'),
+            title: Text(AppLocalizations.of(context)!.darkMode),
+            subtitle: Text(AppLocalizations.of(context)!.darkModeSubtitle),
             secondary: Icon(
               preferences.darkMode ? Icons.dark_mode : Icons.light_mode,
               color: theme.primaryColor,
@@ -359,15 +363,15 @@ class _PersonalSettingsScreenState
           const Divider(height: 48),
           // Developer Settings
           Text(
-            'Developer Settings',
+            AppLocalizations.of(context)!.developerSettings,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
           SwitchListTile(
-            title: const Text('Mock AI Models'),
-            subtitle: const Text('Force all generative AI to use simulated edge mock for testing'),
+            title: Text(AppLocalizations.of(context)!.mockAIModels),
+            subtitle: Text(AppLocalizations.of(context)!.mockAIModelsSubtitle),
             secondary: Icon(
               Icons.bug_report,
               color: theme.primaryColor,
@@ -377,7 +381,9 @@ class _PersonalSettingsScreenState
               setState(() {
                 EdgeAIService.forceMock = value;
               });
-              _showSnackBar('AI Mock Mode: ${value ? 'ON' : 'OFF'}');
+              
+              final status = value ? 'ON' : 'OFF';
+              _showSnackBar(AppLocalizations.of(context)!.aiMockMode(status));
             },
           ),
         ],
@@ -395,7 +401,7 @@ class _PersonalSettingsScreenState
         children: [
           // Connected Accounts
           Text(
-            'Connected Accounts',
+            AppLocalizations.of(context)!.connectedAccounts,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -466,7 +472,7 @@ class _PersonalSettingsScreenState
                   ),
                 ),
                 Text(
-                  isLinked ? 'Connected' : 'Not connected',
+                  isLinked ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: isLinked ? Colors.green : Colors.white60,
                   ),
@@ -478,23 +484,83 @@ class _PersonalSettingsScreenState
             TextButton(
               onPressed: () {
                 ref.read(currentUserProvider.notifier).unlinkAccount(method);
-                _showSnackBar('${method.displayName} disconnected');
+                _showSnackBar(AppLocalizations.of(context)!.accountDisconnected(method.displayName));
               },
-              child: const Text('Disconnect'),
+              child: Text(AppLocalizations.of(context)!.disconnect),
             )
           else
             ElevatedButton(
               onPressed: () {
                 ref.read(currentUserProvider.notifier).linkAccount(method);
-                _showSnackBar('${method.displayName} connected');
+                _showSnackBar(AppLocalizations.of(context)!.accountConnected(method.displayName));
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Connect'),
+              child: Text(AppLocalizations.of(context)!.connect),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceTab() {
+    final theme = Theme.of(context);
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Workspace Infrastructure',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.microchip,
+            title: 'Model Providers',
+            subtitle: 'Configure LLM and image generation keys',
+            onTap: () => context.go('/workspace/model-providers'),
+          ),
+          const SizedBox(height: 12),
+          _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.plug,
+            title: 'Plugins & Tools',
+            subtitle: 'Connect external tools and MCP servers',
+            onTap: () => context.go('/workspace/plugins'),
+          ),
+          const SizedBox(height: 12),
+           _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.layerGroup,
+            title: 'Manage Apps',
+            subtitle: 'Deploy and organize your micro-apps',
+            onTap: () => context.go('/workspace/apps'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceItem(ThemeData theme, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+        color: theme.cardColor.withValues(alpha: 0.1),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: theme.primaryColor, size: 20),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.white54)),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: onTap,
       ),
     );
   }

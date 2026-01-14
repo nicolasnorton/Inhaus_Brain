@@ -21,17 +21,14 @@ enum LoginMethod {
 /// Display language
 enum Language {
   english,
-  simplifiedChinese,
-  traditionalChinese;
+  spanish;
 
   String get displayName {
     switch (this) {
       case Language.english:
         return 'English';
-      case Language.simplifiedChinese:
-        return '简体中文';
-      case Language.traditionalChinese:
-        return '繁體中文';
+      case Language.spanish:
+        return 'Español';
     }
   }
 
@@ -39,10 +36,8 @@ enum Language {
     switch (this) {
       case Language.english:
         return 'en';
-      case Language.simplifiedChinese:
-        return 'zh-CN';
-      case Language.traditionalChinese:
-        return 'zh-TW';
+      case Language.spanish:
+        return 'es';
     }
   }
 }

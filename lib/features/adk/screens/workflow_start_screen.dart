@@ -55,6 +55,12 @@ class WorkflowStartScreen extends ConsumerWidget {
             ),
             const Spacer(),
             TextButton.icon(
+              onPressed: () => context.push('/pipelines'),
+              icon: const Icon(Icons.build, size: 18, color: Colors.amberAccent),
+              label: const Text('Legacy Builder', style: TextStyle(color: Colors.amberAccent)),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
               onPressed: () async {
                 final service = WorkflowExchangeService(ref);
                 final success = await service.importApp();
@@ -245,6 +251,23 @@ class WorkflowStartScreen extends ConsumerWidget {
                     style: const TextStyle(color: Colors.white24, fontSize: 11),
                   ),
                   const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.download, size: 16, color: Colors.white24),
+                    tooltip: 'Export JSON',
+                    onPressed: () {
+                        final service = WorkflowExchangeService(ref);
+                        try {
+                          service.exportApp(app.id);
+                          scaffoldMessengerKey.currentState?.showSnackBar(
+                             SnackBar(content: Text('Exporting ${app.name}...')),
+                          );
+                        } catch (e) {
+                          scaffoldMessengerKey.currentState?.showSnackBar(
+                            SnackBar(content: Text('Error: $e'))
+                          );
+                        }
+                    },
+                  ),
                   const Icon(Icons.play_circle_outline, size: 16, color: Colors.blueAccent),
                 ],
               ),

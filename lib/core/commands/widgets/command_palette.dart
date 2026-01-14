@@ -16,6 +16,7 @@ class CommandPalette extends ConsumerStatefulWidget {
 class _CommandPaletteState extends ConsumerState<CommandPalette> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
+  final _keyboardFocusNode = FocusNode();
   int _selectedIndex = 0;
 
   @override
@@ -31,6 +32,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   void dispose() {
     _searchController.dispose();
     _focusNode.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -84,7 +86,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final displayCommands = searchQuery.isEmpty ? recentCommands : filteredCommands;
 
     return RawKeyboardListener(
-      focusNode: FocusNode(),
+      focusNode: _keyboardFocusNode,
       onKey: _handleKeyEvent,
       child: GestureDetector(
         onTap: () {

@@ -36,8 +36,12 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   @override
   void dispose() {
     // Silence any active voice/listening on exit
-    ref.read(voiceServiceProvider).stopSpeaking();
-    ref.read(voiceServiceProvider).stopListening();
+    try {
+      ref.read(voiceServiceProvider).stopSpeaking();
+      ref.read(voiceServiceProvider).stopListening();
+    } catch (_) {
+      // ref might be disposed
+    }
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();

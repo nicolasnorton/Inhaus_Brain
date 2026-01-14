@@ -23,7 +23,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -35,7 +35,18 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   @override
   Widget build(BuildContext context) {
     final clients = ref.watch(clientProvider);
-    final client = clients.firstWhere((c) => c.id == widget.clientId);
+    final client = clients.firstWhere(
+      (c) => c.id == widget.clientId,
+      orElse: () => Client(id: 'unknown', name: 'Unknown Client', industry: 'Unknown'),
+    );
+
+    if (client.id == 'unknown') {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Client Not Found')),
+        body: const Center(child: Text('The requested client could not be found.', style: TextStyle(color: Colors.white))),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -51,6 +62,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
             Tab(text: 'Projects'),
             Tab(text: 'Tasks'),
             Tab(text: 'Integrations'),
+            Tab(text: 'UCP Commerce'),
           ],
         ),
       ),
@@ -61,6 +73,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           _buildProjectsTab(client),
           _buildTasksTab(client),
           _buildIntegrationsTab(client),
+          _buildUCPTab(client),
         ],
       ),
     );
@@ -313,6 +326,84 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
             },
             activeThumbColor: color,
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUCPTab(Client client) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Universal Commerce Protocol (UCP)', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          const Text('Seamless agentic commerce integration.', style: TextStyle(color: Colors.white38)),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const FaIcon(FontAwesomeIcons.globe, color: Colors.blueAccent, size: 32),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('UCP Status: Active', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text('Discovery Service: Online', style: TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Trigger discovery mock
+                  },
+                  child: const Text('Discover Businesses'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          const Text('Connected Commerce Agents', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          // Mock list
+          _buildUCPParticipantCard('Shoaming Assistant', 'Platform Agent', FontAwesomeIcons.robot),
+          const SizedBox(height: 16),
+          _buildUCPParticipantCard('TechStore Global', 'Business', FontAwesomeIcons.store),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUCPParticipantCard(String name, String role, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          FaIcon(icon, color: Colors.white54, size: 20),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text(role, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+            ],
+          ),
+          const Spacer(),
+          const Text('Connected', style: TextStyle(color: Colors.greenAccent, fontSize: 12)),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../agents/base_agent.dart';
@@ -28,6 +29,7 @@ class ResearchAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(
       type: AdkEventType.agentStarted,
@@ -59,6 +61,7 @@ class ResearchAgent extends BaseAgent {
       context: context,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
     
     onEvent?.call(AdkEvent(
@@ -89,6 +92,7 @@ class CreativeAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Creative Agent. Suggest a visual direction or concept for: $userPrompt.";
@@ -98,6 +102,7 @@ class CreativeAgent extends BaseAgent {
       context: context,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -123,6 +128,7 @@ class CopywriterAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.";
@@ -132,6 +138,7 @@ class CopywriterAgent extends BaseAgent {
       context: context,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -157,6 +164,7 @@ class DeveloperAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.";
@@ -166,6 +174,7 @@ class DeveloperAgent extends BaseAgent {
       context: context,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -191,6 +200,7 @@ class OrchestratorAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) async {
      onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
      onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../models/monitor_models.dart';
 import '../providers/monitor_provider.dart';
 
@@ -60,7 +61,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
                 const Spacer(),
                 TextButton(
                   onPressed: () {
-                    // TODO: Navigate to full logs
+                    context.go('/monitor/logs?appId=$appId');
                   },
                   child: const Text('View All Logs'),
                 ),
@@ -141,7 +142,26 @@ class MonitorDashboardScreen extends ConsumerWidget {
   Widget _buildTracingButton(BuildContext context) {
     return TextButton.icon(
       onPressed: () {
-        // TODO: External Tracing Integration
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1C2128),
+            title: const Text('Tracing Integration', style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                 const Text('Connect external tracing providers to monitor agent performance.', style: TextStyle(color: Colors.white70)),
+                 const SizedBox(height: 16),
+                 _buildProviderButton(context, 'LangSmith', Icons.hub),
+                 const SizedBox(height: 8),
+                 _buildProviderButton(context, 'Langfuse', Icons.auto_graph),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+            ],
+          ),
+        );
       },
       icon: const Icon(Icons.analytics_outlined, size: 16),
       label: const Text('Tracing app performance'),
@@ -150,6 +170,33 @@ class MonitorDashboardScreen extends ConsumerWidget {
         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  Widget _buildProviderButton(BuildContext context, String name, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.blueAccent),
+          const SizedBox(width: 12),
+          Text(name, style: const TextStyle(color: Colors.white)),
+          const Spacer(),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Connected to $name (Mock)')));
+            }, 
+            child: const Text('Connect'),
+          ),
+        ],
       ),
     );
   }

@@ -23,6 +23,7 @@ enum MessageSender {
   editorialManagerAgent,
   mediaBuyerAgent,
   performanceAnalystAgent,
+  managementAgent, // Phase 4: Client Management
 
   humanAgent,
   system

@@ -7,6 +7,7 @@ import '../../core/auth/secret_vault_service.dart';
 import '../../core/services/system_prompts_service.dart';
 import '../auth/models/user_model.dart';
 import '../clients/providers/client_provider.dart';
+import 'screens/agent_config_screen.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -279,79 +280,48 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('AGENT BRAIN (MASTER PROMPTS)', 'System instructions that define the agency persona.'),
+        _buildHeader('AGENT BRAIN (MASTER PROMPTS)', 'Configure the behavior, persona, and workflows for your workforce.'),
         const SizedBox(height: 32),
-        // ... prompt fields ...
+        
         Container(
-          padding: const EdgeInsets.all(24),
+          width: double.infinity,
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Colors.purpleAccent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.3)),
           ),
           child: Column(
-             children: [
-                _buildPromptField('Research Agent Prompt', _researchPromptController, FontAwesomeIcons.magnifyingGlass, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Creative Agent Prompt', _creativePromptController, FontAwesomeIcons.palette, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Copywriter Agent Prompt', _copyPromptController, FontAwesomeIcons.penNib, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Developer Agent Prompt', _devPromptController, FontAwesomeIcons.code, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                
-                const Divider(color: Colors.white10),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    'AGENCY PIPELINE ROLES',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
-                  ),
-                ),
-                
-                _buildPromptField('Trend Scout Prompt', _trendScoutPromptController, FontAwesomeIcons.bolt, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Account Director Prompt', _accountDirectorPromptController, FontAwesomeIcons.userTie, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Strategist Prompt', _strategistPromptController, FontAwesomeIcons.compass, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Editorial Manager Prompt', _editorialManagerPromptController, FontAwesomeIcons.calendarCheck, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Media Buyer Prompt', _mediaBuyerPromptController, FontAwesomeIcons.bullhorn, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Performance Analyst Prompt', _performanceAnalystPromptController, FontAwesomeIcons.chartLine, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 24),
-                
-                const Divider(color: Colors.white10),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    'SECURITY & UTILITY',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 1.1),
-                  ),
-                ),
-                
-                _buildPromptField('Cyber Security Prompt', _securityPromptController, FontAwesomeIcons.shieldHalved, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 16),
-                _buildPromptField('Data Engineer Prompt', _dataEngPromptController, FontAwesomeIcons.database, readOnly: !ref.read(authServiceProvider).isAdmin),
-                const SizedBox(height: 24),
-                
-                if (ref.read(authServiceProvider).isAdmin)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _savePrompts,
-                      icon: const Icon(FontAwesomeIcons.brain, size: 16),
-                      label: const Text('Update Agent Brains'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purpleAccent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
-                  )
-                ],
+            children: [
+              const Icon(FontAwesomeIcons.robot, size: 48, color: Colors.purpleAccent),
+              const SizedBox(height: 16),
+              const Text(
+                'Agent Studio',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
               ),
+              const SizedBox(height: 8),
+              const Text(
+                'Access the advanced configuration panel to tune System Prompts, manage Pipeline connections, and configure tools for Campaign & Creative agents.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.settings_suggest, size: 18),
+                label: const Text('Launch Agent Studio'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purpleAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const AgentConfigScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );

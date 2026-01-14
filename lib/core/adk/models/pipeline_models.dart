@@ -14,6 +14,20 @@ class Pipeline {
     required this.steps,
   });
 
+  Pipeline copyWith({
+    String? id,
+    String? name,
+    String? description,
+    List<PipelineStep>? steps,
+  }) {
+    return Pipeline(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      steps: steps ?? this.steps,
+    );
+  }
+
   factory Pipeline.fromJson(Map<String, dynamic> json) {
     return Pipeline(
       id: json['id'] as String,

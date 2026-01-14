@@ -5,18 +5,14 @@ import '../services/assistant_service.dart';
 // State for the open/close status of the assistant overlay
 final isAssistantOpenProvider = StateProvider<bool>((ref) => false);
 
-// Service provider
-final assistantServiceProvider = Provider<AssistantService>((ref) => AssistantService());
-
 // Chat history state
 class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
   final AssistantService _service;
 
   AssistantChatState(this._service) : super([]);
 
-  Future<void> sendMessage(String text, BuildContext context) async {
-    // Ensure service has context for navigation tools
-    _service.setContext(context);
+  Future<void> sendMessage(String text) async {
+    // Service now uses Riverpod Ref for tools, no context needed
     
     // Optimistic update for user message (controlled by service actually, but triggered here)
     // The service manages the authoritative history list, we just sync the state

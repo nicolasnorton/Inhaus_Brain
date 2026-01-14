@@ -1,10 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import '../models/project_model.dart';
+import 'package:inhaus_brain/features/clients/models/project_model.dart';
+import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 
 class ProjectNotifier extends StateNotifier<List<Project>> {
-  ProjectNotifier() : super([]) {
-    _loadMockProjects();
+  final LocalPersistenceService _persistenceService;
+
+  ProjectNotifier(this._persistenceService) : super([]) {
+    _loadProjects();
+  }
+
+  Future<void> _loadProjects() async {
+    final projects = await _persistenceService.getProjects();
+    if (projects.isEmpty) {
+      _loadMockProjects();
+    } else {
+      state = projects;
+    }
   }
 
   void _loadMockProjects() {
@@ -26,9 +38,10 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
         startDate: DateTime.now(),
       ),
     ];
+    _persistenceService.saveProjects(state);
   }
 
-  void addProject(String clientId, String name, String description) {
+  Future<void> addProject(String clientId, String name, String description) async {
     final newProject = Project(
       id: const Uuid().v4(),
       clientId: clientId,
@@ -37,17 +50,20 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
       startDate: DateTime.now(),
     );
     state = [...state, newProject];
+    await _persistenceService.saveProjects(state);
   }
 
-  void updateProject(Project updatedProject) {
+  Future<void> updateProject(Project updatedProject) async {
     state = [
       for (final project in state)
         if (project.id == updatedProject.id) updatedProject else project
     ];
+    await _persistenceService.saveProjects(state);
   }
 
-  void deleteProject(String projectId) {
+  Future<void> deleteProject(String projectId) async {
     state = state.where((p) => p.id != projectId).toList();
+    await _persistenceService.saveProjects(state);
   }
 
   List<Project> getProjectsForClient(String clientId) {
@@ -55,4 +71,7 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
   }
 }
 
-final projectProvider = StateNotifierProvider<ProjectNotifier, List<Project>>((ref) => ProjectNotifier());
+final projectProvider = StateNotifierProvider<ProjectNotifier, List<Project>>((ref) {
+  final persistence = ref.watch(persistenceServiceProvider);
+  return ProjectNotifier(persistence);
+});

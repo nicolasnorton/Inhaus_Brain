@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'assistant_tools.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'assistant_tool_registry.dart';
+import '../../../core/mcp/agent_tool.dart';
+import '../../../core/services/edge_ai_service.dart';
 
 class AssistantMessage {
   final String id;
@@ -20,16 +24,14 @@ class AssistantMessage {
 
 class AssistantService {
   final List<AssistantMessage> _history = [];
-  AssistantTools? _tools;
+  final Ref _ref;
+
+  AssistantService(this._ref);
 
   List<AssistantMessage> get history => List.unmodifiable(_history);
 
-  void setContext(BuildContext context) {
-    _tools = AssistantTools(context);
-  }
-
   Future<AssistantMessage> sendMessage(String text) async {
-    // Add user message
+    // 1. Add user message
     _history.add(AssistantMessage(
       id: DateTime.now().toString(),
       text: text,
@@ -37,59 +39,112 @@ class AssistantService {
       timestamp: DateTime.now(),
     ));
 
-    // Simulate AI processing & Tool calling
+    // 2. Simulate AI Intent Matching (Mock)
     await Future.delayed(const Duration(seconds: 1));
 
-    String responseText = "I'm not sure how to help with that yet.";
-    
-    // Simple naive intent parsing for demo purposes
-    // IN REALITY: This would call an LLM API which returns function calls
-    if (text.toLowerCase().contains('navigate') || text.toLowerCase().contains('go to')) {
-      if (text.toLowerCase().contains('settings')) {
-        _tools?.tools['navigate']?.call({'route': '/settings'});
-        responseText = "Navigating to Settings...";
-      } else if (text.toLowerCase().contains('monitor')) {
-        _tools?.tools['navigate']?.call({'route': '/monitor'});
-        responseText = "Opening Monitor Dashboard...";
-      } else if (text.toLowerCase().contains('campaigns')) {
-        _tools?.tools['navigate']?.call({'route': '/campaigns'});
-        responseText = "Taking you to Campaigns.";
-      }
-    } else if (text.toLowerCase().contains('create campaign')) {
-       _tools?.tools['create_campaign']?.call({'title': 'New Campaign from Chat'});
-       responseText = "Starting new campaign creation flow.";
-    } else if (text.toLowerCase().contains('celebrate')) {
-       _tools?.tools['confetti']?.call({});
-       responseText = "Woohoo! 🎉";
-    } else if (text.toLowerCase().contains('customer service')) {
-       _tools?.tools['create_app_from_template']?.call({'template_id': 'customer_service_bot'});
-       responseText = "I'm setting up a Customer Service Bot for you.";
-    } else if (text.toLowerCase().contains('twitter')) {
-       _tools?.tools['create_app_from_template']?.call({'template_id': 'twitter_chatflow'});
-       responseText = "Creating a Twitter Chatflow app.";
-    } else if (text.toLowerCase().contains('image generation')) {
-       _tools?.tools['create_app_from_template']?.call({'template_id': 'ai_image_gen'});
-       responseText = "Spinning up an AI Image Generation app template.";
-    } else if (text.toLowerCase().contains('chatbot')) {
-       _tools?.tools['create_app_from_template']?.call({'template_id': 'simple_chatbot'});
-       responseText = "Creating a Simple Chatbot app.";
-    } else {
-      responseText = "I can help you create apps like 'Customer Service Bot', 'Twitter Flow', or navigate the app.";
-    }
+    final tools = _ref.read(assistantToolRegistryProvider);
+    final response = await _matchIntentAndExecute(text, tools);
 
+    // 3. Add response
     final message = AssistantMessage(
       id: DateTime.now().toString(),
-      text: responseText,
+      text: response,
       isUser: false,
       timestamp: DateTime.now(),
-      isToolOutput: false, // In a real system, we might show the tool output separately
+      isToolOutput: false,
     );
 
     _history.add(message);
     return message;
   }
-  
+
+  Future<String> _matchIntentAndExecute(String text, List<AgentTool> tools) async {
+    final lower = text.toLowerCase();
+    
+    // Phase 89: Use Real AI to determine intent
+    final toolDefinitions = tools.map((t) => "- ${t.name}: ${t.description}").join("\n");
+    final prompt = """
+You are the Inhaus Super Admin Assistant. 
+The user said: "$text"
+
+Available Tools:
+$toolDefinitions
+
+If one of the tools matches the user's request, return ONLY a JSON object: {"tool": "tool_name", "args": {...}}.
+Ensure you extract all necessary parameters (e.g. if the user gives a URL but no title for a knowledge source, invent a short title).
+If no tool is a perfect match, or if it's a general question, provide a helpful, professional response as the assistant.
+
+Response:
+""";
+
+    try {
+      final aiRes = await EdgeAIService.generateText(prompt, ref: _ref);
+      final rawResponse = aiRes.text.trim();
+      
+      // Robust JSON detection and extraction
+      if (rawResponse.contains('{') && rawResponse.contains('}')) {
+        try {
+          final jsonStr = rawResponse.substring(rawResponse.indexOf('{'), rawResponse.lastIndexOf('}') + 1);
+          final data = jsonDecode(jsonStr);
+          if (data.containsKey('tool')) {
+            // Extract parameters: Check 'args', then 'parameters', then the root object itself (minus 'tool')
+            final Map<String, dynamic> params = Map<String, dynamic>.from(
+              data['args'] ?? data['parameters'] ?? Map<String, dynamic>.from(data)..remove('tool')
+            );
+            return await _executeTool(tools, data['tool'], params);
+          }
+        } catch (e) {
+          debugPrint('Assistant: Failed to parse tool JSON: $e');
+        }
+      }
+      
+      return rawResponse;
+    } catch (e) {
+      debugPrint('Assistant AI Error: $e');
+      // Hybrid Fallback: Use existing hardcoded logic if AI fails
+      return _runHardcodedHeuristics(lower, tools);
+    }
+  }
+
+  Future<String> _runHardcodedHeuristics(String lower, List<AgentTool> tools) async {
+    // 1. NAVIGATION (High Priority)
+    if (lower.contains('go to') || lower.contains('navigate') || lower.contains('show') || lower.contains('open')) {
+      if (lower.contains('settings')) return await _executeTool(tools, 'navigate_to', {'route': '/settings'});
+      if (lower.contains('client')) return await _executeTool(tools, 'navigate_to', {'route': '/clients'});
+      if (lower.contains('workflow') || lower.contains('dashboard') || lower.contains('app')) {
+         return await _executeTool(tools, 'navigate_to', {'route': '/dashboard'}); 
+      }
+      if (lower.contains('campaign')) return await _executeTool(tools, 'navigate_to', {'route': '/campaigns'});
+      if (lower.contains('monitor')) return await _executeTool(tools, 'navigate_to', {'route': '/monitor'});
+      if (lower.contains('knowledge')) return await _executeTool(tools, 'navigate_to', {'route': '/knowledge'});
+    }
+
+    // 2. CREATION / ADDITION
+    if (lower.contains('create') || lower.contains('add') || lower.contains('build') || lower.contains('new')) {
+       if (lower.contains('client')) return await _executeTool(tools, 'add_client', {'name': 'New Client', 'industry': 'Other'});
+       if (lower.contains('campaign')) return await _executeTool(tools, 'create_campaign', {'title': 'New Campaign'});
+    }
+
+    return "I am Inhaus Super Admin. I can manage clients, build apps, navigate to any module, or orchestrate commerce via UCP. Try: 'Build a new app' or 'Go to clients'.";
+  }
+
+  Future<String> _executeTool(List<AgentTool> tools, String name, Map<String, dynamic> args) async {
+    final tool = tools.firstWhere((t) => t.name == name, orElse: () => throw Exception('Tool not found: $name'));
+    try {
+      final result = await tool.execute(args);
+      if (result.isSuccess) {
+        return "Executed $name: ${result.data}";
+      } else {
+        return "Error executing $name: ${result.errorMessage}";
+      }
+    } catch (e) {
+      return "System error: $e";
+    }
+  }
+
   void clearHistory() {
     _history.clear();
   }
 }
+
+final assistantServiceProvider = Provider<AssistantService>((ref) => AssistantService(ref));

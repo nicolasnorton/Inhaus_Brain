@@ -211,36 +211,18 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
   );
 
   Widget _buildTextField(String initialValue, Function(String) onChanged, [String? hintText]) {
-    return TextField(
-      controller: TextEditingController(text: initialValue)..selection = TextSelection.collapsed(offset: initialValue.length),
-      style: const TextStyle(color: Colors.white, fontSize: 12),
+    return _ManagedTextField(
+      initialValue: initialValue,
       onChanged: onChanged,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.black,
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-      ),
+      hintText: hintText,
     );
   }
 
   Widget _buildTextArea(String initialValue, Function(String) onChanged, [String? hintText]) {
-    return TextField(
-      controller: TextEditingController(text: initialValue)..selection = TextSelection.collapsed(offset: initialValue.length),
-      style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
-      maxLines: null,
-      expands: false,
-      minLines: 3,
+    return _ManagedTextArea(
+      initialValue: initialValue,
       onChanged: onChanged,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.black,
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white24, fontSize: 10),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-      ),
+      hintText: hintText,
     );
   }
 
@@ -2560,5 +2542,125 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
      );
   }
 
+}
+
+class _ManagedTextField extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final String? hintText;
+
+  const _ManagedTextField({
+    required this.initialValue,
+    required this.onChanged,
+    this.hintText,
+  });
+
+  @override
+  State<_ManagedTextField> createState() => _ManagedTextFieldState();
+}
+
+class _ManagedTextFieldState extends State<_ManagedTextField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_ManagedTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+      if (widget.initialValue.isNotEmpty) {
+         _controller.selection = TextSelection.collapsed(offset: widget.initialValue.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      style: const TextStyle(color: Colors.white, fontSize: 12),
+      onChanged: widget.onChanged,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.black,
+        hintText: widget.hintText,
+        hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+      ),
+    );
+  }
+}
+
+class _ManagedTextArea extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final String? hintText;
+
+  const _ManagedTextArea({
+    required this.initialValue,
+    required this.onChanged,
+    this.hintText,
+  });
+
+  @override
+  State<_ManagedTextArea> createState() => _ManagedTextAreaState();
+}
+
+class _ManagedTextAreaState extends State<_ManagedTextArea> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_ManagedTextArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+       if (widget.initialValue.isNotEmpty) {
+         _controller.selection = TextSelection.collapsed(offset: widget.initialValue.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
+      maxLines: null,
+      expands: false,
+      minLines: 3,
+      onChanged: widget.onChanged,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.black,
+        hintText: widget.hintText,
+        hintStyle: const TextStyle(color: Colors.white24, fontSize: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+      ),
+    );
+  }
 }
 

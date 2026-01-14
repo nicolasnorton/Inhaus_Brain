@@ -352,7 +352,7 @@ class CreativeStudioScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 120,
+          height: 180,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: moodboards.length,
@@ -370,6 +370,19 @@ class CreativeStudioScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (mb.imageUrls.isNotEmpty)
+                      Container(
+                        height: 80,
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(mb.imageUrls.first),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
                     Text(mb.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text(

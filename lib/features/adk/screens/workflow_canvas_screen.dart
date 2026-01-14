@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +12,7 @@ import '../../chat/models/chat_models.dart';
 import '../../workspace/models/app_models.dart';
 import '../../workspace/providers/apps_provider.dart';
 import '../widgets/workflow_history_sidebar.dart';
+import '../../workspace/services/workflow_exchange_service.dart';
 import '../../../core/services/version_control_service.dart';
 import '../../../core/models/version_control_models.dart';
 import '../../settings/providers/user_provider.dart';
@@ -95,6 +98,11 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.build_circle, color: Colors.amberAccent),
+            tooltip: 'Open Legacy Builder',
+            onPressed: () => context.push('/pipelines'),
+          ),
+          IconButton(
             icon: const Icon(Icons.history_edu),
             onPressed: () => context.push('/run-history/${widget.pipelineId ?? 'new-app'}'),
           ),
@@ -105,6 +113,30 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
           IconButton(
             icon: const Icon(Icons.commit),
             onPressed: _showCommitDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.download, size: 20),
+            tooltip: 'Export JSON',
+            onPressed: () async {
+              final tempPipeline = Pipeline(
+                id: widget.pipelineId ?? 'new-app',
+                name: _pipelineName,
+                description: _pipelineDescription,
+                steps: _steps,
+              );
+              
+              final service = WorkflowExchangeService(ref);
+              try {
+                await service.exportPipeline(tempPipeline);
+                scaffoldMessengerKey.currentState?.showSnackBar(
+                  const SnackBar(content: Text('Workflow exported successfully.')),
+                );
+              } catch (e) {
+                scaffoldMessengerKey.currentState?.showSnackBar(
+                  SnackBar(content: Text('Export failed: $e')),
+                );
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.dns, size: 20, color: Colors.tealAccent),

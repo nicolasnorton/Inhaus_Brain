@@ -40,7 +40,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     setState(() => _isTyping = true);
 
     try {
-      await ref.read(assistantChatProvider.notifier).sendMessage(text, context);
+      await ref.read(assistantChatProvider.notifier).sendMessage(text);
       // Wait a frame for the list to update
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } finally {

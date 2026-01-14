@@ -41,15 +41,12 @@ class DashboardScreen extends ConsumerWidget {
                           _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, 'Dashboard', ref),
                           _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, 'Clients', ref),
                           _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, 'Campaigns', ref),
-                          _buildNavItem(context, 3, FontAwesomeIcons.wandMagicSparkles, 'Creative', ref),
-                          _buildNavItem(context, 4, FontAwesomeIcons.chartLine, 'Analytics', ref),
-                          _buildNavItem(context, 5, FontAwesomeIcons.diagramProject, 'Workflows', ref),
-                          _buildNavItem(context, 6, FontAwesomeIcons.rocket, 'Publish', ref),
-                          _buildNavItem(context, 7, FontAwesomeIcons.bug, 'Debug', ref),
-                          _buildNavItem(context, 8, FontAwesomeIcons.book, 'Knowledge', ref),
-                          _buildNavItem(context, 9, FontAwesomeIcons.briefcase, 'Workspace', ref),
-                          _buildNavItem(context, 10, FontAwesomeIcons.chartLine, 'Monitor', ref),
-                          _buildNavItem(context, 11, FontAwesomeIcons.gear, 'Settings', ref),
+                          _buildNavItem(context, 3, FontAwesomeIcons.chartLine, 'Analytics', ref),
+                          _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, 'Workflows', ref),
+                          _buildNavItem(context, 5, FontAwesomeIcons.rocket, 'Publish', ref),
+                          _buildNavItem(context, 6, FontAwesomeIcons.book, 'Knowledge', ref),
+                          _buildNavItem(context, 7, FontAwesomeIcons.gear, 'Settings', ref),
+                          _buildNavItem(context, 8, FontAwesomeIcons.bug, 'Debug', ref),
                           const SizedBox(height: 20), // Spacing at the end of scroll
                         ],
                       ),
@@ -116,16 +113,13 @@ class DashboardScreen extends ConsumerWidget {
     final String location = GoRouterState.of(context).uri.toString();
     
     if (location.startsWith('/clients')) return 1;
-    if (location.startsWith('/campaigns')) return 2;
-    if (location.startsWith('/creative')) return 3;
-    if (location.startsWith('/analytics')) return 4;
-    if (location.startsWith('/workflows') || location.startsWith('/workflow-canvas')) return 5;
-    if (location.startsWith('/publish')) return 6;
-    if (location.startsWith('/debug')) return 7;
-    if (location.startsWith('/knowledge')) return 8;
-    if (location.startsWith('/workspace')) return 9;
-    if (location.startsWith('/monitor')) return 10;
-    if (location.startsWith('/settings')) return 11;
+    if (location.startsWith('/campaigns') || location.startsWith('/creative')) return 2;
+    if (location.startsWith('/analytics') || location.startsWith('/monitor')) return 3;
+    if (location.startsWith('/workflows') || location.startsWith('/workflow-canvas') || location.startsWith('/pipelines')) return 4;
+    if (location.startsWith('/publish')) return 5;
+    if (location.startsWith('/knowledge')) return 6;
+    if (location.startsWith('/settings') || location.startsWith('/workspace')) return 7;
+    if (location.startsWith('/debug')) return 8;
     return 0;
   }
 
@@ -173,31 +167,22 @@ class DashboardScreen extends ConsumerWidget {
         context.go('/campaigns');
         break;
       case 3:
-        context.go('/creative');
-        break;
-      case 4:
         context.go('/analytics');
         break;
-      case 5:
+      case 4:
         context.go('/workflows');
         break;
-      case 6:
+      case 5:
         context.go('/publish');
         break;
-      case 7:
-        context.go('/debug');
-        break;
-      case 8:
+      case 6:
         context.go('/knowledge');
         break;
-      case 9:
-        context.go('/workspace/model-providers');
-        break;
-      case 10:
-        context.go('/monitor');
-        break;
-      case 11:
+      case 7:
         context.go('/settings');
+        break;
+      case 8:
+        context.go('/debug');
         break;
     }
   }
@@ -262,12 +247,6 @@ class DashboardHome extends ConsumerWidget {
                   ),
                   _buildNavCard(
                     context,
-                    icon: FontAwesomeIcons.wandMagicSparkles,
-                    label: 'Creative',
-                    onTap: () => context.go('/creative'),
-                  ),
-                  _buildNavCard(
-                    context,
                     icon: FontAwesomeIcons.chartLine,
                     label: 'Analytics',
                     onTap: () => context.go('/analytics'),
@@ -286,27 +265,21 @@ class DashboardHome extends ConsumerWidget {
                   ),
                   _buildNavCard(
                     context,
-                    icon: FontAwesomeIcons.bug,
-                    label: 'Debug',
-                    onTap: () => context.go('/debug'),
-                  ),
-                  _buildNavCard(
-                    context,
                     icon: FontAwesomeIcons.book,
                     label: 'Knowledge',
                     onTap: () => context.go('/knowledge'),
                   ),
                   _buildNavCard(
                     context,
-                    icon: FontAwesomeIcons.briefcase,
-                    label: 'Workspace',
-                    onTap: () => context.go('/workspace/model-providers'),
-                  ),
-                  _buildNavCard(
-                    context,
                     icon: FontAwesomeIcons.gear,
                     label: 'Settings',
                     onTap: () => context.go('/settings'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.bug,
+                    label: 'Debug',
+                    onTap: () => context.go('/debug'),
                   ),
                 ],
               );

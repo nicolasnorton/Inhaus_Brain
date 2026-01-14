@@ -1,4 +1,3 @@
-import 'dart:js_interop';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,12 +6,19 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 import '../../features/knowledge/models/knowledge_source.dart';
 import '../tokens/llm_provider.dart';
+import '../auth/secret_vault_service.dart';
+
+// --- JS Interop for Chrome Prompt API ---
+// These will only work on Chrome with experimental flags enabled.
+/*
+import 'dart:js_interop';
 
 @JS('getAISystemStatus')
 external JSPromise getAISystemStatus();
 
 @JS('promptBuiltInAI')
 external JSPromise promptBuiltInAI(String query);
+*/
 
 enum AIProximity {
   local,     // Chrome Prompt API or Gemini Nano
@@ -41,6 +47,7 @@ class EdgeAIResult {
 
 class EdgeAIService {
   static bool forceMock = false;
+  static final _vault = SecretVaultService();
 
   static Future<EdgeAIResult> generateText(
     String prompt, {
@@ -48,43 +55,102 @@ class EdgeAIService {
     String? memoryContext,
     Uint8List? imageBytes,
     String? imageMimeType,
-    AIModelConfig? modelConfig, // Phase 35: Config Override
+    AIModelConfig? modelConfig,
     String? apiKey,
-    String? gemmaKey,   // Legacy: Map to config
-    String? openAIKey,  // Phase 35
-    String? anthropicKey, // Phase 35
-    String? xaiKey,     // Phase 35
+    String? gemmaKey,
+    String? openAIKey,
+    String? anthropicKey,
+    String? xaiKey,
+    Ref? ref, // Phase 89: Optional Ref for proximity sync
   }) async {
     final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
     
-    // Default to Gemini Flash if no config provided
     final config = modelConfig ?? AIModelConfig.geminiFlash;
     
-    debugPrint('EdgeAI: Generating text via ${config.displayName}...');
+    debugPrint('EdgeAI: [DEBUG] Generating text via ${config.provider} (${config.modelId})');
+    debugPrint('EdgeAI: [DEBUG] forceMock status: $forceMock');
 
     if (forceMock) {
+      debugPrint('EdgeAI: [DEBUG] forceMock is TRUE. Returning mock.');
       return await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
     }
 
     try {
+      EdgeAIResult result;
       switch (config.provider) {
         case AIProvider.gemini:
-          return await _generateGemini(effectivePrompt, config, apiKey, imageBytes, imageMimeType);
+          final vaultKey = await _vault.getGeminiKey();
+          final key = apiKey ?? vaultKey;
+          
+          debugPrint('EdgeAI: [DEBUG] Gemini Key Source: ${apiKey != null ? "Argument" : "Vault"}');
+          debugPrint('EdgeAI: [DEBUG] Gemini Key prefix: ${key != null && key.length > 5 ? key.substring(0, 5) : "none"}');
+          
+          if (key == null || key.trim().isEmpty) {
+            debugPrint('EdgeAI: [DEBUG] Gemini Key is NULL or EMPTY. Triggering fallback.');
+            result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+          } else {
+            try {
+              result = await _generateGemini(effectivePrompt, config, key, imageBytes, imageMimeType);
+            } catch (e) {
+              debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $e');
+              debugPrint('EdgeAI: [DEBUG] Attempting fallback to gemini-pro...');
+              try {
+                // FALLBACK: Try gemini-pro (v1.0)
+                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro-latest');
+                result = await _generateGemini(effectivePrompt, fallbackConfig, key, imageBytes, imageMimeType);
+              } catch (fallbackError) {
+                 debugPrint('EdgeAI: [DEBUG] Fallback Gemini model also failed: $fallbackError');
+                 // If both fail, return Mock but indicate error
+                 result = await _generateLocalMock("System Error: AI Service Unavailable. falling back to mock. Details: $e", hasImage: imageBytes != null);
+              }
+            }
+          }
+          break;
         case AIProvider.openai:
-          return await _generateOpenAI(effectivePrompt, config, openAIKey, imageBytes, imageMimeType);
+          final key = openAIKey ?? await _vault.getOpenAIKey();
+          debugPrint('EdgeAI: [DEBUG] OpenAI Key found: ${key != null && key.isNotEmpty}');
+          if (key == null || key.isEmpty) {
+             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+          } else {
+             result = await _generateOpenAI(effectivePrompt, config, key, imageBytes, imageMimeType);
+          }
+          break;
         case AIProvider.claude:
-          return await _generateClaude(effectivePrompt, config, anthropicKey, imageBytes, imageMimeType);
+          final key = anthropicKey ?? await _vault.getAnthropicKey();
+          debugPrint('EdgeAI: [DEBUG] Claude Key found: ${key != null && key.isNotEmpty}');
+          if (key == null || key.isEmpty) {
+             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+          } else {
+             result = await _generateClaude(effectivePrompt, config, key, imageBytes, imageMimeType);
+          }
+          break;
         case AIProvider.grok:
-          return await _generateGrok(effectivePrompt, config, xaiKey); // Grok 1 is text-only public API for now
-        case AIProvider.mistral:
-          // Placeholder structure
-          return await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null); 
+          final key = xaiKey ?? await _vault.getXAIKey();
+          debugPrint('EdgeAI: [DEBUG] Grok Key found: ${key != null && key.isNotEmpty}');
+          if (key == null || key.isEmpty) {
+             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+          } else {
+             result = await _generateGrok(effectivePrompt, config, key);
+          }
+          break;
         default:
-          return await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+          debugPrint('EdgeAI: [DEBUG] Unknown provider ${config.provider}. Returning mock.');
+          result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
       }
+      
+      // Phase 89: Global Proximity Sync (Only if ref is provided)
+      if (ref != null) {
+        ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
+      }
+      
+      return result;
     } catch (e) {
-      debugPrint('EdgeAI Error (${config.provider}): $e. Falling back to Local Mock.');
-      return await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+      debugPrint('EdgeAI: [DEBUG] ERROR during ${config.provider} generation: $e');
+      final mockRes = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+      if (ref != null) {
+        ref.read(aiProximityProvider.notifier).setProximity(mockRes.proximity);
+      }
+      return mockRes;
     }
   }
 
@@ -123,7 +189,6 @@ class EdgeAIService {
 
     final messages = <Map<String, dynamic>>[];
     
-    // Vision Support for GPT-4o
     if (imageBytes != null) {
       final base64Image = base64Encode(imageBytes);
       messages.add({
@@ -227,7 +292,6 @@ class EdgeAIService {
   ) async {
     if (apiKey == null || apiKey.isEmpty) throw Exception("xAI API Key missing");
 
-    // Grok uses OpenAI-compatible API
     final response = await http.post(
       Uri.parse('https://api.x.ai/v1/chat/completions'),
       headers: {
@@ -235,13 +299,12 @@ class EdgeAIService {
         'Authorization': 'Bearer $apiKey',
       },
       body: jsonEncode({
-        "model": config.modelId, // e.g. "grok-beta"
+        "model": config.modelId,
         "messages": [
           {"role": "system", "content": "You are Grok, a conversational AI developed by xAI."},
           {"role": "user", "content": prompt}
         ],
         "temperature": config.temperature,
-         // xAI specific params might go here
       }),
     );
 
@@ -254,10 +317,7 @@ class EdgeAIService {
     }
   }
 
-  // --- LEGACY MOCK & HELPERS ---
-
   static Future<String> generateImage(String prompt, {String? imagenKey, String? bananaKey, String? midjourneyKey, String? runwayKey}) async {
-    // Phase 35: Mock Midjourney/Runway Logic
     if (midjourneyKey != null && midjourneyKey.isNotEmpty) {
        await Future.delayed(const Duration(seconds: 4));
        return "https://via.placeholder.com/1024x1024.png?text=Midjourney+v6"; 
@@ -266,17 +326,21 @@ class EdgeAIService {
       await Future.delayed(const Duration(seconds: 2));
       return "https://via.placeholder.com/1024x1024.png?text=Imagen+3+Generated+Art";
     }
-    // ...
     return "assets/images/mock_concept.png"; 
   }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? runwayKey}) async {
     if (runwayKey != null && runwayKey.isNotEmpty) {
       await Future.delayed(const Duration(seconds: 5));
-      return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"; // Runway Mock
+      return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
     }
-    // ...
     return "assets/videos/mock_render.mp4";
+  }
+
+  static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
+    // Phase 89: Mock/Simulate Lyria
+    await Future.delayed(const Duration(seconds: 3));
+    return "assets/audio/mock_soundtrack.mp3"; 
   }
 
   static Stream<EdgeAIResult> generateTextStream(
@@ -287,36 +351,36 @@ class EdgeAIService {
     String? imageMimeType,
     AIModelConfig? config,
     String? apiKey,
-    // Add logic for streaming later (Gemini already supports it, OpenAI/Claude support SSE)
+    Ref? ref, // Phase 89: For proximity sync
   }) async* {
-    // For now, fallback to non-streaming for non-Gemini or mock
-    if (config?.provider == AIProvider.gemini && apiKey != null) {
-       // ... existing Gemini logic ...
-       final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
-       final model = GenerativeModel(model: config!.modelId, apiKey: apiKey);
-        final List<Part> parts = [TextPart(effectivePrompt)];
-        if (imageBytes != null) {
-          parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
-        }
-        final content = [Content.multi(parts)];
-        final responseStream = model.generateContentStream(content);
-        await for (final chunk in responseStream) {
-          if (chunk.text != null) yield EdgeAIResult(chunk.text!, AIProximity.cloud);
-        }
-    } else {
-      // Simulate streaming for others/mock
-      yield EdgeAIResult("Thinking via ${config?.displayName ?? 'Edge Mock'}...", AIProximity.simulated);
-      final result = await generateText(prompt, context: context, memoryContext: memoryContext, imageBytes: imageBytes, imageMimeType: imageMimeType, modelConfig: config, apiKey: apiKey);
-      yield result; // Return full block for now
+    if (config?.provider == AIProvider.gemini) {
+       final key = apiKey ?? await _vault.getGeminiKey();
+       if (key != null) {
+          final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
+          final model = GenerativeModel(model: config!.modelId, apiKey: key);
+          final List<Part> parts = [TextPart(effectivePrompt)];
+          if (imageBytes != null) {
+            parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+          }
+          final content = [Content.multi(parts)];
+          final responseStream = model.generateContentStream(content);
+          await for (final chunk in responseStream) {
+            if (chunk.text != null) {
+              if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(AIProximity.cloud);
+              yield EdgeAIResult(chunk.text!, AIProximity.cloud);
+            }
+          }
+          return;
+       }
     }
+    
+    yield EdgeAIResult("Thinking via ${config?.displayName ?? 'Edge Mock'}...", AIProximity.simulated);
+    final result = await generateText(prompt, context: context, memoryContext: memoryContext, imageBytes: imageBytes, imageMimeType: imageMimeType, modelConfig: config, apiKey: apiKey, ref: ref);
+    yield result;
   }
 
-  // Same helper methods as before...
   static Future<EdgeAIResult> _generateLocalMock(String prompt, {bool hasImage = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    // Finalize mock response
-    
-    // Simulate simple responses
     return EdgeAIResult("Edge Mock: Analyzed '$prompt' locally.", AIProximity.simulated);
   }
 
@@ -335,10 +399,4 @@ class EdgeAIService {
     buffer.writeln('\nUSER PROMPT: $prompt');
     return buffer.toString();
   }
-  
-  static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
-    // ...
-    return "assets/audio/mock_soundtrack.mp3"; 
-  }
 }
-
