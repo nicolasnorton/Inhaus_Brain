@@ -105,6 +105,62 @@ class ActivateSkillTool extends AgentTool {
   }
 }
 
+class LoadSkillResourceTool extends AgentTool {
+  final SkillDiscoveryService _skillService;
+
+  LoadSkillResourceTool(this._skillService)
+      : super(
+          name: 'load_skill_resource',
+          description: 'Load a specific resource (document, script, or asset) from an activated skill.',
+          inputSchema: {
+            'skillName': {
+              'type': 'string',
+              'description': 'The name of the skill.',
+            },
+            'resourcePath': {
+              'type': 'string',
+              'description': 'The relative path to the resource (e.g., "references/FORMS.md").',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+    final name = parameters['skillName'] as String?;
+    final resourcePath = parameters['resourcePath'] as String?;
+    
+    if (name == null || resourcePath == null) {
+      return ToolResult.failure('Missing skillName or resourcePath parameter.');
+    }
+
+    AgentSkill? foundSkill;
+    try {
+      foundSkill = _skillService.skills.firstWhere((s) => s.name == name);
+    } catch (_) {
+      foundSkill = null;
+    }
+
+    if (foundSkill == null) {
+      return ToolResult.failure('Skill "$name" not found.');
+    }
+
+    final file = File('${foundSkill.path}/$resourcePath');
+    if (!await file.exists()) {
+      return ToolResult.failure('Resource "$resourcePath" not found in skill "$name".');
+    }
+
+    try {
+      final content = await file.readAsString();
+      return ToolResult.success({
+        'content': content,
+        'message': 'Resource "$resourcePath" loaded successfully.',
+      });
+    } catch (e) {
+      return ToolResult.failure('Failed to read resource: $e');
+    }
+  }
+}
+
 final skillDiscoveryServiceProvider = Provider<SkillDiscoveryService>((ref) => SkillDiscoveryService());
 
 final skillDiscoveryInitProvider = FutureProvider<void>((ref) async {
@@ -117,5 +173,6 @@ final skillToolsProvider = Provider<List<AgentTool>>((ref) {
   final skillService = ref.watch(skillDiscoveryServiceProvider);
   return [
     ActivateSkillTool(skillService),
+    LoadSkillResourceTool(skillService),
   ];
 });

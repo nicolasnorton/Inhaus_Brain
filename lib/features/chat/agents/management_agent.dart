@@ -12,6 +12,7 @@ import 'package:inhaus_brain/core/mcp/agent_tool.dart';
 import 'package:inhaus_brain/features/campaigns/tools/campaign_tools.dart';
 import 'package:inhaus_brain/features/adk/tools/adk_tools.dart';
 import 'package:inhaus_brain/features/knowledge/tools/knowledge_tools.dart';
+import 'package:inhaus_brain/features/chat/services/skill_discovery_service.dart';
 
 class ManagementAgent extends BaseAgent {
   @override
@@ -77,6 +78,10 @@ You can Create, Read (List), Update, and Delete the following resources:
 - list_knowledge_sources()
 - add_knowledge_source(title, content, type)
 - delete_knowledge_source(sourceId)
+
+#### Skill Management (Portable Expertise)
+- activate_skill(skillName): Load full instructions for an available skill when a task matches it. Available skills are listed in the "Available Skills" section of your system prompt.
+- load_skill_resource(skillName, resourcePath): Load a specific document (e.g., "references/FORMS.md") or script from an activated skill.
 
 If the user request is a direct command to perform one of these actions, return a JSON object representing the tool call.
 Use this EXACT format:
@@ -189,5 +194,6 @@ final allManagementToolsProvider = Provider<List<AgentTool>>((ref) {
     ...ref.watch(campaignToolsProvider),
     ...ref.watch(adkToolsProvider),
     ...ref.watch(knowledgeToolsProvider),
+    ...ref.watch(skillToolsProvider),
   ];
 });

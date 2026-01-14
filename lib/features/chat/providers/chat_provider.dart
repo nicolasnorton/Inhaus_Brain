@@ -26,11 +26,15 @@ import '../../../core/adk/services/adk_service.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
+import '../services/skill_discovery_service.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
 
-  ChatNotifier(this.ref) : super(null);
+  ChatNotifier(this.ref) : super(null) {
+    // Phase: Agent Skills Integration - Trigger discovery on startup
+    ref.listen(skillDiscoveryInitProvider, (_, __) {});
+  }
 
   void startSession(String campaignId) {
     state = ChatSession(
