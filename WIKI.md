@@ -30,20 +30,27 @@ This is where you "build" your automation. It's a visual board where you drag an
 ### 2. 💬 Agent Workbench (The Chat)
 This is where you talk to the AI. You can chat with specialized agents like a **Researcher**, **Strategist**, or **Copywriter**. They can work together to answer your questions or execute the workflows you built.
 
-### 3. 📚 Knowledge Base (The Library)
+### 3. 🤖 AI Copilot (The Manager)
+The Copilot is your AI assistant for running the platform. Instead of clicking through menus, you can just ask it to do things.
+*   **Manage Clients**: "Add a client called Acme Corp", "Show all my clients".
+*   **Manage Campaigns**: "Create a new campaign for Summer Launch", "Delete the draft campaign".
+*   **Manage Knowledge**: "Add https://inhaus.corp/manual to my knowledge base", "List all my knowledge sources".
+*   **Create Apps**: "Build a new research app for Competitor Analysis".
+
+### 4. 📚 Knowledge Base (The Library)
 You can upload your own PDFs, documents, or website links here. The AI will "read" them and use that information to make sure its answers are accurate and specific to your business.
 
-### 4. 🚀 Publish Dashboard (Deployment)
+### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
 
-### 5. 🛠️ Templates & Sharing
+### 6. 🛠️ Templates & Sharing
 *   **Workflow Templates**: Don't start from scratch! Use professionally designed blueprints (like "Simple Chatbot" or "Twitter Account Analyzer") to jumpstart your project.
 *   **Import/Export**: Move your workflows between workspaces or share them with others using the **Export JSON** and **Import** features.
 
-### 6. 🐛 Debug Tools (The Inspector)
+### 7. 🐛 Debug Tools (The Inspector)
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
-### 7. 🏢 Client Module (Portfolio Management)
+### 8. 🏢 Client Module (Portfolio Management)
 This module allows you to manage your client relationships and projects:
 *   **Projects**: Organize work into specific project plans for each client.
 *   **Task Board**: Track task status (Todo, In-Progress, Review, Done) and set due dates.

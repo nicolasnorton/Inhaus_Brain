@@ -51,6 +51,14 @@ Enterprise-grade safety integrated directly into the agentic flow:
 - **Sensitive Task Interception**: Automatically blocks or sanitizes high-stakes actions (Media Buying, Data Access) if they violate brand safety.
 - **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
 
+### 🤖 Autonomous Platform Management (Copilot)
+The Inhaus Brain features an **AI Super Admin** (Management Agent) that allows you to operate the entire platform via natural language:
+- **Client & CRM**: Create, list, search, and update client records and project plans.
+- **Campaign Orchestration**: Full CRUD support for marketing campaigns.
+- **Brain Knowledge Management**: Autonomous injection and removal of websites, files, and documents from the system's global knowledge base.
+- **App/Agent CRUD**: Design and deploy new AI application pipelines directly through chat commands.
+- **Universal Search**: Intelligent retrieval of any platform entity (Tasks, Projects, Apps) across the workspace.
+
 ### 🏢 Creative Studio & Client Factory
 - **Client Module**: Comprehensive portfolio management with **Project Plans**, **Task Boards**, and real-time tracking.
 - **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to sync agent activity with external tools.
