@@ -1,10 +1,11 @@
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/chat/services/skill_discovery_service.dart';
 import '../../features/chat/models/chat_models.dart';
 
 class SystemPromptsService {
   final _storage = const FlutterSecureStorage();
+  final SkillDiscoveryService? _skillDiscoveryService;
+
+  SystemPromptsService([this._skillDiscoveryService]);
 
   static const String _researchPromptKey = 'research_prompt';
   static const String _creativePromptKey = 'creative_prompt';
@@ -156,23 +157,33 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
   Future<String> getRouterPrompt() async => await _getPrompt(_routerPromptKey, 'assets/prompts/router.md', originalRouterPrompt);
 
   Future<String> getPromptForSender(MessageSender sender) async {
+    String basePrompt = "";
     switch (sender) {
-      case MessageSender.researchAgent: return getResearchPrompt();
-      case MessageSender.creativeAgent: return getCreativePrompt();
-      case MessageSender.copywriterAgent: return getCopywriterPrompt();
-      case MessageSender.developerAgent: return getDeveloperPrompt();
-      case MessageSender.orchestratorAgent: return getOrchestratorPrompt();
-      case MessageSender.trendScoutAgent: return getTrendScoutPrompt();
-      case MessageSender.accountDirectorAgent: return getAccountDirectorPrompt();
-      case MessageSender.strategistAgent: return getStrategistPrompt();
-      case MessageSender.editorialManagerAgent: return getEditorialManagerPrompt();
-      case MessageSender.mediaBuyerAgent: return getMediaBuyerPrompt();
-      case MessageSender.performanceAnalystAgent: return getPerformanceAnalystPrompt();
-      case MessageSender.securityAgent: return getSecurityPrompt();
-      case MessageSender.dataEngineerAgent: return getDataEngPrompt();
-      case MessageSender.routerAgent: return getRouterPrompt();
-      default: return "";
+      case MessageSender.researchAgent: basePrompt = await getResearchPrompt(); break;
+      case MessageSender.creativeAgent: basePrompt = await getCreativePrompt(); break;
+      case MessageSender.copywriterAgent: basePrompt = await getCopywriterPrompt(); break;
+      case MessageSender.developerAgent: basePrompt = await getDeveloperPrompt(); break;
+      case MessageSender.orchestratorAgent: basePrompt = await getOrchestratorPrompt(); break;
+      case MessageSender.trendScoutAgent: basePrompt = await getTrendScoutPrompt(); break;
+      case MessageSender.accountDirectorAgent: basePrompt = await getAccountDirectorPrompt(); break;
+      case MessageSender.strategistAgent: basePrompt = await getStrategistPrompt(); break;
+      case MessageSender.editorialManagerAgent: basePrompt = await getEditorialManagerPrompt(); break;
+      case MessageSender.mediaBuyerAgent: basePrompt = await getMediaBuyerPrompt(); break;
+      case MessageSender.performanceAnalystAgent: basePrompt = await getPerformanceAnalystPrompt(); break;
+      case MessageSender.securityAgent: basePrompt = await getSecurityPrompt(); break;
+      case MessageSender.dataEngineerAgent: basePrompt = await getDataEngPrompt(); break;
+      case MessageSender.routerAgent: basePrompt = await getRouterPrompt(); break;
+      default: basePrompt = "";
     }
+
+    if (_skillDiscoveryService != null && basePrompt.isNotEmpty) {
+      final skillsXml = _skillDiscoveryService!.generateAvailableSkillsXml();
+      if (skillsXml.isNotEmpty) {
+        basePrompt += "\n\nAvailable Skills:\n$skillsXml";
+      }
+    }
+    
+    return basePrompt;
   }
 
   // Helper
@@ -187,4 +198,7 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
   }
 }
 
-final systemPromptsProvider = Provider<SystemPromptsService>((ref) => SystemPromptsService());
+final systemPromptsProvider = Provider<SystemPromptsService>((ref) {
+  final skillService = ref.watch(skillDiscoveryServiceProvider);
+  return SystemPromptsService(skillService);
+});
