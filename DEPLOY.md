@@ -1,14 +1,13 @@
 # Deployment Guide
 
-This guide outlines the steps to deploy the Inhaus Brain application to Google Cloud Run. These instruction assume you have the `gcloud` CLI installed and a Google Cloud Project with billing enabled.
+This guide outlines the steps to deploy the **Inhaus Brain** application to Google Cloud Run. 
+
+**Production URL**: [https://brain.inhauscorp.com](https://brain.inhauscorp.com)
+**Project ID**: `inhausbrain`
 
 ## Prerequisites
 1.  **Google Cloud SDK**: Install and initialize (`gcloud init`).
-2.  **Billing**: Ensure billing is enabled for your project.
-3.  **APIs**: Enable the following APIs:
-    - Cloud Run API
-    - Cloud Build API
-    - Artifact Registry API
+2.  **Access**: You must have permission to deploy to the `inhausbrain` project.
 
 ## Quick Start: One-Click Deployment
 We have provided a helper script to automate the build and deployment process.
@@ -18,41 +17,31 @@ We have provided a helper script to automate the build and deployment process.
 ```
 
 This script will:
-1.  Check for `gcloud` installation.
-2.  Confirm the project ID (`inhausbrain`).
-3.  Submit the build to Cloud Build.
-4.  Print the final service URL.
+1.  Build the Flutter Web app in a Docker container.
+2.  Push the container to Google Cloud Artifact Registry.
+3.  Deploy the new revision to Cloud Run.
 
-## Option 1: Manual Deployment via Cloud Build
-Use the simplified `cloudbuild.yaml` configuration to build and deploy in one step.
-
-```bash
-# Submit the build to Cloud Build
-gcloud builds submit --config cloudbuild.yaml .
-```
-
-## Option 2: Terraform (Infrastructure as Code)
-Use Terraform to provision the service declaratively.
+## Manual Deployment Checklist
+If you prefer to run commands manually:
 
 ```bash
-cd terraform
+# 1. Set the project
+gcloud config set project inhausbrain
 
-# Initialize Terraform
-terraform init
+# 2. Submit build to Cloud Build (builds Dockerfile & pushes to GCR)
+gcloud builds submit --tag gcr.io/inhausbrain/inhaus-brain-web .
 
-# Apply the configuration (Replace YOUR_PROJECT_ID)
-terraform apply -var="project_id=YOUR_PROJECT_ID"
+# 3. Deploy to Cloud Run
+gcloud run deploy inhaus-brain-web \
+  --image gcr.io/inhausbrain/inhaus-brain-web \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
 ```
 
-## Local Testing
-You can test the production container locally using Docker.
-
+## Domain Configuration
+The custom domain `brain.inhauscorp.com` is configured via Cloud Run Domain Mappings.
+To verify status:
 ```bash
-# Build the image
-docker build -t inhaus-brain .
-
-# Run container on port 8080
-docker run -p 8080:8080 inhaus-brain
+gcloud beta run domain-mappings list --region us-central1
 ```
-
-Access the app at `http://localhost:8080`.

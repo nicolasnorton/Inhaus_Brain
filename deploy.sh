@@ -1,49 +1,24 @@
 #!/bin/bash
+set -e
 
-# Configuration
 PROJECT_ID="inhausbrain"
+SERVICE_NAME="inhaus-brain-web"
 REGION="us-central1"
-SERVICE_NAME="inhaus-brain"
+IMAGE_TAG="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
-echo "🚀 Starting Deployment for $SERVICE_NAME..."
+echo "🚀 Starting Deployment for $PROJECT_ID..."
 
-# Check for gcloud
-if ! command -v gcloud &> /dev/null; then
-    echo "❌ Error: 'gcloud' CLI is not found."
-    echo "Please install the Google Cloud SDK: https://cloud.google.com/sdk/docs/install"
-    exit 1
-fi
+# 1. Build and Submit to Artifact Registry/GCR
+echo "📦 Building container image..."
+gcloud builds submit --tag $IMAGE_TAG .
 
-# Confirm Project
-CURRENT_PROJECT=$(gcloud config get-value project)
-echo "ℹ️  Current gcloud project: $CURRENT_PROJECT"
-if [ "$CURRENT_PROJECT" != "$PROJECT_ID" ]; then
-    echo "⚠️  Switching to project: $PROJECT_ID"
-    gcloud config set project $PROJECT_ID
-fi
+# 2. Deploy to Cloud Run
+echo "🚀 Deploying to Cloud Run..."
+gcloud run deploy $SERVICE_NAME \
+  --image $IMAGE_TAG \
+  --platform managed \
+  --region $REGION \
+  --allow-unauthenticated
 
-# Get current Git SHA
-COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "latest")
-echo "📌 Using tag: $COMMIT_SHA"
-
-# Run Build & Deploy
-echo "🔨 Submitting build to Cloud Build..."
-gcloud builds submit --config cloudbuild.yaml --project $PROJECT_ID --substitutions=_TAG=$COMMIT_SHA .
-
-if [ $? -eq 0 ]; then
-    echo "✅ Deployment Successful!"
-    
-    # Ensure public access
-    echo "🔓 Ensuring service is publicly accessible..."
-    gcloud run services add-iam-policy-binding $SERVICE_NAME \
-        --member="allUsers" \
-        --role="roles/run.invoker" \
-        --region=$REGION \
-        --project=$PROJECT_ID > /dev/null 2>&1
-
-    echo "🌍 Service URL:"
-    gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --project $PROJECT_ID --format 'value(status.url)'
-else
-    echo "❌ Deployment Failed."
-    exit 1
-fi
+echo "✅ Deployment Complete!"
+echo "🌍 App available at: https://brain.inhauscorp.com"
