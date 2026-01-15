@@ -12,6 +12,7 @@ import 'package:inhaus_brain/features/campaigns/tools/campaign_tools.dart';
 import 'package:inhaus_brain/features/adk/tools/adk_tools.dart';
 import 'package:inhaus_brain/features/knowledge/tools/knowledge_tools.dart';
 import 'package:inhaus_brain/features/chat/services/skill_discovery_service.dart';
+import 'package:inhaus_brain/features/admin/tools/admin_tools.dart';
 
 class ManagementAgent extends BaseAgent {
   @override
@@ -81,6 +82,10 @@ You can Create, Read (List), Update, and Delete the following resources:
 #### Skill Management (Portable Expertise)
 - activate_skill(skillName): Load full instructions for an available skill when a task matches it. Available skills are listed in the "Available Skills" section of your system prompt.
 - load_skill_resource(skillName, resourcePath): Load a specific document (e.g., "references/FORMS.md") or script from an activated skill.
+
+#### Super Admin Tools (Memory & Logs)
+- read_global_memory(limit, category): Read system-wide memories from ALL agents and users. Use this to find context that other agents have saved.
+- read_system_logs(limit, level): Read kernel execution logs. Use this to diagnose errors or monitor performance.
 
 If the user request is a direct command to perform one of these actions, return a JSON object representing the tool call.
 Use this EXACT format:
@@ -194,5 +199,6 @@ final allManagementToolsProvider = Provider<List<AgentTool>>((ref) {
     ...ref.watch(adkToolsProvider),
     ...ref.watch(knowledgeToolsProvider),
     ...ref.watch(skillToolsProvider),
+    ...ref.watch(adminToolsProvider),
   ];
 });
