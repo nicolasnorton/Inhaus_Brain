@@ -74,13 +74,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   'assets/images/logo.png',
                   height: 60,
                   errorBuilder: (context, error, stackTrace) => 
-                      const FaIcon(FontAwesomeIcons.brain, size: 64, color: Colors.white),
+                      Image.asset('assets/images/brain_icon.png', height: 64),
                 ),
                 const SizedBox(height: 32),
                 Image.asset(
                   'assets/images/brain_icon.png',
-                  height: 60,
-                  color: Colors.white, // Apply white tint if it's black-on-transparent, removing if colored
+                  height: 80, // Slightly larger for better visibility
                 ),
                 const SizedBox(height: 16),
                 const Text(
