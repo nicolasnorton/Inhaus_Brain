@@ -1,3 +1,9 @@
+enum MemoryScope {
+  private, // Agent-specific only
+  shared, // Accessible by other agents for this user
+  superAdmin // Accessible by the Super Copilot
+}
+
 class MemoryItem {
   final String id;
   final String key;
@@ -6,6 +12,9 @@ class MemoryItem {
   final DateTime createdAt;
   final String? campaignId;
   final Map<String, dynamic>? metadata;
+  final String? agentId; // Which agent created this
+  final String? userId; // Which user owns this
+  final MemoryScope scope;
 
   MemoryItem({
     required this.id,
@@ -15,6 +24,9 @@ class MemoryItem {
     required this.createdAt,
     this.campaignId,
     this.metadata,
+    this.agentId,
+    this.userId,
+    this.scope = MemoryScope.private,
   });
 
   factory MemoryItem.fromJson(Map<String, dynamic> json) {
@@ -26,6 +38,11 @@ class MemoryItem {
       createdAt: DateTime.parse(json['createdAt'] as String),
       campaignId: json['campaignId'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
+      agentId: json['agentId'] as String?,
+      userId: json['userId'] as String?,
+      scope: json['scope'] != null
+          ? MemoryScope.values.firstWhere((e) => e.name == json['scope'])
+          : MemoryScope.private,
     );
   }
 
@@ -37,6 +54,9 @@ class MemoryItem {
     'createdAt': createdAt.toIso8601String(),
     'campaignId': campaignId,
     'metadata': metadata,
+    'agentId': agentId,
+    'userId': userId,
+    'scope': scope.name,
   };
 }
 

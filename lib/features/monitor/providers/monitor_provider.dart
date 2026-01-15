@@ -2,8 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/monitor_models.dart';
 import '../services/monitor_api_service.dart';
 
+import '../../../core/auth/auth_service.dart';
+
 /// Provider for MonitorApiService
-final monitorApiServiceProvider = Provider((ref) => MonitorApiService());
+final monitorApiServiceProvider = Provider((ref) {
+  return MonitorApiService(ref.watch(authServiceProvider));
+});
 
 /// Provider for app metrics summary
 final appMetricsProvider = FutureProvider.family<MetricSummary, String>((ref, appId) async {
