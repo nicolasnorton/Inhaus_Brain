@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../workspace/models/app_models.dart';
 import '../../workspace/providers/apps_provider.dart';
-import '../widgets/variable_text_field.dart';
 
-import '../providers/app_config_provider.dart';
 import '../../chat/agentic_chat_view.dart';
 
 class AppSetupScreen extends ConsumerStatefulWidget {

@@ -1,4 +1,5 @@
 /// Models for Knowledge Base API
+library;
 
 /// Knowledge document model
 class KnowledgeDocument {

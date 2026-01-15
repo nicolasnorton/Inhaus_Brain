@@ -180,7 +180,7 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
     }
 
     if (_skillDiscoveryService != null && basePrompt.isNotEmpty) {
-      final skillsXml = _skillDiscoveryService!.generateAvailableSkillsXml();
+      final skillsXml = _skillDiscoveryService.generateAvailableSkillsXml();
       if (skillsXml.isNotEmpty) {
         basePrompt += "\n\nAvailable Skills:\n$skillsXml";
       }

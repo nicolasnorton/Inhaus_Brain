@@ -163,7 +163,7 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
         const Text('Language', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          value: 'English',
+          initialValue: 'English',
           items: ['English', 'Spanish', 'French', 'Chinese'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
           onChanged: (val) {},
           decoration: InputDecoration(

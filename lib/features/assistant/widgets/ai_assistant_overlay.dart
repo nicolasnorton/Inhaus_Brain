@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -538,17 +537,36 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
 
   Widget _buildGeneratedAsset(String path, String? type) {
     if (type == 'image') {
-      return Container(
-        constraints: const BoxConstraints(maxWidth: 300, maxHeight: 300),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: path.startsWith('http') 
-              ? Image.network(path, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Center(child: Icon(Icons.error, color: Colors.red)))
-              : (path.startsWith('assets') ? Image.asset(path, fit: BoxFit.cover) : Image.file(File(path), fit: BoxFit.cover)),
+      return ExcludeSemantics(
+        child: SizedBox(
+          width: 300,
+          height: 300,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: path.startsWith('http') 
+                  ? Image.network(
+                      path, 
+                      fit: BoxFit.cover, 
+                      width: 300,
+                      height: 300,
+                      semanticLabel: 'Generated Image',
+                      errorBuilder: (c,e,s) {
+                        debugPrint('Image Load Error for $path: $e');
+                        return const Center(child: Icon(Icons.error, color: Colors.red));
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                    )
+                  : (path.startsWith('assets') ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) : Image.file(File(path), fit: BoxFit.cover, width: 300, height: 300)),
+            ),
+          ),
         ),
       );
     } else if (type == 'video') {

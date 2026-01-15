@@ -122,7 +122,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
             ),
             _buildMetricCard(
               AppLocalizations.of(context)!.avgInteractions,
-              '${metrics.avgInteractions.toStringAsFixed(1)}',
+              metrics.avgInteractions.toStringAsFixed(1),
               AppLocalizations.of(context)!.statEngagementDepth,
               Icons.insights_outlined,
               Colors.orangeAccent,

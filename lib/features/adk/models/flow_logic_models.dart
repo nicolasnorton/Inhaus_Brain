@@ -1,4 +1,5 @@
 /// Flow logic node models
+library;
 
 /// Comparison operator for conditions
 enum ComparisonOperator {

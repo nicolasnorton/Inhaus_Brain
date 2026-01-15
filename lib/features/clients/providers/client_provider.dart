@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:inhaus_brain/features/clients/models/client_model.dart';
-import 'package:inhaus_brain/features/clients/models/client_model.dart';
 import 'package:inhaus_brain/features/clients/models/client_contact_model.dart';
 import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 

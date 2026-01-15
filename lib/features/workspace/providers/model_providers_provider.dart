@@ -138,7 +138,7 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
         status: ProviderStatus.connected,
         credentials: ProviderCredentials(
           provider: ModelProvider.google,
-          apiKey: 'AIzaSyAnLuvjk8t85HXuWl0a4_dKWCr5tsVUsco',
+          apiKey: '', // User must provide key via settings
           createdAt: DateTime.now(),
         ),
         availableModels: [

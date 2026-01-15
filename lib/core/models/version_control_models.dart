@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 /// A single commit/snapshot in the workflow history
 class WorkflowCommit {

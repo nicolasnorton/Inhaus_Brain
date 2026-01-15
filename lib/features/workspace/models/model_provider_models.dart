@@ -1,4 +1,5 @@
 /// Models for AI model providers
+library;
 
 /// Model provider type
 enum ModelProviderType {

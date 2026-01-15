@@ -1,5 +1,4 @@
 import 'ucp_types.dart';
-import 'ap2_models.dart';
 
 
 abstract class UCPCapability {
@@ -21,24 +20,24 @@ class CheckoutCapability extends UCPCapability {
   final bool allowsGuestCheckout;
 
   CheckoutCapability({
-    required String id,
-    String name = 'Checkout',
-    String version = '1.0.0',
+    required super.id,
+    super.name = 'Checkout',
+    super.version = '1.0.0',
     this.supportedCurrencies = const [],
     this.allowsGuestCheckout = false,
-    List<String> supportedExtensions = const [],
-  }) : super(id: id, name: name, version: version, supportedExtensions: supportedExtensions);
+    super.supportedExtensions,
+  });
 }
 
 class IdentityLinkingCapability extends UCPCapability {
   final List<String> supportedProviders;
 
   IdentityLinkingCapability({
-    required String id,
-    String name = 'IdentityLinking',
-    String version = '1.0.0',
+    required super.id,
+    super.name = 'IdentityLinking',
+    super.version = '1.0.0',
     this.supportedProviders = const [],
-  }) : super(id: id, name: name, version: version);
+  });
 }
 
 class OrderCapability extends UCPCapability {
@@ -46,12 +45,12 @@ class OrderCapability extends UCPCapability {
   final bool supportsReturns;
 
   OrderCapability({
-    required String id,
-    String name = 'Order',
-    String version = '1.0.0',
+    required super.id,
+    super.name = 'Order',
+    super.version = '1.0.0',
     this.supportsOrderTracking = true,
     this.supportsReturns = false,
-  }) : super(id: id, name: name, version: version);
+  });
 }
 
 
@@ -67,29 +66,29 @@ class AP2MandatesExtension extends UCPExtension {
   final List<String> supportedMandateVersions;
 
   AP2MandatesExtension({
-    required String id, 
+    required super.id, 
     this.requiresMandate = true,
     this.supportedMandateVersions = const ['1.0'],
-  }) : super(id: id, type: UCPExtensionType.ap2Mandates);
+  }) : super(type: UCPExtensionType.ap2Mandates);
 }
 
 class BuyerConsentExtension extends UCPExtension {
   final String consentUrl;
 
-  BuyerConsentExtension({required String id, required this.consentUrl})
-      : super(id: id, type: UCPExtensionType.buyerConsent);
+  BuyerConsentExtension({required super.id, required this.consentUrl})
+      : super(type: UCPExtensionType.buyerConsent);
 }
 
 class DiscountsExtension extends UCPExtension {
   final bool stackingAllowed;
 
-  DiscountsExtension({required String id, this.stackingAllowed = false})
-      : super(id: id, type: UCPExtensionType.discounts);
+  DiscountsExtension({required super.id, this.stackingAllowed = false})
+      : super(type: UCPExtensionType.discounts);
 }
 
 class FulfillmentExtension extends UCPExtension {
   final List<String> supportedMethods; // ["shipping", "pickup"]
 
-  FulfillmentExtension({required String id, required this.supportedMethods})
-      : super(id: id, type: UCPExtensionType.fulfillment);
+  FulfillmentExtension({required super.id, required this.supportedMethods})
+      : super(type: UCPExtensionType.fulfillment);
 }

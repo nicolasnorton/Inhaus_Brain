@@ -97,7 +97,7 @@ class EdgeAIService {
                 result = await _generateGemini(effectivePrompt, fallbackConfig, key, imageBytes, imageMimeType, audioBytes, audioMimeType);
               } catch (fallbackError) {
                  debugPrint('EdgeAI: [DEBUG] Fallback Gemini model also failed: $fallbackError');
-                 throw fallbackError; // Re-throw to trigger outer catch and potential mock fallback
+                 rethrow; // Re-throw to trigger outer catch and potential mock fallback
               }
             }
           }
@@ -327,16 +327,76 @@ class EdgeAIService {
        return "https://via.placeholder.com/1024x1024.png?text=Midjourney+v6"; 
     }
     if (imagenKey != null && imagenKey.isNotEmpty || isNanoBanana) {
-      await Future.delayed(const Duration(seconds: 2));
-      final label = isNanoBanana ? "Nano+Banana+Gen" : "Imagen+3+Gen";
-      return "https://via.placeholder.com/1024x1024.png?text=$label";
+      // Use Vertex AI Imagen 3 (requires Access Token as 'imagenKey' for now, or Service Account via proxy)
+      // Assuming 'imagenKey' is a valid Google Cloud Access Token or API Key with sufficient scope.
+      // If it's an API Key (AIStudio), it might not work for Imagen yet.
+      // For this implementation, we assume the user provides a Bearer Token or we use a REST proxy.
+      // Given the constraints, we will TRY to call the Vertex AI REST endpoint if the key looks like a token.
+      
+      if (imagenKey!.startsWith('ya29')) { // Typical Google Access Token prefix
+         try {
+           return await _generateVertexImagen(prompt, imagenKey);
+         } catch (e) {
+           debugPrint('Vertex Imagen failed: $e. Falling back to Pollinations.');
+         }
+      } else {
+         // Fallback/Simulated for standard API keys or placeholder
+         await Future.delayed(const Duration(seconds: 2));
+         // If they have an API key but not a token, we can't easily call Vertex directly from client.
+         // We'll log this limitation.
+         debugPrint('Imagen Key provided but logic requires Access Token for Vertex AI. Using Pollinations fallback.');
+      }
     }
+
+    // POLLINATIONS.AI FALLBACK
     // Use Pollinations.ai for free, high-quality, dynamic image generation without an API key.
     // We use a random seed to ensure uniqueness for repeated prompts.
     final seed = DateTime.now().millisecondsSinceEpoch;
-    // Simple encoding is safer for URLs
-    final encodedPrompt = Uri.encodeComponent(prompt);
-    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&nologo=true"; 
+    
+    // Truncate prompt deeply to avoid "URI Too Long" or "Forbidden" issues.
+    // We only keep alphanumeric and spaces to be ultra-safe.
+    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '');
+    if (safePrompt.length > 100) {
+      safePrompt = safePrompt.substring(0, 100); 
+    }
+    
+    final encodedPrompt = Uri.encodeComponent(safePrompt);
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&model=flux"; 
+  }
+
+  static Future<String> _generateVertexImagen(String prompt, String accessToken) async {
+    // Requires PROJECT_ID. Since we don't have it injected, we might need to ask or use a default.
+    // For now, we'll try to find it in the vault or use a placeholder which will fail if invalid.
+    String projectId = 'inhausbrain'; // Default from user context
+    
+    final url = Uri.parse('https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagegeneration:predict');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "instances": [
+          {"prompt": prompt}
+        ],
+        "parameters": {
+          "sampleCount": 1,
+          "aspectRatio": "1:1"
+        }
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      // Vertex AI Image generation response structure
+      // predictions[0].bytesBase64Encoded
+      final base64Image = data['predictions'][0]['bytesBase64Encoded'];
+      return "data:image/png;base64,$base64Image";
+    } else {
+      throw Exception('Vertex AI Error: ${response.statusCode} ${response.body}');
+    }
   }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? runwayKey}) async {

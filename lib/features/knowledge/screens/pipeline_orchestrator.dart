@@ -10,7 +10,7 @@ class KnowledgePipelineOrchestrator extends ConsumerStatefulWidget {
 }
 
 class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelineOrchestrator> {
-  double _zoomLevel = 1.0;
+  final double _zoomLevel = 1.0;
   final bool _isPublished = false;
   String? _selectedNode;
 

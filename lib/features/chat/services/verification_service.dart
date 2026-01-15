@@ -29,7 +29,7 @@ $candidateOutput
 
     try {
       final response = await EdgeAIService.generateText(
-        systemPrompt + "\n\n" + prompt,
+        "$systemPrompt\n\n$prompt",
         ref: _ref,
       );
       return response.text;

@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/participant_model.dart';
 import '../models/capability_model.dart';
-import '../models/participant_model.dart';
-import '../models/capability_model.dart';
 import '../models/ucp_types.dart';
 import '../models/payment_handler.dart';
 import '../models/ap2_models.dart';

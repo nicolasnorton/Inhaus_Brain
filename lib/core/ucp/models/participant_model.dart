@@ -10,8 +10,7 @@ abstract class UCPParticipant {
 class PlatformAgent extends UCPParticipant {
   final String version;
 
-  PlatformAgent({required String id, required String name, required this.version})
-      : super(id: id, name: name);
+  PlatformAgent({required super.id, required super.name, required this.version});
 }
 
 class Business extends UCPParticipant {
@@ -19,29 +18,29 @@ class Business extends UCPParticipant {
   final String merchantId;
 
   Business({
-    required String id,
-    required String name,
+    required super.id,
+    required super.name,
     required this.merchantId,
     this.capabilities = const [],
-  }) : super(id: id, name: name);
+  });
 }
 
 class CredentialProvider extends UCPParticipant {
   final List<String> supportedMethods; // e.g., ["visa", "mastercard", "apple_pay"]
 
   CredentialProvider({
-    required String id,
-    required String name,
+    required super.id,
+    required super.name,
     this.supportedMethods = const [],
-  }) : super(id: id, name: name);
+  });
 }
 
 class PaymentServiceProvider extends UCPParticipant {
   final String gatewayId;
 
   PaymentServiceProvider({
-    required String id,
-    required String name,
+    required super.id,
+    required super.name,
     required this.gatewayId,
-  }) : super(id: id, name: name);
+  });
 }

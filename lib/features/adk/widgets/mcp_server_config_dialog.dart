@@ -99,7 +99,7 @@ class _MCPServerConfigDialogState extends State<MCPServerConfigDialog> {
             ],
           ),
         ),
-        Switch(value: value, onChanged: onChanged, activeColor: Colors.tealAccent),
+        Switch(value: value, onChanged: onChanged, activeThumbColor: Colors.tealAccent),
       ],
     );
   }

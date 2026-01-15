@@ -1,4 +1,5 @@
 /// Models for user settings and profile
+library;
 
 /// Login method
 enum LoginMethod {

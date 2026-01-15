@@ -1,4 +1,5 @@
 /// Models for Dify app types and configurations
+library;
 
 import '../../workspace/models/app_models.dart' show AppType;
 export '../../workspace/models/app_models.dart' show AppType;

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ShareAppDialog extends StatefulWidget {
   final String appId;
@@ -96,7 +95,7 @@ class _ShareAppDialogState extends State<ShareAppDialog> {
             ],
           ),
         ),
-        Switch(value: value, onChanged: onChanged, activeColor: Colors.blueAccent),
+        Switch(value: value, onChanged: onChanged, activeThumbColor: Colors.blueAccent),
       ],
     );
   }

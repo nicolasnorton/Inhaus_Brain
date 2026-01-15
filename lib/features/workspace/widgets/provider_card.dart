@@ -108,7 +108,7 @@ class ProviderCard extends ConsumerWidget {
                     Switch(
                       value: config.enabled,
                       onChanged: (_) => onToggle?.call(),
-                      activeColor: theme.primaryColor,
+                      activeThumbColor: theme.primaryColor,
                     ),
                 ],
               ),

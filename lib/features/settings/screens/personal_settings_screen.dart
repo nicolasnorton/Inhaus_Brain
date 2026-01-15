@@ -317,7 +317,7 @@ class _PersonalSettingsScreenState
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<Language>(
-            value: preferences.language,
+            initialValue: preferences.language,
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

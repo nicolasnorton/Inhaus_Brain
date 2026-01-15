@@ -546,7 +546,7 @@ class _PublishDashboardScreenState
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).cardColor,
         title: const Text('API Reference', style: TextStyle(color: Colors.white)),
-        content: Container(
+        content: SizedBox(
           width: 500,
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -1,4 +1,5 @@
 /// Models for plugin management
+library;
 
 /// Plugin installation source
 enum PluginSource {

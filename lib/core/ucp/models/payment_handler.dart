@@ -1,4 +1,3 @@
-import 'ucp_types.dart';
 
 /// Request to tokenize a raw credential
 class UCPTokenizationRequest {

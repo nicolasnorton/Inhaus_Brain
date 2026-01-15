@@ -7,7 +7,7 @@ class SanitizationUtils {
     // Replace markdown and common orchestration characters if they seem suspicious
     // This is a basic implementation; more complex logic could be added.
     return input
-        .replaceAll('\"', '\\\"')
+        .replaceAll('"', '\\"')
         .replaceAll('\n', ' ')
         .trim();
   }

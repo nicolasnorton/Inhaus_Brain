@@ -20,7 +20,6 @@ import '../../features/workspace/screens/plugins_screen.dart';
 import '../../features/workspace/screens/manage_apps_screen.dart';
 import '../../features/workspace/screens/publish_dashboard_screen.dart';
 import '../../features/adk/screens/debug_tools_screen.dart';
-import '../../features/monitor/screens/monitor_dashboard_screen.dart';
 import '../../features/monitor/screens/logs_screen.dart';
 import '../../features/adk/screens/app_editor_dispatcher_screen.dart';
 import '../../features/adk/screens/run_history_screen.dart';

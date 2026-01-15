@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inhaus_brain/features/clients/tools/client_tools.dart';
@@ -156,25 +155,25 @@ Use this EXACT format:
         if (result.data.containsKey('clients')) {
            final clients = result.data['clients'] as List;
            if (clients.isEmpty) return "No clients found.";
-           return "Clients:\n" + clients.map((c) => "- ${c['name']} (${c['industry']}) [ID: ${c['id']}]").join("\n");
+           return "Clients:\n${clients.map((c) => "- ${c['name']} (${c['industry']}) [ID: ${c['id']}]").join("\n")}";
         }
         
         if (result.data.containsKey('campaigns')) {
            final items = result.data['campaigns'] as List;
            if (items.isEmpty) return "No campaigns found.";
-           return "Campaigns:\n" + items.map((c) => "- ${c['title']} (${c['status']}) [ID: ${c['id']}]").join("\n");
+           return "Campaigns:\n${items.map((c) => "- ${c['title']} (${c['status']}) [ID: ${c['id']}]").join("\n")}";
         }
 
         if (result.data.containsKey('apps')) {
            final items = result.data['apps'] as List;
            if (items.isEmpty) return "No apps found.";
-           return "Apps/Workflows:\n" + items.map((c) => "- ${c['name']} [ID: ${c['id']}]").join("\n");
+           return "Apps/Workflows:\n${items.map((c) => "- ${c['name']} [ID: ${c['id']}]").join("\n")}";
         }
         
         if (result.data.containsKey('sources')) {
            final items = result.data['sources'] as List;
            if (items.isEmpty) return "No knowledge sources found.";
-           return "Knowledge Sources:\n" + items.map((c) => "- ${c['title']} (${c['type']}) [ID: ${c['id']}]").join("\n");
+           return "Knowledge Sources:\n${items.map((c) => "- ${c['title']} (${c['type']}) [ID: ${c['id']}]").join("\n")}";
         }
         return result.data['message'] ?? result.data.toString();
       } else {

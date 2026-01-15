@@ -105,7 +105,7 @@ class SystemDefaultModelDialog extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<ModelConfig>(
-            value: availableModels.any((m) => m.id == currentDefault?.id) 
+            initialValue: availableModels.any((m) => m.id == currentDefault?.id) 
                 ? availableModels.firstWhere((m) => m.id == currentDefault?.id)
                 : null,
             hint: const Text('Select default model...'),

@@ -1,4 +1,5 @@
 /// Additional app feature models
+library;
 
 /// File type for uploads
 enum FileType {

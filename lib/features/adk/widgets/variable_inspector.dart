@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workflow_execution_provider.dart';
-import '../models/workflow_execution_models.dart';
 
 class VariableInspector extends ConsumerWidget {
   const VariableInspector({super.key});

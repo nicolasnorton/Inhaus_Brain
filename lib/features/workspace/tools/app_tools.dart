@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inhaus_brain/core/mcp/agent_tool.dart';
 import 'package:inhaus_brain/features/workspace/models/app_models.dart';
-import 'package:inhaus_brain/features/adk/models/app_type_models.dart'; 
 import 'package:inhaus_brain/features/workspace/providers/apps_provider.dart';
 
 class CreateAppTool extends AgentTool {

@@ -19,8 +19,8 @@ class AiAssistantButton extends ConsumerWidget {
         }
       },
       backgroundColor: Colors.blueAccent,
-      child: Icon(isOpen ? Icons.send : Icons.smart_toy_outlined),
       tooltip: isOpen ? 'Send Message' : 'AI Assistant',
+      child: Icon(isOpen ? Icons.send : Icons.smart_toy_outlined),
     );
   }
 }

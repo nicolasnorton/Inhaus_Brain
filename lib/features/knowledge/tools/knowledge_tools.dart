@@ -34,7 +34,7 @@ class AddKnowledgeSourceTool extends AgentTool {
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     // Aggressive parameter extraction: check common keys
-    final content_final = (parameters['content'] ?? 
+    final contentFinal = (parameters['content'] ?? 
                            parameters['url'] ?? 
                            parameters['link'] ?? 
                            parameters['source'] ?? 
@@ -42,10 +42,10 @@ class AddKnowledgeSourceTool extends AgentTool {
     
     final title = parameters['title'] as String? ?? 
                   parameters['name'] as String? ??
-                  (content_final != null ? (content_final.length > 30 ? 'Source: ${content_final.substring(0, 27)}...' : 'Source: $content_final') : 'New Source');
+                  (contentFinal != null ? (contentFinal.length > 30 ? 'Source: ${contentFinal.substring(0, 27)}...' : 'Source: $contentFinal') : 'New Source');
     final typeStr = parameters['type'] as String? ?? 'url';
 
-    if (content_final == null) {
+    if (contentFinal == null) {
       return ToolResult.failure('Missing required parameter: content or url.');
     }
 
@@ -53,7 +53,7 @@ class AddKnowledgeSourceTool extends AgentTool {
       final source = KnowledgeSource(
         id: 'ks-${const Uuid().v4().substring(0, 8)}',
         title: title,
-        content: content_final,
+        content: contentFinal,
         type: KnowledgeSourceType.values.firstWhere(
           (e) => e.name == typeStr,
           orElse: () => KnowledgeSourceType.url,

@@ -1,4 +1,5 @@
 /// Models for workflow execution and variable management
+library;
 
 /// Variable category for organization
 enum VariableCategory {
