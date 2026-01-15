@@ -77,7 +77,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       const FaIcon(FontAwesomeIcons.brain, size: 64, color: Colors.white),
                 ),
                 const SizedBox(height: 32),
-                const FaIcon(FontAwesomeIcons.brain, size: 56, color: Colors.white),
+                Image.asset(
+                  'assets/images/brain_icon.png',
+                  height: 60,
+                  color: Colors.white, // Apply white tint if it's black-on-transparent, removing if colored
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'INHAUS BRAIN',
