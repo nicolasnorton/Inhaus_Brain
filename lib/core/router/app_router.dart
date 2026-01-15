@@ -28,6 +28,8 @@ import '../../features/adk/screens/pipeline_builder_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/system_secrets_screen.dart';
 import '../../features/settings/screens/user_secrets_screen.dart';
+import '../../features/admin/screens/system_logs_screen.dart';
+import '../../features/admin/screens/super_copilot_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -154,6 +156,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                GoRoute(
                 path: 'system-secrets',
                 builder: (context, state) => const SystemSecretsScreen(),
+              ),
+              GoRoute(
+                path: 'system-logs',
+                builder: (context, state) => const SystemLogsScreen(),
+              ),
+              GoRoute(
+                path: 'super-copilot',
+                builder: (context, state) => const SuperCopilotScreen(),
               ),
             ],
           ),

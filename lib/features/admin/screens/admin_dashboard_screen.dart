@@ -59,7 +59,14 @@ class AdminDashboardScreen extends ConsumerWidget {
                   title: 'System Analytics',
                   icon: FontAwesomeIcons.chartLine,
                   color: Colors.green,
-                  onTap: () {},
+                  onTap: () => context.push('/admin/system-logs'),
+                ),
+                 _AdminCard(
+                  title: 'Super Copilot',
+                  subtitle: 'Global Memory',
+                  icon: FontAwesomeIcons.brain,
+                  color: Colors.purpleAccent,
+                  onTap: () => context.push('/admin/super-copilot'),
                 ),
                  _AdminCard(
                   title: 'Audit Logs',
