@@ -11,8 +11,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// import 'package:firebase_core/firebase_core.dart';
-// import 'firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'features/settings/providers/user_provider.dart';
@@ -32,9 +32,9 @@ void main() async {
     debugPrint("Warning: .env file not found or could not be loaded. $e");
   }
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   runApp(const ProviderScope(child: InhausBrainApp()));
 }
