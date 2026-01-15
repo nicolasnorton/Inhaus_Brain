@@ -117,7 +117,7 @@ class AuthService {
   Future<User?> signInWithEmail(String email, String password) async {
     try {
       // Bootstrap Logic: If this is the specific requested admin user, try to auto-create if login fails
-      if (email == 'nnorton@inhauscorp.com' && password == 'Cafeina88$') {
+      if (email == 'nnorton@inhauscorp.com' && password == 'Cafeina88\$') {
         try {
           final userCredential = await _auth.signInWithEmailAndPassword(
             email: email,
