@@ -116,6 +116,26 @@ class AuthService {
 
   Future<User?> signInWithEmail(String email, String password) async {
     try {
+      // Bootstrap Logic: If this is the specific requested admin user, try to auto-create if login fails
+      if (email == 'nnorton@inhauscorp.com' && password == 'Cafeina88$') {
+        try {
+          final userCredential = await _auth.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          final user = userCredential.user;
+          if (user != null) await getAppUser(user);
+          return user;
+        } catch (e) {
+          if (e is FirebaseAuthException && (e.code == 'user-not-found' || e.code == 'invalid-credential' || e.code == 'invalid-email')) {
+            // Check if user exists but has different password? 
+            // For now, assume if it fails, we should try to sign up as requested.
+            return await signUpWithEmail(email, password, 'Nicolas Norton');
+          }
+          rethrow;
+        }
+      }
+
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
