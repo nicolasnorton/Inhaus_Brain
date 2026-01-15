@@ -268,8 +268,8 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
           decoration: InputDecoration(
             filled: true,
             fillColor: readOnly 
-                ? (theme.brightness == Brightness.light ? Colors.black.withValues(alpha: 0.01) : Colors.white.withValues(alpha: 0.02)) 
-                : (theme.brightness == Brightness.light ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05)),
+                ? (Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.01) : Colors.white.withValues(alpha: 0.02)) 
+                : (Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05)),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           ),
         ),

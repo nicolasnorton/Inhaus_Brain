@@ -6,6 +6,7 @@ import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../core/auth/auth_service.dart';
 import 'providers/client_provider.dart';
 import 'models/client_model.dart';
+import '../auth/models/user_model.dart';
 
 class ClientManagementScreen extends ConsumerWidget {
   const ClientManagementScreen({super.key});
@@ -13,8 +14,25 @@ class ClientManagementScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final allClients = ref.watch(clientProvider);
-    final appUser = ref.watch(appUserProvider);
-    final isAdmin = ref.watch(authServiceProvider).isAdmin;
+    final appUserAsync = ref.watch(appUserProvider);
+    // Since isAdmin is also async in strict logic, we might need a better pattern. 
+    // But for now, we will wait for appUser to be loaded.
+    
+    return appUserAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
+      data: (appUser) {
+         return _buildContent(context, ref, allClients, appUser);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WidgetRef ref, List<Client> allClients, AppUser? appUser) {
+    // Note: This relies on authServiceProvider.isAdmin which might also need to become AsyncValue if it depends on FS
+    // But currentUser is synchronous if already loaded. 
+    // Let's rely on appUser role check directly since we have the object.
+    
+    final isAdmin = appUser?.role == UserRole.admin || appUser?.role == UserRole.superAdmin;
     debugPrint('ClientManagementScreen: User=${appUser?.email}, Role=${appUser?.role}, IsAdmin=$isAdmin');
 
     final clients = isAdmin 

@@ -10,6 +10,19 @@ This guide outlines the steps to deploy the Inhaus Brain application to Google C
     - Cloud Build API
     - Artifact Registry API
 
+## Quick Start: One-Click Deployment
+We have provided a helper script to automate the build and deployment process.
+
+```bash
+./deploy.sh
+```
+
+This script will:
+1.  Check for `gcloud` installation.
+2.  Confirm the project ID (`inhausbrain`).
+3.  Submit the build to Cloud Build.
+4.  Print the final service URL.
+
 ## Option 1: Manual Deployment via Cloud Build
 Use the simplified `cloudbuild.yaml` configuration to build and deploy in one step.
 

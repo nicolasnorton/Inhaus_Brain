@@ -25,6 +25,9 @@ import '../../features/adk/screens/app_editor_dispatcher_screen.dart';
 import '../../features/adk/screens/run_history_screen.dart';
 import '../../features/analytics/screens/analytics_monitor_screen.dart';
 import '../../features/adk/screens/pipeline_builder_screen.dart';
+import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/system_secrets_screen.dart';
+import '../../features/settings/screens/user_secrets_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -137,6 +140,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings',
             builder: (context, state) => const PersonalSettingsScreen(),
+            routes: [
+               GoRoute(
+                path: 'secrets',
+                builder: (context, state) => const UserSecretsScreen(),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/admin',
+            builder: (context, state) => const AdminDashboardScreen(),
+            routes: [
+               GoRoute(
+                path: 'system-secrets',
+                builder: (context, state) => const SystemSecretsScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/workspace/model-providers',

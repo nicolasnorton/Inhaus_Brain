@@ -117,7 +117,7 @@ class Annotation {
   };
 }
 
-/// Summary metrics for an app (Dify-style)
+/// Summary metrics for an app (INHAUS BRAIN-style)
 class MetricSummary {
   final int totalMessages;
   final int activeUsers;

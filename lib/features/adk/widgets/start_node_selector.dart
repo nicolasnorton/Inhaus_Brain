@@ -106,7 +106,7 @@ class StartNodeSelector extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Only workflows started by User Input can be published as standalone web apps or MCP servers, exposed through backend service APIs, or used as tools in other Dify applications.',
+                    'Only workflows started by User Input can be published as standalone web apps or MCP servers, exposed through backend service APIs, or used as tools in other INHAUS BRAIN applications.',
                     style: TextStyle(
                       fontSize: 12,
                       color: const Color(0xFF1E40AF),

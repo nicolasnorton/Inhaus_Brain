@@ -86,7 +86,7 @@ class PipelineStep {
   final List<String> dependencies; 
   final Map<String, double>? uiPosition; 
   
-  // New Dify-style fields
+  // New INHAUS BRAIN-style fields
   final Map<String, dynamic> config;
   final Map<String, String> inputMappings; // node_id.output_name -> input_name
 

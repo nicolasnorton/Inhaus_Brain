@@ -16,7 +16,7 @@ final userPreferencesProvider =
 /// Provider for user workspaces
 final userWorkspacesProvider =
     StateProvider<List<WorkspaceMembership>>((ref) {
-  return _getMockWorkspaces();
+  return []; // Production defaults to empty
 });
 
 /// Provider for current workspace
@@ -27,7 +27,13 @@ final currentWorkspaceProvider = StateProvider<String?>((ref) {
 
 /// State notifier for user profile
 class UserProfileNotifier extends StateNotifier<UserProfile> {
-  UserProfileNotifier() : super(_getMockUser());
+  UserProfileNotifier() : super(UserProfile(
+    id: '', 
+    name: 'User', 
+    email: '', 
+    createdAt: DateTime.now(), 
+    linkedAccounts: []
+  ));
 
   void updateName(String name) {
     state = state.copyWith(name: name);
@@ -69,7 +75,6 @@ class UserPreferencesNotifier extends StateNotifier<UserPreferences> {
     state = state.copyWith(voiceLanguage: voiceLanguage);
   }
 
-
   void toggleDarkMode() {
     state = state.copyWith(darkMode: !state.darkMode);
   }
@@ -77,43 +82,4 @@ class UserPreferencesNotifier extends StateNotifier<UserPreferences> {
   void toggleEmailNotifications() {
     state = state.copyWith(emailNotifications: !state.emailNotifications);
   }
-}
-
-/// Mock user for development
-UserProfile _getMockUser() {
-  return UserProfile(
-    id: 'user-1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    avatarUrl: null,
-    createdAt: DateTime.now().subtract(const Duration(days: 90)),
-    linkedAccounts: [LoginMethod.google],
-  );
-}
-
-/// Mock workspaces for development
-List<WorkspaceMembership> _getMockWorkspaces() {
-  return [
-    WorkspaceMembership(
-      workspaceId: 'ws-1',
-      workspaceName: 'Inhaus Brain',
-      role: UserRole.owner,
-      joinedAt: DateTime.now().subtract(const Duration(days: 90)),
-      lastAccessedAt: DateTime.now(),
-    ),
-    WorkspaceMembership(
-      workspaceId: 'ws-2',
-      workspaceName: 'Client Project',
-      role: UserRole.editor,
-      joinedAt: DateTime.now().subtract(const Duration(days: 30)),
-      lastAccessedAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    WorkspaceMembership(
-      workspaceId: 'ws-3',
-      workspaceName: 'Demo Workspace',
-      role: UserRole.member,
-      joinedAt: DateTime.now().subtract(const Duration(days: 7)),
-      lastAccessedAt: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-  ];
 }

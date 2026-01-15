@@ -32,7 +32,7 @@ final knowledgeProvider = StateNotifierProvider<KnowledgeNotifier, List<Knowledg
   return KnowledgeNotifier();
 });
 
-// --- Dify-style Dataset & Document Management ---
+// --- INHAUS BRAIN-style Dataset & Document Management ---
 
 final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
   // In a real app, these would come from a secure vault or settings

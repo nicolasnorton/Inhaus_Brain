@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/knowledge_api_models.dart';
 
 /// Service for Knowledge Base API operations
-/// Based on Dify API specification
+/// Based on INHAUS BRAIN API specification
 class KnowledgeApiService {
   final http.Client _client;
   final String baseUrl;

@@ -1,11 +1,11 @@
 steps:
   # 1. Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/inhaus-brain:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG', '.']
 
   # 2. Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/inhaus-brain:$COMMIT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG']
 
   # 3. Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -15,7 +15,7 @@ steps:
       - 'deploy'
       - 'inhaus-brain'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/inhaus-brain:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -23,4 +23,7 @@ steps:
       - '--allow-unauthenticated'
 
 images:
-  - 'gcr.io/$PROJECT_ID/inhaus-brain:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG'
+
+substitutions:
+  _TAG: latest

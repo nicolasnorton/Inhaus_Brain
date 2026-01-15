@@ -176,7 +176,7 @@ class _PluginsScreenState extends ConsumerState<PluginsScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Extend Dify with custom models, tools, and integrations',
+                            'Extend INHAUS BRAIN with custom models, tools, and integrations',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white70,
                             ),

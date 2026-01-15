@@ -427,6 +427,24 @@ class _PersonalSettingsScreenState
             LoginMethod.email,
             user.linkedAccounts.contains(LoginMethod.email),
           ),
+          
+          const Divider(height: 48),
+          
+          // Secrets Management
+          Text(
+            'Secrets & API Keys',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.key,
+            title: 'My Secrets (secrets.md)',
+            subtitle: 'Manage your API keys and environment variables securely',
+            onTap: () => context.push('/settings/secrets'),
+          ),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../core/auth/auth_service.dart';
+import '../../features/auth/models/user_model.dart';
 import '../assistant/widgets/ai_assistant_button.dart';
 import '../assistant/widgets/ai_assistant_overlay.dart';
 
@@ -52,6 +53,23 @@ class DashboardScreen extends ConsumerWidget {
                           _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
                           _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
                           _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
+                          
+                          // Admin Nav Item (Conditional)
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final userAsync = ref.watch(appUserProvider);
+                              return userAsync.when(
+                                data: (user) {
+                                  if (user == null || (user.role != UserRole.superAdmin && user.role != UserRole.admin)) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref);
+                                },
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, __) => const SizedBox.shrink(),
+                              );
+                            },
+                          ),
                           const SizedBox(height: 20), // Spacing at the end of scroll
                         ],
                       ),
@@ -125,6 +143,7 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/knowledge')) return 6;
     if (location.startsWith('/settings') || location.startsWith('/workspace')) return 7;
     if (location.startsWith('/debug')) return 8;
+    if (location.startsWith('/admin')) return 9;
     return 0;
   }
 
@@ -190,6 +209,9 @@ class DashboardScreen extends ConsumerWidget {
         break;
       case 8:
         context.go('/debug');
+        break;
+      case 9:
+        context.go('/admin');
         break;
     }
   }

@@ -1056,7 +1056,7 @@ Input: $resolvedInput
         try {
            // Simulate Tool Work
            if (tool == 'Google Search') {
-              result = "Found results for '${resolvedParams['query']}': 1. Inhaus AI 2. Dify Guide...";
+              result = "Found results for '${resolvedParams['query']}': 1. Inhaus AI 2. INHAUS BRAIN Guide...";
            } else if (tool == 'Weather') {
               result = "Current weather in ${resolvedParams['location']}: 72°F, Sunny.";
            } else {

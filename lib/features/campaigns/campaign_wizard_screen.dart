@@ -194,7 +194,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
                   title: _titleController.text,
                   description: _descriptionController.text,
                   clientName: _clientController.text,
-                  clientId: ref.read(authServiceProvider).userClientId,
+                  clientId: ref.read(appUserProvider).value?.assignedClientIds.firstOrNull,
                   createdAt: DateTime.now(),
                   status: CampaignStatus.researching,
                   attachments: _attachments,

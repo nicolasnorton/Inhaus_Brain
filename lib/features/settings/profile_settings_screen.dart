@@ -105,7 +105,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       _displayNameController.text = user.displayName ?? '';
       _emailEditController.text = user.email ?? '';
       
-      final profile = ref.read(authServiceProvider).getAppUser(user);
+      final profile = await ref.read(authServiceProvider).getAppUser(user);
       _selectedRole = profile.role;
       _selectedClientIds = List.from(profile.assignedClientIds);
     }
@@ -167,9 +167,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     final auth = ref.read(authServiceProvider);
     final user = auth.currentUser;
     if (user != null) {
-      await auth.updateDisplayName(_displayNameController.text);
+      await user.updateDisplayName(_displayNameController.text);
       
-      final profile = auth.getAppUser(user);
+      final profile = await auth.getAppUser(user);
       final updatedProfile = profile.copyWith(
         displayName: _displayNameController.text,
         role: _selectedRole,
@@ -551,7 +551,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   }
 
   Widget _buildRoleAndClientManagement(User user) {
-    if (!ref.read(authServiceProvider).isAdmin) return const SizedBox.shrink();
+    final appUser = ref.watch(appUserProvider).value;
+    final isAdmin = appUser?.role == UserRole.admin || appUser?.role == UserRole.superAdmin;
+    if (!isAdmin) return const SizedBox.shrink();
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

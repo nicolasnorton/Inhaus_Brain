@@ -618,8 +618,8 @@ class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelin
                     left: 980,
                     top: 420,
                     child: InkWell(
-                      onTap: () => setState(() => _selectedNode = 'DIFY EXTRACTOR'),
-                      child: _buildProcessNode('DIFY EXTRACTOR', Colors.greenAccent),
+                      onTap: () => setState(() => _selectedNode = 'INHAUS EXTRACTOR'),
+                      child: _buildProcessNode('INHAUS EXTRACTOR', Colors.greenAccent),
                     ),
                   ),
                   Positioned(
@@ -921,7 +921,7 @@ class ConnectorPainter extends CustomPainter {
     
     // Example connections based on the layout
     _drawCurvedLine(path, const Offset(680, 520), const Offset(720, 550)); // DS -> IF/ELSE
-    _drawCurvedLine(path, const Offset(940, 520), const Offset(980, 480)); // IF/ELSE -> Dify Ext
+    _drawCurvedLine(path, const Offset(940, 520), const Offset(980, 480)); // IF/ELSE -> Inhaus Ext
     _drawCurvedLine(path, const Offset(940, 580), const Offset(980, 580)); // IF/ELSE -> Doc Ext
 
     canvas.drawPath(path, paint);

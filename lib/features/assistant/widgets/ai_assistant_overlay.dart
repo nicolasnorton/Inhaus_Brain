@@ -254,17 +254,38 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
 
     if (!isOpen) return const SizedBox.shrink();
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+    
+    // Layout parameters
+    double? top, right, bottom, left, width;
+    double borderRadius;
+
+    if (_isFullWidth) {
+      top = 0; right = 0; bottom = 0; left = 0;
+      width = null;
+      borderRadius = 0;
+    } else if (isSmallScreen) {
+      top = 5; right = 5; bottom = 5; left = 5;
+      width = null;
+      borderRadius = 16;
+    } else {
+      top = 20; right = 20; bottom = 20; left = null;
+      width = 520;
+      borderRadius = 16;
+    }
+
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      top: _isFullWidth ? 0 : 20,
-      right: _isFullWidth ? 0 : 20,
-      bottom: _isFullWidth ? 0 : 20,
-      left: _isFullWidth ? 0 : null,
-      width: _isFullWidth ? null : 520,
+      top: top,
+      right: right,
+      bottom: bottom,
+      left: left,
+      width: width,
       child: Material(
         elevation: 16,
-        borderRadius: BorderRadius.circular(_isFullWidth ? 0 : 16),
+        borderRadius: BorderRadius.circular(borderRadius),
         color: const Color(0xFF1C2128), // Dark workspace background
         child: Column(
           children: [
@@ -288,11 +309,12 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                     onPressed: () => setState(() => _autoRead = !_autoRead),
                     tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
                   ),
-                  IconButton(
-                    icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
-                    onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
-                    tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
-                  ),
+                  if (!isSmallScreen)
+                    IconButton(
+                      icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
+                      onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
+                      tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
+                    ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white54),
                     onPressed: () => ref.read(assistantChatProvider.notifier).clearChat(),
