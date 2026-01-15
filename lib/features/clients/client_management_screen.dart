@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../core/auth/auth_service.dart';
 import 'providers/client_provider.dart';
 import 'models/client_model.dart';
@@ -21,7 +22,7 @@ class ClientManagementScreen extends ConsumerWidget {
       : allClients.where((c) => appUser?.assignedClientIds.contains(c.id) ?? false).toList();
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -35,8 +36,8 @@ class ClientManagementScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'CLIENT MODULE',
-                        style: TextStyle(
+                        AppLocalizations.of(context)!.clientModule,
+                        style: const TextStyle(
                           color: Colors.blueAccent,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2.0,
@@ -45,9 +46,8 @@ class ClientManagementScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Portfolio Management',
+                        AppLocalizations.of(context)!.portfolioManagement,
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -57,7 +57,7 @@ class ClientManagementScreen extends ConsumerWidget {
                     ElevatedButton.icon(
                       onPressed: () => _showAddClientDialog(context, ref),
                       icon: const Icon(Icons.add),
-                      label: const Text('Add Client'),
+                      label: Text(AppLocalizations.of(context)!.addClient),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         foregroundColor: Colors.white,
@@ -70,7 +70,7 @@ class ClientManagementScreen extends ConsumerWidget {
               const SizedBox(height: 48),
               Expanded(
                 child: clients.isEmpty
-                    ? _buildEmptyState()
+                    ? _buildEmptyState(context)
                     : GridView.builder(
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
@@ -89,7 +89,7 @@ class ClientManagementScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -97,8 +97,8 @@ class ClientManagementScreen extends ConsumerWidget {
           Icon(FontAwesomeIcons.usersViewfinder, size: 64, color: Colors.white10),
           const SizedBox(height: 24),
           Text(
-            'No clients configured yet.',
-            style: TextStyle(color: Colors.white54, fontSize: 18),
+            AppLocalizations.of(context)!.noClientsConfigured,
+            style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.5) ?? Colors.white54, fontSize: 18),
           ),
         ],
       ),
@@ -109,9 +109,9 @@ class ClientManagementScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,11 +133,11 @@ class ClientManagementScreen extends ConsumerWidget {
                   children: [
                     Text(
                       client.name,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       client.industry,
-                      style: const TextStyle(color: Colors.white38, fontSize: 14),
+                      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 14),
                     ),
                   ],
                 ),
@@ -145,7 +145,7 @@ class ClientManagementScreen extends ConsumerWidget {
             ],
           ),
           const Spacer(),
-          const Divider(color: Colors.white10),
+          const Divider(color: Colors.black12),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -154,12 +154,12 @@ class ClientManagementScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'CAMPAIGNS',
-                    style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    AppLocalizations.of(context)!.campaignsCountLabel,
+                    style: const TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                   Text(
                     '${client.campaignIds.length}',
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Theme.of(context).textTheme.headlineSmall?.color, fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -167,7 +167,7 @@ class ClientManagementScreen extends ConsumerWidget {
                 onPressed: () {
                   context.go('/clients/${client.id}');
                 },
-                child: const Text('Manage Client'),
+                child: Text(AppLocalizations.of(context)!.manageClient),
               ),
             ],
           ),
@@ -184,34 +184,31 @@ class ClientManagementScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111111),
-        title: const Text('Add New Client', style: TextStyle(color: Colors.white)),
+        backgroundColor: Theme.of(context).cardColor,
+        title: Text(AppLocalizations.of(context)!.addNewClient),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Client Name', labelStyle: TextStyle(color: Colors.white54)),
-              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.clientNameLabel),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: industryController,
-              decoration: const InputDecoration(labelText: 'Industry', labelStyle: TextStyle(color: Colors.white54)),
-              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.industryLabel),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: emailController,
-              decoration: const InputDecoration(labelText: 'Contact Email', labelStyle: TextStyle(color: Colors.white54)),
-              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.contactEmail),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -222,7 +219,7 @@ class ClientManagementScreen extends ConsumerWidget {
               );
               Navigator.pop(context);
             },
-            child: const Text('Add Client'),
+            child: Text(AppLocalizations.of(context)!.addClient),
           ),
         ],
       ),

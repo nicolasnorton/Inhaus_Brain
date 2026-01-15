@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'providers/creative_provider.dart';
 import 'models/design_concept.dart';
 import '../chat/agentic_chat_view.dart';
@@ -23,7 +24,7 @@ class CreativeStudioScreen extends ConsumerWidget {
               slivers: [
                 SliverAppBar(
                   floating: true,
-                  title: const Text('Creative Studio', overflow: TextOverflow.ellipsis),
+                  title: Text(AppLocalizations.of(context)!.creativeStudio, overflow: TextOverflow.ellipsis),
                   backgroundColor: Colors.transparent,
                   actions: [
                     IconButton(
@@ -31,12 +32,12 @@ class CreativeStudioScreen extends ConsumerWidget {
                       onPressed: () {
                         // TODO: Trigger manual generation
                       },
-                      tooltip: 'Propose New Concept',
+                      tooltip: AppLocalizations.of(context)!.proposeNewConcept,
                     ),
                   ],
                 ),
                 if (concepts.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -45,13 +46,13 @@ class CreativeStudioScreen extends ConsumerWidget {
                           Icon(FontAwesomeIcons.palette, size: 64, color: Colors.white12),
                           SizedBox(height: 16),
                           Text(
-                            'No creative concepts yet.',
-                            style: TextStyle(color: Colors.white54, fontSize: 18),
+                            AppLocalizations.of(context)!.noCreativeConceptsYet,
+                            style: const TextStyle(color: Colors.white54, fontSize: 18),
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Complete a campaign research approval to trigger the Design Agent.',
-                            style: TextStyle(color: Colors.white30),
+                            AppLocalizations.of(context)!.completeResearchApprovalMsg,
+                            style: const TextStyle(color: Colors.white30),
                           ),
                         ],
                       ),
@@ -84,17 +85,17 @@ class CreativeStudioScreen extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.all(16.0),
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
                         child: Row(
                           children: [
                             FaIcon(FontAwesomeIcons.commentDots, size: 16, color: Colors.blueAccent),
                             SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'DESIGN FEEDBACK',
+                                AppLocalizations.of(context)!.designFeedback,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1.2,
@@ -155,7 +156,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Campaign ID: ${concept.campaignId.substring(0, 8)}',
+                        AppLocalizations.of(context)!.campaignIdLabel(concept.campaignId.substring(0, 8)),
                         style: const TextStyle(color: Colors.white38, fontSize: 12),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -180,7 +181,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Approve'),
+                    child: Text(AppLocalizations.of(context)!.approve),
                   ),
               ],
             ),
@@ -191,9 +192,9 @@ class CreativeStudioScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Copy Proposition',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
+                Text(
+                  AppLocalizations.of(context)!.copyProposition,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -201,9 +202,9 @@ class CreativeStudioScreen extends ConsumerWidget {
                   style: const TextStyle(fontSize: 16, height: 1.5),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Visual Strategy Prompt',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
+                Text(
+                  AppLocalizations.of(context)!.visualStrategyPrompt,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -226,9 +227,9 @@ class CreativeStudioScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Final Production Assets',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.finalProductionAssets,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.blueAccent,
@@ -238,7 +239,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                         ElevatedButton.icon(
                           onPressed: () => ref.read(creativeProvider.notifier).generateHighTierAssets(concept),
                           icon: const Icon(Icons.auto_awesome, size: 16),
-                          label: const Text('Generate High-Tier Assets'),
+                          label: Text(AppLocalizations.of(context)!.generateHighTierAssets),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueAccent,
                             foregroundColor: Colors.white,
@@ -258,13 +259,13 @@ class CreativeStudioScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(Icons.verified, color: Colors.blueAccent, size: 16),
                               SizedBox(width: 8),
                               Text(
-                                'Final High-Fidelity Copy (Vertex AI)',
-                                style: TextStyle(
+                                AppLocalizations.of(context)!.finalHighFidelityCopy,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blueAccent,
                                   fontSize: 12,
@@ -303,22 +304,22 @@ class CreativeStudioScreen extends ConsumerWidget {
                                 colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                               ),
                             ),
-                            child: const Chip(
-                              label: Text('Final Visual Mock (Imagen-3)', style: TextStyle(fontSize: 10)),
+                            child: Chip(
+                              label: Text(AppLocalizations.of(context)!.finalVisualMock, style: const TextStyle(fontSize: 10)),
                               backgroundColor: Colors.blueAccent,
                             ),
                           ),
                         ),
                       ),
                   ] else if (concept.isApproved && !concept.isFinalReady)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Center(
                         child: Column(
                           children: [
                             Text(
-                              'Concept approved. Ready for high-fidelity production.',
-                              style: TextStyle(color: Colors.white38),
+                              AppLocalizations.of(context)!.conceptApprovedReadyProduction,
+                              style: const TextStyle(color: Colors.white38),
                             ),
                           ],
                         ),
@@ -340,12 +341,12 @@ class CreativeStudioScreen extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Style Boards',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
+            Text(
+              AppLocalizations.of(context)!.styleBoards,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
             ),
             Text(
-              '${moodboards.length} Suggested',
+              AppLocalizations.of(context)!.suggestedCount(moodboards.length),
               style: const TextStyle(color: Colors.white30, fontSize: 12),
             ),
           ],

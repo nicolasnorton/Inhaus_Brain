@@ -9,6 +9,10 @@ import 'package:inhaus_brain/features/campaigns/tools/campaign_tools.dart';
 import 'package:inhaus_brain/features/knowledge/tools/knowledge_tools.dart';
 import 'package:inhaus_brain/core/tools/system_tools.dart';
 import 'package:inhaus_brain/features/adk/tools/workflow_tools.dart';
+import 'package:inhaus_brain/core/mcp/tools/image_generation_tool.dart';
+import 'package:inhaus_brain/core/mcp/tools/video_generation_tool.dart';
+import 'package:inhaus_brain/core/mcp/tools/audio_generation_tool.dart';
+import 'package:inhaus_brain/core/auth/secret_vault_service.dart';
 
 /// Aggregates all available tools for the assistant
 final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
@@ -19,6 +23,15 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
   final knowledgeTools = ref.watch(knowledgeToolsProvider);
   final systemTools = ref.watch(systemToolsProvider);
   final workflowTools = ref.watch(workflowToolsProvider);
+  
+  // Generation Tools
+  final aiKeysAsync = ref.watch(aiKeysProvider);
+  final aiKeys = aiKeysAsync.value;
+  final generationTools = [
+    ImageGenerationTool(imagenKey: aiKeys?.imagen, bananaKey: aiKeys?.banana),
+    VideoGenerationTool(veoKey: aiKeys?.veo),
+    AudioGenerationTool(lyriaKey: aiKeys?.lyria),
+  ];
   
   // UCP Tools
   final ucpService = ref.watch(ucpServiceProvider);
@@ -37,6 +50,7 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...knowledgeTools,
     ...systemTools,
     ...workflowTools,
+    ...generationTools,
     ...ucpTools,
   ];
 });

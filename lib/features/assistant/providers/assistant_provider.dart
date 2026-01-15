@@ -5,18 +5,21 @@ import '../services/assistant_service.dart';
 // State for the open/close status of the assistant overlay
 final isAssistantOpenProvider = StateProvider<bool>((ref) => false);
 
+// Trigger for sending message from FAB
+final assistantSendTriggerProvider = StateProvider<int>((ref) => 0);
+
 // Chat history state
 class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
   final AssistantService _service;
 
   AssistantChatState(this._service) : super([]);
 
-  Future<void> sendMessage(String text) async {
+  Future<void> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment}) async {
     // Service now uses Riverpod Ref for tools, no context needed
     
     // Optimistic update for user message (controlled by service actually, but triggered here)
     // The service manages the authoritative history list, we just sync the state
-    await _service.sendMessage(text);
+    await _service.sendMessage(text, attachment: attachment, audioAttachment: audioAttachment);
     state = [..._service.history];
   }
   

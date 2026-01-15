@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'models/campaign.dart';
 import 'providers/campaign_provider.dart';
 import '../creative/providers/creative_provider.dart';
@@ -32,13 +33,13 @@ class CampaignDetailScreen extends ConsumerWidget {
             _buildHeader(context, campaign),
             const SizedBox(height: 32),
             Text(
-              'Agent Research Insights',
+              AppLocalizations.of(context)!.agentResearchInsights,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Review and approve insights gathered by the Research Agent.',
-              style: TextStyle(color: Colors.white70),
+            Text(
+              AppLocalizations.of(context)!.reviewApproveInsights,
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 24),
             ...campaign.insights.map((insight) => _buildInsightCard(context, ref, campaign, insight)),
@@ -54,7 +55,7 @@ class CampaignDetailScreen extends ConsumerWidget {
                     // Trigger Creative Agent to propose a concept
                     await ref.read(creativeProvider.notifier).generateConceptForCampaign(campaign);
                   },
-                  child: const Text('Proceed to Design Plan'),
+                  child: Text(AppLocalizations.of(context)!.proceedToDesignPlan),
                 ),
               ),
             if (campaign.status == CampaignStatus.designing)
@@ -71,7 +72,7 @@ class CampaignDetailScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +83,7 @@ class CampaignDetailScreen extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Campaign Strategy Brief',
+                  AppLocalizations.of(context)!.campaignStrategyBrief,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -91,13 +92,13 @@ class CampaignDetailScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(campaign.description, style: const TextStyle(color: Colors.white),),
+          Text(campaign.description, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
           const SizedBox(height: 16),
           Row(
             children: [
-              const Text('Client:', style: TextStyle(color: Colors.white54),),
+              Text(AppLocalizations.of(context)!.clientLabel, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
               const SizedBox(width: 8),
-              Text(campaign.clientName ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold),),
+              Text(campaign.clientName ?? AppLocalizations.of(context)!.notAvailable, style: const TextStyle(fontWeight: FontWeight.bold),),
             ],
           ),
         ],
@@ -129,7 +130,7 @@ class CampaignDetailScreen extends ConsumerWidget {
                         campaign.copyWith(insights: updatedInsights),
                       );
                 },
-                child: const Text('Approve'),
+                child: Text(AppLocalizations.of(context)!.approve),
               ),
           ],
         ),
@@ -154,20 +155,20 @@ class CampaignDetailScreen extends ConsumerWidget {
               const Icon(Icons.palette, color: Colors.purpleAccent),
               const SizedBox(width: 12),
               Text(
-                'Design Phase Active',
+                AppLocalizations.of(context)!.designPhaseActive,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('The Creative Agent has proposed visual directions for this campaign.'),
+          Text(AppLocalizations.of(context)!.creativeProposedDirections),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => context.push('/creative'),
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('Open Creative Studio'),
+              label: Text(AppLocalizations.of(context)!.openCreativeStudio),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.purpleAccent,
                 side: const BorderSide(color: Colors.purpleAccent),

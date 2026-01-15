@@ -68,7 +68,7 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
                   controller: _tabController,
                   isScrollable: true,
                   labelColor: theme.primaryColor,
-                  unselectedLabelColor: Colors.white60,
+                  unselectedLabelColor: theme.brightness == Brightness.light ? Colors.black54 : Colors.white60,
                   indicatorColor: theme.primaryColor,
                   tabs: const [
                     Tab(text: 'Profile'),
@@ -113,8 +113,8 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
               const SizedBox(width: 24),
               ElevatedButton(
                 onPressed: () {},
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white12),
-                child: const Text('Change Avatar'),
+                style: ElevatedButton.styleFrom(backgroundColor: theme.brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.white12),
+                child: Text('Change Avatar', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
               ),
             ],
           ),
@@ -168,7 +168,7 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
           onChanged: (val) {},
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.05),
+            fillColor: theme.brightness == Brightness.light ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
@@ -190,11 +190,15 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
                 onPressed: () => _showCreateApiKeyDialog(),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text('Create New Key'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          const Text('Use these keys to access Inhaus Brain via API.', style: TextStyle(color: Colors.white38, fontSize: 13)),
+          const Text('Use these keys to access Inhaus Brain via API.', style: TextStyle(fontSize: 13)),
           const SizedBox(height: 24),
           Expanded(
             child: ListView.builder(
@@ -263,7 +267,9 @@ class _PersonalSettingsScreenState extends ConsumerState<PersonalSettingsScreen>
           readOnly: readOnly,
           decoration: InputDecoration(
             filled: true,
-            fillColor: readOnly ? Colors.white.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.05),
+            fillColor: readOnly 
+                ? (theme.brightness == Brightness.light ? Colors.black.withValues(alpha: 0.01) : Colors.white.withValues(alpha: 0.02)) 
+                : (theme.brightness == Brightness.light ? Colors.black.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.05)),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           ),
         ),

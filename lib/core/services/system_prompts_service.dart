@@ -1,3 +1,6 @@
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/chat/services/skill_discovery_service.dart';
 import '../../features/chat/models/chat_models.dart';
 

@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../chat/services/memory_service.dart';
+import '../../chat/services/verification_service.dart';
 import '../models/workflow_execution_models.dart';
 
 /// Provider for workflow execution state
 final workflowExecutionProvider =
     StateNotifierProvider<WorkflowExecutionNotifier, WorkflowExecutionState>((ref) {
-  return WorkflowExecutionNotifier();
+  return WorkflowExecutionNotifier(ref);
 });
 
+// ... (other providers unchanged) ...
 /// Provider for available variables in the workflow
 final availableVariablesProvider = StateProvider<List<VariableReference>>((ref) => []);
 
@@ -24,15 +27,35 @@ final validationResultProvider = StateProvider<ValidationResult?>((ref) => null)
 
 /// State notifier for workflow execution
 class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
-  WorkflowExecutionNotifier() : super(const WorkflowExecutionState());
+  final Ref _ref;
+  
+  WorkflowExecutionNotifier(this._ref) : super(const WorkflowExecutionState());
 
   /// Start workflow execution
-  void startExecution() {
+  void startExecution() async {
     state = state.copyWith(
       isRunning: true,
       startTime: DateTime.now(),
       endTime: null,
     );
+    
+    // Inject Memory Context
+    try {
+      final memoryService = _ref.read(memoryServiceProvider);
+      final context = await memoryService.readMemory();
+      updateCachedVariable("system_memory", context);
+      addRunLog(RunLog(
+        nodeId: "system_start",
+        nodeName: "System Start",
+        timestamp: DateTime.now(),
+        status: ExecutionStatus.success,
+        inputs: {},
+        outputs: {"message": "Memory Context Loaded"},
+        executionTimeMs: 0,
+      ));
+    } catch (e) {
+      // Fail silently or log error
+    }
   }
 
   /// End workflow execution
@@ -64,6 +87,7 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
     state = state.copyWith(lastRunLogs: updatedLogs);
   }
 
+
   /// Execute a single node
   Future<void> executeNode(String appId, String nodeId, Map<String, dynamic> inputs) async {
     updateNodeStatus(nodeId, ExecutionStatus.running);
@@ -72,14 +96,26 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
     await Future.delayed(const Duration(seconds: 1));
     
     try {
-      // Mock success for now
-      final outputs = {"result": "Successfully executed $nodeId"};
+      // Mock result
+      var outputs = {"result": "Successfully executed $nodeId"};
+
+      // Agentic Verification (Agent B)
+      // If the node is critical (e.g., "generate_" or "publish_"), verify it.
+      if (nodeId.startsWith("generate_")) {
+         final verifier = _ref.read(verificationServiceProvider);
+         final verifiedText = await verifier.verifyOutput(
+           inputs.toString(), 
+           outputs["result"].toString()
+         );
+         outputs = {"result": verifiedText, "verified": "true"};
+      }
+
       updateCachedVariable(nodeId, outputs);
       updateNodeStatus(nodeId, ExecutionStatus.success);
       
       addRunLog(RunLog(
         nodeId: nodeId,
-        nodeName: nodeId, // In a real app, look up the name
+        nodeName: nodeId,
         timestamp: DateTime.now(),
         status: ExecutionStatus.success,
         inputs: inputs,
@@ -90,6 +126,7 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
       updateNodeStatus(nodeId, ExecutionStatus.error);
     }
   }
+
 
   /// Clear execution state
   void clear() {

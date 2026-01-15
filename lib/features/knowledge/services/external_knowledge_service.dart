@@ -30,19 +30,52 @@ class ExternalKnowledgeService {
     }
   }
 
-  /// Query external knowledge base
+  /// Query external knowledge base with optional Intent-based filtering (JIT Context)
   Future<ExternalKnowledgeResponse> queryKnowledge({
     required ExternalKnowledgeRequest request,
     required String endpoint,
     String? apiKey,
+    String? intent, // RouterIntent name (e.g., 'research', 'creative')
   }) async {
+    // Just-in-Time Context Injection
+    ExternalKnowledgeRequest finalRequest = request;
+    
+    if (intent != null) {
+      // Map Intent to Metadata Filters
+      final conditionName = intent.toLowerCase() == 'research' ? 'category' : 
+                            intent.toLowerCase() == 'creative' ? 'type' : null;
+      final conditionValue = intent.toLowerCase() == 'research' ? 'pdf' : 
+                             intent.toLowerCase() == 'creative' ? 'image' : null;
+
+      if (conditionName != null && conditionValue != null) {
+         final filter = MetadataCondition(
+           logicalOperator: 'and',
+           conditions: [
+             Condition(
+               name: [conditionName], 
+               comparisonOperator: '==', 
+               value: conditionValue
+             )
+           ]
+         );
+         
+         // Create a new request with the filter injected
+         finalRequest = ExternalKnowledgeRequest(
+           knowledgeId: request.knowledgeId,
+           query: request.query,
+           retrievalSetting: request.retrievalSetting,
+           metadataCondition: filter // Override or merge could be better, but override for safety here
+         );
+      }
+    }
+
     int retries = 0;
 
     while (retries < _maxRetries) {
       try {
         final uri = _buildUri(endpoint);
         final headers = _buildHeaders(apiKey, includeJson: true);
-        final body = jsonEncode(request.toJson());
+        final body = jsonEncode(finalRequest.toJson());
 
         final response = await _client
             .post(uri, headers: headers, body: body)

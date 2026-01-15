@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/knowledge_provider.dart';
 import '../models/knowledge_source.dart';
@@ -94,15 +95,15 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
-        title: const Text('Google Drive Integration', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Direct Google Drive integration is coming soon. Please download your files and upload them manually for now.',
-          style: TextStyle(color: Colors.white70),
+        title: Text(AppLocalizations.of(context)!.googleDriveIntegration, style: const TextStyle(color: Colors.white)),
+        content: Text(
+          AppLocalizations.of(context)!.driveIntegrationComingSoon,
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            child: Text(AppLocalizations.of(context)!.gotIt),
           ),
         ],
       ),
@@ -128,12 +129,12 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('KNOWLEDGE BASES'),
+        _buildHeader(AppLocalizations.of(context)!.knowledgeBases),
         const Divider(height: 1),
         Expanded(
           child: kbAsync.when(
             data: (kbs) => kbs.isEmpty
-                ? _buildEmptyState('No Knowledge Bases', 'Create a new dataset to get started.')
+                ? _buildEmptyState(AppLocalizations.of(context)!.noKnowledgeBases, AppLocalizations.of(context)!.createDatasetMsg)
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: kbs.length,
@@ -156,13 +157,13 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('DOCUMENTS'),
+        _buildHeader(AppLocalizations.of(context)!.documentsLabel),
         const Divider(height: 1),
         if (_selectedDocIds.isNotEmpty) _buildBulkToolbar(datasetId),
         Expanded(
           child: docsAsync.when(
             data: (docs) => docs.isEmpty
-                ? _buildEmptyState('No Documents', 'Upload files or add text to this knowledge base.')
+                ? _buildEmptyState(AppLocalizations.of(context)!.noDocuments, AppLocalizations.of(context)!.uploadFilesMsg)
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: docs.length,
@@ -187,20 +188,20 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
       child: Row(
         children: [
           Text(
-            '${_selectedDocIds.length} items selected',
+            AppLocalizations.of(context)!.itemsSelected(_selectedDocIds.length),
             style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           TextButton.icon(
             onPressed: () => setState(() => _selectedDocIds.clear()),
             icon: const Icon(Icons.close, size: 16),
-            label: const Text('Cancel'),
+            label: Text(AppLocalizations.of(context)!.cancel),
           ),
           const SizedBox(width: 12),
           ElevatedButton.icon(
             onPressed: () => _bulkDelete(datasetId),
             icon: const Icon(Icons.delete_outline, size: 16),
-            label: const Text('Delete'),
+            label: Text(AppLocalizations.of(context)!.deleteLabel),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
               foregroundColor: Colors.redAccent,
@@ -217,13 +218,13 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1C2128),
-        title: const Text('Delete Documents', style: TextStyle(color: Colors.white)),
-        content: Text('Are you sure you want to delete ${_selectedDocIds.length} documents?', style: const TextStyle(color: Colors.white70)),
+        title: Text(AppLocalizations.of(context)!.deleteDocuments, style: const TextStyle(color: Colors.white)),
+        content: Text(AppLocalizations.of(context)!.deleteDocumentsConfirm(_selectedDocIds.length), style: const TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppLocalizations.of(context)!.cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child: Text(AppLocalizations.of(context)!.deleteLabel, style: const TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -238,7 +239,7 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
         ref.invalidate(documentsProvider(datasetId));
         setState(() => _selectedDocIds.clear());
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Documents deleted')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.documentsDeleted)));
         }
       } catch (e) {
         if (mounted) {
@@ -318,7 +319,7 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
             TextField(
               controller: _urlController,
               decoration: InputDecoration(
-                hintText: 'Paste URL...',
+                hintText: AppLocalizations.of(context)!.pasteUrlHint,
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.check, color: Colors.blueAccent),
                   onPressed: _addUrlSource,
@@ -337,28 +338,28 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
               _buildActionButton(
                 onPressed: () => setState(() => _isAdding = !_isAdding),
                 icon: Icons.link,
-                label: 'Add Link',
+                label: AppLocalizations.of(context)!.addLinkLabel,
                 color: Colors.blueAccent,
               ),
               const SizedBox(width: 8),
               _buildActionButton(
                 onPressed: _addFileSource,
                 icon: Icons.upload_file,
-                label: 'Upload',
+                label: AppLocalizations.of(context)!.uploadLabel,
                 color: Colors.white70,
               ),
               const SizedBox(width: 8),
               _buildActionButton(
                 onPressed: _addImageSource,
                 icon: Icons.image,
-                label: 'Image',
+                label: AppLocalizations.of(context)!.imageLabel,
                 color: Colors.purpleAccent,
               ),
               const SizedBox(width: 8),
               _buildActionButton(
                 onPressed: _addDriveSource,
                 icon: FontAwesomeIcons.googleDrive,
-                label: 'Drive',
+                label: AppLocalizations.of(context)!.driveLabel,
                 color: Colors.greenAccent,
               ),
             ],
@@ -430,7 +431,7 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${kb.documentCount} Documents • ${kb.wordCount} Words',
+                      AppLocalizations.of(context)!.kbStats(kb.documentCount, kb.wordCount),
                       style: const TextStyle(fontSize: 11, color: Colors.white38),
                     ),
                   ],
@@ -507,7 +508,7 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${doc.tokens} Tokens • ${doc.wordCount} Words',
+                      AppLocalizations.of(context)!.tokensWords(doc.tokens, doc.wordCount),
                       style: const TextStyle(fontSize: 11, color: Colors.white38),
                     ),
                   ],
@@ -627,10 +628,10 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
           if (source.type == KnowledgeSourceType.image)
             IconButton(
               icon: const Icon(Icons.psychology, size: 16, color: Colors.purpleAccent),
-              tooltip: 'Analyze with Vision Agent',
+              tooltip: AppLocalizations.of(context)!.analyzeVisionAgent,
               onPressed: () {
                 ref.read(chatProvider.notifier).sendMessage(
-                  'Analyze this visual asset: ${source.title}',
+                  AppLocalizations.of(context)!.analyzeVisualAsset(source.title),
                   attachments: [
                     Attachment(
                       id: const Uuid().v4(),

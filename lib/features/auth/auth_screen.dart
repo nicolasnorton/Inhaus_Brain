@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 // import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/router/app_router.dart';
@@ -89,7 +90,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
                 const SizedBox(height: 48),
                 Text(
-                  _isLogin ? 'WELCOME BACK' : 'CREATE ACCOUNT',
+                  _isLogin ? AppLocalizations.of(context)!.welcomeBackAuth : AppLocalizations.of(context)!.createAccountAuth,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -99,7 +100,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isLogin ? 'Sign in to access the agentic console' : 'Join the INHAUS ecosystem',
+                  _isLogin ? AppLocalizations.of(context)!.signInAccessConsole : AppLocalizations.of(context)!.joinEcosystem,
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.white38, fontSize: 13, letterSpacing: 0.5),
                 ),
@@ -117,12 +118,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: Column(
                     children: [
                       if (!_isLogin) ...[
-                        _buildTextField('Full Name', _nameController, Icons.person_outline),
+                        _buildTextField(AppLocalizations.of(context)!.fullNameLabel, _nameController, Icons.person_outline),
                         const SizedBox(height: 16),
                       ],
-                      _buildTextField('Email Address', _emailController, Icons.email_outlined),
+                      _buildTextField(AppLocalizations.of(context)!.emailAddressLabel, _emailController, Icons.email_outlined),
                       const SizedBox(height: 16),
-                      _buildTextField('Password', _passwordController, Icons.lock_outline, obscureText: true),
+                      _buildTextField(AppLocalizations.of(context)!.passwordLabel, _passwordController, Icons.lock_outline, obscureText: true),
                       const SizedBox(height: 32),
                       
                       SizedBox(
@@ -138,7 +139,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           ),
                           child: _isLoading 
                             ? const CircularProgressIndicator(color: Colors.black)
-                            : Text(_isLogin ? 'SIGN IN' : 'REGISTER', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                            : Text(_isLogin ? AppLocalizations.of(context)!.signInLabel : AppLocalizations.of(context)!.registerLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
                         ),
                       ),
                     ],
@@ -150,20 +151,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 TextButton(
                   onPressed: () => setState(() => _isLogin = !_isLogin),
                   child: Text(
-                    _isLogin ? "NEW ACCOUNT" : "EXISTING USER? LOGIN",
+                    _isLogin ? AppLocalizations.of(context)!.newAccountLabel : AppLocalizations.of(context)!.existingUserLogin,
                     style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
                 
                 const SizedBox(height: 16),
-                const Text('OR', style: TextStyle(color: Colors.white24, fontSize: 10)),
+                Text(AppLocalizations.of(context)!.orLabel, style: const TextStyle(color: Colors.white24, fontSize: 10)),
                 const SizedBox(height: 16),
                 
                 // Google Sign In
                 OutlinedButton.icon(
                   onPressed: () => ref.read(authServiceProvider).signInWithGoogle(),
                   icon: const FaIcon(FontAwesomeIcons.google, size: 14),
-                  label: const Text('GOOGLE LOGIN', style: TextStyle(fontSize: 12, letterSpacing: 1.0)),
+                  label: Text(AppLocalizations.of(context)!.googleLogin, style: const TextStyle(fontSize: 12, letterSpacing: 1.0)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white54,
                     side: const BorderSide(color: Colors.white12),

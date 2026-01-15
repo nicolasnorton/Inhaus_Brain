@@ -15,7 +15,7 @@ class AppTheme {
   static const Color backgroundLight = Color(0xFFF8F9FA);
   static const Color surfaceLight = Colors.white;
   static const Color textPrimaryLight = Color(0xFF1A1A1A);
-  static const Color textSecondaryLight = Color(0xFF4A4A4A);
+  static const Color textSecondaryLight = Color(0xFF666666); // Darkened for better contrast on secondary text
 
   static ThemeData get darkTheme {
     return ThemeData(
@@ -89,9 +89,21 @@ class AppTheme {
       
       textTheme: GoogleFonts.outfitTextTheme(
         ThemeData.light().textTheme,
-      ).apply(
-        bodyColor: textPrimaryLight,
-        displayColor: textPrimaryLight,
+      ).copyWith(
+        displayLarge: GoogleFonts.outfit(color: textPrimaryLight),
+        displayMedium: GoogleFonts.outfit(color: textPrimaryLight),
+        displaySmall: GoogleFonts.outfit(color: textPrimaryLight),
+        headlineLarge: GoogleFonts.outfit(color: textPrimaryLight),
+        headlineMedium: GoogleFonts.outfit(color: textPrimaryLight),
+        headlineSmall: GoogleFonts.outfit(color: textPrimaryLight),
+        titleLarge: GoogleFonts.outfit(color: textPrimaryLight),
+        titleMedium: GoogleFonts.outfit(color: textPrimaryLight),
+        titleSmall: GoogleFonts.outfit(color: textPrimaryLight),
+        bodyLarge: GoogleFonts.outfit(color: textPrimaryLight),
+        bodyMedium: GoogleFonts.outfit(color: textPrimaryLight),
+        bodySmall: GoogleFonts.outfit(color: textSecondaryLight),
+        labelLarge: GoogleFonts.outfit(color: textPrimaryLight),
+        labelSmall: GoogleFonts.outfit(color: textSecondaryLight),
       ),
 
       cardTheme: CardThemeData(
@@ -106,7 +118,7 @@ class AppTheme {
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.grey.withValues(alpha: 0.1),
+        fillColor: Colors.black.withValues(alpha: 0.03),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -119,6 +131,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: primary, width: 1),
         ),
+        labelStyle: const TextStyle(color: textPrimaryLight),
+        hintStyle: const TextStyle(color: textSecondaryLight),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(

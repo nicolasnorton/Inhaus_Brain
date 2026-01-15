@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 
 class QuickCreateFlow extends ConsumerStatefulWidget {
   const QuickCreateFlow({super.key});
@@ -43,16 +44,16 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
             icon: const Icon(Icons.close, color: Colors.white38),
           ),
           const SizedBox(width: 8),
-          const Text(
-            'CREATE KNOWLEDGE',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.1),
+          Text(
+            AppLocalizations.of(context)!.createKnowledge.toUpperCase(),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.1),
           ),
           const Spacer(),
-          _buildStepIndicator(1, 'DATA SOURCE', _currentStep >= 1),
+          _buildStepIndicator(1, AppLocalizations.of(context)!.dataSourceStep, _currentStep >= 1),
           _buildStepConnector(_currentStep > 1),
-          _buildStepIndicator(2, 'DOCUMENT PROCESSING', _currentStep >= 2),
+          _buildStepIndicator(2, AppLocalizations.of(context)!.processingStep, _currentStep >= 2),
           _buildStepConnector(_currentStep > 2),
-          _buildStepIndicator(3, 'EXECUTE & FINISH', _currentStep >= 3, isBlue: true),
+          _buildStepIndicator(3, AppLocalizations.of(context)!.executeFinishStep, _currentStep >= 3, isBlue: true),
         ],
       ),
     );
@@ -114,23 +115,23 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Select Data Source',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.selectDataSource,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Once a knowledge base is created, its data source cannot be changed later.',
-            style: TextStyle(color: Colors.white38, fontSize: 14),
+          Text(
+            AppLocalizations.of(context)!.dataSourceChangeWarning,
+            style: const TextStyle(color: Colors.white38, fontSize: 14),
           ),
           const SizedBox(height: 32),
           Row(
             children: [
-              _buildSourceCard('Import from file', 'local-file', FontAwesomeIcons.fileLines, Colors.orangeAccent),
+              _buildSourceCard(AppLocalizations.of(context)!.importFromFile, 'local-file', FontAwesomeIcons.fileLines, Colors.orangeAccent),
               const SizedBox(width: 16),
-              _buildSourceCard('Sync from Notion', 'notion', FontAwesomeIcons.notion, Colors.black),
+              _buildSourceCard(AppLocalizations.of(context)!.syncFromNotion, 'notion', FontAwesomeIcons.notion, Colors.black),
               const SizedBox(width: 16),
-              _buildSourceCard('Sync from Website', 'website', FontAwesomeIcons.globe, Colors.blueAccent),
+              _buildSourceCard(AppLocalizations.of(context)!.syncFromWebsite, 'website', FontAwesomeIcons.globe, Colors.blueAccent),
             ],
           ),
         ],
@@ -173,14 +174,14 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Chunk Settings',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.chunkSettings,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Configure how your data will be segmented and cleaned before indexing.',
-            style: TextStyle(color: Colors.white38, fontSize: 14),
+          Text(
+            AppLocalizations.of(context)!.chunkSettingsSub,
+            style: const TextStyle(color: Colors.white38, fontSize: 14),
           ),
           const SizedBox(height: 32),
           
@@ -193,31 +194,31 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('CHUNKING MODE'),
+                    _buildSectionHeader(AppLocalizations.of(context)!.chunkingMode),
                     Row(
                       children: [
-                        _buildChoiceChip('Automatic', true),
+                        _buildChoiceChip(AppLocalizations.of(context)!.automatic, true),
                         const SizedBox(width: 8),
-                        _buildChoiceChip('Custom', false),
+                        _buildChoiceChip(AppLocalizations.of(context)!.custom, false),
                       ],
                     ),
                     const SizedBox(height: 24),
                     
-                    _buildSectionHeader('CHUNKING RULES'),
-                    _buildSettingField('Separator', '\\n'),
+                    _buildSectionHeader(AppLocalizations.of(context)!.chunkingRules),
+                    _buildSettingField(AppLocalizations.of(context)!.separator, '\\n'),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Expanded(child: _buildSettingField('Max chunk length', '500')),
+                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.maxChunkLength, '500')),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildSettingField('Chunk overlap', '50')),
+                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.chunkOverlap, '50')),
                       ],
                     ),
                     const SizedBox(height: 24),
                     
-                    _buildSectionHeader('CLEANING RULES'),
-                    _buildToggleRow('Replace consecutive spaces, newlines and tabs', true),
-                    _buildToggleRow('Delete all URLs and email addresses', false),
+                    _buildSectionHeader(AppLocalizations.of(context)!.cleaningRules),
+                    _buildToggleRow(AppLocalizations.of(context)!.cleanSpacesRule, true),
+                    _buildToggleRow(AppLocalizations.of(context)!.cleanUrlsRule, false),
                   ],
                 ),
               ),
@@ -240,8 +241,8 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('CHUNKS PREVIEW', style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-                          Text('12 chunks identified', style: TextStyle(color: Colors.blueAccent.withValues(alpha: 0.7), fontSize: 10)),
+                          Text(AppLocalizations.of(context)!.chunksPreview, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                          Text(AppLocalizations.of(context)!.chunksIdentified(12), style: TextStyle(color: Colors.blueAccent.withValues(alpha: 0.7), fontSize: 10)),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -363,14 +364,14 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Index & Retrieval',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.indexRetrievalTitle,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Define how your knowledge will be indexed and retrieved for the best accuracy.',
-            style: TextStyle(color: Colors.white38, fontSize: 14),
+          Text(
+            AppLocalizations.of(context)!.indexRetrievalSub,
+            style: const TextStyle(color: Colors.white38, fontSize: 14),
           ),
           const SizedBox(height: 32),
 
@@ -383,21 +384,21 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('INDEX METHOD'),
+                    _buildSectionHeader(AppLocalizations.of(context)!.indexMethod),
                     _buildIndexMethodCard(
-                      'High Quality',
-                      'Embedding model & Hybrid search support.',
+                      AppLocalizations.of(context)!.highQuality,
+                      AppLocalizations.of(context)!.highQualitySub,
                       true,
                     ),
                     const SizedBox(height: 12),
                     _buildIndexMethodCard(
-                      'Economical',
-                      'No tokens consumed, keyword-only.',
+                      AppLocalizations.of(context)!.economical,
+                      AppLocalizations.of(context)!.economicalSub,
                       false,
                     ),
                     
                     const SizedBox(height: 32),
-                    _buildSectionHeader('EMBEDDING MODEL'),
+                    _buildSectionHeader(AppLocalizations.of(context)!.embeddingModel),
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -426,12 +427,12 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader('RETRIEVAL SETTINGS'),
+                    _buildSectionHeader(AppLocalizations.of(context)!.retrievalSettings),
                     _buildChoiceChipGroup(['Vector Search', 'Full-Text Search', 'Hybrid Search'], 'Hybrid Search'),
                     
                     const SizedBox(height: 24),
-                    _buildSectionHeader('RERANK SETTINGS'),
-                    _buildToggleRow('Rerank Model', true),
+                    _buildSectionHeader(AppLocalizations.of(context)!.rerankSettings),
+                    _buildToggleRow(AppLocalizations.of(context)!.rerankModel, true),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -453,9 +454,9 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
                     const SizedBox(height: 24),
                     Row(
                       children: [
-                        Expanded(child: _buildSettingField('Top K', '3')),
+                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.topK, '3')),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildSettingField('Score Threshold', '0.5')),
+                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.scoreThreshold, '0.5')),
                       ],
                     ),
                   ],
@@ -517,7 +518,7 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
           if (_currentStep > 1)
             OutlinedButton(
               onPressed: () => setState(() => _currentStep--),
-              child: const Text('Back'),
+              child: Text(AppLocalizations.of(context)!.backLabel),
             ),
           const SizedBox(width: 12),
           ElevatedButton(
@@ -529,7 +530,7 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
-            child: Text(_currentStep == 3 ? 'Finish' : 'Next'),
+            child: Text(_currentStep == 3 ? AppLocalizations.of(context)!.finishLabel : AppLocalizations.of(context)!.nextLabel),
           ),
         ],
       ),

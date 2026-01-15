@@ -65,6 +65,11 @@ class UserPreferencesNotifier extends StateNotifier<UserPreferences> {
     state = state.copyWith(language: language);
   }
 
+  void updateVoiceLanguage(String voiceLanguage) {
+    state = state.copyWith(voiceLanguage: voiceLanguage);
+  }
+
+
   void toggleDarkMode() {
     state = state.copyWith(darkMode: !state.darkMode);
   }

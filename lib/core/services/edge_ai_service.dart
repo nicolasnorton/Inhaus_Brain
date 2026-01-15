@@ -55,6 +55,8 @@ class EdgeAIService {
     String? memoryContext,
     Uint8List? imageBytes,
     String? imageMimeType,
+    Uint8List? audioBytes,
+    String? audioMimeType,
     AIModelConfig? modelConfig,
     String? apiKey,
     String? gemmaKey,
@@ -68,7 +70,6 @@ class EdgeAIService {
     final config = modelConfig ?? AIModelConfig.geminiFlash;
     
     debugPrint('EdgeAI: [DEBUG] Generating text via ${config.provider} (${config.modelId})');
-    debugPrint('EdgeAI: [DEBUG] forceMock status: $forceMock');
 
     if (forceMock) {
       debugPrint('EdgeAI: [DEBUG] forceMock is TRUE. Returning mock.');
@@ -82,26 +83,21 @@ class EdgeAIService {
           final vaultKey = await _vault.getGeminiKey();
           final key = apiKey ?? vaultKey;
           
-          debugPrint('EdgeAI: [DEBUG] Gemini Key Source: ${apiKey != null ? "Argument" : "Vault"}');
-          debugPrint('EdgeAI: [DEBUG] Gemini Key prefix: ${key != null && key.length > 5 ? key.substring(0, 5) : "none"}');
-          
           if (key == null || key.trim().isEmpty) {
-            debugPrint('EdgeAI: [DEBUG] Gemini Key is NULL or EMPTY. Triggering fallback.');
+            debugPrint('EdgeAI: [DEBUG] Gemini Key is NULL or EMPTY. Triggering fallback to mock.');
             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
           } else {
             try {
-              result = await _generateGemini(effectivePrompt, config, key, imageBytes, imageMimeType);
+              result = await _generateGemini(effectivePrompt, config, key, imageBytes, imageMimeType, audioBytes, audioMimeType);
             } catch (e) {
               debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $e');
-              debugPrint('EdgeAI: [DEBUG] Attempting fallback to gemini-pro...');
               try {
-                // FALLBACK: Try gemini-pro (v1.0)
-                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro-latest');
-                result = await _generateGemini(effectivePrompt, fallbackConfig, key, imageBytes, imageMimeType);
+                // FALLBACK: Try gemini-pro (v1.0) if Flash fails
+                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
+                result = await _generateGemini(effectivePrompt, fallbackConfig, key, imageBytes, imageMimeType, audioBytes, audioMimeType);
               } catch (fallbackError) {
                  debugPrint('EdgeAI: [DEBUG] Fallback Gemini model also failed: $fallbackError');
-                 // If both fail, return Mock but indicate error
-                 result = await _generateLocalMock("System Error: AI Service Unavailable. falling back to mock. Details: $e", hasImage: imageBytes != null);
+                 throw fallbackError; // Re-throw to trigger outer catch and potential mock fallback
               }
             }
           }
@@ -161,7 +157,9 @@ class EdgeAIService {
     AIModelConfig config, 
     String? apiKey, 
     Uint8List? imageBytes,
-    String? mimeType
+    String? mimeType,
+    Uint8List? audioBytes,
+    String? audioMimeType
   ) async {
     if (apiKey == null || apiKey.isEmpty) throw Exception("Gemini API Key missing");
 
@@ -170,6 +168,10 @@ class EdgeAIService {
     
     if (imageBytes != null) {
       parts.add(DataPart(mimeType ?? 'image/jpeg', imageBytes));
+    }
+
+    if (audioBytes != null) {
+      parts.add(DataPart(audioMimeType ?? 'audio/mp3', audioBytes));
     }
 
     final content = [Content.multi(parts)];
@@ -318,23 +320,37 @@ class EdgeAIService {
   }
 
   static Future<String> generateImage(String prompt, {String? imagenKey, String? bananaKey, String? midjourneyKey, String? runwayKey}) async {
+    final isNanoBanana = prompt.toLowerCase().contains('banana') || (bananaKey != null && bananaKey.isNotEmpty);
+    
     if (midjourneyKey != null && midjourneyKey.isNotEmpty) {
        await Future.delayed(const Duration(seconds: 4));
        return "https://via.placeholder.com/1024x1024.png?text=Midjourney+v6"; 
     }
-    if (imagenKey != null && imagenKey.isNotEmpty) {
+    if (imagenKey != null && imagenKey.isNotEmpty || isNanoBanana) {
       await Future.delayed(const Duration(seconds: 2));
-      return "https://via.placeholder.com/1024x1024.png?text=Imagen+3+Generated+Art";
+      final label = isNanoBanana ? "Nano+Banana+Gen" : "Imagen+3+Gen";
+      return "https://via.placeholder.com/1024x1024.png?text=$label";
     }
-    return "assets/images/mock_concept.png"; 
+    // Use Pollinations.ai for free, high-quality, dynamic image generation without an API key.
+    // We use a random seed to ensure uniqueness for repeated prompts.
+    final seed = DateTime.now().millisecondsSinceEpoch;
+    // Simple encoding is safer for URLs
+    final encodedPrompt = Uri.encodeComponent(prompt);
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&nologo=true"; 
   }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? runwayKey}) async {
+    final isVeo = prompt.toLowerCase().contains('veo') || (veoKey != null && veoKey.isNotEmpty);
+    
     if (runwayKey != null && runwayKey.isNotEmpty) {
       await Future.delayed(const Duration(seconds: 5));
       return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
     }
-    return "assets/videos/mock_render.mp4";
+    if (isVeo) {
+       await Future.delayed(const Duration(seconds: 3));
+       return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"; // Placeholder for Veo
+    }
+    return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
@@ -349,6 +365,8 @@ class EdgeAIService {
     String? memoryContext,
     Uint8List? imageBytes,
     String? imageMimeType,
+    Uint8List? audioBytes,
+    String? audioMimeType,
     AIModelConfig? config,
     String? apiKey,
     Ref? ref, // Phase 89: For proximity sync
@@ -361,6 +379,9 @@ class EdgeAIService {
           final List<Part> parts = [TextPart(effectivePrompt)];
           if (imageBytes != null) {
             parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+          }
+          if (audioBytes != null) {
+            parts.add(DataPart(audioMimeType ?? 'audio/mp3', audioBytes));
           }
           final content = [Content.multi(parts)];
           final responseStream = model.generateContentStream(content);

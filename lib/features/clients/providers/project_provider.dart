@@ -41,13 +41,24 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
     _persistenceService.saveProjects(state);
   }
 
-  Future<void> addProject(String clientId, String name, String description) async {
+  Future<void> addProject(String clientId, String name, String description, {
+    List<String>? sections,
+    String? priorityStr,
+  }) async {
+    final priority = ProjectPriority.values.firstWhere(
+      (e) => e.toString() == 'ProjectPriority.${priorityStr?.toLowerCase() ?? 'medium'}',
+      orElse: () => ProjectPriority.medium,
+    );
+
     final newProject = Project(
       id: const Uuid().v4(),
       clientId: clientId,
       name: name,
       description: description,
+      status: ProjectStatus.planning,
+      priority: priority,
       startDate: DateTime.now(),
+      sections: sections ?? ['To Do', 'In Progress', 'Done'],
     );
     state = [...state, newProject];
     await _persistenceService.saveProjects(state);

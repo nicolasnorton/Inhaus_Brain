@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:inhaus_brain/features/clients/models/client_model.dart';
+import 'package:inhaus_brain/features/clients/models/client_model.dart';
+import 'package:inhaus_brain/features/clients/models/client_contact_model.dart';
 import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 
 class ClientNotifier extends StateNotifier<List<Client>> {
@@ -39,12 +41,16 @@ class ClientNotifier extends StateNotifier<List<Client>> {
     _persistenceService.saveClients(state);
   }
 
-  Future<void> addClient(String name, String industry, {String? email}) async {
+  Future<void> addClient(String name, String industry, {String? email, String? website, String? address, String? size, String? description}) async {
     final newClient = Client(
       id: const Uuid().v4(),
       name: name,
       industry: industry,
       primaryContactEmail: email,
+      website: website,
+      address: address,
+      size: size,
+      description: description,
     );
     state = [...state, newClient];
     await _persistenceService.saveClients(state);
@@ -68,6 +74,28 @@ class ClientNotifier extends StateNotifier<List<Client>> {
       for (final client in state)
         if (client.id == clientId)
           client.copyWith(campaignIds: [...client.campaignIds, campaignId])
+        else
+          client
+    ];
+    await _persistenceService.saveClients(state);
+  }
+
+  Future<void> addClientContact(String clientId, String firstName, String lastName, String email, String role, {String accessLevel = 'viewer', String? phoneNumber}) async {
+    final contact = ClientContact(
+      id: const Uuid().v4(),
+      clientId: clientId,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      role: role,
+      accessLevel: accessLevel,
+      phoneNumber: phoneNumber,
+    );
+    
+    state = [
+      for (final client in state)
+        if (client.id == clientId)
+          client.copyWith(contacts: [...client.contacts, contact])
         else
           client
     ];

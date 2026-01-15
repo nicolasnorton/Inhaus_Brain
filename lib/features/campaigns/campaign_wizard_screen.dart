@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 import 'package:inhaus_brain/features/campaigns/models/campaign.dart';
 import 'package:inhaus_brain/features/campaigns/providers/campaign_provider.dart';
@@ -50,7 +51,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
         
         // Initial Message from User
         await ref.read(chatProvider.notifier).sendMessage(
-          "I want to start a new campaign: ${_titleController.text}. Brief: ${_descriptionController.text}",
+          AppLocalizations.of(context)!.startNewCampaignMsg(_titleController.text, _descriptionController.text),
           attachments: _attachments,
         );
 
@@ -72,7 +73,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(_isChatMode ? 'Research Workshop' : 'Create New Campaign'),
+        title: Text(_isChatMode ? AppLocalizations.of(context)!.researchWorkshop : AppLocalizations.of(context)!.createNewCampaign),
         backgroundColor: Colors.transparent,
         leading: _isChatMode ? IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -111,41 +112,41 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Campaign Brief',
+              AppLocalizations.of(context)!.campaignBrief,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const ResearchWorkbench(),
             const SizedBox(height: 8),
             Text(
-              'Tell the AI Agent what you want to achieve.',
+              AppLocalizations.of(context)!.tellAgentGoals,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
             ),
             const SizedBox(height: 32),
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Campaign Title',
-                hintText: 'e.g. Summer Collection 2026',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.campaignTitle,
+                hintText: AppLocalizations.of(context)!.campaignTitleHint,
               ),
-              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+              validator: (value) => value == null || value.isEmpty ? AppLocalizations.of(context)!.requiredField : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _clientController,
-              decoration: const InputDecoration(
-                labelText: 'Client Name',
-                hintText: 'e.g. Acme Corp',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.clientNameLabel,
+                hintText: AppLocalizations.of(context)!.clientNameHint,
               ),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
               maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'Detailed Brief',
-                hintText: 'Describe goals, target audience, and key messages...',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.detailedBrief,
+                hintText: AppLocalizations.of(context)!.detailedBriefHint,
               ),
-              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+              validator: (value) => value == null || value.isEmpty ? AppLocalizations.of(context)!.requiredField : null,
             ),
             const SizedBox(height: 16),
             MultiModalInputSection(
@@ -164,7 +165,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
                       width: 20, 
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
                     )
-                  : const Text('Start Research Chat'),
+                  : Text(AppLocalizations.of(context)!.startResearchChat),
               ),
             ),
           ],
@@ -201,7 +202,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
                 await ref.read(campaignListProvider.notifier).addCampaign(newCampaign);
                 if (mounted) context.pop();
               },
-              child: const Text('Confirm Strategy & Create Campaign'),
+              child: Text(AppLocalizations.of(context)!.confirmStrategyCreate),
             ),
           ),
         ),

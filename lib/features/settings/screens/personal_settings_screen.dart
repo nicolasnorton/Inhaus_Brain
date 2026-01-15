@@ -99,8 +99,8 @@ class _PersonalSettingsScreenState
                           const SizedBox(height: 4),
                           Text(
                             AppLocalizations.of(context)!.settingsSubtitle,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -113,13 +113,13 @@ class _PersonalSettingsScreenState
                 TabBar(
                   controller: _tabController,
                   labelColor: theme.primaryColor,
-                  unselectedLabelColor: Colors.white60,
+                  unselectedLabelColor: theme.brightness == Brightness.light ? Colors.black54 : Colors.white60,
                   indicatorColor: theme.primaryColor,
                   tabs: [
                     Tab(text: AppLocalizations.of(context)!.tabProfile),
                     Tab(text: AppLocalizations.of(context)!.tabPreferences),
                     Tab(text: AppLocalizations.of(context)!.tabSecurity),
-                    const Tab(text: 'Workspace'),
+                    Tab(text: AppLocalizations.of(context)!.navWorkflows), // Or a specific 'Workspace' key if needed
                   ],
                 ),
               ],
@@ -474,7 +474,7 @@ class _PersonalSettingsScreenState
                 Text(
                   isLinked ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: isLinked ? Colors.green : Colors.white60,
+                    color: isLinked ? Colors.green : (theme.brightness == Brightness.light ? Colors.black54 : Colors.white60),
                   ),
                 ),
               ],
@@ -514,7 +514,7 @@ class _PersonalSettingsScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Workspace Infrastructure',
+            AppLocalizations.of(context)!.workspaceInfrastructure,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -523,24 +523,24 @@ class _PersonalSettingsScreenState
           _buildWorkspaceItem(
             theme,
             icon: FontAwesomeIcons.microchip,
-            title: 'Model Providers',
-            subtitle: 'Configure LLM and image generation keys',
+            title: AppLocalizations.of(context)!.modelProviders,
+            subtitle: AppLocalizations.of(context)!.modelProvidersSub,
             onTap: () => context.go('/workspace/model-providers'),
           ),
           const SizedBox(height: 12),
           _buildWorkspaceItem(
             theme,
             icon: FontAwesomeIcons.plug,
-            title: 'Plugins & Tools',
-            subtitle: 'Connect external tools and MCP servers',
+            title: AppLocalizations.of(context)!.pluginsTools,
+            subtitle: AppLocalizations.of(context)!.pluginsToolsSub,
             onTap: () => context.go('/workspace/plugins'),
           ),
           const SizedBox(height: 12),
            _buildWorkspaceItem(
             theme,
             icon: FontAwesomeIcons.layerGroup,
-            title: 'Manage Apps',
-            subtitle: 'Deploy and organize your micro-apps',
+            title: AppLocalizations.of(context)!.manageApps,
+            subtitle: AppLocalizations.of(context)!.manageAppsSub,
             onTap: () => context.go('/workspace/apps'),
           ),
         ],
@@ -558,7 +558,7 @@ class _PersonalSettingsScreenState
       child: ListTile(
         leading: Icon(icon, color: theme.primaryColor, size: 20),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.white54)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: theme.brightness == Brightness.light ? Colors.black54 : Colors.white54)),
         trailing: const Icon(Icons.chevron_right, size: 20),
         onTap: onTap,
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../providers/client_provider.dart';
 import '../providers/project_provider.dart';
 import '../providers/task_provider.dart';
@@ -8,6 +9,7 @@ import '../providers/client_integrations_provider.dart';
 import '../models/client_model.dart';
 import '../models/project_model.dart';
 import '../models/task_model.dart';
+import 'project_detail_screen.dart';
 
 class ClientDetailScreen extends ConsumerStatefulWidget {
   final String clientId;
@@ -23,7 +25,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -42,14 +44,14 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
 
     if (client.id == 'unknown') {
       return Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Client Not Found')),
-        body: const Center(child: Text('The requested client could not be found.', style: TextStyle(color: Colors.white))),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(backgroundColor: Colors.transparent, title: Text(AppLocalizations.of(context)!.clientNotFound)),
+        body: Center(child: Text(AppLocalizations.of(context)!.clientNotFoundMsg)),
       );
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -57,12 +59,13 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.blueAccent,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Projects'),
-            Tab(text: 'Tasks'),
-            Tab(text: 'Integrations'),
-            Tab(text: 'UCP Commerce'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabOverview),
+            Tab(text: AppLocalizations.of(context)!.tabContacts),
+            Tab(text: AppLocalizations.of(context)!.tabProjects),
+            Tab(text: AppLocalizations.of(context)!.tabTasks),
+            Tab(text: AppLocalizations.of(context)!.tabIntegrations),
+            Tab(text: AppLocalizations.of(context)!.tabUCP),
           ],
         ),
       ),
@@ -70,6 +73,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
         controller: _tabController,
         children: [
           _buildOverviewTab(client),
+          _buildContactsTab(client),
           _buildProjectsTab(client),
           _buildTasksTab(client),
           _buildIntegrationsTab(client),
@@ -85,18 +89,36 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Industry: ${client.industry}', style: const TextStyle(color: Colors.white70, fontSize: 18)),
+          Row(
+            children: [
+              if (client.website != null) ...[
+                const Icon(Icons.language, color: Colors.blueAccent, size: 16),
+                const SizedBox(width: 8),
+                Text(client.website!, style: const TextStyle(color: Colors.blueAccent)),
+                const SizedBox(width: 24),
+              ],
+               if (client.address != null) ...[
+                Icon(Icons.location_on, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), size: 16),
+                const SizedBox(width: 8),
+                Text(client.address!, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
+              ],
+            ],
+          ),
           const SizedBox(height: 16),
-          Text('Primary Contact: ${client.primaryContactEmail ?? "Not set"}', style: const TextStyle(color: Colors.white70)),
+          Text(client.description ?? AppLocalizations.of(context)!.noDescriptionAvailable, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
+          const SizedBox(height: 24),
+          Text('${AppLocalizations.of(context)!.industryLabelShort}: ${client.industry}  •  ${AppLocalizations.of(context)!.sizeLabel}: ${client.size ?? AppLocalizations.of(context)!.notAvailable}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7), fontSize: 14)),
+          const SizedBox(height: 16),
+          Text('${AppLocalizations.of(context)!.primaryContactLabel}: ${client.primaryContactEmail ?? AppLocalizations.of(context)!.notAvailable}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
           const SizedBox(height: 32),
-          const Text('Performance Summary', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(AppLocalizations.of(context)!.performanceSummary, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 16),
           // Add some mock stats here
           Row(
             children: [
-              _buildStatCard('Active Campaigns', '${client.campaignIds.length}'),
+              _buildStatCard(AppLocalizations.of(context)!.activeCampaigns, '${client.campaignIds.length}'),
               const SizedBox(width: 16),
-              _buildStatCard('Total Projects', '${ref.watch(projectProvider).where((p) => p.clientId == client.id).length}'),
+              _buildStatCard(AppLocalizations.of(context)!.totalProjects, '${ref.watch(projectProvider).where((p) => p.clientId == client.id).length}'),
             ],
           ),
         ],
@@ -108,15 +130,82 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 12)),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+          Text(value, style: TextStyle(color: Theme.of(context).textTheme.headlineMedium?.color, fontSize: 32, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactsTab(Client client) {
+     return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppLocalizations.of(context)!.clientContacts, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
+              ElevatedButton.icon(
+                onPressed: () => _showAddContactDialog(client),
+                icon: const Icon(Icons.add),
+                label: Text(AppLocalizations.of(context)!.addContact),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (client.contacts.isEmpty)
+            Center(child: Text(AppLocalizations.of(context)!.noContactsAdded, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7)),))
+          else
+            Expanded(
+              child: ListView.builder(
+                itemCount: client.contacts.length,
+                itemBuilder: (context, index) {
+                  final contact = client.contacts[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.blueAccent,
+                          child: Text(contact.firstName.characters.first, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(contact.fullName, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text('${contact.role}  •  ${contact.email}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 12)),
+                          ],
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(contact.accessLevel, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7), fontSize: 10)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -132,11 +221,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Client Projects', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(AppLocalizations.of(context)!.clientProjects, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
               ElevatedButton.icon(
                 onPressed: () => _showAddProjectDialog(client),
                 icon: const Icon(Icons.add),
-                label: const Text('New Project'),
+                label: Text(AppLocalizations.of(context)!.newProject),
               ),
             ],
           ),
@@ -156,25 +245,34 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   }
 
   Widget _buildProjectTile(Project project) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(project.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              Text(project.status.name.toUpperCase(), style: TextStyle(color: _getStatusColor(project.status), fontSize: 10)),
-            ],
-          ),
-          const Spacer(),
-          IconButton(icon: const Icon(Icons.edit, color: Colors.white24), onPressed: () {}),
-        ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ProjectDetailScreen(projectId: project.id)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Row(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(project.name, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(_getStatusText(context, project.status).toUpperCase(), style: TextStyle(color: _getStatusColor(project.status), fontSize: 10)),
+              ],
+            ),
+            const Spacer(),
+            Icon(Icons.arrow_forward_ios, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4), size: 16),
+          ],
+        ),
       ),
     );
   }
@@ -184,7 +282,16 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       ProjectStatus.planning => Colors.blueAccent,
       ProjectStatus.inProgress => Colors.orangeAccent,
       ProjectStatus.completed => Colors.greenAccent,
-      ProjectStatus.archived => Colors.white24,
+      ProjectStatus.archived => Theme.of(context).disabledColor,
+    };
+  }
+
+  String _getStatusText(BuildContext context, ProjectStatus status) {
+    return switch (status) {
+      ProjectStatus.planning => AppLocalizations.of(context)!.statusPlanning,
+      ProjectStatus.inProgress => AppLocalizations.of(context)!.statusInProgress,
+      ProjectStatus.completed => AppLocalizations.of(context)!.statusCompleted,
+      ProjectStatus.archived => AppLocalizations.of(context)!.statusArchived,
     };
   }
 
@@ -201,12 +308,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Active Tasks', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(AppLocalizations.of(context)!.activeTasksLabel, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
               if (projects.isNotEmpty)
                 ElevatedButton.icon(
                   onPressed: () => _showAddTaskDialog(projects),
                   icon: const Icon(Icons.add),
-                  label: const Text('New Task'),
+                  label: Text(AppLocalizations.of(context)!.newTask),
                 ),
             ],
           ),
@@ -233,9 +340,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
@@ -253,10 +360,10 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(task.title, style: TextStyle(
-                  color: Colors.white,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                   decoration: task.status == TaskStatus.done ? TextDecoration.lineThrough : null,
                 )),
-                Text(project.name, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                Text(project.name, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4), fontSize: 10)),
               ],
             ),
           ),
@@ -275,9 +382,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Connect Third-Party Tools', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(AppLocalizations.of(context)!.connectThirdPartyTools, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 8),
-          const Text('Authorize Inhaus Brain to access data from these platforms.', style: TextStyle(color: Colors.white38)),
+          Text(AppLocalizations.of(context)!.authorizeInhausBrainMsg, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
           const SizedBox(height: 32),
           GridView.count(
             crossAxisCount: 2,
@@ -288,7 +395,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
             children: [
               _buildIntegrationCard('Gmail', FontAwesomeIcons.envelope, integrationState.isGmailConnected, Colors.redAccent, client.id),
               _buildIntegrationCard('Slack', FontAwesomeIcons.slack, integrationState.isSlackConnected, Colors.purpleAccent, client.id),
-              _buildIntegrationCard('Notion', FontAwesomeIcons.noteSticky, integrationState.isNotionConnected, Colors.white, client.id),
+              _buildIntegrationCard('Notion', FontAwesomeIcons.noteSticky, integrationState.isNotionConnected, Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white, client.id),
               _buildIntegrationCard('GoHighLevel', FontAwesomeIcons.rocket, integrationState.isGHLConnected, Colors.blueAccent, client.id),
             ],
           ),
@@ -301,9 +408,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isConnected ? color.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: isConnected ? color.withValues(alpha: 0.3) : Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
@@ -314,8 +421,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text(isConnected ? 'Connected' : 'Not Connected', style: TextStyle(color: isConnected ? Colors.greenAccent : Colors.white24, fontSize: 10)),
+                Text(name, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold),),
+                Text(isConnected ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected, style: TextStyle(color: isConnected ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24), fontSize: 10)),
               ],
             ),
           ),
@@ -337,9 +444,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Universal Commerce Protocol (UCP)', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(AppLocalizations.of(context)!.ucpTitle, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 8),
-          const Text('Seamless agentic commerce integration.', style: TextStyle(color: Colors.white38)),
+          Text(AppLocalizations.of(context)!.ucpSubTitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
           const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(24),
@@ -356,9 +463,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('UCP Status: Active', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(AppLocalizations.of(context)!.ucpStatusActive, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('Discovery Service: Online', style: TextStyle(color: Colors.white70)),
+                      Text(AppLocalizations.of(context)!.discoveryServiceOnline, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
                     ],
                   ),
                 ),
@@ -366,13 +473,13 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
                   onPressed: () {
                     // Trigger discovery mock
                   },
-                  child: const Text('Discover Businesses'),
+                  child: Text(AppLocalizations.of(context)!.discoverBusinesses),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 32),
-          const Text('Connected Commerce Agents', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(AppLocalizations.of(context)!.connectedCommerceAgents, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           // Mock list
           _buildUCPParticipantCard('Shoaming Assistant', 'Platform Agent', FontAwesomeIcons.robot),
@@ -387,23 +494,23 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
-          FaIcon(icon, color: Colors.white54, size: 20),
+          FaIcon(icon, color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), size: 20),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              Text(role, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+              Text(name, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold),),
+              Text(role, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 12)),
             ],
           ),
           const Spacer(),
-          const Text('Connected', style: TextStyle(color: Colors.greenAccent, fontSize: 12)),
+          Text(AppLocalizations.of(context)!.connected, style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
         ],
       ),
     );
@@ -416,23 +523,23 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111111),
-        title: const Text('Add Project', style: TextStyle(color: Colors.white)),
+        backgroundColor: Theme.of(context).cardColor,
+        title: Text(AppLocalizations.of(context)!.addProject),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Project Name'), style: const TextStyle(color: Colors.white)),
-            TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), style: const TextStyle(color: Colors.white)),
+            TextField(controller: nameController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.projectName)),
+            TextField(controller: descController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.descriptionLabel)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () {
               ref.read(projectProvider.notifier).addProject(client.id, nameController.text, descController.text);
               Navigator.pop(context);
             },
-            child: const Text('Create'),
+            child: Text(AppLocalizations.of(context)!.createLabel),
           ),
         ],
       ),
@@ -448,33 +555,73 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF111111),
-          title: const Text('Add Task', style: TextStyle(color: Colors.white)),
+          backgroundColor: Theme.of(context).cardColor,
+          title: Text(AppLocalizations.of(context)!.addTask),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButton<String>(
                 value: selectedProjectId,
-                dropdownColor: const Color(0xFF111111),
+                dropdownColor: Theme.of(context).cardColor,
                 isExpanded: true,
-                items: projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name, style: const TextStyle(color: Colors.white)))).toList(),
+                items: projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
                 onChanged: (val) => setDialogState(() => selectedProjectId = val!),
               ),
-              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Task Title'), style: const TextStyle(color: Colors.white)),
-              TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), style: const TextStyle(color: Colors.white)),
+              TextField(controller: titleController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.taskTitle)),
+              TextField(controller: descController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.descriptionLabel)),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
             ElevatedButton(
               onPressed: () {
                 ref.read(taskProvider.notifier).addTask(selectedProjectId, titleController.text, descController.text);
                 Navigator.pop(context);
               },
-              child: const Text('Add'),
+              child: Text(AppLocalizations.of(context)!.addLabel),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAddContactDialog(Client client) {
+    final firstController = TextEditingController();
+    final lastController = TextEditingController();
+    final emailController = TextEditingController();
+    final roleController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        title: Text(AppLocalizations.of(context)!.addContact),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: firstController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.firstName)),
+            TextField(controller: lastController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.lastName)),
+            TextField(controller: emailController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.emailLabel)),
+            TextField(controller: roleController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.roleLabel)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(clientProvider.notifier).addClientContact(
+                client.id,
+                firstController.text,
+                lastController.text,
+                emailController.text,
+                roleController.text,
+              );
+              Navigator.pop(context);
+            },
+            child: Text(AppLocalizations.of(context)!.addLabel),
+          ),
+        ],
       ),
     );
   }

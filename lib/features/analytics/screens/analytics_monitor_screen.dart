@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../monitor/screens/monitor_dashboard_screen.dart';
 
 class AnalyticsMonitorScreen extends ConsumerStatefulWidget {
@@ -29,17 +30,19 @@ class _AnalyticsMonitorScreenState extends ConsumerState<AnalyticsMonitorScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1116),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Analytics & Monitor', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(AppLocalizations.of(context)!.analyticsMonitor, style: const TextStyle(fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.blueAccent,
-          tabs: const [
-            Tab(text: 'Business Analytics'),
-            Tab(text: 'System Monitor'),
+          indicatorColor: Theme.of(context).primaryColor,
+          labelColor: Theme.of(context).primaryColor,
+          unselectedLabelColor: Theme.of(context).brightness == Brightness.light ? Colors.black54 : Colors.white60,
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabBusinessAnalytics),
+            Tab(text: AppLocalizations.of(context)!.tabSystemMonitor),
           ],
         ),
       ),
@@ -59,9 +62,9 @@ class _AnalyticsMonitorScreenState extends ConsumerState<AnalyticsMonitorScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Campaign Performance',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.campaignPerformance,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           _buildStatsGrid(),
@@ -81,9 +84,9 @@ class _AnalyticsMonitorScreenState extends ConsumerState<AnalyticsMonitorScreen>
       crossAxisSpacing: 16,
       childAspectRatio: 2.5,
       children: [
-        _buildStatCard('ROI', '3.2x', '+12%', Colors.greenAccent),
-        _buildStatCard('Conversion', '4.8%', '+0.5%', Colors.blueAccent),
-        _buildStatCard('CPA', '\$12.50', '-5%', Colors.orangeAccent),
+        _buildStatCard(AppLocalizations.of(context)!.statROI, '3.2x', '+12%', Colors.greenAccent),
+        _buildStatCard(AppLocalizations.of(context)!.statConversion, '4.8%', '+0.5%', Colors.blueAccent),
+        _buildStatCard(AppLocalizations.of(context)!.statCPA, '\$12.50', '-5%', Colors.orangeAccent),
       ],
     );
   }
@@ -92,19 +95,19 @@ class _AnalyticsMonitorScreenState extends ConsumerState<AnalyticsMonitorScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2128),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.8), fontSize: 12)),
           const SizedBox(height: 4),
           Row(
             children: [
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const Spacer(),
               Text(change, style: TextStyle(color: color, fontSize: 12)),
             ],
@@ -119,20 +122,20 @@ class _AnalyticsMonitorScreenState extends ConsumerState<AnalyticsMonitorScreen>
       height: 300,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2128),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Conversion over Time', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+          Text(AppLocalizations.of(context)!.conversionOverTime, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const Spacer(),
           Center(
              child: Icon(FontAwesomeIcons.chartLine, size: 48, color: Colors.blueAccent.withValues(alpha: 0.2)),
           ),
           const Spacer(),
-          const Text('Historical data being aggregated...', style: TextStyle(color: Colors.white24, fontSize: 12)),
+          Text(AppLocalizations.of(context)!.historicalDataAggregated, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7), fontSize: 12)),
         ],
       ),
     );

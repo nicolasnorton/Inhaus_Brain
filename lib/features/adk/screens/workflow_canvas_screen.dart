@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 import 'package:inhaus_brain/features/adk/widgets/node_configuration_sheet.dart';
 import '../../../core/adk/models/pipeline_models.dart';
@@ -82,7 +83,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF111111),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Workflow Canvas', style: TextStyle(fontSize: 16)),
         backgroundColor: const Color(0xFF1E1E1E),
@@ -219,10 +220,10 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
             width: 80,
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 10)],
-                border: Border.all(color: Colors.white12),
+                boxShadow: [BoxShadow(color: Theme.of(context).brightness == Brightness.light ? Colors.black12 : Colors.black54, blurRadius: 10)],
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: SingleChildScrollView(
                 child: Padding(
@@ -230,8 +231,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                   child: Column(
                     children: [
                       _buildCategoryHeader("INPUTS"),
-                      _buildTool(FontAwesomeIcons.keyboard, "User Input", WorkflowNodeType.userInput),
-                      _buildTool(FontAwesomeIcons.bolt, "Trigger", WorkflowNodeType.trigger),
+                      _buildTool(FontAwesomeIcons.keyboard, AppLocalizations.of(context)!.nodeStart, WorkflowNodeType.userInput),
+                      _buildTool(FontAwesomeIcons.bolt, AppLocalizations.of(context)!.nodeStart, WorkflowNodeType.trigger),
                       _buildTool(FontAwesomeIcons.fileArrowUp, "Doc Extractor", WorkflowNodeType.documentExtractor),
                       const Divider(color: Colors.white10, height: 32),
                       
@@ -241,11 +242,11 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                       const Divider(color: Colors.white10, height: 32),
                       
                       _buildCategoryHeader("LOGIC"),
-                      _buildTool(FontAwesomeIcons.codeBranch, "If-Else", WorkflowNodeType.ifElse),
+                      _buildTool(FontAwesomeIcons.codeBranch, AppLocalizations.of(context)!.nodeCondition, WorkflowNodeType.ifElse),
                       _buildTool(FontAwesomeIcons.arrowsSpin, "Loop", WorkflowNodeType.loop),
                       _buildTool(FontAwesomeIcons.listCheck, "Iteration", WorkflowNodeType.iteration),
                       _buildTool(FontAwesomeIcons.filter, "Classifier", WorkflowNodeType.questionClassifier),
-                      _buildTool(FontAwesomeIcons.code, "Code", WorkflowNodeType.code),
+                      _buildTool(FontAwesomeIcons.code, AppLocalizations.of(context)!.nodeFunction, WorkflowNodeType.code),
                       const Divider(color: Colors.white10, height: 32),
                       
                       _buildCategoryHeader("TOOLS"),
@@ -256,11 +257,12 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                       
                       _buildCategoryHeader("OUTPUT"),
                       _buildTool(FontAwesomeIcons.commentDots, "Answer", WorkflowNodeType.answer),
-                      _buildTool(FontAwesomeIcons.rightFromBracket, "Exit", WorkflowNodeType.output),
+                      _buildTool(FontAwesomeIcons.rightFromBracket, AppLocalizations.of(context)!.nodeEnd, WorkflowNodeType.output),
                     ],
                   ),
                 ),
               ),
+
             ),
           ),
 
@@ -272,9 +274,10 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
               width: 350,
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 20)],
+                  boxShadow: [BoxShadow(color: Theme.of(context).brightness == Brightness.light ? Colors.black12 : Colors.black54, blurRadius: 20)],
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
@@ -329,7 +332,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
   Widget _buildCategoryHeader(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Text(label, style: const TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+      child: Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4), fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
     );
   }
 
@@ -368,7 +371,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
               child: Icon(icon, color: Colors.white, size: 24),
             ),
           ),
-          child: Icon(icon, color: Colors.white70, size: 20),
+          child: Icon(icon, color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7), size: 20),
         ),
       ),
       ),
@@ -408,10 +411,10 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
           width: 160,
           height: 90,
           decoration: BoxDecoration(
-            color: const Color(0xFF252525),
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? Colors.blueAccent : Colors.white.withValues(alpha: 0.1),
+              color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).dividerColor,
               width: isSelected ? 2 : 1
             ),
             boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 8, offset: const Offset(0, 4))],
@@ -447,7 +450,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                       icon: const Icon(Icons.play_arrow, size: 10),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      color: Colors.white54,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                       onPressed: () {
                          ref.read(workflowExecutionProvider.notifier).executeNode(
                            widget.pipelineId ?? 'new-app',
@@ -488,7 +491,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                     step.instruction.isEmpty ? "Config: ${step.config.keys.length} params" : step.instruction, 
                     maxLines: 3, 
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white54, fontSize: 10)
+                    style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 10)
                   ),
                 ),
               ),
@@ -527,27 +530,27 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Save Workflow', style: TextStyle(color: Colors.white)),
+        title: Text('Save Workflow', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+              decoration: InputDecoration(
                 labelText: 'Workflow Name',
-                labelStyle: TextStyle(color: Colors.white54),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+                labelStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).dividerColor)),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: descController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+              decoration: InputDecoration(
                 labelText: 'Description',
-                labelStyle: TextStyle(color: Colors.white54),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+                labelStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).dividerColor)),
               ),
             ),
           ],
@@ -619,7 +622,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Commit Changes', style: TextStyle(color: Colors.white)),
+        title: Text('Commit Changes', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,12 +633,12 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
             TextField(
               controller: messageController,
               autofocus: true,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+              decoration: InputDecoration(
                 labelText: 'Commit Message',
                 hintText: 'e.g., Added IF/ELSE logic',
-                labelStyle: TextStyle(color: Colors.white54),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+                labelStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Theme.of(context).dividerColor)),
               ),
             ),
           ],

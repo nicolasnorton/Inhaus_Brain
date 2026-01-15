@@ -5,14 +5,23 @@ enum ProjectStatus {
   archived,
 }
 
+enum ProjectPriority {
+  low,
+  medium,
+  high,
+  urgent,
+}
+
 class Project {
   final String id;
   final String clientId;
   final String name;
   final String description;
   final ProjectStatus status;
+  final ProjectPriority priority;
   final DateTime startDate;
   final DateTime? endDate;
+  final List<String> sections; // For Kanban/Board columns (e.g. "To Do", "Doing")
 
   Project({
     required this.id,
@@ -20,16 +29,20 @@ class Project {
     required this.name,
     required this.description,
     this.status = ProjectStatus.planning,
+    this.priority = ProjectPriority.medium,
     required this.startDate,
     this.endDate,
+    this.sections = const ['To Do', 'In Progress', 'Done'],
   });
 
   Project copyWith({
     String? name,
     String? description,
     ProjectStatus? status,
+    ProjectPriority? priority,
     DateTime? startDate,
     DateTime? endDate,
+    List<String>? sections,
   }) {
     return Project(
       id: id,
@@ -37,8 +50,10 @@ class Project {
       name: name ?? this.name,
       description: description ?? this.description,
       status: status ?? this.status,
+      priority: priority ?? this.priority,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
+      sections: sections ?? this.sections,
     );
   }
 
@@ -52,8 +67,13 @@ class Project {
         (e) => e.toString() == json['status'],
         orElse: () => ProjectStatus.planning,
       ),
+      priority: ProjectPriority.values.firstWhere(
+        (e) => e.toString() == json['priority'],
+        orElse: () => ProjectPriority.medium,
+      ),
       startDate: DateTime.parse(json['startDate'] as String),
       endDate: json['endDate'] != null ? DateTime.parse(json['endDate'] as String) : null,
+      sections: (json['sections'] as List? ?? ['To Do', 'In Progress', 'Done']).cast<String>(),
     );
   }
 
@@ -63,7 +83,9 @@ class Project {
     'name': name,
     'description': description,
     'status': status.toString(),
+    'priority': priority.toString(),
     'startDate': startDate.toIso8601String(),
     'endDate': endDate?.toIso8601String(),
+    'sections': sections,
   };
 }

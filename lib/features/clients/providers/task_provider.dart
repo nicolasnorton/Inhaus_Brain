@@ -49,7 +49,18 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
     _persistenceService.saveTasks(state);
   }
 
-  Future<void> addTask(String projectId, String title, String description, {DateTime? dueDate, String? assigneeId}) async {
+  Future<void> addTask(String projectId, String title, String description, {
+    DateTime? dueDate,
+    String? assigneeId,
+    String? priorityStr,
+    String? sectionId,
+    List<String>? tags,
+  }) async {
+    final priority = TaskPriority.values.firstWhere(
+      (e) => e.toString() == 'TaskPriority.${priorityStr?.toLowerCase() ?? 'medium'}',
+      orElse: () => TaskPriority.medium,
+    );
+
     final newTask = ProjectTask(
       id: const Uuid().v4(),
       projectId: projectId,
@@ -57,6 +68,9 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
       description: description,
       dueDate: dueDate,
       assigneeId: assigneeId,
+      priority: priority,
+      sectionId: sectionId,
+      tags: tags ?? [],
     );
     state = [...state, newTask];
     await _persistenceService.saveTasks(state);

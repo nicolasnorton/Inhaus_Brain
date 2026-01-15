@@ -113,7 +113,7 @@ class _GlobalHotkeyListenerState extends ConsumerState<GlobalHotkeyListener> {
 
     return Focus(
       focusNode: _focusNode,
-      autofocus: true,
+      // autofocus: true, // Removed to prevent RenderBox was not laid out error on Chrome startup
       onKey: (node, event) {
         if (event is RawKeyDownEvent) {
           if (service.handleKeyEvent(event, context)) {

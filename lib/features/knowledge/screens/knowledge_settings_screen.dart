@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 
 class KnowledgeSettingsScreen extends ConsumerStatefulWidget {
   const KnowledgeSettingsScreen({super.key});
@@ -16,51 +17,51 @@ class _KnowledgeSettingsScreenState extends ConsumerState<KnowledgeSettingsScree
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Knowledge Settings',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.knowledgeSettings,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Manage your knowledge base configuration, metadata, and indexing settings.',
-            style: TextStyle(color: Colors.white38, fontSize: 14),
+          Text(
+            AppLocalizations.of(context)!.knowledgeSettingsSub,
+            style: const TextStyle(color: Colors.white38, fontSize: 14),
           ),
           const SizedBox(height: 48),
           
           _buildSettingsSection(
-            'BASIC INFORMATION',
+            AppLocalizations.of(context)!.basicInfo,
             [
-              _buildSettingItem('Knowledge Name', 'Inhaus Corporate Knowledge Base'),
-              _buildSettingItem('Description', 'Internal documentation, brand guidelines, and case studies.'),
+              _buildSettingItem(AppLocalizations.of(context)!.knowledgeNameLabel, 'Inhaus Corporate Knowledge Base'),
+              _buildSettingItem(AppLocalizations.of(context)!.descriptionLabel, 'Internal documentation, brand guidelines, and case studies.'),
             ],
           ),
           
           const SizedBox(height: 48),
           _buildSettingsSection(
-            'INDEXING & RETRIEVAL',
+            AppLocalizations.of(context)!.indexRetrievalTitle.toUpperCase(),
             [
-              _buildSettingDropdown('Embedding Model', 'text-embedding-3-large', Icons.psychology),
-              _buildSettingDropdown('Rerank Model', 'rerank-english-v3.0', Icons.layers),
-              _buildSettingToggle('Enable Hybrid Search', true),
-              _buildSettingSlider('Top K', 3, 1, 10),
+              _buildSettingDropdown(AppLocalizations.of(context)!.embeddingModel.toLowerCase().replaceFirst(AppLocalizations.of(context)!.embeddingModel[0].toLowerCase(), AppLocalizations.of(context)!.embeddingModel[0].toUpperCase()), 'text-embedding-3-large', Icons.psychology), // Manual capitalization if needed or just use key
+              _buildSettingDropdown(AppLocalizations.of(context)!.rerankModel, 'rerank-english-v3.0', Icons.layers),
+              _buildSettingToggle(AppLocalizations.of(context)!.enableHybridSearch, true),
+              _buildSettingSlider(AppLocalizations.of(context)!.topK, 3, 1, 10),
             ],
           ),
           
           const SizedBox(height: 48),
           _buildSettingsSection(
-            'METADATA CONFIGURATION',
+            AppLocalizations.of(context)!.metadataConfig,
             [
-              _buildSettingToggle('Auto-extract author', true),
-              _buildSettingToggle('Auto-extract publish date', true),
-              _buildSettingToggle('Index tables as text', false),
+              _buildSettingToggle(AppLocalizations.of(context)!.autoExtractAuthor, true),
+              _buildSettingToggle(AppLocalizations.of(context)!.autoExtractDate, true),
+              _buildSettingToggle(AppLocalizations.of(context)!.indexTablesAsText, false),
             ],
           ),
           
           const SizedBox(height: 48),
           _buildSettingsSection(
-            'DANGER ZONE',
+            AppLocalizations.of(context)!.dangerZone,
             [
-              _buildDangerItem('Delete Knowledge Base', 'Permanently delete this knowledge base and all associated data.'),
+              _buildDangerItem(AppLocalizations.of(context)!.deleteKnowledgeBase, AppLocalizations.of(context)!.deleteKnowledgeBaseSub),
             ],
           ),
         ],
@@ -218,7 +219,7 @@ class _KnowledgeSettingsScreenState extends ConsumerState<KnowledgeSettingsScree
               side: const BorderSide(color: Colors.redAccent, width: 0.5),
               foregroundColor: Colors.redAccent,
             ),
-            child: const Text('Delete'),
+            child: Text(AppLocalizations.of(context)!.deleteLabel),
           ),
         ],
       ),

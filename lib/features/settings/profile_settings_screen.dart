@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/auth/secret_vault_service.dart';
@@ -131,7 +132,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Keys securely saved to Vault.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.keysSavedMsg)),
       );
     }
   }
@@ -157,7 +158,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Master Prompts updated.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.promptsUpdatedMsg)),
       );
     }
   }
@@ -181,18 +182,18 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.profileUpdatedMsg)),
       );
     }
   }
 
   int _selectedIndex = 0;
 
-  final List<(String, IconData)> _sections = [
-    ('General', Icons.person_outline),
-    ('Agent Brain', FontAwesomeIcons.brain),
-    ('AI Models', FontAwesomeIcons.microchip),
-    ('Connectors', FontAwesomeIcons.plug),
+  List<(String, IconData)> _getSections(BuildContext context) => [
+    (AppLocalizations.of(context)!.secGeneral, Icons.person_outline),
+    (AppLocalizations.of(context)!.secAgentBrain, FontAwesomeIcons.brain),
+    (AppLocalizations.of(context)!.secAIModels, FontAwesomeIcons.microchip),
+    (AppLocalizations.of(context)!.secConnectors, FontAwesomeIcons.plug),
   ];
 
   @override
@@ -200,7 +201,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Operations Center'),
+        title: Text(AppLocalizations.of(context)!.operationsCenter),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -213,13 +214,14 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             ),
             child: ListView.builder(
-              itemCount: _sections.length,
+              itemCount: _getSections(context).length,
               itemBuilder: (context, index) {
                 final isSelected = _selectedIndex == index;
+                final sections = _getSections(context);
                 return ListTile(
-                  leading: Icon(_sections[index].$2, size: 18, color: isSelected ? Colors.blueAccent : Colors.white54),
+                  leading: Icon(sections[index].$2, size: 18, color: isSelected ? Colors.blueAccent : Colors.white54),
                   title: Text(
-                    _sections[index].$1,
+                    sections[index].$1,
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.white70,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -267,7 +269,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('PROFILE & ACCOUNT', 'Manage your identity and access levels.'),
+        _buildHeader(AppLocalizations.of(context)!.profileAccount, AppLocalizations.of(context)!.profileAccountSub),
         const SizedBox(height: 32),
         _buildUserProfile(user),
         const SizedBox(height: 32),
@@ -280,7 +282,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('AGENT BRAIN (MASTER PROMPTS)', 'Configure the behavior, persona, and workflows for your workforce.'),
+        _buildHeader(AppLocalizations.of(context)!.agentBrainTitle, AppLocalizations.of(context)!.agentBrainSub),
         const SizedBox(height: 32),
         
         Container(
@@ -295,20 +297,20 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             children: [
               const Icon(FontAwesomeIcons.robot, size: 48, color: Colors.purpleAccent),
               const SizedBox(height: 16),
-              const Text(
-                'Agent Studio',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+              Text(
+                AppLocalizations.of(context)!.agentStudioTitle,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Access the advanced configuration panel to tune System Prompts, manage Pipeline connections, and configure tools for Campaign & Creative agents.',
+              Text(
+                AppLocalizations.of(context)!.agentStudioSub,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70),
+                style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 icon: const Icon(Icons.settings_suggest, size: 18),
-                label: const Text('Launch Agent Studio'),
+                label: Text(AppLocalizations.of(context)!.launchAgentStudio),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.purpleAccent,
                   foregroundColor: Colors.white,
@@ -331,7 +333,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('AI MODEL VAULT', 'Securely store API keys for external providers. Keys never leave your device.'),
+        _buildHeader(AppLocalizations.of(context)!.aiModelVaultTitle, AppLocalizations.of(context)!.aiModelVaultSub),
         const SizedBox(height: 32),
         Container(
            padding: const EdgeInsets.all(24),
@@ -368,7 +370,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader('TOOL CONNECTORS', 'Integrate third-party services into your workflow.'),
+        _buildHeader(AppLocalizations.of(context)!.toolConnectorsTitle, AppLocalizations.of(context)!.toolConnectorsSub),
         const SizedBox(height: 32),
         _buildConnectorCard('Google Search', FontAwesomeIcons.google, true, 'Active'),
         const SizedBox(height: 16),
@@ -382,9 +384,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         const SizedBox(height: 16),
         _buildConnectorCard('HubSpot', FontAwesomeIcons.hubspot, false, 'Coming Soon'),
         const SizedBox(height: 16),
-        _buildConnectorCard('GoHighLevel', FontAwesomeIcons.rocket, false, 'Coming Soon'),
+        _buildConnectorCard('GoHighLevel', FontAwesomeIcons.rocket, false, AppLocalizations.of(context)!.comingSoon),
         const SizedBox(height: 16),
-        _buildConnectorCard('Google Drive', FontAwesomeIcons.googleDrive, false, 'Coming Soon'),
+        _buildConnectorCard('Google Drive', FontAwesomeIcons.googleDrive, false, AppLocalizations.of(context)!.comingSoon),
       ],
     );
   }
@@ -432,7 +434,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   }
 
   Widget _buildLoginPrompt() {
-    return Center(child: Text("Please log in to manage settings."));
+    return Center(child: Text(AppLocalizations.of(context)!.pleaseLoginManage));
   }
 
   Widget _buildPromptField(String label, TextEditingController controller, IconData icon, {bool readOnly = false}) {
@@ -457,7 +459,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             fillColor: Colors.black.withValues(alpha: 0.3),
             enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.purpleAccent)),
-            hintText: 'Enter agent instructions...',
+            hintText: AppLocalizations.of(context)!.enterAgentInstructions,
             hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
           ),
         ),
@@ -486,7 +488,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             fillColor: Colors.black.withValues(alpha: 0.3),
             enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
-            hintText: 'Enter API Key...',
+            hintText: AppLocalizations.of(context)!.enterApiKey,
             hintStyle: const TextStyle(color: Colors.white24, fontSize: 13),
           ),
         ),
@@ -519,7 +521,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   children: [
                     _isEditingProfile 
                       ? TextField(controller: _displayNameController, style: const TextStyle(color: Colors.white))
-                      : Text(user.displayName ?? 'Unnamed User', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      : Text(user.displayName ?? AppLocalizations.of(context)!.unnamedUser, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     Text(user.email ?? '', style: const TextStyle(color: Colors.white38, fontSize: 13)),
                   ],
                 ),
@@ -540,7 +542,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             const SizedBox(height: 20),
             TextButton(
               onPressed: () => setState(() => _isEditingProfile = false),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+              child: Text(AppLocalizations.of(context)!.cancel, style: const TextStyle(color: Colors.white38)),
             ),
           ],
         ],
@@ -554,7 +556,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('TEAM ACCESS & ROLES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent, letterSpacing: 1)),
+        Text(AppLocalizations.of(context)!.teamAccessRoles, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent, letterSpacing: 1)),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(24),
@@ -566,7 +568,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('System Role', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(AppLocalizations.of(context)!.systemRole, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -584,12 +586,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              const Text('Assigned Clients', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(AppLocalizations.of(context)!.assignedClients, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Consumer(
                 builder: (context, ref, child) {
                   final clients = ref.watch(clientProvider);
-                  if (clients.isEmpty) return const Text('No clients found.', style: TextStyle(color: Colors.white24, fontSize: 12));
+                  if (clients.isEmpty) return Text(AppLocalizations.of(context)!.noClientsFound, style: const TextStyle(color: Colors.white24, fontSize: 12));
                   
                   return Wrap(
                     spacing: 8,
@@ -621,7 +623,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                 child: ElevatedButton(
                   onPressed: _updateProfile,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.black),
-                  child: const Text('Save Access Levels'),
+                  child: Text(AppLocalizations.of(context)!.saveAccessLevels),
                 ),
               ),
             ],

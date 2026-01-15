@@ -91,4 +91,46 @@ class SecretVaultService {
   }
 }
 
+class AIKeys {
+  final String? gemini;
+  final String? veo;
+  final String? imagen;
+  final String? lyria;
+  final String? banana;
+  final String? openai;
+  final String? anthropic;
+  final String? xai;
+  final String? midjourney;
+  final String? runway;
+
+  AIKeys({
+    this.gemini,
+    this.veo,
+    this.imagen,
+    this.lyria,
+    this.banana,
+    this.openai,
+    this.anthropic,
+    this.xai,
+    this.midjourney,
+    this.runway,
+  });
+}
+
+final aiKeysProvider = FutureProvider<AIKeys>((ref) async {
+  final vault = ref.read(secretVaultProvider);
+  return AIKeys(
+    gemini: await vault.getGeminiKey(),
+    veo: await vault.getVeoKey(),
+    imagen: await vault.getImagenKey(),
+    lyria: await vault.getLyriaKey(),
+    banana: await vault.getBananaKey(),
+    openai: await vault.getOpenAIKey(),
+    anthropic: await vault.getAnthropicKey(),
+    xai: await vault.getXAIKey(),
+    midjourney: await vault.getMidjourneyKey(),
+    runway: await vault.getRunwayKey(),
+  );
+});
+
 final secretVaultProvider = Provider<SecretVaultService>((ref) => SecretVaultService());

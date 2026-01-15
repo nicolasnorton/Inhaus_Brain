@@ -40,6 +40,15 @@ class CreateProjectTool extends AgentTool {
     final name = (parameters['name'] ?? parameters['project_name']) as String?;
     final description = parameters['description'] as String? ?? 'No description provided.';
     final startDateStr = parameters['startDate'] as String? ?? DateTime.now().toIso8601String().split('T')[0];
+    final sectionsRaw = parameters['sections'];
+    final priorityStr = parameters['priority'] as String?;
+
+    List<String> sections = ['To Do', 'In Progress', 'Done'];
+    if (sectionsRaw != null && sectionsRaw is List) {
+      sections = sectionsRaw.cast<String>();
+    } else if (sectionsRaw != null && sectionsRaw is String) {
+       sections = sectionsRaw.split(',').map((e) => e.trim()).toList();
+    }
 
     if (clientId == null || name == null) {
       return ToolResult.failure('Missing required parameters: clientId and name are required.');
@@ -48,7 +57,7 @@ class CreateProjectTool extends AgentTool {
     try {
       final startDate = DateTime.parse(startDateStr);
       // ProjectNotifier takes raw args, not a Project object
-      _notifier.addProject(clientId, name, description);
+      _notifier.addProject(clientId, name, description, sections: sections, priorityStr: priorityStr);
       
       return ToolResult.success({'message': 'Project created successfully.'});
     } catch (e) {
@@ -77,6 +86,18 @@ class CreateTaskTool extends AgentTool {
               'type': 'string',
               'description': 'Description of the task.',
             },
+            'priority': {
+              'type': 'string',
+              'description': 'Priority (low, medium, high, urgent).',
+            },
+            'sectionId': {
+              'type': 'string',
+              'description': 'The section ID or name this task belongs to.',
+            },
+            'tags': {
+              'type': 'array',
+              'description': 'List of tags.',
+            },
           },
         );
 
@@ -92,7 +113,7 @@ class CreateTaskTool extends AgentTool {
 
     try {
        // TaskNotifier takes raw args
-       _notifier.addTask(projectId, title, description ?? '');
+       _notifier.addTask(projectId, title, description ?? '', priorityStr: parameters['priority'] as String?, sectionId: parameters['sectionId'] as String?, tags: (parameters['tags'] as List?)?.cast<String>());
       return ToolResult.success({'message': 'Task created successfully.'});
     } catch (e) {
       return ToolResult.failure('Failed to create task: $e');
@@ -197,7 +218,10 @@ final clientToolsProvider = Provider<List<AgentTool>>((ref) {
     CreateClientTool(clientNotifier),
     UpdateClientTool(clientNotifier, clients),
     DeleteClientTool(clientNotifier),
+    UpdateClientTool(clientNotifier, clients),
+    DeleteClientTool(clientNotifier),
     ListClientsTool(clients),
+    AddClientContactTool(clientNotifier),
     CreateProjectTool(projectNotifier),
     UpdateProjectTool(projectNotifier, projects),
     DeleteProjectTool(projectNotifier),
@@ -317,6 +341,22 @@ class UpdateClientTool extends AgentTool {
               'type': 'string',
               'description': 'New contact email for the client (optional).',
             },
+            'website': {
+              'type': 'string',
+              'description': 'Company website.',
+            },
+            'address': {
+              'type': 'string',
+              'description': 'Full company address.',
+            },
+            'size': {
+              'type': 'string',
+              'description': 'Company size (e.g. 10-50 employees).',
+            },
+            'description': {
+              'type': 'string',
+              'description': 'Brief company description.',
+            },
           },
         );
 
@@ -326,6 +366,10 @@ class UpdateClientTool extends AgentTool {
     final newName = (parameters['name'] ?? parameters['client_name']) as String?;
     final newIndustry = (parameters['industry'] ?? parameters['sector']) as String?;
     final newEmail = (parameters['email'] ?? parameters['contact']) as String?;
+    final newWebsite = parameters['website'] as String?;
+    final newAddress = parameters['address'] as String?;
+    final newSize = parameters['size'] as String?;
+    final newDescription = parameters['description'] as String?;
 
     if (clientId == null) {
       return ToolResult.failure('Missing required parameter: "clientId" is required.');
@@ -341,6 +385,10 @@ class UpdateClientTool extends AgentTool {
         name: newName,
         industry: newIndustry,
         primaryContactEmail: newEmail,
+        website: newWebsite,
+        address: newAddress,
+        size: newSize,
+        description: newDescription,
       );
 
       await _notifier.updateClient(updatedClient);
@@ -403,6 +451,22 @@ class CreateClientTool extends AgentTool {
               'type': 'string',
               'description': 'Contact email of the client (optional).',
             },
+            'website': {
+              'type': 'string',
+              'description': 'Company website.',
+            },
+            'address': {
+              'type': 'string',
+              'description': 'Full company address.',
+            },
+            'size': {
+              'type': 'string',
+              'description': 'Company size.',
+            },
+            'description': {
+              'type': 'string',
+              'description': 'Brief company description.',
+            },
           },
         );
 
@@ -411,13 +475,17 @@ class CreateClientTool extends AgentTool {
     final name = (parameters['name'] ?? parameters['client_name']) as String?;
     final industry = (parameters['industry'] ?? parameters['sector']) as String? ?? 'General';
     final email = (parameters['email'] ?? parameters['contact']) as String?;
+    final website = parameters['website'] as String?;
+    final address = parameters['address'] as String?;
+    final size = parameters['size'] as String?;
+    final description = parameters['description'] as String?;
 
     if (name == null) {
       return ToolResult.failure('Missing required parameter: "name" (or "client_name") is required.');
     }
 
     try {
-      await _notifier.addClient(name, industry, email: email);
+      await _notifier.addClient(name, industry, email: email, website: website, address: address, size: size, description: description);
       return ToolResult.success({'message': 'Client "$name" added successfully.'});
     } catch (e) {
       return ToolResult.failure('Failed to add client: $e');
@@ -444,5 +512,67 @@ class ListClientsTool extends AgentTool {
         'industry': c.industry,
       }).toList(),
     });
+  }
+}
+
+class AddClientContactTool extends AgentTool {
+  final ClientNotifier _notifier;
+
+  AddClientContactTool(this._notifier)
+      : super(
+          name: 'add_client_contact',
+          description: 'Add a new contact person to a client.',
+          inputSchema: {
+            'clientId': {
+              'type': 'string',
+              'description': 'The ID of the client.',
+            },
+            'firstName': {
+              'type': 'string',
+              'description': 'First name of the contact.',
+            },
+            'lastName': {
+              'type': 'string',
+              'description': 'Last name of the contact.',
+            },
+            'email': {
+              'type': 'string',
+              'description': 'Email address of the contact.',
+            },
+            'role': {
+              'type': 'string',
+              'description': 'Role or job title (e.g. Marketing Director).',
+            },
+            'accessLevel': {
+              'type': 'string',
+              'description': 'Access level (admin, editor, viewer). Defaults to viewer.',
+            },
+            'phoneNumber': {
+              'type': 'string',
+              'description': 'Phone number (optional).',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+    final clientId = (parameters['clientId'] ?? parameters['client_id']) as String?;
+    final firstName = parameters['firstName'] as String?;
+    final lastName = parameters['lastName'] as String?;
+    final email = parameters['email'] as String?;
+    final role = parameters['role'] as String?;
+    final accessLevel = parameters['accessLevel'] as String? ?? 'viewer';
+    final phoneNumber = parameters['phoneNumber'] as String?;
+
+    if (clientId == null || firstName == null || lastName == null || email == null || role == null) {
+      return ToolResult.failure('Missing required parameters. clientId, firstName, lastName, email, and role are required.');
+    }
+
+    try {
+      await _notifier.addClientContact(clientId, firstName, lastName, email, role, accessLevel: accessLevel, phoneNumber: phoneNumber);
+      return ToolResult.success({'message': 'Contact "$firstName $lastName" added to client successfully.'});
+    } catch (e) {
+      return ToolResult.failure('Failed to add client contact: $e');
+    }
   }
 }

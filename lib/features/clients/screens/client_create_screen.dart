@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../providers/client_provider.dart';
 
 class ClientCreateScreen extends ConsumerStatefulWidget {
@@ -21,7 +22,7 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Create New Client'),
+        title: Text(AppLocalizations.of(context)!.addNewClient),
       ),
       body: Padding(
         padding: const EdgeInsets.all(32.0),
@@ -33,28 +34,28 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
               TextFormField(
                 controller: _nameController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Client Name',
-                  labelStyle: TextStyle(color: Colors.white70),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.clientNameLabel,
+                  labelStyle: const TextStyle(color: Colors.white70),
                 ),
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
+                validator: (value) => value?.isEmpty ?? true ? AppLocalizations.of(context)!.requiredField : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _industryController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Industry',
-                  labelStyle: TextStyle(color: Colors.white70),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.industryLabel,
+                  labelStyle: const TextStyle(color: Colors.white70),
                 ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Primary Contact Email',
-                  labelStyle: TextStyle(color: Colors.white70),
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.primaryContactEmail,
+                  labelStyle: const TextStyle(color: Colors.white70),
                 ),
               ),
               const SizedBox(height: 32),
@@ -71,9 +72,9 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
                       if (mounted) Navigator.pop(context);
                     }
                   },
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('Create Client'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(AppLocalizations.of(context)!.createClient),
                   ),
                 ),
               ),

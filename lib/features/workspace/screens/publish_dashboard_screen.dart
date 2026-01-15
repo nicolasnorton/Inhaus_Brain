@@ -190,7 +190,7 @@ class _PublishDashboardScreenState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.black26,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -281,7 +281,7 @@ class _PublishDashboardScreenState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.black26,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -423,7 +423,7 @@ class _PublishDashboardScreenState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.black26,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -504,7 +504,7 @@ class _PublishDashboardScreenState
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
+        backgroundColor: Theme.of(context).cardColor,
         title: const Text('Launch Web App', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -544,7 +544,7 @@ class _PublishDashboardScreenState
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
+        backgroundColor: Theme.of(context).cardColor,
         title: const Text('API Reference', style: TextStyle(color: Colors.white)),
         content: Container(
           width: 500,
@@ -590,7 +590,7 @@ class _PublishDashboardScreenState
      showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
+        backgroundColor: Theme.of(context).cardColor,
         title: const Text('Connect MCP Server', style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,

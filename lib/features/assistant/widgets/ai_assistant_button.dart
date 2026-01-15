@@ -11,11 +11,16 @@ class AiAssistantButton extends ConsumerWidget {
 
     return FloatingActionButton(
       onPressed: () {
-        ref.read(isAssistantOpenProvider.notifier).state = !isOpen;
+        if (isOpen) {
+          // Trigger send in the overlay
+          ref.read(assistantSendTriggerProvider.notifier).state++;
+        } else {
+          ref.read(isAssistantOpenProvider.notifier).state = true;
+        }
       },
-      backgroundColor: isOpen ? Colors.redAccent : Colors.blueAccent,
-      child: Icon(isOpen ? Icons.close : Icons.smart_toy_outlined),
-      tooltip: isOpen ? 'Close Assistant' : 'AI Assistant',
+      backgroundColor: Colors.blueAccent,
+      child: Icon(isOpen ? Icons.send : Icons.smart_toy_outlined),
+      tooltip: isOpen ? 'Send Message' : 'AI Assistant',
     );
   }
 }

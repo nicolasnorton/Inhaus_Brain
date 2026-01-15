@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../core/auth/auth_service.dart';
 import '../assistant/widgets/ai_assistant_button.dart';
 import '../assistant/widgets/ai_assistant_overlay.dart';
@@ -21,13 +22,17 @@ class DashboardScreen extends ConsumerWidget {
             // Custom Scrollable Sidebar
             Container(
               width: 80,
-              color: Theme.of(context).cardColor.withValues(alpha: 0.3),
+              color: Theme.of(context).brightness == Brightness.light 
+                  ? Colors.black.withValues(alpha: 0.03) 
+                  : Theme.of(context).cardColor.withValues(alpha: 0.3),
               child: Column(
                 children: [
                    Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
                     child: Image.asset(
-                      'assets/images/logo.png',
+                      Theme.of(context).brightness == Brightness.light 
+                        ? 'assets/images/logo_light.png' 
+                        : 'assets/images/logo.png',
                       width: 48,
                       height: 48,
                       errorBuilder: (context, error, stackTrace) => 
@@ -38,15 +43,15 @@ class DashboardScreen extends ConsumerWidget {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, 'Dashboard', ref),
-                          _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, 'Clients', ref),
-                          _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, 'Campaigns', ref),
-                          _buildNavItem(context, 3, FontAwesomeIcons.chartLine, 'Analytics', ref),
-                          _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, 'Workflows', ref),
-                          _buildNavItem(context, 5, FontAwesomeIcons.rocket, 'Publish', ref),
-                          _buildNavItem(context, 6, FontAwesomeIcons.book, 'Knowledge', ref),
-                          _buildNavItem(context, 7, FontAwesomeIcons.gear, 'Settings', ref),
-                          _buildNavItem(context, 8, FontAwesomeIcons.bug, 'Debug', ref),
+                          _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
+                          _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
+                          _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
+                          _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
+                          _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
+                          _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
+                          _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
+                          _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
+                          _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
                           const SizedBox(height: 20), // Spacing at the end of scroll
                         ],
                       ),
@@ -57,12 +62,12 @@ class DashboardScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildUserAvatar(ref),
+                        _buildUserAvatar(context, ref),
                         const SizedBox(height: 16),
                         IconButton(
-                          icon: const Icon(Icons.logout, color: Colors.white54),
+                          icon: Icon(Icons.logout, color: Theme.of(context).brightness == Brightness.light ? Colors.black54 : Colors.white54),
                           onPressed: () => ref.read(authServiceProvider).signOut(),
-                          tooltip: 'Logout',
+                          tooltip: AppLocalizations.of(context)!.logout,
                         ),
                       ],
                     ),
@@ -86,12 +91,12 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildUserAvatar(WidgetRef ref) {
+  Widget _buildUserAvatar(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
     final roleName = user != null ? 'PRO' : 'GUEST';
     
     return Tooltip(
-      message: 'Logged in as $roleName',
+      message: AppLocalizations.of(context)!.loggedInAs(roleName),
       child: CircleAvatar(
         radius: 18,
         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
@@ -125,7 +130,9 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, WidgetRef ref) {
     final isSelected = _calculateSelectedIndex(context, ref) == index;
-    final color = isSelected ? Theme.of(context).primaryColor : Colors.white54;
+    final color = isSelected 
+        ? Theme.of(context).primaryColor 
+        : (Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54);
     
     return Semantics(
       label: 'Navigate to $label',
@@ -202,21 +209,21 @@ class DashboardHome extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Welcome back, $displayName',
+            AppLocalizations.of(context)!.welcomeBack(displayName),
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Inhaus Brain is ready for your next campaign.',
+            AppLocalizations.of(context)!.readyForCampaign,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Colors.white70,
                 ),
           ),
           const SizedBox(height: 32),
           Text(
-            'Quick Access',
+            AppLocalizations.of(context)!.quickAccess,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -236,49 +243,49 @@ class DashboardHome extends ConsumerWidget {
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.usersViewfinder,
-                    label: 'Clients',
+                    label: AppLocalizations.of(context)!.navClients,
                     onTap: () => context.go('/clients'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.bullhorn,
-                    label: 'Campaigns',
+                    label: AppLocalizations.of(context)!.navCampaigns,
                     onTap: () => context.go('/campaigns'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.chartLine,
-                    label: 'Analytics',
+                    label: AppLocalizations.of(context)!.navAnalytics,
                     onTap: () => context.go('/analytics'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.diagramProject,
-                    label: 'Workflows',
+                    label: AppLocalizations.of(context)!.navWorkflows,
                     onTap: () => context.go('/workflows'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.rocket,
-                    label: 'Publish',
+                    label: AppLocalizations.of(context)!.navPublish,
                     onTap: () => context.go('/publish'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.book,
-                    label: 'Knowledge',
+                    label: AppLocalizations.of(context)!.navKnowledge,
                     onTap: () => context.go('/knowledge'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.gear,
-                    label: 'Settings',
+                    label: AppLocalizations.of(context)!.navSettings,
                     onTap: () => context.go('/settings'),
                   ),
                   _buildNavCard(
                     context,
                     icon: FontAwesomeIcons.bug,
-                    label: 'Debug',
+                    label: AppLocalizations.of(context)!.navDebug,
                     onTap: () => context.go('/debug'),
                   ),
                 ],

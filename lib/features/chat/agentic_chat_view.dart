@@ -11,6 +11,7 @@ import '../settings/profile_settings_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/tokens/llm_provider.dart';
 import '../../core/services/voice_command_processor.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'widgets/voice_visualizer.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
@@ -168,12 +169,29 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                         ),
                         const SizedBox(height: 4),
                       ],
-                      Text(
-                        message.content,
-                        style: TextStyle(
-                          color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14,
-                          height: 1.4,
+                      MarkdownBody(
+                        data: message.content,
+                        styleSheet: MarkdownStyleSheet(
+                          p: TextStyle(
+                            color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          code: TextStyle(
+                            backgroundColor: Colors.black.withValues(alpha: 0.2),
+                            color: isUser ? Colors.white : Colors.cyanAccent,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          tableBody: const TextStyle(color: Colors.white70, fontSize: 12),
+                          tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          tableBorder: TableBorder.all(color: Colors.white10),
                         ),
                       ),
                       if (message.attachments.isNotEmpty) ...[
