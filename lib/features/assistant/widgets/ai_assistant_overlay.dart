@@ -308,16 +308,19 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             
             // Message List
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: messages.length + (_isTyping ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == messages.length) {
-                     return _buildTypingIndicator();
-                  }
-                  return _buildMessageBubble(messages[index]);
-                },
+              child: FocusTraversalGroup(
+                policy: WidgetOrderTraversalPolicy(),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length + (_isTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                       return _buildTypingIndicator();
+                    }
+                    return _buildMessageBubble(messages[index]);
+                  },
+                ),
               ),
             ),
 
