@@ -1,12 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:inhaus_brain/features/knowledge/providers/knowledge_service_providers.dart';
+import 'package:inhaus_brain/features/clients/providers/project_provider.dart';
 import 'package:inhaus_brain/features/clients/models/task_model.dart';
 import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 
 class TaskNotifier extends StateNotifier<List<ProjectTask>> {
   final LocalPersistenceService _persistenceService;
-
-  TaskNotifier(this._persistenceService) : super([]) {
+  final Ref _ref;
+ 
+  TaskNotifier(this._persistenceService, this._ref) : super([]) {
     _loadTasks();
   }
 
@@ -74,6 +77,13 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
     );
     state = [...state, newTask];
     await _persistenceService.saveTasks(state);
+    _triggerIngestion(projectId);
+  }
+
+  Future<void> _triggerIngestion(String projectId) async {
+    final project = _ref.read(projectProvider).firstWhere((p) => p.id == projectId);
+    final tasks = state.where((t) => t.projectId == projectId).toList();
+    _ref.read(knowledgeIngestionServiceProvider).ingestProject(project, tasks);
   }
 
   Future<void> updateTask(ProjectTask updatedTask) async {
@@ -89,6 +99,33 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
     await _persistenceService.saveTasks(state);
   }
 
+  Future<void> moveTaskToSection(String taskId, String sectionId) async {
+    state = [
+      for (final task in state)
+        if (task.id == taskId) task.copyWith(sectionId: sectionId) else task
+    ];
+    await _persistenceService.saveTasks(state);
+  }
+
+  Future<void> reorderTask(String taskId, int newIndex, {String? sectionId}) async {
+    final tasksInTarget = state.where((t) => t.projectId == state.firstWhere((st) => st.id == taskId).projectId && (sectionId == null || t.sectionId == sectionId)).toList();
+    tasksInTarget.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    
+    // Logic to update orderIndex for elements
+    // For simplicity, we just set the new index and push others
+    final currentTask = state.firstWhere((t) => t.id == taskId);
+    final updatedList = List<ProjectTask>.from(state);
+    
+    // This is a simplified reorder logic
+    int idx = 0;
+    state = [
+      for (final t in state)
+        if (t.id == taskId) t.copyWith(orderIndex: newIndex, sectionId: sectionId ?? t.sectionId)
+        else t.copyWith(orderIndex: idx++)
+    ];
+    await _persistenceService.saveTasks(state);
+  }
+
   List<ProjectTask> getTasksForProject(String projectId) {
     return state.where((t) => t.projectId == projectId).toList();
   }
@@ -96,5 +133,5 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
 
 final taskProvider = StateNotifierProvider<TaskNotifier, List<ProjectTask>>((ref) {
   final persistence = ref.watch(persistenceServiceProvider);
-  return TaskNotifier(persistence);
+  return TaskNotifier(persistence, ref);
 });

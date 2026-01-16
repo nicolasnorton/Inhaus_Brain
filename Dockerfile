@@ -19,11 +19,17 @@ RUN flutter doctor
 WORKDIR /app
 COPY . .
 
+# Build-time environment variables
+ARG VERTEX_API_KEY
+ARG GEMINI_API_KEY
+
 # Build the web application
 # Note: Cleaning before build ensures no stale artifacts are included
 RUN flutter clean && \
     flutter pub get && \
-    flutter build web --release --no-tree-shake-icons
+    flutter build web --release --no-tree-shake-icons \
+    --dart-define=VERTEX_API_KEY=$VERTEX_API_KEY \
+    --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine

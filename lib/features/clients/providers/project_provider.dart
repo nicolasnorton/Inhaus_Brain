@@ -77,6 +77,30 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
     await _persistenceService.saveProjects(state);
   }
 
+  Future<void> addSection(String projectId, String sectionName) async {
+    state = [
+      for (final p in state)
+        if (p.id == projectId) p.copyWith(sections: [...p.sections, sectionName]) else p
+    ];
+    await _persistenceService.saveProjects(state);
+  }
+
+  Future<void> removeSection(String projectId, String sectionName) async {
+    state = [
+      for (final p in state)
+        if (p.id == projectId) p.copyWith(sections: p.sections.where((s) => s != sectionName).toList()) else p
+    ];
+    await _persistenceService.saveProjects(state);
+  }
+
+  Future<void> renameSection(String projectId, String oldName, String newName) async {
+    state = [
+      for (final p in state)
+        if (p.id == projectId) p.copyWith(sections: p.sections.map((s) => s == oldName ? newName : s).toList()) else p
+    ];
+    await _persistenceService.saveProjects(state);
+  }
+
   List<Project> getProjectsForClient(String clientId) {
     return state.where((p) => p.clientId == clientId).toList();
   }

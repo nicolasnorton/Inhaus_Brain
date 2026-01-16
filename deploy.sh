@@ -11,6 +11,8 @@ echo "🚀 Starting Deployment for $PROJECT_ID..."
 # 1. Build and Submit to Artifact Registry/GCR
 echo "📦 Building container image..."
 gcloud builds submit --tag $IMAGE_TAG . \
+  --build-arg="VERTEX_API_KEY=AQ.Ab8RN6I1yaY9ppyDT0RljTgXlmAUwxvhca2mxAbqsQPwz5EMbg" \
+  --build-arg="GEMINI_API_KEY=AIzaSyCiGMMlAdmooQjaRA7H2YYYyZGTSpuHYWY" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 2. Deploy to Cloud Run
@@ -20,7 +22,8 @@ gcloud run deploy $SERVICE_NAME \
   --platform managed \
   --region $REGION \
   --allow-unauthenticated \
-  --project $PROJECT_ID
+  --project $PROJECT_ID \
+  --set-env-vars "VERTEX_API_KEY=AQ.Ab8RN6I1yaY9ppyDT0RljTgXlmAUwxvhca2mxAbqsQPwz5EMbg,GEMINI_API_KEY=AIzaSyCiGMMlAdmooQjaRA7H2YYYyZGTSpuHYWY"
 
 echo "✅ Deployment Complete!"
 echo "🌍 App available at: https://brain.inhauscorp.com"

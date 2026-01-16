@@ -15,6 +15,11 @@ enum MessageSender {
   dataEngineerAgent, // Phase 15
   visionAgent,       // Phase 18
   routerAgent,       // Phase 23
+  knowledgeLibrarianAgent,
+  performanceAnalystAgent,
+  dataScientistAgent,
+  digitalStrategyAgent,
+  dashboardAgent,
   
   // Phase 31: Agency Model Alignment
   trendScoutAgent,
@@ -22,7 +27,6 @@ enum MessageSender {
   strategistAgent,
   editorialManagerAgent,
   mediaBuyerAgent,
-  performanceAnalystAgent,
   managementAgent, // Phase 4: Client Management
 
   humanAgent,

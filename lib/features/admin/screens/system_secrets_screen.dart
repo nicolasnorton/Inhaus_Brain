@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../settings/services/secrets_service.dart';
@@ -11,7 +12,9 @@ class SystemSecretsScreen extends ConsumerStatefulWidget {
 }
 
 class _SystemSecretsScreenState extends ConsumerState<SystemSecretsScreen> {
-  final _controller = TextEditingController();
+  final List<TextEditingController> _keyControllers = [];
+  final List<TextEditingController> _valueControllers = [];
+  final List<bool> _isMasked = [];
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -23,37 +26,66 @@ class _SystemSecretsScreenState extends ConsumerState<SystemSecretsScreen> {
 
   Future<void> _loadSecrets() async {
     try {
-      final secrets = await ref.read(secretsServiceProvider).getSystemSecrets();
-      if (mounted) {
-        setState(() {
-          _controller.text = secrets;
-          _isLoading = false;
-        });
-      }
+      final content = await ref.read(secretsServiceProvider).getSystemSecrets();
+      _parseSecrets(content);
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading secrets: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
         setState(() => _isLoading = false);
       }
     }
   }
 
+  void _parseSecrets(String content) {
+    final lines = content.split('\n');
+    for (var line in lines) {
+      if (line.trim().isEmpty || !line.contains('=')) continue;
+      final parts = line.split('=');
+      final key = parts[0].trim();
+      final value = parts.sublist(1).join('=').trim();
+      
+      _keyControllers.add(TextEditingController(text: key));
+      _valueControllers.add(TextEditingController(text: value));
+      _isMasked.add(true);
+    }
+    // Add one empty field if list is empty
+    if (_keyControllers.isEmpty) _addField();
+  }
+
+  void _addField() {
+    setState(() {
+      _keyControllers.add(TextEditingController());
+      _valueControllers.add(TextEditingController());
+      _isMasked.add(false);
+    });
+  }
+
+  void _removeField(int index) {
+    setState(() {
+      _keyControllers.removeAt(index);
+      _valueControllers.removeAt(index);
+      _isMasked.removeAt(index);
+    });
+  }
+
   Future<void> _saveSecrets() async {
     setState(() => _isSaving = true);
     try {
-      await ref.read(secretsServiceProvider).saveSystemSecrets(_controller.text);
+      final content = _keyControllers.asMap().entries.map((e) {
+        final key = e.value.text.trim();
+        final value = _valueControllers[e.key].text.trim();
+        if (key.isEmpty) return null;
+        return '$key=$value';
+      }).where((e) => e != null).join('\n');
+
+      await ref.read(secretsServiceProvider).saveSystemSecrets(content);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('System secrets saved successfully'), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Secrets saved successfully'), backgroundColor: Colors.green));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving secrets: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -62,75 +94,92 @@ class _SystemSecretsScreenState extends ConsumerState<SystemSecretsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFF0F1116),
       appBar: AppBar(
-        title: const Text('System Secrets (secrets.md)'),
-        backgroundColor: theme.scaffoldBackgroundColor,
-        elevation: 0,
+        title: const Text('System Secrets Management'),
+        backgroundColor: const Color(0xFF0F1116),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: IconButton(
-              onPressed: _isSaving ? null : _saveSecrets,
-              icon: _isSaving 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const FaIcon(FontAwesomeIcons.floppyDisk),
-              tooltip: 'Save Secrets',
+          IconButton(
+            onPressed: _addField,
+            icon: const Icon(Icons.add_box_outlined, color: Colors.blueAccent),
+            tooltip: 'Add Secret',
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _isSaving ? null : _saveSecrets,
+            icon: _isSaving 
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const FaIcon(FontAwesomeIcons.floppyDisk, size: 18),
+            tooltip: 'Save All Changes',
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.separated(
+              padding: const EdgeInsets.all(24),
+              itemCount: _keyControllers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (context, index) => _buildSecretRow(index),
             ),
+    );
+  }
+
+  Widget _buildSecretRow(int index) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C2128),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: TextField(
+              controller: _keyControllers[index],
+              style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(
+                hintText: 'KEY_NAME',
+                hintStyle: TextStyle(color: Colors.white12),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 4,
+            child: TextField(
+              controller: _valueControllers[index],
+              obscureText: _isMasked[index],
+              style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontFamily: 'monospace'),
+              decoration: const InputDecoration(
+                hintText: 'value',
+                hintStyle: TextStyle(color: Colors.white12),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(_isMasked[index] ? Icons.visibility_off : Icons.visibility, size: 18, color: Colors.white24),
+            onPressed: () => setState(() => _isMasked[index] = !_isMasked[index]),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 16, color: Colors.white24),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: _valueControllers[index].text));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+            onPressed: () => _removeField(index),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.1),
-                      border: Border.all(color: Colors.amber.withOpacity(0.3)),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const FaIcon(FontAwesomeIcons.triangleExclamation, color: Colors.amber, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'CAUTION: API Keys and secrets stored here are used by server-side functions. Edits take effect immediately.',
-                            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.amber),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      maxLines: null,
-                      expands: true,
-                      style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: 'OPENAI_API_KEY=sk-...\nDATABASE_URL=postgres://...',
-                        fillColor: theme.cardColor,
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: theme.dividerColor),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
     );
   }
 }

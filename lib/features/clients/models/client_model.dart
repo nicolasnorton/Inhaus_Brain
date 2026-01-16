@@ -14,6 +14,7 @@ class Client {
   final String? size; // e.g. "10-50 employees"
   final String? description;
   final List<ClientContact> contacts;
+  final Map<String, dynamic> customFields;
 
   Client({
     required this.id,
@@ -27,6 +28,7 @@ class Client {
     this.size,
     this.description,
     this.contacts = const [],
+    this.customFields = const {},
   });
 
   Client copyWith({
@@ -40,6 +42,7 @@ class Client {
     String? size,
     String? description,
     List<ClientContact>? contacts,
+    Map<String, dynamic>? customFields,
   }) {
     return Client(
       id: id,
@@ -53,6 +56,7 @@ class Client {
       size: size ?? this.size,
       description: description ?? this.description,
       contacts: contacts ?? this.contacts,
+      customFields: customFields ?? this.customFields,
     );
   }
 
@@ -71,6 +75,7 @@ class Client {
       contacts: (json['contacts'] as List? ?? [])
           .map((e) => ClientContact.fromJson(e as Map<String, dynamic>))
           .toList(),
+      customFields: Map<String, dynamic>.from(json['customFields'] ?? {}),
     );
   }
 
@@ -86,5 +91,6 @@ class Client {
     'size': size,
     'description': description,
     'contacts': contacts.map((e) => e.toJson()).toList(),
+    'customFields': customFields,
   };
 }

@@ -68,34 +68,44 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 40, // Slightly smaller for better balance
+                SizedBox(
+                  width: 300,
+                  height: 44,
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 Image.asset(
                   'assets/images/brain_icon.png',
                   height: 80, // Slightly larger for better visibility
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'INHAUS BRAIN',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 6.0,
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: 300,
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'INHAUS BRAIN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 6.0,
+                      ),
+                    ),
                   ),
                 ),
                 const Text(
                   'v1.0.1-rev9',
                   style: TextStyle(color: Colors.white24, fontSize: 8),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 54),
                 Text(
                   _isLogin ? AppLocalizations.of(context)!.welcomeBackAuth : AppLocalizations.of(context)!.createAccountAuth,
                   style: const TextStyle(

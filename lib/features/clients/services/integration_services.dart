@@ -49,3 +49,23 @@ class GoHighLevelService extends ExternalIntegrationService {
     // Logic to create GHL contact
   }
 }
+
+class GoogleCalendarService extends ExternalIntegrationService {
+  GoogleCalendarService() : super('Google Calendar');
+}
+
+class GoogleDriveService extends ExternalIntegrationService {
+  GoogleDriveService() : super('Google Drive');
+}
+
+class DropboxService extends ExternalIntegrationService {
+  DropboxService() : super('Dropbox');
+}
+
+class OtterAIService extends ExternalIntegrationService {
+  OtterAIService() : super('Otter.ai');
+}
+
+class GoogleWorkspaceService extends ExternalIntegrationService {
+  GoogleWorkspaceService() : super('Google Workspace');
+}

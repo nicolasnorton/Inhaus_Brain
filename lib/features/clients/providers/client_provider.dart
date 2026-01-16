@@ -1,13 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:inhaus_brain/features/knowledge/providers/knowledge_service_providers.dart';
 import 'package:inhaus_brain/features/clients/models/client_model.dart';
 import 'package:inhaus_brain/features/clients/models/client_contact_model.dart';
 import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 
 class ClientNotifier extends StateNotifier<List<Client>> {
   final LocalPersistenceService _persistenceService;
+  final Ref _ref;
   
-  ClientNotifier(this._persistenceService) : super([]) {
+  ClientNotifier(this._persistenceService, this._ref) : super([]) {
     _loadClients();
   }
 
@@ -53,6 +55,7 @@ class ClientNotifier extends StateNotifier<List<Client>> {
     );
     state = [...state, newClient];
     await _persistenceService.saveClients(state);
+    _ref.read(knowledgeIngestionServiceProvider).ingestClient(newClient);
   }
 
   Future<void> updateClient(Client updatedClient) async {
@@ -112,5 +115,5 @@ class ClientNotifier extends StateNotifier<List<Client>> {
 
 final clientProvider = StateNotifierProvider<ClientNotifier, List<Client>>((ref) {
   final persistence = ref.watch(persistenceServiceProvider);
-  return ClientNotifier(persistence);
+  return ClientNotifier(persistence, ref);
 });

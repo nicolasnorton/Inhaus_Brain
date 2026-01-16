@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inhaus_brain/features/knowledge/providers/knowledge_service_providers.dart';
 import 'assistant_tool_registry.dart';
 import '../../../core/mcp/agent_tool.dart';
 import '../../../core/services/edge_ai_service.dart';
@@ -10,6 +11,7 @@ import '../../chat/services/memory_service.dart';
 import '../../chat/services/tool_retrieval_service.dart';
 import '../../chat/services/verification_service.dart';
 import '../../chat/agents/router_agent.dart';
+import '../../../core/services/local_persistence_service.dart';
 
 class AssistantMessage {
   final String id;
@@ -39,13 +41,53 @@ class AssistantMessage {
     this.processingTime,
     this.sources,
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'text': text,
+    'isUser': isUser,
+    'timestamp': timestamp.toIso8601String(),
+    'isToolOutput': isToolOutput,
+    'generatedAssetPath': generatedAssetPath,
+    'generatedAssetType': generatedAssetType,
+    'modelName': modelName,
+    'processingTimeMs': processingTime?.inMilliseconds,
+    'sources': sources,
+    'attachment': attachment != null ? base64Encode(attachment!) : null,
+    'audioAttachment': audioAttachment != null ? base64Encode(audioAttachment!) : null,
+  };
+
+  factory AssistantMessage.fromJson(Map<String, dynamic> json) => AssistantMessage(
+    id: json['id'],
+    text: json['text'],
+    isUser: json['isUser'],
+    timestamp: DateTime.parse(json['timestamp']),
+    isToolOutput: json['isToolOutput'] ?? false,
+    generatedAssetPath: json['generatedAssetPath'],
+    generatedAssetType: json['generatedAssetType'],
+    modelName: json['modelName'],
+    processingTime: json['processingTimeMs'] != null ? Duration(milliseconds: json['processingTimeMs']) : null,
+    sources: json['sources'] != null ? List<String>.from(json['sources']) : null,
+    attachment: json['attachment'] != null ? base64Decode(json['attachment']) : null,
+    audioAttachment: json['audioAttachment'] != null ? base64Decode(json['audioAttachment']) : null,
+  );
 }
 
 class AssistantService {
   final List<AssistantMessage> _history = [];
   final Ref _ref;
 
-  AssistantService(this._ref);
+  AssistantService(this._ref) {
+    _initHistory();
+  }
+
+  Future<void> _initHistory() async {
+    final persistence = _ref.read(persistenceServiceProvider);
+    final history = await persistence.getAssistantHistory();
+    if (history.isNotEmpty) {
+      _history.addAll(history);
+    }
+  }
 
   List<AssistantMessage> get history => List.unmodifiable(_history);
 
@@ -59,6 +101,7 @@ class AssistantService {
       attachment: attachment,
       audioAttachment: audioAttachment,
     ));
+    await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
 
     // 2. Simulate AI Intent Matching (Mock)
     final stopwatch = Stopwatch()..start();
@@ -83,6 +126,14 @@ class AssistantService {
     );
 
     _history.add(message);
+    await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
+    
+    // Ingest into knowledge autonomously
+    _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
+      "Query: $text\nResponse: ${message.text}",
+      attachment: attachment,
+    );
+    
     return message;
   }
 
@@ -163,6 +214,7 @@ Instructions:
         audioBytes: audioAttachment != null ? Uint8List.fromList(audioAttachment) : null,
       );
       final rawResponse = aiRes.text.trim();
+      debugPrint('Assistant: AI Raw Response: "$rawResponse"');
       // Robust Parsing (Markdown + Function Call Support)
       String cleanResponse = rawResponse.trim();
       
@@ -179,6 +231,7 @@ Instructions:
 
       if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
         var jsonStr = cleanResponse.substring(jsonStart, jsonEnd + 1);
+        debugPrint('Assistant: Found JSON block candidate: $jsonStr');
         
         // Validation: Create a safe JSON string by escaping unescaped newlines
         // This handles cases where models output multi-line strings invalidly
@@ -188,6 +241,7 @@ Instructions:
 
         try {
           final dynamic parsed = jsonDecode(jsonStr);
+          debugPrint('Assistant: Parsed JSON: $parsed');
           if (parsed is Map<String, dynamic>) {
              String? toolName;
              Map<String, dynamic>? toolArgs;
@@ -205,17 +259,20 @@ Instructions:
                if (funcMatch != null) {
                  toolName = funcMatch.group(1);
                  toolArgs = parsed;
+                 debugPrint('Assistant: Inferred tool $toolName from function prefix');
                } else if (cleanResponse.contains('(') && cleanResponse.endsWith(')')) {
                   // Fallback: simple prefix check if no strict regex match
                    final cleanPrefix = prefix.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
                    if (cleanPrefix.isNotEmpty) {
                       toolName = cleanPrefix;
                       toolArgs = parsed;
+                      debugPrint('Assistant: Inferred tool $toolName from dirty prefix');
                    }
                }
              }
 
              if (toolName != null && toolArgs != null) {
+               debugPrint('Assistant: Executing tool $toolName with $toolArgs');
                // Special handling for bad args nesting (sometimes models wrap args in "args" key inside the function call)
                if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
                  toolArgs = Map<String, dynamic>.from(toolArgs['args']);

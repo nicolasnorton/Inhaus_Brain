@@ -42,10 +42,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   title: 'User Management',
                   icon: FontAwesomeIcons.users,
                   color: Colors.blue,
-                  onTap: () {
-                    // TODO: Navigate to User Management
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming Soon: User Management')));
-                  },
+                  onTap: () => context.push('/admin/users'),
                 ),
                 if (isSuperAdmin)
                   _AdminCard(
@@ -59,7 +56,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   title: 'System Analytics',
                   icon: FontAwesomeIcons.chartLine,
                   color: Colors.green,
-                  onTap: () => context.push('/admin/system-logs'),
+                  onTap: () => context.push('/admin/system-analytics'),
                 ),
                  _AdminCard(
                   title: 'Super Copilot',
@@ -72,7 +69,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   title: 'Audit Logs',
                   icon: FontAwesomeIcons.listCheck,
                   color: Colors.orange,
-                  onTap: () {},
+                  onTap: () => context.push('/admin/audit-logs'),
                 ),
               ],
             ),

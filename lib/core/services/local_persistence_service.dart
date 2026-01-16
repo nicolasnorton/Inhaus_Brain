@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/clients/models/client_model.dart';
 import '../../features/clients/models/project_model.dart';
 import '../../features/clients/models/task_model.dart';
+import '../../features/assistant/services/assistant_service.dart';
 
 /// Service for simple local persistence using SharedPreferences
 class LocalPersistenceService {
@@ -98,6 +99,23 @@ class LocalPersistenceService {
     if (jsonString != null) {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((j) => ProjectTask.fromJson(j)).toList();
+    }
+    return [];
+  }
+
+  // --- Assistant History Persistence ---
+  Future<void> saveAssistantHistory(List<AssistantMessage> messages) async {
+    final List<Map<String, dynamic>> json = messages.map((m) => m.toJson()).toList();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('assistant_history', jsonEncode(json));
+  }
+
+  Future<List<AssistantMessage>> getAssistantHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? jsonString = prefs.getString('assistant_history');
+    if (jsonString != null) {
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList.map((j) => AssistantMessage.fromJson(j)).toList();
     }
     return [];
   }

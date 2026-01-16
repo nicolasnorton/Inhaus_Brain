@@ -110,6 +110,30 @@ class AuthService {
   // Internal helper
   Future<void> _syncUserWithFirestore(AppUser user) => updateAppUser(user);
 
+  /// User Management (Admin Only)
+  Future<List<AppUser>> getAllUsers() async {
+    try {
+      final snapshot = await _firestore.collection('users').orderBy('email').get();
+      return snapshot.docs.map((doc) => AppUser.fromJson(doc.data())).toList();
+    } catch (e) {
+      if (kDebugMode) print('Error fetching all users: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateUserRole(String userId, UserRole role) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'role': role.name,
+      });
+      // Clear from profile cache to force refresh on next fetch
+      _userProfiles.remove(userId);
+    } catch (e) {
+      if (kDebugMode) print('Error updating user role: $e');
+      rethrow;
+    }
+  }
+
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();

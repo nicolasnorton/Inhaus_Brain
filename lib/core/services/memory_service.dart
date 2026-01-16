@@ -156,7 +156,6 @@ class MemoryService {
     return "\n[REMEMBERED FACTS & PREFERENCES]:\n${relevant.map((m) => "- ${m.key}: ${m.value}").join("\n")}";
   }
   
-  // Method for Super Admin to fetch ALL system memories
   Future<List<MemoryItem>> getSuperAdminMemories() async {
       // This is an expensive operation if we fetch EVERYTHING.
       // In production, we would filter.
@@ -166,6 +165,25 @@ class MemoryService {
         .get();
       
       return snapshot.docs.map((doc) => MemoryItem.fromJson(doc.data())).toList();
+  }
+
+  Future<void> updateSuperAdminMemory(MemoryItem item) async {
+    final docId = "${item.userId}_${item.id}";
+    await _firestore.collection('system').doc('memory').collection('super_admin')
+        .doc(docId).set({
+          ...item.toJson(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedBy': 'super_admin',
+        }, SetOptions(merge: true));
+    
+    // Optional: Also sync back to user's private memory if we want consistency?
+    // For now, let's keep it in system memory as a "correction".
+  }
+
+  Future<void> deleteSuperAdminMemory(MemoryItem item) async {
+    final docId = "${item.userId}_${item.id}";
+    await _firestore.collection('system').doc('memory').collection('super_admin')
+        .doc(docId).delete();
   }
 }
 

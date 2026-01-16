@@ -14,6 +14,7 @@ import '../../features/adk/screens/workflow_start_screen.dart';
 import '../../features/clients/client_management_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
 import '../../features/clients/screens/client_create_screen.dart';
+import '../../features/clients/screens/client_edit_screen.dart';
 import '../../features/knowledge/knowledge_management_screen.dart';
 import '../../features/workspace/screens/model_providers_screen.dart';
 import '../../features/workspace/screens/plugins_screen.dart';
@@ -30,6 +31,9 @@ import '../../features/admin/screens/system_secrets_screen.dart';
 import '../../features/settings/screens/user_secrets_screen.dart';
 import '../../features/admin/screens/system_logs_screen.dart';
 import '../../features/admin/screens/super_copilot_screen.dart';
+import '../../features/admin/screens/user_management_screen.dart';
+import '../../features/admin/screens/audit_logs_screen.dart';
+import '../../features/admin/screens/system_analytics_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -92,6 +96,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => ClientDetailScreen(
                   clientId: state.pathParameters['id']!,
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    builder: (context, state) => ClientEditScreen(
+                      clientId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -162,8 +174,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const SystemLogsScreen(),
               ),
               GoRoute(
+                path: 'system-analytics',
+                builder: (context, state) => const SystemAnalyticsScreen(),
+              ),
+              GoRoute(
                 path: 'super-copilot',
                 builder: (context, state) => const SuperCopilotScreen(),
+              ),
+              GoRoute(
+                path: 'users',
+                builder: (context, state) => const UserManagementScreen(),
+              ),
+              GoRoute(
+                path: 'audit-logs',
+                builder: (context, state) => const AuditLogsScreen(),
               ),
             ],
           ),

@@ -3,9 +3,10 @@ import '../../services/edge_ai_service.dart';
 
 class ImageGenerationTool extends AgentTool {
   final String? imagenKey;
+  final String? vertexKey;
   final String? bananaKey;
 
-  ImageGenerationTool({this.imagenKey, this.bananaKey})
+  ImageGenerationTool({this.imagenKey, this.vertexKey, this.bananaKey})
       : super(
           name: 'image_generation',
           description: 'Generate a production-grade image concept.',
@@ -24,7 +25,7 @@ class ImageGenerationTool extends AgentTool {
       return ToolResult.failure('Missing required parameter: prompt');
     }
 
-    final url = await EdgeAIService.generateImage(prompt, imagenKey: imagenKey, bananaKey: bananaKey);
+    final url = await EdgeAIService.generateImage(prompt, imagenKey: imagenKey, vertexKey: vertexKey, bananaKey: bananaKey);
     return ToolResult.success({'url': url});
   }
 }

@@ -3,8 +3,9 @@ import '../../services/edge_ai_service.dart';
 
 class VideoGenerationTool extends AgentTool {
   final String? veoKey;
+  final String? vertexKey;
 
-  VideoGenerationTool({this.veoKey})
+  VideoGenerationTool({this.veoKey, this.vertexKey})
       : super(
           name: 'video_generation',
           description: 'Generate a high-fidelity video asset.',
@@ -23,7 +24,7 @@ class VideoGenerationTool extends AgentTool {
       return ToolResult.failure('Missing required parameter: prompt');
     }
 
-    final url = await EdgeAIService.generateVideo(prompt, veoKey: veoKey);
+    final url = await EdgeAIService.generateVideo(prompt, veoKey: veoKey, vertexKey: vertexKey);
     return ToolResult.success({'url': url});
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../providers/client_provider.dart';
 import '../providers/project_provider.dart';
@@ -56,6 +57,13 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(client.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+            tooltip: 'Edit Business Profile',
+            onPressed: () => context.push('/clients/${client.id}/edit'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.blueAccent,
@@ -110,6 +118,23 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           Text('${AppLocalizations.of(context)!.industryLabelShort}: ${client.industry}  •  ${AppLocalizations.of(context)!.sizeLabel}: ${client.size ?? AppLocalizations.of(context)!.notAvailable}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7), fontSize: 14)),
           const SizedBox(height: 16),
           Text('${AppLocalizations.of(context)!.primaryContactLabel}: ${client.primaryContactEmail ?? AppLocalizations.of(context)!.notAvailable}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
+          if (client.customFields.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            Text('ADDITIONAL INFORMATION', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: client.customFields.entries.map((entry) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   Text(entry.key.toUpperCase(), style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4), fontSize: 9, fontWeight: FontWeight.bold)),
+                   const SizedBox(height: 4),
+                   Text(entry.value.toString(), style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14)),
+                ],
+              )).toList(),
+            ),
+          ],
           const SizedBox(height: 32),
           Text(AppLocalizations.of(context)!.performanceSummary, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 16),

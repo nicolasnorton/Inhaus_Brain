@@ -28,8 +28,8 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
   final aiKeysAsync = ref.watch(aiKeysProvider);
   final aiKeys = aiKeysAsync.value;
   final generationTools = [
-    ImageGenerationTool(imagenKey: aiKeys?.imagen, bananaKey: aiKeys?.banana),
-    VideoGenerationTool(veoKey: aiKeys?.veo),
+    ImageGenerationTool(imagenKey: aiKeys?.imagen, vertexKey: aiKeys?.vertex, bananaKey: aiKeys?.banana),
+    VideoGenerationTool(veoKey: aiKeys?.veo, vertexKey: aiKeys?.vertex),
     AudioGenerationTool(lyriaKey: aiKeys?.lyria),
   ];
   

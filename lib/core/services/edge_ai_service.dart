@@ -319,32 +319,22 @@ class EdgeAIService {
     }
   }
 
-  static Future<String> generateImage(String prompt, {String? imagenKey, String? bananaKey, String? midjourneyKey, String? runwayKey}) async {
+  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey}) async {
     final isNanoBanana = prompt.toLowerCase().contains('banana') || (bananaKey != null && bananaKey.isNotEmpty);
     
     if (midjourneyKey != null && midjourneyKey.isNotEmpty) {
        await Future.delayed(const Duration(seconds: 4));
        return "https://via.placeholder.com/1024x1024.png?text=Midjourney+v6"; 
     }
-    if (imagenKey != null && imagenKey.isNotEmpty || isNanoBanana) {
-      // Use Vertex AI Imagen 3 (requires Access Token as 'imagenKey' for now, or Service Account via proxy)
-      // Assuming 'imagenKey' is a valid Google Cloud Access Token or API Key with sufficient scope.
-      // If it's an API Key (AIStudio), it might not work for Imagen yet.
-      // For this implementation, we assume the user provides a Bearer Token or we use a REST proxy.
-      // Given the constraints, we will TRY to call the Vertex AI REST endpoint if the key looks like a token.
-      
-      if (imagenKey!.startsWith('ya29')) { // Typical Google Access Token prefix
-         try {
-           return await _generateVertexImagen(prompt, imagenKey);
-         } catch (e) {
-           debugPrint('Vertex Imagen failed: $e. Falling back to Pollinations.');
-         }
-      } else {
-         // Fallback/Simulated for standard API keys or placeholder
-         await Future.delayed(const Duration(seconds: 2));
-         // If they have an API key but not a token, we can't easily call Vertex directly from client.
-         // We'll log this limitation.
-         debugPrint('Imagen Key provided but logic requires Access Token for Vertex AI. Using Pollinations fallback.');
+    if (imagenKey != null && imagenKey.isNotEmpty || vertexKey != null && vertexKey.isNotEmpty || isNanoBanana) {
+      // Use Vertex AI Imagen 3
+      final key = vertexKey ?? imagenKey;
+      if (key != null && key.isNotEmpty) {
+          try {
+            return await _generateVertexImagen(prompt, key);
+          } catch (e) {
+            debugPrint('Vertex Imagen failed: $e. Falling back to Pollinations.');
+          }
       }
     }
 
@@ -369,19 +359,26 @@ class EdgeAIService {
     return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&nologo=true";
   }
 
-  static Future<String> _generateVertexImagen(String prompt, String accessToken) async {
-    // Requires PROJECT_ID. Since we don't have it injected, we might need to ask or use a default.
-    // For now, we'll try to find it in the vault or use a placeholder which will fail if invalid.
-    String projectId = 'inhausbrain'; // Default from user context
+  static Future<String> _generateVertexImagen(String prompt, String key) async {
+    String projectId = 'inhausbrain'; 
     
-    final url = Uri.parse('https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagegeneration:predict');
+    // Check if it's likely an API Key or an Access Token
+    final isApiKey = !key.startsWith('ya29.');
+    
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagegeneration:predict';
+    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
+    debugPrint('EdgeAI: [VERTEX] Calling Imagen 3 at ${isApiKey ? baseUrl : url} (Auth: ${isApiKey ? "API Key" : "Bearer Token"})');
+    
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (!isApiKey) {
+      headers['Authorization'] = 'Bearer $key';
+    }
     
     final response = await http.post(
       url,
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
+      headers: headers,
       body: jsonEncode({
         "instances": [
           {"prompt": prompt}
@@ -392,6 +389,7 @@ class EdgeAIService {
         }
       }),
     );
+    debugPrint('EdgeAI: [VERTEX] Response status: ${response.statusCode}');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -404,18 +402,64 @@ class EdgeAIService {
     }
   }
 
-  static Future<String> generateVideo(String prompt, {String? veoKey, String? runwayKey}) async {
-    final isVeo = prompt.toLowerCase().contains('veo') || (veoKey != null && veoKey.isNotEmpty);
+  static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey}) async {
+    final isVeo = prompt.toLowerCase().contains('veo') || (veoKey != null && veoKey.isNotEmpty) || (vertexKey != null && vertexKey.isNotEmpty);
     
     if (runwayKey != null && runwayKey.isNotEmpty) {
       await Future.delayed(const Duration(seconds: 5));
       return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
     }
     if (isVeo) {
+       final key = vertexKey ?? veoKey;
+       if (key != null && key.isNotEmpty) {
+          try {
+            return await _generateVertexVeo(prompt, key);
+          } catch (e) {
+            debugPrint('Vertex Veo failed: $e. Falling back to placeholder.');
+          }
+       }
        await Future.delayed(const Duration(seconds: 3));
        return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"; // Placeholder for Veo
     }
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+  }
+
+  static Future<String> _generateVertexVeo(String prompt, String key) async {
+    String projectId = 'inhausbrain';
+    final isApiKey = !key.startsWith('ya29.');
+
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/veo:predict';
+    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
+    debugPrint('EdgeAI: [VERTEX] Calling Veo at ${isApiKey ? baseUrl : url} (Auth: ${isApiKey ? "API Key" : "Bearer Token"})');
+
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (!isApiKey) {
+      headers['Authorization'] = 'Bearer $key';
+    }
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        "instances": [
+          {"prompt": prompt}
+        ],
+        "parameters": {
+          "sampleCount": 1
+        }
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      // Assuming Veo logic for returning a public URL or base64
+      final videoUrl = data['predictions'][0]['url'];
+      return videoUrl ?? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    } else {
+      throw Exception('Vertex Veo Error: ${response.statusCode} ${response.body}');
+    }
   }
 
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
