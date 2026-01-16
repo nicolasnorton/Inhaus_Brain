@@ -30,17 +30,23 @@ If you prefer to run commands manually:
 # 1. Set the project
 gcloud config set project inhausbrain
 
-# 2. Submit build to Cloud Build (builds Dockerfile & pushes to GCR)
-gcloud builds submit --tag gcr.io/inhausbrain/inhaus-brain . \
+# 2. Submit build to Cloud Build (Uses cloudbuild.yaml to inject secrets)
+gcloud builds submit . \
+  --config=cloudbuild.yaml \
+  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=latest" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 3. Deploy to Cloud Run
 gcloud run deploy inhaus-brain \
-  --image gcr.io/inhausbrain/inhaus-brain \
+  --image gcr.io/inhausbrain/inhaus-brain:latest \
   --platform managed \
   --region us-central1 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars "VERTEX_API_KEY=$VERTEX_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY"
 ```
+
+**Note**: You must have `VERTEX_API_KEY` and `GEMINI_API_KEY` exported in your terminal session for these commands to work.
+
 
 ## Troubleshooting
 
