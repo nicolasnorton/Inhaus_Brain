@@ -173,7 +173,6 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         final path = '${dir.path}/assistant_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
         
         await _audioRecorder.start(const RecordConfig(), path: path);
-        await _audioRecorder.start(const RecordConfig(), path: path);
         setState(() {
           _isRecordingAudio = true;
           _autoRead = true; // Auto-enable voice response
@@ -291,186 +290,177 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       bottom: bottom,
       left: left,
       width: width,
-      child: ExcludeSemantics(
-        child: Focus(
-          skipTraversal: true,
-          canRequestFocus: false,
-          child: ExcludeFocus(
-            excluding: true,
-            child: Material(
-          elevation: 16,
-          borderRadius: BorderRadius.circular(borderRadius),
-          color: const Color(0xFF1C2128), // Dark workspace background
-            child: Consumer(
-              builder: (context, ref, child) {
-                final isOpen = ref.watch(isAssistantOpenProvider);
-                return Visibility(
-                  visible: isOpen,
-                  maintainState: false, // Force re-layout/focus evaluation only when visible
-                  child: Column(
-                    children: [
-                    // Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-              ),
-              child: Row(
+      child: Material(
+        elevation: 16,
+        borderRadius: BorderRadius.circular(borderRadius),
+        color: const Color(0xFF1C2128), // Dark workspace background
+        child: Consumer(
+          builder: (context, ref, child) {
+            final isOpen = ref.watch(isAssistantOpenProvider);
+            return Visibility(
+              visible: isOpen,
+              maintainState: false, // Force re-layout/focus evaluation only when visible
+              child: Column(
                 children: [
-                  const Icon(Icons.smart_toy, color: Colors.blueAccent),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'AI Assistant',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(_autoRead ? Icons.volume_up : Icons.volume_off, size: 20, color: _autoRead ? Colors.blueAccent : Colors.white54),
-                    onPressed: () => setState(() => _autoRead = !_autoRead),
-                    tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
-                  ),
-                  if (!isSmallScreen)
-                    IconButton(
-                      icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
-                      onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
-                      tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white54),
-                    onPressed: () => ref.read(assistantChatProvider.notifier).clearChat(),
-                    tooltip: 'Clear Chat',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20, color: Colors.white54),
-                    onPressed: () => ref.read(isAssistantOpenProvider.notifier).state = false,
-                  ),
-                ],
-              ),
-            ),
-            
-            // Message List
-            Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  primary: false,
-                  itemCount: messages.length + (_isTyping ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == messages.length) {
-                     return _buildTypingIndicator();
-                  }
-                  return _buildMessageBubble(messages[index]);
-                },
-              ),
-            ),
-
-            // Input Area
-            Column(
-              children: [
-                if (_selectedImage != null)
+                  // Header
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    color: const Color(0xFF0F1116),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                    ),
                     child: Row(
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.memory(
-                            _selectedImage!,
-                            height: 60,
-                            width: 60,
-                            fit: BoxFit.cover,
-                          ),
+                        const Icon(Icons.smart_toy, color: Colors.blueAccent),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'AI Assistant',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _selectedImageName ?? 'Image',
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(_autoRead ? Icons.volume_up : Icons.volume_off, size: 20, color: _autoRead ? Colors.blueAccent : Colors.white54),
+                          onPressed: () => setState(() => _autoRead = !_autoRead),
+                          tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
+                        ),
+                        if (!isSmallScreen)
+                          IconButton(
+                            icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
+                            onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
+                            tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
                           ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white54),
+                          onPressed: () => ref.read(assistantChatProvider.notifier).clearChat(),
+                          tooltip: 'Clear Chat',
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, size: 20, color: Colors.white54),
-                          onPressed: _removeImage,
-                          tooltip: 'Remove image',
+                          onPressed: () => ref.read(isAssistantOpenProvider.notifier).state = false,
                         ),
                       ],
                     ),
                   ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F1116),
-                    border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  
+                  // Message List
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      primary: false,
+                      itemCount: messages.length + (_isTyping ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == messages.length) {
+                           return _buildTypingIndicator();
+                        }
+                        return _buildMessageBubble(messages[index]);
+                      },
+                    ),
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+
+                  // Input Area
+                  Column(
                     children: [
-                      IconButton(
-                        constraints: const BoxConstraints(),
-                        padding: const EdgeInsets.only(bottom: 8, right: 4),
-                        icon: Icon(Icons.add_circle_outline, color: _selectedImage != null ? Colors.blueAccent : Colors.white54, size: 22),
-                        onPressed: _pickImage,
-                        tooltip: 'Add attachment',
-                      ),
-                      GestureDetector(
-                        onTap: _toggleListening,
-                        onLongPress: _toggleAudioRecording,
-                        onLongPressUp: _toggleAudioRecording,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                          child: Icon(
-                            _isRecordingAudio 
-                                ? Icons.fiber_manual_record 
-                                : (_isListening ? Icons.mic : Icons.mic_none), 
-                            color: (_isListening || _isRecordingAudio) ? Colors.redAccent : Colors.white54,
-                            size: 22,
+                      if (_selectedImage != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          color: const Color(0xFF0F1116),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(
+                                  _selectedImage!,
+                                  height: 60,
+                                  width: 60,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _selectedImageName ?? 'Image',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20, color: Colors.white54),
+                                onPressed: _removeImage,
+                                tooltip: 'Remove image',
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: KeyboardListener(
-                          focusNode: _keyboardFocusNode,
-                          onKeyEvent: (event) {
-                            if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
-                              _sendMessage();
-                            }
-                          },
-                          child: TextField(
-                            controller: _controller,
-                            style: const TextStyle(color: Colors.white),
-                            minLines: 1,
-                            maxLines: 5,
-                            textInputAction: TextInputAction.newline,
-                            decoration: const InputDecoration(
-                              hintText: 'Type a message...',
-                              hintStyle: TextStyle(color: Colors.white38),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F1116),
+                          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.only(bottom: 8, right: 4),
+                              icon: Icon(Icons.add_circle_outline, color: _selectedImage != null ? Colors.blueAccent : Colors.white54, size: 22),
+                              onPressed: _pickImage,
+                              tooltip: 'Add attachment',
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: _toggleListening,
+                              onLongPress: _toggleAudioRecording,
+                              onLongPressUp: _toggleAudioRecording,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                child: Icon(
+                                  _isRecordingAudio 
+                                      ? Icons.fiber_manual_record 
+                                      : (_isListening ? Icons.mic : Icons.mic_none), 
+                                  color: (_isListening || _isRecordingAudio) ? Colors.redAccent : Colors.white54,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: KeyboardListener(
+                                focusNode: _keyboardFocusNode,
+                                onKeyEvent: (event) {
+                                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+                                    _sendMessage();
+                                  }
+                                },
+                                child: TextField(
+                                  controller: _controller,
+                                  style: const TextStyle(color: Colors.white),
+                                  minLines: 1,
+                                  maxLines: 5,
+                                  textInputAction: TextInputAction.newline,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Type a message...',
+                                    hintStyle: TextStyle(color: Colors.white38),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
-    ),
-  ),
-  ),
-  ),
-  );
-}
+    );
+  }
 
   Widget _buildMessageBubble(AssistantMessage message) {
     if (message.isUser) {
