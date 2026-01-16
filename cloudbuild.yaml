@@ -1,7 +1,13 @@
 steps:
   # 1. Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG', '.']
+    args: [
+      'build', 
+      '-t', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG', 
+      '--build-arg', 'VERTEX_API_KEY=$_VERTEX_API_KEY',
+      '--build-arg', 'GEMINI_API_KEY=$_GEMINI_API_KEY',
+      '.'
+    ]
 
   # 2. Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
@@ -27,3 +33,5 @@ images:
 
 substitutions:
   _TAG: latest
+  _VERTEX_API_KEY: ''
+  _GEMINI_API_KEY: ''
