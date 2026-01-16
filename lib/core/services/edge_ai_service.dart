@@ -349,19 +349,24 @@ class EdgeAIService {
     }
 
     // POLLINATIONS.AI FALLBACK
-    // Use Pollinations.ai for free, high-quality, dynamic image generation without an API key.
-    // We use a random seed to ensure uniqueness for repeated prompts.
+    // Use Pollinations.ai for high-quality, free image generation.
+    // We use a random seed to ensure uniqueness.
     final seed = DateTime.now().millisecondsSinceEpoch;
     
-    // Truncate prompt deeply to avoid "URI Too Long" or "Forbidden" issues.
-    // We only keep alphanumeric and spaces to be ultra-safe.
-    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '');
-    if (safePrompt.length > 100) {
-      safePrompt = safePrompt.substring(0, 100); 
+    // Clean and optimize prompt for Pollinations
+    // Remove special characters, multiple spaces, and trim
+    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ')
+                             .replaceAll(RegExp(r'\s+'), ' ')
+                             .trim();
+    
+    if (safePrompt.isEmpty) safePrompt = "stunning abstract art";
+    if (safePrompt.length > 200) {
+      safePrompt = safePrompt.substring(0, 200); 
     }
     
     final encodedPrompt = Uri.encodeComponent(safePrompt);
-    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&model=flux"; 
+    // Use the default stable model for better reliability across environments
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&nologo=true";
   }
 
   static Future<String> _generateVertexImagen(String prompt, String accessToken) async {

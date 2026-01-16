@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
+import 'package:google_sign_in_web/google_sign_in_web.dart' as web;
 import 'package:inhaus_brain/l10n/app_localizations.dart';
-// import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/router/app_router.dart';
 
@@ -165,24 +167,40 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Text(AppLocalizations.of(context)!.orLabel, style: const TextStyle(color: Colors.white24, fontSize: 10)),
                 const SizedBox(height: 16),
                 
-                // Google Sign In
-                OutlinedButton.icon(
-                  onPressed: () => ref.read(authServiceProvider).signInWithGoogle(),
-                  icon: const FaIcon(FontAwesomeIcons.google, size: 14),
-                  label: Text(AppLocalizations.of(context)!.googleLogin, style: const TextStyle(fontSize: 12, letterSpacing: 1.0)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white54,
-                    side: const BorderSide(color: Colors.white12),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                // Google Sign In - Handled by GIS on Web
+                if (kIsWeb)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 300, minHeight: 40),
+                    child: Focus(
+                      skipTraversal: true,
+                      child: _buildGoogleSignInButton(),
+                    ),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () => ref.read(authServiceProvider).signInWithGoogle(),
+                    icon: const FaIcon(FontAwesomeIcons.google, size: 14),
+                    label: Text(AppLocalizations.of(context)!.googleLogin, style: const TextStyle(fontSize: 12, letterSpacing: 1.0)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white54,
+                      side: const BorderSide(color: Colors.white12),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildGoogleSignInButton() {
+    if (kIsWeb) {
+      return (GoogleSignInPlatform.instance as web.GoogleSignInPlugin).renderButton();
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool obscureText = false}) {

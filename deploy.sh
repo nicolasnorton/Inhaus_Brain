@@ -2,7 +2,7 @@
 set -e
 
 PROJECT_ID="inhausbrain"
-SERVICE_NAME="inhaus-brain-web"
+SERVICE_NAME="inhaus-brain"
 REGION="us-central1"
 IMAGE_TAG="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
@@ -18,7 +18,8 @@ gcloud run deploy $SERVICE_NAME \
   --image $IMAGE_TAG \
   --platform managed \
   --region $REGION \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --project $PROJECT_ID
 
 echo "✅ Deployment Complete!"
 echo "🌍 App available at: https://brain.inhauscorp.com"

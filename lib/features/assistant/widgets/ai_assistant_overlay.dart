@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:record/record.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/assistant_provider.dart';
 import '../services/assistant_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -133,8 +136,10 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             );
           },
           localeId: localeId,
-          cancelOnError: true,
-          partialResults: true,
+          listenOptions: SpeechListenOptions(
+            cancelOnError: true,
+            partialResults: true,
+          ),
         );
       }
     } else {
@@ -189,7 +194,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
 
     try {
       List<int>? audioBytes;
-      if (audioFileToSend != null) {
+      if (audioFileToSend != null && !kIsWeb) {
         final file = File(audioFileToSend);
         if (await file.exists()) {
           audioBytes = await file.readAsBytes();
@@ -283,12 +288,14 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       bottom: bottom,
       left: left,
       width: width,
-      child: Material(
-        elevation: 16,
-        borderRadius: BorderRadius.circular(borderRadius),
-        color: const Color(0xFF1C2128), // Dark workspace background
-        child: Column(
-          children: [
+      child: ExcludeFocus(
+        excluding: true,
+        child: Material(
+          elevation: 16,
+          borderRadius: BorderRadius.circular(borderRadius),
+          color: const Color(0xFF1C2128), // Dark workspace background
+          child: Column(
+            children: [
             // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -330,19 +337,16 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             
             // Message List
             Expanded(
-              child: FocusTraversalGroup(
-                policy: WidgetOrderTraversalPolicy(),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length + (_isTyping ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == messages.length) {
-                       return _buildTypingIndicator();
-                    }
-                    return _buildMessageBubble(messages[index]);
-                  },
-                ),
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: messages.length + (_isTyping ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == messages.length) {
+                     return _buildTypingIndicator();
+                  }
+                  return _buildMessageBubble(messages[index]);
+                },
               ),
             ),
 
@@ -437,7 +441,6 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 80),
                     ],
                   ),
                 ),
@@ -446,8 +449,9 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildMessageBubble(AssistantMessage message) {
     if (message.isUser) {
@@ -504,53 +508,147 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       );
     } else {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 24),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const CircleAvatar(
-              radius: 12,
-              backgroundColor: Colors.white10,
-              child: Icon(Icons.smart_toy, size: 14, color: Colors.white),
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              child: const CircleAvatar(
+                radius: 12,
+                backgroundColor: Colors.white10,
+                child: Icon(Icons.smart_toy, size: 14, color: Colors.white),
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(20).copyWith(topLeft: Radius.zero),
-                    ),
-                    child: MarkdownBody(
-                      data: message.text,
-                      styleSheet: MarkdownStyleSheet(
-                        p: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
-                        h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                        h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        code: TextStyle(
-                          backgroundColor: Colors.black.withValues(alpha: 0.3),
-                          color: Colors.cyanAccent,
-                          fontFamily: 'monospace',
-                          fontSize: 12,
+                  // Branding / Name
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, size: 14, color: Colors.blueAccent),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Powered by INHAUS BRAIN',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
                         ),
-                        codeblockDecoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        tableBody: const TextStyle(color: Colors.white70, fontSize: 12),
-                        tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                        tableBorder: TableBorder.all(color: Colors.white10),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Message Text
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16).copyWith(topLeft: Radius.zero),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        MarkdownBody(
+                          data: message.text,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13, height: 1.6),
+                            h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            code: TextStyle(
+                              backgroundColor: Colors.black.withValues(alpha: 0.3),
+                              color: Colors.cyanAccent,
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            tableBody: const TextStyle(color: Colors.white70, fontSize: 12),
+                            tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            tableBorder: TableBorder.all(color: Colors.white10),
+                          ),
+                        ),
+                        if (message.generatedAssetPath != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: _buildGeneratedAsset(message.generatedAssetPath!, message.generatedAssetType),
+                          ),
+                      ],
                     ),
                   ),
-                  if (message.generatedAssetPath != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: _buildGeneratedAsset(message.generatedAssetPath!, message.generatedAssetType),
+
+                  // Actions & Metadata
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Sources button (if available)
+                        if (message.sources != null && message.sources!.isNotEmpty)
+                           Padding(
+                             padding: const EdgeInsets.only(bottom: 8),
+                             child: OutlinedButton.icon(
+                               onPressed: () {}, // Expansion logic could go here
+                               icon: const Icon(Icons.link, size: 12),
+                               label: const Text('Sources', style: TextStyle(fontSize: 10)),
+                               style: OutlinedButton.styleFrom(
+                                 visualDensity: VisualDensity.compact,
+                                 foregroundColor: Colors.white54,
+                                 side: const BorderSide(color: Colors.white12),
+                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                               ),
+                             ),
+                           ),
+                           
+                        Row(
+                          children: [
+                            // Model & Latency
+                            Expanded(
+                              child: Text(
+                                'Powered by INHAUS BRAIN • ${message.modelName ?? 'DeepMind'} • ${message.processingTime != null ? '${(message.processingTime!.inMilliseconds / 1000).toStringAsFixed(1)}s' : 'Instant'}',
+                                style: const TextStyle(color: Colors.white24, fontSize: 9, letterSpacing: 0.5),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const Spacer(),
+                            // Action Buttons
+                            _buildActionButton(
+                              _likedMessages.contains(message.id) ? Icons.thumb_up : Icons.thumb_up_outlined, 
+                              () => _toggleLike(message.id),
+                              color: _likedMessages.contains(message.id) ? Colors.blueAccent : null
+                            ),
+                            _buildActionButton(
+                              _dislikedMessages.contains(message.id) ? Icons.thumb_down : Icons.thumb_down_outlined, 
+                              () => _toggleDislike(message.id),
+                              color: _dislikedMessages.contains(message.id) ? Colors.redAccent : null
+                            ),
+                            _buildActionButton(Icons.ios_share, () {
+                              Share.share('${message.text}\n\nGenerated by INHAUS AI');
+                            }),
+                            _buildActionButton(Icons.copy, () {
+                              Clipboard.setData(ClipboardData(text: message.text));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+                              );
+                            }),
+                            if (message.generatedAssetPath != null && message.generatedAssetType == 'image')
+                              _buildActionButton(Icons.download, () {
+                                _downloadImage(message.generatedAssetPath!);
+                              }),
+                            _buildMenuButton(message),
+                          ],
+                        ),
+                      ],
                     ),
+                  ),
                 ],
               ),
             ),
@@ -560,37 +658,162 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     }
   }
 
+  final Set<String> _likedMessages = {};
+  final Set<String> _dislikedMessages = {};
+
+  void _toggleLike(String id) {
+    setState(() {
+      if (_likedMessages.contains(id)) {
+        _likedMessages.remove(id);
+      } else {
+        _likedMessages.add(id);
+        _dislikedMessages.remove(id);
+      }
+    });
+  }
+
+  void _toggleDislike(String id) {
+    setState(() {
+      if (_dislikedMessages.contains(id)) {
+        _dislikedMessages.remove(id);
+      } else {
+        _dislikedMessages.add(id);
+        _likedMessages.remove(id);
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_dislikedMessages.contains(id) ? 'Feedback sent' : 'Feedback removed'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
+      ),
+    );
+  }
+
+  void _downloadImage(String url) {
+    if (kIsWeb) {
+      // In Flutter Web, we can use a simpler approach by launching the URL directly
+      // as a download if the headers support it, or just opening it in a new tab.
+      debugPrint('Downloading image: $url');
+      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Download not implemented for this platform')),
+      );
+    }
+  }
+
+  Widget _buildActionButton(IconData icon, VoidCallback onPressed, {Color? color}) {
+    return IconButton(
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.all(4),
+      constraints: const BoxConstraints(),
+      icon: Icon(icon, size: 14, color: color ?? Colors.white38),
+      onPressed: onPressed,
+      hoverColor: Colors.white.withValues(alpha: 0.1),
+    );
+  }
+
+  Widget _buildMenuButton(AssistantMessage message) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 14, color: Colors.white38),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      color: const Color(0xFF2D333B),
+      offset: const Offset(0, 20),
+      onSelected: (value) async {
+        if (value == 'export_to_docs') {
+          final url = Uri.parse('https://docs.new');
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url);
+          }
+        } else if (value == 'draft_in_gmail') {
+          final Uri emailLaunchUri = Uri(
+            scheme: 'mailto',
+            path: '',
+            query: 'subject=INHAUS AI Draft&body=${Uri.encodeComponent(message.text)}',
+          );
+          if (await canLaunchUrl(emailLaunchUri)) {
+            await launchUrl(emailLaunchUri);
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text('Action Selected: $value'), duration: const Duration(seconds: 1)),
+          );
+        }
+      },
+      itemBuilder: (context) => [
+        _buildMenuItem('Export to Docs', Icons.description_outlined),
+        _buildMenuItem('Draft in Gmail', Icons.mail_outline),
+        _buildMenuItem('Report legal issue', Icons.flag_outlined),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _buildMenuItem(String label, IconData icon) {
+    return PopupMenuItem<String>(
+      value: label.toLowerCase().replaceAll(' ', '_'),
+      height: 32,
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.white70),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGeneratedAsset(String path, String? type) {
     if (type == 'image') {
       return ExcludeSemantics(
         child: SizedBox(
           width: 300,
           height: 300,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: path.startsWith('http') 
-                  ? Image.network(
-                      path, 
-                      fit: BoxFit.cover, 
-                      width: 300,
-                      height: 300,
-                      semanticLabel: 'Generated Image',
-                      errorBuilder: (c,e,s) {
-                        debugPrint('Image Load Error for $path: $e');
-                        return const Center(child: Icon(Icons.error, color: Colors.red));
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                    )
-                  : (path.startsWith('assets') ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) : Image.file(File(path), fit: BoxFit.cover, width: 300, height: 300)),
-            ),
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: path.startsWith('http') 
+                      ? Image.network(
+                          path, 
+                          fit: BoxFit.cover, 
+                          width: 300,
+                          height: 300,
+                          semanticLabel: 'Generated Image',
+                          errorBuilder: (c,e,s) {
+                            debugPrint('Image Load Error for $path: $e');
+                            return const Center(child: Icon(Icons.error, color: Colors.red));
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(child: CircularProgressIndicator());
+                          },
+                        )
+                      : (path.startsWith('assets') 
+                          ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) 
+                          : (!kIsWeb 
+                              ? Image.file(File(path), fit: BoxFit.cover, width: 300, height: 300)
+                              : const Center(child: Icon(Icons.broken_image, color: Colors.white24)))),
+                ),
+              ),
+              // Watermark Overlay (Asset Based)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Image.asset(
+                  'assets/images/watermark.png',
+                  height: 28, // Slightly larger for better prominence
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.auto_awesome, size: 12, color: Colors.white54),
+                ),
+              ),
+            ],
           ),
         ),
       );

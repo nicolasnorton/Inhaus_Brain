@@ -31,11 +31,11 @@ If you prefer to run commands manually:
 gcloud config set project inhausbrain
 
 # 2. Submit build to Cloud Build (builds Dockerfile & pushes to GCR)
-gcloud builds submit --tag gcr.io/inhausbrain/inhaus-brain-web .
+gcloud builds submit --tag gcr.io/inhausbrain/inhaus-brain .
 
 # 3. Deploy to Cloud Run
-gcloud run deploy inhaus-brain-web \
-  --image gcr.io/inhausbrain/inhaus-brain-web \
+gcloud run deploy inhaus-brain \
+  --image gcr.io/inhausbrain/inhaus-brain \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated

@@ -21,6 +21,9 @@ class AssistantMessage {
   final List<int>? audioAttachment; // Raw audio attachment
   final String? generatedAssetPath;
   final String? generatedAssetType; // 'image', 'video'
+  final String? modelName;
+  final Duration? processingTime;
+  final List<String>? sources;
 
   AssistantMessage({
     required this.id,
@@ -32,6 +35,9 @@ class AssistantMessage {
     this.audioAttachment,
     this.generatedAssetPath,
     this.generatedAssetType,
+    this.modelName,
+    this.processingTime,
+    this.sources,
   });
 }
 
@@ -55,10 +61,12 @@ class AssistantService {
     ));
 
     // 2. Simulate AI Intent Matching (Mock)
-    // await Future.delayed(const Duration(seconds: 1)); // Removed delay for snappier feel
-
+    final stopwatch = Stopwatch()..start();
+    
     final tools = _ref.read(assistantToolRegistryProvider);
     final executionResult = await _matchIntentAndExecute(text, tools, attachment: attachment, audioAttachment: audioAttachment);
+    
+    stopwatch.stop();
 
     // 3. Add response
     final message = AssistantMessage(
@@ -69,6 +77,9 @@ class AssistantService {
       isToolOutput: executionResult.assetPath != null, // Mark as tool output if we have an asset
       generatedAssetPath: executionResult.assetPath,
       generatedAssetType: executionResult.assetType,
+      modelName: executionResult.modelName ?? 'Gemini 1.5 Flash',
+      processingTime: stopwatch.elapsed,
+      sources: executionResult.sources,
     );
 
     _history.add(message);
@@ -297,8 +308,16 @@ class ToolExecutionSummary {
   final String text;
   final String? assetPath;
   final String? assetType; // 'image', 'video'
+  final String? modelName;
+  final List<String>? sources;
 
-  ToolExecutionSummary({required this.text, this.assetPath, this.assetType});
+  ToolExecutionSummary({
+    required this.text, 
+    this.assetPath, 
+    this.assetType,
+    this.modelName,
+    this.sources,
+  });
 
   String get displayText => text;
 }

@@ -12,6 +12,28 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  AuthService() {
+    // Listen for Google Sign-In changes (especially for GIS on Web)
+    _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? googleUser) async {
+      if (googleUser != null) {
+        try {
+          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          final OAuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          
+          final UserCredential userCredential = await _auth.signInWithCredential(credential);
+          if (userCredential.user != null) {
+            await getAppUser(userCredential.user!);
+          }
+        } catch (e) {
+          if (kDebugMode) print('Error signing into Firebase with Google Credential: $e');
+        }
+      }
+    });
+  }
+
   // Cached User Profile
   final Map<String, AppUser> _userProfiles = {};
 
@@ -108,6 +130,9 @@ class AuthService {
       }
       
       return user;
+    } on FirebaseAuthException catch (e) {
+       if (kDebugMode) print('Firebase Auth Error (Google): ${e.code} - ${e.message}');
+       rethrow;
     } catch (e) {
       if (kDebugMode) print('Google Sign-In Error: $e');
       rethrow;
