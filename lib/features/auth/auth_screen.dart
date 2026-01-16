@@ -72,9 +72,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 Image.asset(
                   'assets/images/logo.png',
-                  height: 60,
+                  height: 40, // Slightly smaller for better balance
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 Image.asset(
                   'assets/images/brain_icon.png',
                   height: 80, // Slightly larger for better visibility
@@ -90,7 +90,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                 ),
                 const Text(
-                  'v1.0.1-rev7',
+                  'v1.0.1-rev8',
                   style: TextStyle(color: Colors.white24, fontSize: 8),
                 ),
                 const SizedBox(height: 48),
