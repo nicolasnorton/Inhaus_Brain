@@ -71,10 +71,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(
-                  'assets/images/logo.png',
+                  'assets/images/brain_icon.png',
                   height: 60,
-                  errorBuilder: (context, error, stackTrace) => 
-                      Image.asset('assets/images/brain_icon.png', height: 64),
                 ),
                 const SizedBox(height: 32),
                 Image.asset(
@@ -90,6 +88,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     fontWeight: FontWeight.w900,
                     letterSpacing: 6.0,
                   ),
+                ),
+                const Text(
+                  'v1.0.1-rev6',
+                  style: TextStyle(color: Colors.white24, fontSize: 8),
                 ),
                 const SizedBox(height: 48),
                 Text(
