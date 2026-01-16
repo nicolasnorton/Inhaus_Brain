@@ -8,6 +8,8 @@ This guide outlines the steps to deploy the **Inhaus Brain** application to Goog
 ## Prerequisites
 1.  **Google Cloud SDK**: Install and initialize (`gcloud init`).
 2.  **Access**: You must have permission to deploy to the `inhausbrain` project.
+3.  **Google APIs**: Ensure the **Google People API** is ENABLED for the project. This is required for Google Sign-In to fetch user profiles.
+    -   [Enable People API Console Link](https://console.developers.google.com/apis/api/people.googleapis.com/overview?project=inhausbrain)
 
 ## Quick Start: One-Click Deployment
 We have provided a helper script to automate the build and deployment process.
