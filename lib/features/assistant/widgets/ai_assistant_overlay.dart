@@ -320,6 +320,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         ),
                         const Spacer(),
                         IconButton(
+                          icon: Icon(_autoRead ? Icons.volume_up : Icons.volume_off, size: 20, color: _autoRead ? Colors.blueAccent : Colors.white54),
                           onPressed: () => setState(() => _autoRead = !_autoRead),
                           tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
                         ),
