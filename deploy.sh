@@ -8,11 +8,24 @@ IMAGE_TAG="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
 echo "🚀 Starting Deployment for $PROJECT_ID..."
 
+# 1. Load local environment variables if .env exists
+if [ -f .env ]; then
+  echo "📄 Loading environment variables from .env..."
+  # Export variables from .env, ignoring comments and empty lines
+  export $(grep -v '^#' .env | xargs)
+fi
+
+# Verify critical keys are present
+if [ -z "$VERTEX_API_KEY" ] || [ -z "$GEMINI_API_KEY" ]; then
+  echo "❌ Error: VERTEX_API_KEY or GEMINI_API_KEY not found in environment or .env file."
+  exit 1
+fi
+
 # 1. Build and Deploy via Cloud Build
 echo "📦 Submitting build to Google Cloud Build..."
 gcloud builds submit . \
   --config=cloudbuild.yaml \
-  --substitutions="_VERTEX_API_KEY=AQ.Ab8RN6I1yaY9ppyDT0RljTgXlmAUwxvhca2mxAbqsQPwz5EMbg,_GEMINI_API_KEY=AIzaSyCiGMMlAdmooQjaRA7H2YYYyZGTSpuHYWY,_TAG=latest" \
+  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=latest" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 2. Deploy to Cloud Run (Run locally as Cloud Build SA lacks permissions)
@@ -23,7 +36,7 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --project $PROJECT_ID \
-  --set-env-vars "VERTEX_API_KEY=AQ.Ab8RN6I1yaY9ppyDT0RljTgXlmAUwxvhca2mxAbqsQPwz5EMbg,GEMINI_API_KEY=AIzaSyCiGMMlAdmooQjaRA7H2YYYyZGTSpuHYWY"
+  --set-env-vars "VERTEX_API_KEY=$VERTEX_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY"
 
 echo "✅ Deployment Complete!"
 echo "🌍 App available at: https://brain.inhauscorp.com"
