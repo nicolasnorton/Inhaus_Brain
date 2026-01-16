@@ -458,16 +458,17 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                     ],
                   ),
                 ),
+                  ],
+                ),
               ],
-                    ],
-                  ),
-                );
-              },
             ),
-          ],
-        ),
+          );
+        },
       ),
     ),
+  ),
+  ),
+  ),
   );
 }
 
