@@ -1,7 +1,7 @@
 # Deployment Guide
 
 This guide outlines the steps to deploy the **Inhaus Brain** application to Google Cloud Run. 
-
+./deploy.sh. 
 **Production URL**: [https://brain.inhauscorp.com](https://brain.inhauscorp.com)
 **Project ID**: `inhausbrain`
 
@@ -31,7 +31,8 @@ If you prefer to run commands manually:
 gcloud config set project inhausbrain
 
 # 2. Submit build to Cloud Build (builds Dockerfile & pushes to GCR)
-gcloud builds submit --tag gcr.io/inhausbrain/inhaus-brain .
+gcloud builds submit --tag gcr.io/inhausbrain/inhaus-brain . \
+  --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 3. Deploy to Cloud Run
 gcloud run deploy inhaus-brain \
@@ -44,10 +45,8 @@ gcloud run deploy inhaus-brain \
 ## Troubleshooting
 
 ### Cloud Build: Permission Denied / Forbidden
-If you see an error like `The user is forbidden from accessing the bucket [inhausbrain_cloudbuild]`, ensure the deployment user/service account has the following IAM roles:
-1.  **Service Usage Admin**
-2.  **Storage Admin**
-3.  **Cloud Build Editor**
+If you see an error like `The user is forbidden from accessing the bucket [inhausbrain_cloudbuild]`, we have already provisioned a custom bucket to bypass this. Ensure you are using the latest `deploy.sh` which includes:
+`--gcs-source-staging-dir gs://inhaus-source-staging/source`
 
 Alternatively, try creating the bucket manually or ensure you are logged in with the correct account:
 ```bash

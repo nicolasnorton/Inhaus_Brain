@@ -10,7 +10,8 @@ echo "🚀 Starting Deployment for $PROJECT_ID..."
 
 # 1. Build and Submit to Artifact Registry/GCR
 echo "📦 Building container image..."
-gcloud builds submit --tag $IMAGE_TAG .
+gcloud builds submit --tag $IMAGE_TAG . \
+  --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 2. Deploy to Cloud Run
 echo "🚀 Deploying to Cloud Run..."

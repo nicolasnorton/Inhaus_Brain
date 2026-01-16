@@ -301,9 +301,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           elevation: 16,
           borderRadius: BorderRadius.circular(borderRadius),
           color: const Color(0xFF1C2128), // Dark workspace background
-          child: Column(
-            children: [
-            // Header
+            child: Consumer(
+              builder: (context, ref, child) {
+                final isOpen = ref.watch(isAssistantOpenProvider);
+                return Visibility(
+                  visible: isOpen,
+                  maintainState: false, // Force re-layout/focus evaluation only when visible
+                  child: Column(
+                    children: [
+                    // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -453,6 +459,10 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                   ),
                 ),
               ],
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
