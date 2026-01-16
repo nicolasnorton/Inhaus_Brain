@@ -14,6 +14,8 @@ import '../services/assistant_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../settings/providers/user_provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'artifact_renderer.dart';
+import '../../chat/models/chat_models.dart'; // For Artifact model (if needed explicitly)
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
   const AiAssistantOverlay({super.key});
@@ -318,9 +320,35 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         ),
                         const Spacer(),
                         IconButton(
-                          icon: Icon(_autoRead ? Icons.volume_up : Icons.volume_off, size: 20, color: _autoRead ? Colors.blueAccent : Colors.white54),
                           onPressed: () => setState(() => _autoRead = !_autoRead),
                           tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
+                        ),
+                        // Mode Switcher
+                        Consumer(
+                          builder: (context, ref, _) {
+                             final mode = ref.watch(assistantModeProvider);
+                             return PopupMenuButton<AssistantMode>(
+                               initialValue: mode,
+                               tooltip: 'Assistant Mode',
+                               icon: Icon(
+                                 mode == AssistantMode.planning ? Icons.architecture : Icons.flash_on, 
+                                 color: mode == AssistantMode.planning ? Colors.purpleAccent : Colors.amber,
+                                 size: 20
+                               ),
+                               onSelected: (newMode) => ref.read(assistantModeProvider.notifier).state = newMode,
+                               itemBuilder: (context) => [
+                                 const PopupMenuItem(
+                                   value: AssistantMode.fast,
+                                    child: Row(children: [Icon(Icons.flash_on, size: 16, color: Colors.amber), SizedBox(width: 8), Text('Fast Mode', style: TextStyle(color: Colors.white))]),
+                                 ),
+                                 const PopupMenuItem(
+                                   value: AssistantMode.planning,
+                                    child: Row(children: [Icon(Icons.architecture, size: 16, color: Colors.purpleAccent), SizedBox(width: 8), Text('Planning Mode', style: TextStyle(color: Colors.white))]),
+                                 ),
+                               ],
+                               color: const Color(0xFF2D333B),
+                             );
+                          }
                         ),
                         if (!isSmallScreen)
                           IconButton(
@@ -585,6 +613,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             tableBorder: TableBorder.all(color: Colors.white10),
                           ),
                         ),
+                        if (message.artifacts != null && message.artifacts!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: ArtifactRenderer(artifacts: message.artifacts!),
+                          ),
                         if (message.generatedAssetPath != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 12.0),

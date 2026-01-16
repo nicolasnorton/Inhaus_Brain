@@ -40,6 +40,52 @@ enum MessageType {
   approvalWidget
 }
 
+enum ArtifactType {
+  markdown,
+  code,
+  image,
+  file,
+  plan // For task.md or implementation plans
+}
+
+class Artifact {
+  final String id;
+  final String title;
+  final ArtifactType type;
+  final String content;       // Text content or file path
+  final int version;
+  final DateTime updatedAt;
+
+  Artifact({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.content,
+    this.version = 1,
+    required this.updatedAt,
+  });
+
+  factory Artifact.fromJson(Map<String, dynamic> json) {
+    return Artifact(
+      id: json['id'],
+      title: json['title'],
+      type: ArtifactType.values.firstWhere((e) => e.name == json['type']),
+      content: json['content'],
+      version: json['version'] ?? 1,
+      updatedAt: DateTime.parse(json['updatedAt']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'type': type.name,
+    'content': content,
+    'version': version,
+    'updatedAt': updatedAt.toIso8601String(),
+  };
+}
+
 class ChatMessage {
   final String id;
   final String content;

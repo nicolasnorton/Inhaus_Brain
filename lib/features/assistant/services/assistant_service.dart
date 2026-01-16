@@ -12,6 +12,9 @@ import '../../chat/services/tool_retrieval_service.dart';
 import '../../chat/services/verification_service.dart';
 import '../../chat/agents/router_agent.dart';
 import '../../../core/services/local_persistence_service.dart';
+import '../../chat/models/chat_models.dart'; // For Artifact model
+
+enum AssistantMode { fast, planning }
 
 class AssistantMessage {
   final String id;
@@ -26,6 +29,7 @@ class AssistantMessage {
   final String? modelName;
   final Duration? processingTime;
   final List<String>? sources;
+  final List<Artifact>? artifacts;
 
   AssistantMessage({
     required this.id,
@@ -40,6 +44,7 @@ class AssistantMessage {
     this.modelName,
     this.processingTime,
     this.sources,
+    this.artifacts,
   });
 
   Map<String, dynamic> toJson() => {
@@ -55,6 +60,7 @@ class AssistantMessage {
     'sources': sources,
     'attachment': attachment != null ? base64Encode(attachment!) : null,
     'audioAttachment': audioAttachment != null ? base64Encode(audioAttachment!) : null,
+    'artifacts': artifacts?.map((a) => a.toJson()).toList(),
   };
 
   factory AssistantMessage.fromJson(Map<String, dynamic> json) => AssistantMessage(
@@ -70,12 +76,14 @@ class AssistantMessage {
     sources: json['sources'] != null ? List<String>.from(json['sources']) : null,
     attachment: json['attachment'] != null ? base64Decode(json['attachment']) : null,
     audioAttachment: json['audioAttachment'] != null ? base64Decode(json['audioAttachment']) : null,
+    artifacts: (json['artifacts'] as List?)?.map((e) => Artifact.fromJson(e)).toList(),
   );
 }
 
 class AssistantService {
   final List<AssistantMessage> _history = [];
   final Ref _ref;
+  // AssistantMode state is now managed by assistantModeProvider
 
   AssistantService(this._ref) {
     _initHistory();
@@ -123,6 +131,7 @@ class AssistantService {
       modelName: executionResult.modelName ?? 'Gemini 1.5 Flash',
       processingTime: stopwatch.elapsed,
       sources: executionResult.sources,
+      artifacts: executionResult.artifacts,
     );
 
     _history.add(message);
@@ -184,8 +193,12 @@ class AssistantService {
     final toolDefinitions = relevantTools.map((t) => "- ${t.name}: ${t.description}").join("\n");
 
     // D. Main Execution
+    final currentMode = _ref.read(assistantModeProvider);
+    final ephemeralMsg = _injectEphemeralMessages(currentMode);
+
     final mainPrompt = """
 You are the Inhaus Brain Super Admin Assistant.
+Current Mode: ${currentMode.name.toUpperCase()}
 Intent: $intentStr
 Memory Context:
 $longTermMemory
@@ -203,6 +216,9 @@ Instructions:
 2. If using a tool, return ONLY a JSON object: {"tool": "name", "args": {...}}. 
 3. Do NOT wrap the JSON in markdown code blocks.
 4. If no tool matches, answer helpfully using rich Markdown formatting.
+${currentMode == AssistantMode.planning ? _planningModeInstructions : ""}
+
+$ephemeralMsg
 """;
 
     String responseText = "";
@@ -347,6 +363,19 @@ Instructions:
             assetType: 'video'
           );
         }
+        if (name == 'create_artifact') {
+             final artifact = Artifact(
+               id: DateTime.now().toString(),
+               title: args['title'] ?? 'Untitled',
+               type: ArtifactType.values.firstWhere((e) => e.name == args['type'], orElse: () => ArtifactType.markdown),
+               content: args['content'] ?? '',
+               updatedAt: DateTime.now(),
+             );
+             return ToolExecutionSummary(
+               text: "Created artifact: \${artifact.title}",
+               artifacts: [artifact]
+             );
+        }
         return ToolExecutionSummary(text: "Executed $name successfully.\n\n```json\n${jsonEncode(result.data)}\n```");
       } else {
         return ToolExecutionSummary(text: "Error executing $name: ${result.errorMessage}");
@@ -359,6 +388,26 @@ Instructions:
   void clearHistory() {
     _history.clear();
   }
+
+  String get _planningModeInstructions => '''
+5. You are in PLANNING mode. Prioritize creating detailed plans and artifacts.
+6. Use the 'create_artifact' tool to generate documents (plans, code snippets, etc.).
+7. Before executing complex tasks, ALWAYS propose a plan.
+''';
+
+  String _injectEphemeralMessages(AssistantMode mode) {
+    if (mode == AssistantMode.planning) {
+       // Check if there are recent artifacts or if the user is asking strictly for a plan
+       // For now, inject a static reminder
+       return '''
+<EPHEMERAL_REMINDER>
+You are in Planning Mode. If the user's request is complex, create an artifact using 'create_artifact' tool.
+Format: {"tool": "create_artifact", "args": {"title": "Title", "type": "markdown", "content": "..."}}
+</EPHEMERAL_REMINDER>
+''';
+    }
+    return "";
+  }
 }
 
 class ToolExecutionSummary {
@@ -367,6 +416,7 @@ class ToolExecutionSummary {
   final String? assetType; // 'image', 'video'
   final String? modelName;
   final List<String>? sources;
+  final List<Artifact>? artifacts;
 
   ToolExecutionSummary({
     required this.text, 
@@ -374,9 +424,11 @@ class ToolExecutionSummary {
     this.assetType,
     this.modelName,
     this.sources,
+    this.artifacts,
   });
 
   String get displayText => text;
 }
 
 final assistantServiceProvider = Provider<AssistantService>((ref) => AssistantService(ref));
+final assistantModeProvider = StateProvider<AssistantMode>((ref) => AssistantMode.fast);
