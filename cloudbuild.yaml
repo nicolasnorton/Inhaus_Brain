@@ -13,21 +13,6 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG']
 
-  # 3. Deploy to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - 'run'
-      - 'deploy'
-      - 'inhaus-brain'
-      - '--image'
-      - 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG'
-      - '--region'
-      - 'us-central1'
-      - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated'
-
 images:
   - 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG'
 

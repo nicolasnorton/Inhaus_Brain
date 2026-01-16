@@ -15,7 +15,15 @@ gcloud builds submit . \
   --substitutions="_VERTEX_API_KEY=AQ.Ab8RN6I1yaY9ppyDT0RljTgXlmAUwxvhca2mxAbqsQPwz5EMbg,_GEMINI_API_KEY=AIzaSyCiGMMlAdmooQjaRA7H2YYYyZGTSpuHYWY,_TAG=latest" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
-# Deployment progress is managed by Cloud Build
+# 2. Deploy to Cloud Run (Run locally as Cloud Build SA lacks permissions)
+echo "🚀 Deploying to Cloud Run..."
+gcloud run deploy $SERVICE_NAME \
+  --image $IMAGE_TAG:latest \
+  --platform managed \
+  --region $REGION \
+  --allow-unauthenticated \
+  --project $PROJECT_ID \
+  --set-env-vars "VERTEX_API_KEY=AQ.Ab8RN6I1yaY9ppyDT0RljTgXlmAUwxvhca2mxAbqsQPwz5EMbg,GEMINI_API_KEY=AIzaSyCiGMMlAdmooQjaRA7H2YYYyZGTSpuHYWY"
 
 echo "✅ Deployment Complete!"
 echo "🌍 App available at: https://brain.inhauscorp.com"
