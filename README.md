@@ -74,8 +74,9 @@ The Inhaus Brain features an **AI Super Admin** (Management Agent) that allows y
 ### 🚀 Deployment & Scalability (Step #4)
 - **Containerized Infrastructure**: Production-grade `Dockerfile` using Nginx to serve the Flutter Web app.
 - **Automated CI/CD**: Pre-configured `cloudbuild.yaml` for seamless deployment via Google Cloud Build.
-- **Infrastructure as Code (IaC)**: Scaffolding for **Terraform** to provision Google Cloud Run services.
-- **Scalable Architecture**: Built for the Google Cloud "Agent Starter Pack" ecosystem.
+- **Premium Auth**: Google Sign-In with production-ready `renderButton` and GIS migration.
+- **AI Stability**: Aggressive focus isolation and optimized image generation fallbacks.
+- **Professional Branding**: Integrated asset-based watermarking and "Powered by INHAUS BRAIN" identity.
 
 ## 🛠 Tech Stack
 - **Frontend**: Flutter (3.0+ architecture)

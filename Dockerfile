@@ -20,9 +20,10 @@ WORKDIR /app
 COPY . .
 
 # Build the web application
-RUN flutter clean
-RUN flutter pub get
-RUN flutter build web --release
+# Note: Cleaning before build ensures no stale artifacts are included
+RUN flutter clean && \
+    flutter pub get && \
+    flutter build web --release --no-tree-shake-icons
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine

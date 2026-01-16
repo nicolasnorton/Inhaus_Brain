@@ -41,9 +41,22 @@ gcloud run deploy inhaus-brain \
   --allow-unauthenticated
 ```
 
-## Domain Configuration
-The custom domain `brain.inhauscorp.com` is configured via Cloud Run Domain Mappings.
-To verify status:
+## Troubleshooting
+
+### Cloud Build: Permission Denied / Forbidden
+If you see an error like `The user is forbidden from accessing the bucket [inhausbrain_cloudbuild]`, ensure the deployment user/service account has the following IAM roles:
+1.  **Service Usage Admin**
+2.  **Storage Admin**
+3.  **Cloud Build Editor**
+
+Alternatively, try creating the bucket manually or ensure you are logged in with the correct account:
 ```bash
-gcloud beta run domain-mappings list --region us-central1
+gcloud auth login
+```
+
+### Localhost: Focus or RenderBox Errors
+We have implemented aggressive focus isolation with `ExcludeFocus` and `FocusScope`. If you still see focus-related errors on localhost during development, ensure your Chrome browser is up to date and clean the build:
+```bash
+flutter clean
+flutter run -d chrome
 ```

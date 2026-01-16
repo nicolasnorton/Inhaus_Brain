@@ -288,9 +288,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       bottom: bottom,
       left: left,
       width: width,
-      child: ExcludeFocus(
-        excluding: true,
-        child: Material(
+      child: FocusScope(
+        canRequestFocus: false,
+        child: ExcludeFocus(
+          excluding: true,
+          child: Material(
           elevation: 16,
           borderRadius: BorderRadius.circular(borderRadius),
           color: const Color(0xFF1C2128), // Dark workspace background
@@ -337,10 +339,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             
             // Message List
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: messages.length + (_isTyping ? 1 : 0),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  primary: false,
+                  itemCount: messages.length + (_isTyping ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == messages.length) {
                      return _buildTypingIndicator();
