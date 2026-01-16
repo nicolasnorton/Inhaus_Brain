@@ -28,6 +28,10 @@ class SecretVaultService {
     final envKey = dotenv.maybeGet('GEMINI_API_KEY');
     if (envKey != null && envKey.isNotEmpty) return envKey;
 
+    // Priority 1.5: Build-time Constants (--dart-define)
+    const buildKey = String.fromEnvironment('GEMINI_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
+
     // Priority 2: Secure Storage (User BYOK)
     return await _storage.read(key: _geminiKey);
   }
@@ -80,6 +84,9 @@ class SecretVaultService {
   Future<String?> getVertexKey() async {
     final envKey = dotenv.maybeGet('VERTEX_API_KEY');
     if (envKey != null && envKey.isNotEmpty) return envKey;
+    
+    const buildKey = String.fromEnvironment('VERTEX_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
     return await _storage.read(key: _vertexKey);
   }
 
