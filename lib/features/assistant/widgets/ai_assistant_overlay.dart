@@ -37,10 +37,12 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   bool _isFullWidth = false;
   final FlutterTts _flutterTts = FlutterTts();
   bool _autoRead = false;
+  late final FocusNode _keyboardFocusNode;
 
   @override
   void initState() {
     super.initState();
+    _keyboardFocusNode = FocusNode();
     _initTts();
   }
 
@@ -64,6 +66,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     _scrollController.dispose();
     _audioRecorder.dispose();
     _flutterTts.stop();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -288,11 +291,13 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       bottom: bottom,
       left: left,
       width: width,
-      child: FocusScope(
-        canRequestFocus: false,
-        child: ExcludeFocus(
-          excluding: true,
-          child: Material(
+      child: ExcludeSemantics(
+        child: Focus(
+          skipTraversal: true,
+          canRequestFocus: false,
+          child: ExcludeFocus(
+            excluding: true,
+            child: Material(
           elevation: 16,
           borderRadius: BorderRadius.circular(borderRadius),
           color: const Color(0xFF1C2128), // Dark workspace background
@@ -423,7 +428,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: KeyboardListener(
-                          focusNode: FocusNode(),
+                          focusNode: _keyboardFocusNode,
                           onKeyEvent: (event) {
                             if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
                               _sendMessage();
