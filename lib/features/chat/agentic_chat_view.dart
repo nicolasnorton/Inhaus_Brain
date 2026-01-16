@@ -13,6 +13,8 @@ import '../../core/tokens/llm_provider.dart';
 import '../../core/services/voice_command_processor.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'widgets/voice_visualizer.dart';
+import 'widgets/message_actions_row.dart';
+import 'widgets/watermarked_image.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
@@ -193,6 +195,9 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                           tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                           tableBorder: TableBorder.all(color: Colors.white10),
                         ),
+                        imageBuilder: (uri, title, alt) {
+                          return WatermarkedImage(imageUrl: uri.toString(), fit: BoxFit.contain);
+                        },
                       ),
                       if (message.attachments.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -201,6 +206,15 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     ],
                   ),
                 ),
+                if (!isUser)
+                  MessageActionsRow(
+                    content: message.content,
+                    isUser: false,
+                    modelName: _selectedModelConfig.displayName, // Ideally this comes from message metadata
+                    onReport: () {
+                         // Logic to report
+                    },
+                  ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
                   child: Text(
