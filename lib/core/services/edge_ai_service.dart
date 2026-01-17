@@ -160,6 +160,7 @@ class EdgeAIService {
     String? mimeType,
     Uint8List? audioBytes,
     String? audioMimeType
+  ) async {
     if (apiKey == null || apiKey.isEmpty) throw Exception("Gemini API Key missing");
 
     final model = GenerativeModel(model: config.modelId, apiKey: apiKey);
