@@ -1,6 +1,6 @@
 {
-    "name": "inhaus_brain",
-    "short_name": "inhaus_brain",
+    "name": "Inhaus Brain",
+    "short_name": "Inhaus Brain",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",
