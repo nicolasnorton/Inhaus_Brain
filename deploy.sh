@@ -16,8 +16,15 @@ if [ -f .env ]; then
 fi
 
 # Verify critical keys are present
-if [ -z "$VERTEX_API_KEY" ] || [ -z "$GEMINI_API_KEY" ]; then
-  echo "❌ Error: VERTEX_API_KEY or GEMINI_API_KEY not found in environment or .env file."
+if [ -z "$VERTEX_API_KEY" ]; then
+  echo "❌ Error: VERTEX_API_KEY is missing or empty!"
+  echo "👉 Should be in .env or exported in shell."
+  exit 1
+fi
+
+if [ -z "$GEMINI_API_KEY" ]; then
+  echo "❌ Error: GEMINI_API_KEY is missing or empty!"
+  echo "👉 Should be in .env or exported in shell."
   exit 1
 fi
 

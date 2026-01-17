@@ -163,7 +163,18 @@ class EdgeAIService {
   ) async {
     if (apiKey == null || apiKey.isEmpty) throw Exception("Gemini API Key missing");
 
-    final model = GenerativeModel(model: config.modelId, apiKey: apiKey);
+    final model = GenerativeModel(
+      model: config.modelId, 
+      apiKey: apiKey,
+      tools: [
+        Tool(googleSearchRetrieval: GoogleSearchRetrieval(
+          dynamicRetrievalConfig: DynamicRetrievalConfig(
+            mode: DynamicRetrievalMode.modeDynamic, 
+            dynamicThreshold: 0.7
+          )
+        ))
+      ]
+    );
     final List<Part> parts = [TextPart(prompt)];
     
     if (imageBytes != null) {
@@ -177,7 +188,15 @@ class EdgeAIService {
     final content = [Content.multi(parts)];
     final response = await model.generateContent(content);
     
-    return EdgeAIResult(response.text ?? "No response", AIProximity.cloud, modelUsed: config.modelId);
+    // Check for grounding metadata
+    String responseText = response.text ?? "No response";
+    if (response.candidates.isNotEmpty && 
+        response.candidates.first.groundingMetadata != null) {
+        // We could extract sources here if needed, but the model inherently cites them in text
+        // or we can parse them from metadata.networkSearchEntry
+    }
+
+    return EdgeAIResult(responseText, AIProximity.cloud, modelUsed: config.modelId);
   }
 
   static Future<EdgeAIResult> _generateOpenAI(
