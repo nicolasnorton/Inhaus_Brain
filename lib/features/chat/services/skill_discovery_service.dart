@@ -11,6 +11,7 @@ class SkillDiscoveryService {
   List<AgentSkill> get skills => List.unmodifiable(_skills);
 
   Future<void> discoverSkills(String baseDir) async {
+    if (kIsWeb) return; // Skills from file system not supported on web
     final dir = Directory(baseDir);
     if (!await dir.exists()) {
       debugPrint('SkillDiscoveryService: Base directory $baseDir does not exist.');

@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
+import '../providers/knowledge_service_providers.dart';
 
 class QuickCreateFlow extends ConsumerStatefulWidget {
   const QuickCreateFlow({super.key});
@@ -13,6 +17,297 @@ class QuickCreateFlow extends ConsumerStatefulWidget {
 class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
   int _currentStep = 1;
   String? _selectedSourceType;
+  
+  // Data Source State
+  PlatformFile? _pickedFile;
+  final TextEditingController _nameController = TextEditingController();
+  bool _isUploading = false;
+  String? _uploadError;
+
+  // Settings State
+  String _indexingTechnique = 'high_quality'; // 'high_quality' or 'economy'
+  String _rerankModel = 'rerank-english-v3.0';
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  // ... (existing code)
+
+  Widget _buildIndexMethodCard(String title, String subtitle, bool isSelected, String value) {
+    return InkWell(
+      onTap: () => setState(() => _indexingTechnique = value),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, size: 16, color: isSelected ? Colors.blueAccent : Colors.white38),
+                const SizedBox(width: 12),
+                Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 28),
+              child: Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        title,
+        style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+      ),
+    );
+  }
+
+  Widget _buildChoiceChip(String label, bool isSelected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: isSelected ? Colors.blueAccent : Colors.white38, fontSize: 13, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _buildSettingField(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToggleRow(String label, bool value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+          Transform.scale(
+            scale: 0.7,
+            child: Switch(
+              value: value,
+              onChanged: (_) {},
+              activeThumbColor: Colors.blueAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChunkPreviewItem(int index, String text) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                child: Text('#$index', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+              ),
+              const SizedBox(width: 8),
+              const Text('245 tokens', style: TextStyle(color: Colors.white24, fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            text,
+            style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.5),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChoiceChipGroup(List<String> options, String selected) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) => _buildChoiceChip(opt, opt == selected)).toList(),
+      );
+  }
+
+  Widget _buildFinishStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.indexRetrievalTitle,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context)!.indexRetrievalSub,
+            style: const TextStyle(color: Colors.white38, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(AppLocalizations.of(context)!.indexMethod),
+                    _buildIndexMethodCard(
+                      AppLocalizations.of(context)!.highQuality,
+                      AppLocalizations.of(context)!.highQualitySub,
+                      _indexingTechnique == 'high_quality',
+                      'high_quality',
+                    ),
+                    const SizedBox(height: 12),
+                    _buildIndexMethodCard(
+                      AppLocalizations.of(context)!.economical,
+                      AppLocalizations.of(context)!.economicalSub,
+                      _indexingTechnique == 'economy',
+                      'economy',
+                    ),
+                    
+                    const SizedBox(height: 32),
+                    _buildSectionHeader(AppLocalizations.of(context)!.embeddingModel),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.psychology, size: 18, color: Colors.blueAccent),
+                          const SizedBox(width: 12),
+                          const Expanded(child: Text('text-embedding-3-large', style: TextStyle(color: Colors.white, fontSize: 13))),
+                          const Icon(Icons.arrow_drop_down, color: Colors.white38),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 48),
+
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(AppLocalizations.of(context)!.retrievalSettings),
+                    _buildChoiceChipGroup(['Vector Search', 'Full-Text Search', 'Hybrid Search'], 'Hybrid Search'),
+                    
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(AppLocalizations.of(context)!.rerankSettings),
+                    _buildToggleRow(AppLocalizations.of(context)!.rerankModel, true),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _rerankModel,
+                          dropdownColor: const Color(0xFF1C2128),
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          icon: const Icon(Icons.arrow_drop_down, color: Colors.white38),
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem(
+                              value: 'rerank-english-v3.0',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.layers_outlined, size: 18, color: Colors.purpleAccent),
+                                  const SizedBox(width: 12),
+                                  const Expanded(child: Text('rerank-english-v3.0')),
+                                ],
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: 'rerank-multilingual-v3.0',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.translate, size: 18, color: Colors.blueAccent),
+                                  const SizedBox(width: 12),
+                                  const Expanded(child: Text('rerank-multilingual-v3.0')),
+                                ],
+                              ),
+                            ),
+                          ],
+                          onChanged: (val) {
+                             if (val != null) setState(() => _rerankModel = val);
+                          },
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.topK, '3')),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.scoreThreshold, '0.5')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -134,9 +429,118 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
               _buildSourceCard(AppLocalizations.of(context)!.syncFromWebsite, 'website', FontAwesomeIcons.globe, Colors.blueAccent),
             ],
           ),
+          if (_selectedSourceType == 'local-file') ...[
+            const SizedBox(height: 32),
+            _buildLocalFileInput(),
+          ],
         ],
       ),
     );
+  }
+
+  Widget _buildLocalFileInput() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Upload Settings',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _nameController,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Name', // AppLocalizations.of(context)!.nameLabel missing
+              hintText: 'e.g. Q3 Financial Report',
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: _pickFile,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: _pickedFile != null ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _pickedFile != null ? Colors.blueAccent : Colors.white24,
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Column(
+                children: [
+                   if (_pickedFile != null) ...[
+                      const Icon(Icons.check_circle, size: 32, color: Colors.blueAccent),
+                      const SizedBox(height: 8),
+                      Text(
+                        _pickedFile!.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${(_pickedFile!.size / 1024).toStringAsFixed(2)} KB',
+                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: _pickFile, 
+                        child: const Text('Replace File', style: TextStyle(color: Colors.blueAccent)),
+                      ),
+                   ] else ...[
+                      const Icon(Icons.cloud_upload_outlined, size: 32, color: Colors.white38),
+                      const SizedBox(height: 8),
+                      Text(
+                        AppLocalizations.of(context)!.uploadLabel,
+                        style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                       const Text(
+                        'PDF, TXT, MD, CSV, JSON',
+                        style: TextStyle(color: Colors.white24, fontSize: 11),
+                      ),
+                   ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'txt', 'md', 'json', 'csv'],
+        withData: true,
+      );
+
+      if (result != null) {
+        setState(() {
+          _pickedFile = result.files.single;
+          if (_nameController.text.isEmpty) {
+            _nameController.text = _pickedFile!.name;
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking file: $e')),
+      );
+    }
   }
 
   Widget _buildSourceCard(String title, String type, IconData icon, Color color) {
@@ -262,248 +666,7 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-      ),
-    );
-  }
-
-  Widget _buildChoiceChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: isSelected ? Colors.blueAccent : Colors.white38, fontSize: 13, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  Widget _buildSettingField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildToggleRow(String label, bool value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13))),
-          Transform.scale(
-            scale: 0.7,
-            child: Switch(
-              value: value,
-              onChanged: (_) {},
-              activeThumbColor: Colors.blueAccent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChunkPreviewItem(int index, String text) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
-                child: Text('#$index', style: const TextStyle(color: Colors.white38, fontSize: 10)),
-              ),
-              const SizedBox(width: 8),
-              const Text('245 tokens', style: TextStyle(color: Colors.white24, fontSize: 10)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            text,
-            style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.5),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFinishStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.indexRetrievalTitle,
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            AppLocalizations.of(context)!.indexRetrievalSub,
-            style: const TextStyle(color: Colors.white38, fontSize: 14),
-          ),
-          const SizedBox(height: 32),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Indexing Method Area
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(AppLocalizations.of(context)!.indexMethod),
-                    _buildIndexMethodCard(
-                      AppLocalizations.of(context)!.highQuality,
-                      AppLocalizations.of(context)!.highQualitySub,
-                      true,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildIndexMethodCard(
-                      AppLocalizations.of(context)!.economical,
-                      AppLocalizations.of(context)!.economicalSub,
-                      false,
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    _buildSectionHeader(AppLocalizations.of(context)!.embeddingModel),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.psychology, size: 18, color: Colors.blueAccent),
-                          const SizedBox(width: 12),
-                          const Expanded(child: Text('text-embedding-3-large', style: TextStyle(color: Colors.white, fontSize: 13))),
-                          const Icon(Icons.arrow_drop_down, color: Colors.white38),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 48),
-
-              // Retrieval Settings Area
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader(AppLocalizations.of(context)!.retrievalSettings),
-                    _buildChoiceChipGroup(['Vector Search', 'Full-Text Search', 'Hybrid Search'], 'Hybrid Search'),
-                    
-                    const SizedBox(height: 24),
-                    _buildSectionHeader(AppLocalizations.of(context)!.rerankSettings),
-                    _buildToggleRow(AppLocalizations.of(context)!.rerankModel, true),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white10),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.layers_outlined, size: 18, color: Colors.purpleAccent),
-                          SizedBox(width: 12),
-                          Expanded(child: Text('rerank-english-v3.0', style: TextStyle(color: Colors.white, fontSize: 13))),
-                          Icon(Icons.arrow_drop_down, color: Colors.white38),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.topK, '3')),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildSettingField(AppLocalizations.of(context)!.scoreThreshold, '0.5')),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIndexMethodCard(String title, String subtitle, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, size: 16, color: isSelected ? Colors.blueAccent : Colors.white38),
-              const SizedBox(width: 12),
-              Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: FontWeight.bold, fontSize: 14)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.only(left: 28),
-            child: Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 11)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChoiceChipGroup(List<String> options, String selected) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((opt) => _buildChoiceChip(opt, opt == selected)).toList(),
-    );
-  }
+  // Duplicate local helper methods removed to use class-level definitions.
 
   Widget _buildFooter() {
     return Container(
@@ -517,23 +680,85 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
         children: [
           if (_currentStep > 1)
             OutlinedButton(
-              onPressed: () => setState(() => _currentStep--),
+              onPressed: _isUploading ? null : () => setState(() => _currentStep--),
               child: Text(AppLocalizations.of(context)!.backLabel),
             ),
           const SizedBox(width: 12),
           ElevatedButton(
-            onPressed: _selectedSourceType == null ? null : () {
-               if (_currentStep < 3) setState(() => _currentStep++);
+            onPressed: (_selectedSourceType == null || _isUploading) ? null : () {
+               if (_currentStep < 3) {
+                 setState(() => _currentStep++);
+               } else {
+                 _executeQuickCreate();
+               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blueAccent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
-            child: Text(_currentStep == 3 ? AppLocalizations.of(context)!.finishLabel : AppLocalizations.of(context)!.nextLabel),
+            child: _isUploading
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(_currentStep == 3 ? AppLocalizations.of(context)!.finishLabel : AppLocalizations.of(context)!.nextLabel),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _executeQuickCreate() async {
+    if (_selectedSourceType == 'local-file') {
+      if (_pickedFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a file first')));
+        setState(() => _currentStep = 1);
+        return;
+      }
+      
+      setState(() {
+        _isUploading = true;
+        _uploadError = null;
+      });
+
+      try {
+        final api = ref.read(knowledgeApiServiceProvider);
+        
+        // 1. Create Knowledge Base (Dataset)
+        final kbName = _nameController.text.isNotEmpty ? _nameController.text : _pickedFile!.name;
+        final kb = await api.createKnowledgeBase(name: kbName);
+        
+        // 2. Upload File to Dataset
+        if (kIsWeb) {
+            await api.createDocumentFromFile(
+            datasetId: kb.id,
+            bytes: _pickedFile!.bytes,
+            filename: _pickedFile!.name,
+            indexingTechnique: 'high_quality',
+          );
+        } else {
+          final file = File(_pickedFile!.path!);
+          await api.createDocumentFromFile(
+            datasetId: kb.id,
+            file: file,
+            indexingTechnique: 'high_quality',
+          );
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully created knowledge base: $kbName')));
+          Navigator.of(context).pop(); // Or reset flow? Assuming this is a modal or specific screen part
+        }
+
+      } catch (e) {
+        if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating knowledge: $e')));
+        }
+        setState(() => _uploadError = e.toString());
+      } finally {
+        if (mounted) setState(() => _isUploading = false);
+      }
+    } else {
+      // Handle other types or "Coming Soon"
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This source type is not yet supported.')));
+    }
   }
 }

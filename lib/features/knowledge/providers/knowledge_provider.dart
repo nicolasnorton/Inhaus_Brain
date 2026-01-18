@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/knowledge_source.dart';
 import '../models/knowledge_api_models.dart';
 import '../services/knowledge_api_service.dart';
+import '../../../core/auth/auth_service.dart';
 
 // --- Legacy Source Management ---
 
@@ -35,10 +36,10 @@ final knowledgeProvider = StateNotifierProvider<KnowledgeNotifier, List<Knowledg
 // --- INHAUS BRAIN-style Dataset & Document Management ---
 
 final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
-  // In a real app, these would come from a secure vault or settings
+  final authService = ref.watch(authServiceProvider);
   return KnowledgeApiService(
     baseUrl: 'https://api.dify.ai',
-    apiKey: '', // Placeholder, should be injected
+    tokenProvider: () async => (await authService.currentUser)?.getIdToken(),
   );
 });
 

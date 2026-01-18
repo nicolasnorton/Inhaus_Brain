@@ -8,20 +8,18 @@ import '../models/knowledge_api_models.dart';
 class KnowledgeApiService {
   final http.Client _client;
   final String baseUrl;
-  final String apiKey;
-
-  static const Duration _timeout = Duration(seconds: 30);
-
-  // In-memory cache for performance (Recommendation #2)
-  final Map<String, dynamic> _cache = {};
-  final Map<String, DateTime> _cacheTime = {};
-  static const Duration _cacheDuration = Duration(minutes: 5);
+  final Future<String?> Function() tokenProvider;
 
   KnowledgeApiService({
     required this.baseUrl,
-    required this.apiKey,
+    required this.tokenProvider,
     http.Client? client,
   }) : _client = client ?? http.Client();
+
+  static const _timeout = Duration(seconds: 30);
+  static const _cacheDuration = Duration(minutes: 5);
+  final _cache = <String, dynamic>{};
+  final _cacheTime = <String, DateTime>{};
 
   // ==================== Knowledge Base Operations ====================
 
@@ -32,10 +30,11 @@ class KnowledgeApiService {
     String permission = 'only_me',
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({
             'name': name,
             if (description != null) 'description': description,
@@ -67,8 +66,9 @@ class KnowledgeApiService {
       },
     );
 
+    final headers = await _buildHeaders();
     final response = await _client
-        .get(uri, headers: _buildHeaders())
+        .get(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -83,8 +83,9 @@ class KnowledgeApiService {
   /// Delete a knowledge base
   Future<void> deleteKnowledgeBase(String datasetId) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId');
+    final headers = await _buildHeaders();
     final response = await _client
-        .delete(uri, headers: _buildHeaders())
+        .delete(uri, headers: headers)
         .timeout(_timeout);
 
     if (response.statusCode != 204) {
@@ -103,10 +104,11 @@ class KnowledgeApiService {
     Map<String, dynamic>? processRule,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/document/create_by_text');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({
             'name': name,
             'text': text,
@@ -121,19 +123,28 @@ class KnowledgeApiService {
     return KnowledgeDocument.fromJson(json['document'] as Map<String, dynamic>);
   }
 
-  /// Create a document from file
+  /// Create a document from file or bytes
   Future<KnowledgeDocument> createDocumentFromFile({
     required String datasetId,
-    required File file,
+    File? file,
+    List<int>? bytes,
+    String? filename,
     String indexingTechnique = 'high_quality',
     Map<String, dynamic>? processRule,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/document/create-by-file');
     final request = http.MultipartRequest('POST', uri);
-    request.headers.addAll(_buildHeaders(includeContentType: false));
+    final headers = await _buildHeaders(includeContentType: false);
+    request.headers.addAll(headers);
 
     // Add file
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    if (bytes != null && filename != null) {
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    } else if (file != null) {
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    } else {
+      throw ArgumentError('Either file or bytes+filename must be provided');
+    }
 
     // Add data
     request.fields['data'] = jsonEncode({
@@ -157,10 +168,11 @@ class KnowledgeApiService {
     required String text,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/update_by_text');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({
             'name': name,
             'text': text,
@@ -173,20 +185,30 @@ class KnowledgeApiService {
     return KnowledgeDocument.fromJson(json['document'] as Map<String, dynamic>);
   }
 
-  /// Update a document with file
+  /// Update a document with file or bytes
   Future<KnowledgeDocument> updateDocumentWithFile({
     required String datasetId,
     required String documentId,
-    required File file,
+    File? file,
+    List<int>? bytes,
+    String? filename,
     String? name,
     String indexingTechnique = 'high_quality',
     Map<String, dynamic>? processRule,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/update-by-file');
     final request = http.MultipartRequest('POST', uri);
-    request.headers.addAll(_buildHeaders(includeContentType: false));
+    final headers = await _buildHeaders(includeContentType: false);
+    request.headers.addAll(headers);
 
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    if (bytes != null && filename != null) {
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    } else if (file != null) {
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    } else {
+      throw ArgumentError('Either file or bytes+filename must be provided');
+    }
+
     request.fields['data'] = jsonEncode({
       if (name != null) 'name': name,
       'indexing_technique': indexingTechnique,
@@ -207,8 +229,9 @@ class KnowledgeApiService {
     required String documentId,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId');
+    final headers = await _buildHeaders();
     final response = await _client
-        .delete(uri, headers: _buildHeaders())
+        .delete(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -227,8 +250,9 @@ class KnowledgeApiService {
       },
     );
 
+    final headers = await _buildHeaders();
     final response = await _client
-        .get(uri, headers: _buildHeaders())
+        .get(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -243,8 +267,9 @@ class KnowledgeApiService {
     required String batch,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$batch/indexing-status');
+    final headers = await _buildHeaders();
     final response = await _client
-        .get(uri, headers: _buildHeaders())
+        .get(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -262,10 +287,11 @@ class KnowledgeApiService {
     required List<Map<String, dynamic>> segments,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({'segments': segments}),
         )
         .timeout(_timeout);
@@ -282,8 +308,9 @@ class KnowledgeApiService {
     required String documentId,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments');
+    final headers = await _buildHeaders();
     final response = await _client
-        .get(uri, headers: _buildHeaders())
+        .get(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -300,10 +327,11 @@ class KnowledgeApiService {
     required Map<String, dynamic> segment,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments/$segmentId');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({'segment': segment}),
         )
         .timeout(_timeout);
@@ -321,8 +349,9 @@ class KnowledgeApiService {
     required String segmentId,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments/$segmentId');
+    final headers = await _buildHeaders();
     final response = await _client
-        .delete(uri, headers: _buildHeaders())
+        .delete(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -337,10 +366,11 @@ class KnowledgeApiService {
     required String name,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({
             'type': type,
             'name': name,
@@ -359,10 +389,11 @@ class KnowledgeApiService {
     required String name,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata/$metadataId');
+    final headers = await _buildHeaders();
     final response = await _client
         .patch(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({'name': name}),
         )
         .timeout(_timeout);
@@ -377,8 +408,9 @@ class KnowledgeApiService {
     required String metadataId,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata/$metadataId');
+    final headers = await _buildHeaders();
     final response = await _client
-        .delete(uri, headers: _buildHeaders())
+        .delete(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -390,8 +422,9 @@ class KnowledgeApiService {
     required String action, // 'enable' or 'disable'
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata/built-in/$action');
+    final headers = await _buildHeaders();
     final response = await _client
-        .delete(uri, headers: _buildHeaders())
+        .delete(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -403,10 +436,11 @@ class KnowledgeApiService {
     required List<Map<String, dynamic>> operationData,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/metadata');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({'operation_data': operationData}),
         )
         .timeout(_timeout);
@@ -419,8 +453,9 @@ class KnowledgeApiService {
     required String datasetId,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata');
+    final headers = await _buildHeaders();
     final response = await _client
-        .get(uri, headers: _buildHeaders())
+        .get(uri, headers: headers)
         .timeout(_timeout);
 
     _checkResponse(response);
@@ -436,10 +471,11 @@ class KnowledgeApiService {
     required Map<String, dynamic> retrievalModel,
   }) async {
     final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/retrieve');
+    final headers = await _buildHeaders();
     final response = await _client
         .post(
           uri,
-          headers: _buildHeaders(),
+          headers: headers,
           body: jsonEncode({
             'query': query,
             'retrieval_model': retrievalModel,
@@ -453,9 +489,10 @@ class KnowledgeApiService {
 
   // ==================== Helper Methods ====================
 
-  Map<String, String> _buildHeaders({bool includeContentType = true}) {
+  Future<Map<String, String>> _buildHeaders({bool includeContentType = true}) async {
+    final token = await tokenProvider();
     final headers = <String, String>{
-      'Authorization': 'Bearer $apiKey',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
     if (includeContentType) {
       headers['Content-Type'] = 'application/json';
