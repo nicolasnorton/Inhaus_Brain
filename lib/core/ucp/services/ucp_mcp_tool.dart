@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../mcp/agent_tool.dart';
 import 'ucp_service.dart';
 import '../models/participant_model.dart';
@@ -124,3 +125,13 @@ class UCPListParticipantsTool extends AgentTool {
     }
   }
 }
+
+final ucpToolsProvider = Provider<List<AgentTool>>((ref) {
+  final service = ref.watch(ucpServiceProvider);
+  return [
+    UCPDiscoverTool(service),
+    UCPCheckoutTool(service),
+    UCPListCategoriesTool(),
+    UCPListParticipantsTool(service),
+  ];
+});

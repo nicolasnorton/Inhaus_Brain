@@ -20,6 +20,7 @@ class SecretVaultService {
   static const String _runwayKey = 'runway_api_key';
   static const String _elevenLabsKey = 'eleven_labs_api_key';
   static const String _vertexKey = 'vertex_api_key';
+  static const String _difyKey = 'dify_api_key';
 
   Future<void> saveGeminiKey(String key) async => await _storage.write(key: _geminiKey, value: key);
   
@@ -90,6 +91,17 @@ class SecretVaultService {
     return await _storage.read(key: _vertexKey);
   }
 
+  Future<void> saveDifyKey(String key) async => await _storage.write(key: _difyKey, value: key);
+  
+  Future<String?> getDifyKey() async {
+    final envKey = dotenv.maybeGet('DIFY_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    
+    const buildKey = String.fromEnvironment('DIFY_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
+    return await _storage.read(key: _difyKey);
+  }
+
   Future<void> clearAllKeys() async {
     await _storage.delete(key: _geminiKey);
     await _storage.delete(key: _veoKey);
@@ -104,6 +116,7 @@ class SecretVaultService {
     await _storage.delete(key: _runwayKey);
     await _storage.delete(key: _elevenLabsKey);
     await _storage.delete(key: _vertexKey);
+    await _storage.delete(key: _difyKey);
   }
 }
 
@@ -119,6 +132,7 @@ class AIKeys {
   final String? midjourney;
   final String? runway;
   final String? vertex;
+  final String? dify;
 
   AIKeys({
     this.gemini,
@@ -132,6 +146,7 @@ class AIKeys {
     this.midjourney,
     this.runway,
     this.vertex,
+    this.dify,
   });
 }
 
@@ -149,6 +164,7 @@ final aiKeysProvider = FutureProvider<AIKeys>((ref) async {
     midjourney: await vault.getMidjourneyKey(),
     runway: await vault.getRunwayKey(),
     vertex: await vault.getVertexKey(),
+    dify: await vault.getDifyKey(),
   );
 });
 

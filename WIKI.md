@@ -45,6 +45,17 @@ This is where you turn your workflows into real applications. You can publish th
 
 ### 6. 🛠️ Templates & Sharing
 *   **Workflow Templates**: Don't start from scratch! Use professionally designed blueprints (like "Simple Chatbot" or "Twitter Account Analyzer") to jumpstart your project.
+*   **Industry Blueprints (New)**: Explore over 100+ specialized blueprints across 10 major industries to solve real-world problems instantly:
+    *   🛍️ **Retail**: AI Shopping Assistants, Inventory Management, Personalization.
+    *   🎬 **Media & Entertainment**: Content Personalization, Script Analysis, Automated Editing.
+    *   🚚 **Automotive & Logistics**: Fleet Management, Predictive Maintenance, Route Optimization.
+    *   💸 **Financial Services**: Fraud Detection, Loan Processing, Personalized Banking.
+    *   🏥 **Healthcare**: Patient Diagnosis Support, Drug Discovery, Telemedicine Triage.
+    *   📡 **Telecommunications**: Network Optimization, Customer Churn Prediction.
+    *   ✈️ **Travel & Hospitality**: Dynamic Pricing, Travel Itinerary Generation.
+    *   🏭 **Manufacturing**: Quality Control, Supply Chain Optimization.
+    *   🏛️ **Public Sector**: Citizen Services, Policy Analysis, Smart City Management.
+    *   ⚡ **Productivity**: Meeting Summarizers, Email Assistants, Code Reviewers.
 *   **Import/Export**: Move your workflows between workspaces or share them with others using the **Export JSON** and **Import** features.
 
 ### 7. 🐛 Debug Tools (The Inspector)

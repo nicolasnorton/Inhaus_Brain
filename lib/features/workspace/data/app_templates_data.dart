@@ -2,6 +2,7 @@ import '../../../core/adk/models/pipeline_models.dart';
 import '../../chat/models/chat_models.dart';
 import '../models/app_models.dart';
 import '../models/app_template.dart';
+import 'blueprint_templates.dart';
 
 class AppTemplatesData {
   static List<AppTemplate> templates = [
@@ -180,9 +181,16 @@ class AppTemplatesData {
     ),
   ];
 
+  static List<AppTemplate> get allTemplates {
+    return [
+      ...templates,
+      ...blueprintTemplates.map((t) => t.toAppTemplate()),
+    ];
+  }
+
   static AppTemplate? getById(String id) {
     try {
-      return templates.firstWhere((t) => t.id == id);
+      return allTemplates.firstWhere((t) => t.id == id);
     } catch (_) {
       return null;
     }

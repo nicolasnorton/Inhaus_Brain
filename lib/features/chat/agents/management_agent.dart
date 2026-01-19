@@ -13,6 +13,8 @@ import 'package:inhaus_brain/features/adk/tools/adk_tools.dart';
 import 'package:inhaus_brain/features/knowledge/tools/knowledge_tools.dart';
 import 'package:inhaus_brain/features/chat/services/skill_discovery_service.dart';
 import 'package:inhaus_brain/features/admin/tools/admin_tools.dart';
+import 'package:inhaus_brain/core/ucp/services/ucp_mcp_tool.dart';
+import 'package:inhaus_brain/core/mcp/tools/multimodal_tools.dart';
 
 class ManagementAgent extends BaseAgent {
   @override
@@ -87,6 +89,17 @@ You can Create, Read (List), Update, and Delete the following resources:
 - read_global_memory(limit, category): Read system-wide memories from ALL agents and users. Use this to find context that other agents have saved.
 - read_system_logs(limit, level): Read kernel execution logs. Use this to diagnose errors or monitor performance.
 
+#### Universal Commerce Protocol (UCP)
+- ucp_discover_businesses(query): Search for businesses and services.
+- ucp_initiate_checkout(businessId, itemIds): Start a transaction.
+- ucp_list_categories(): Browse commerce categories.
+- ucp_list_participants(): See who is active in the network.
+
+#### Multimodal Asset Generation
+- image_generation(prompt, style): Create production-grade images.
+- video_generation(prompt, duration): Generate video content.
+- audio_generation(prompt, duration): Compose music or audio.
+
 If the user request is a direct command to perform one of these actions, return a JSON object representing the tool call.
 Use this EXACT format:
 ```json
@@ -145,7 +158,7 @@ Use this EXACT format:
       final Map<String, dynamic> parameters = Map<String, dynamic>.from(
           toolCall['parameters'] ?? toolCall['args'] ?? Map<String, dynamic>.from(toolCall)..remove('tool'));
       
-      final tools = ref.read(allManagementToolsProvider);
+      final tools = await ref.read(allManagementToolsProvider.future);
       final tool = tools.firstWhere(
         (t) => t.name == toolName,
         orElse: () => throw Exception("Tool '$toolName' not found."),
@@ -192,7 +205,9 @@ Use this EXACT format:
   }
 }
 
-final allManagementToolsProvider = Provider<List<AgentTool>>((ref) {
+final allManagementToolsProvider = FutureProvider<List<AgentTool>>((ref) async {
+  final multimodal = await ref.watch(multimodalToolsProvider.future);
+  
   return [
     ...ref.watch(clientToolsProvider),
     ...ref.watch(campaignToolsProvider),
@@ -200,5 +215,7 @@ final allManagementToolsProvider = Provider<List<AgentTool>>((ref) {
     ...ref.watch(knowledgeToolsProvider),
     ...ref.watch(skillToolsProvider),
     ...ref.watch(adminToolsProvider),
+    ...ref.watch(ucpToolsProvider),
+    ...multimodal,
   ];
 });

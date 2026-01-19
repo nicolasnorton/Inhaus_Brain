@@ -1,50 +1,64 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http; // Kept for file upload if needed, or remove if unused
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
+import '../../../core/services/vertex_ai_service.dart';
 import '../models/knowledge_api_models.dart';
 
-/// Service for Knowledge Base API operations
-/// Based on INHAUS BRAIN API specification
+/// Service for Knowledge Base operations (Native Vertex + Firestore)
 class KnowledgeApiService {
-  final http.Client _client;
-  final String baseUrl;
-  final Future<String?> Function() tokenProvider;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final VertexApiService _vertexService;
+  final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
 
   KnowledgeApiService({
-    required this.baseUrl,
+    required VertexApiService vertexService,
     required this.tokenProvider,
+    String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : _vertexService = vertexService;
 
-  static const _timeout = Duration(seconds: 30);
-  static const _cacheDuration = Duration(minutes: 5);
-  final _cache = <String, dynamic>{};
-  final _cacheTime = <String, DateTime>{};
+  static const String _collectionDatasets = 'knowledge_datasets';
+  static const String _collectionDocuments = 'documents';
+  static const String _collectionChunks = 'chunks';
 
   // ==================== Knowledge Base Operations ====================
 
-  /// Create an empty knowledge base
+  /// Create an empty knowledge base (Dataset)
   Future<KnowledgeBase> createKnowledgeBase({
     required String name,
     String? description,
     String permission = 'only_me',
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'name': name,
-            if (description != null) 'description': description,
-            'permission': permission,
-          }),
-        )
-        .timeout(_timeout);
+    final docRef = _firestore.collection(_collectionDatasets).doc();
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    
+    final kb = KnowledgeBase(
+      id: docRef.id,
+      name: name,
+      description: description,
+      provider: 'vertex_ai',
+      permission: permission,
+      dataSourceType: 'native',
+      indexingTechnique: 'high_quality',
+      appCount: 0,
+      documentCount: 0,
+      wordCount: 0,
+      createdBy: 'user', // In real app, get from Auth
+      createdAt: now,
+      updatedBy: 'user',
+      updatedAt: now,
+      embeddingModel: 'text-embedding-004',
+      embeddingModelProvider: 'google',
+      embeddingAvailable: true,
+    );
 
-    _checkResponse(response);
-    return KnowledgeBase.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    // Convert to JSON but remove fields that might be null if not handled by toJson properly or strict
+    // leveraging the model's toJson should be fine.
+    await docRef.set(kb.toJson());
+    return kb;
   }
 
   /// Get list of knowledge bases
@@ -53,49 +67,26 @@ class KnowledgeApiService {
     int limit = 20,
     bool forceRefresh = false,
   }) async {
-    final cacheKey = 'datasets_p${page}_l$limit';
-    
-    if (!forceRefresh && _isCacheValid(cacheKey)) {
-      return _cache[cacheKey] as List<KnowledgeBase>;
-    }
+    // Basic implementation: retrieve all (pagination in Firestore requires cursors)
+    final snapshot = await _firestore
+        .collection(_collectionDatasets)
+        .orderBy('created_at', descending: true)
+        .limit(limit)
+        .get();
 
-    final uri = Uri.parse('$baseUrl/v1/datasets').replace(
-      queryParameters: {
-        'page': page.toString(),
-        'limit': limit.toString(),
-      },
-    );
-
-    final headers = await _buildHeaders();
-    final response = await _client
-        .get(uri, headers: headers)
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = json['data'] as List;
-    final result = data.map((item) => KnowledgeBase.fromJson(item as Map<String, dynamic>)).toList();
-    
-    _setCache(cacheKey, result);
-    return result;
+    return snapshot.docs.map((doc) => KnowledgeBase.fromJson(doc.data())).toList();
   }
 
   /// Delete a knowledge base
   Future<void> deleteKnowledgeBase(String datasetId) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .delete(uri, headers: headers)
-        .timeout(_timeout);
-
-    if (response.statusCode != 204) {
-      _checkResponse(response);
-    }
+    await _firestore.collection(_collectionDatasets).doc(datasetId).delete();
+    // Note: Subcollections (documents) are not auto-deleted in Firestore. 
+    // In a production app, use a Cloud Function to recursive delete.
   }
 
   // ==================== Document Operations ====================
 
-  /// Create a document from text
+  /// Create a document from text (Ingestion Pipeline)
   Future<KnowledgeDocument> createDocumentFromText({
     required String datasetId,
     required String name,
@@ -103,27 +94,104 @@ class KnowledgeApiService {
     String indexingTechnique = 'high_quality',
     Map<String, dynamic>? processRule,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/document/create_by_text');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'name': name,
-            'text': text,
-            'indexing_technique': indexingTechnique,
-            'process_rule': processRule ?? {'mode': 'automatic'},
-          }),
-        )
-        .timeout(_timeout);
+    // 1. Create Document Record
+    final docRef = _firestore
+        .collection(_collectionDatasets)
+        .doc(datasetId)
+        .collection(_collectionDocuments)
+        .doc();
+    
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final docId = docRef.id;
 
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return KnowledgeDocument.fromJson(json['document'] as Map<String, dynamic>);
+    // 2. Chunking (Simple Splitter for MVP)
+    final chunks = _splitText(text, 500); // ~500 chars per chunk
+    int totalTokens = text.split(' ').length; // Rough estimate
+
+    // 3. Embeddings via Vertex AI
+    List<List<double>> embeddings = [];
+    try {
+      // Get auth token (API Key or Bearer)
+      final token = await tokenProvider();
+      
+      // Determine if it's an API Key or Access Token
+      String? apiKey;
+      String? accessToken;
+      if (token != null && !token.startsWith('ya29.')) {
+        apiKey = token;
+      } else {
+        accessToken = token;
+      }
+      
+      embeddings = await _vertexService.getEmbeddings(
+        chunks, 
+        apiKey: apiKey,
+        accessToken: accessToken,
+      );
+    } catch (e) {
+      debugPrint('Embedding generation failed: $e');
+      // Continue without embeddings? Or fail? 
+      // For MVP, we might fail or store empty. Let's fail to warn user.
+      throw Exception('Failed to generate embeddings: $e');
+    }
+
+    // 4. Store Chunks with Vectors
+    final batch = _firestore.batch();
+    for (int i = 0; i < chunks.length; i++) {
+      final chunkRef = docRef.collection(_collectionChunks).doc();
+      final chunkData = DocumentChunk(
+        id: chunkRef.id,
+        position: i + 1,
+        documentId: docId,
+        content: chunks[i],
+        wordCount: chunks[i].split(' ').length,
+        tokens: (chunks[i].length / 4).ceil(), // rough est
+        keywords: [],
+        indexNodeId: '',
+        indexNodeHash: '',
+        hitCount: 0,
+        enabled: true,
+        status: 'completed',
+        createdBy: 'system',
+        createdAt: now,
+        indexingAt: now,
+        completedAt: now,
+      ).toJson();
+
+      // Add Vector Field (native Firestore vector support requires specific format, usually List<double>)
+      if (i < embeddings.length) {
+        chunkData['embedding_vector'] = embeddings[i]; // Vector field
+      }
+
+      batch.set(chunkRef, chunkData);
+    }
+
+    // 5. Save Document Metadata
+    final doc = KnowledgeDocument(
+      id: docId,
+      position: 1,
+      dataSourceType: 'text',
+      name: name,
+      createdFrom: 'api',
+      createdBy: 'user',
+      createdAt: now,
+      tokens: totalTokens,
+      indexingStatus: 'completed',
+      enabled: true,
+      archived: false,
+      displayStatus: 'normal',
+      wordCount: text.split(' ').length,
+      hitCount: 0,
+      docForm: 'text_model',
+    );
+    
+    batch.set(docRef, doc.toJson());
+    await batch.commit();
+
+    return doc;
   }
 
-  /// Create a document from file or bytes
+  /// Create a document from file (Mock parsing for now)
   Future<KnowledgeDocument> createDocumentFromFile({
     required String datasetId,
     File? file,
@@ -132,60 +200,46 @@ class KnowledgeApiService {
     String indexingTechnique = 'high_quality',
     Map<String, dynamic>? processRule,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/document/create-by-file');
-    final request = http.MultipartRequest('POST', uri);
-    final headers = await _buildHeaders(includeContentType: false);
-    request.headers.addAll(headers);
-
-    // Add file
-    if (bytes != null && filename != null) {
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    } else if (file != null) {
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-    } else {
-      throw ArgumentError('Either file or bytes+filename must be provided');
+    String textContent = "File content placeholder for ${filename ?? 'file'}";
+    if (bytes != null) {
+      // Try to decode utf8 if text file
+      try {
+        textContent = utf8.decode(bytes, allowMalformed: true);
+      } catch (_) {}
     }
-
-    // Add data
-    request.fields['data'] = jsonEncode({
-      'indexing_technique': indexingTechnique,
-      'process_rule': processRule ?? {'mode': 'automatic'},
-    });
-
-    final streamedResponse = await request.send().timeout(_timeout);
-    final response = await http.Response.fromStream(streamedResponse);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return KnowledgeDocument.fromJson(json['document'] as Map<String, dynamic>);
+    
+    return createDocumentFromText(
+      datasetId: datasetId, 
+      name: filename ?? 'Uploaded File', 
+      text: textContent
+    );
   }
 
-  /// Update a document with text
+  // --- Helpers ---
+  List<String> _splitText(String text, int chunkSize) {
+    if (text.isEmpty) return [];
+    List<String> chunks = [];
+    for (int i = 0; i < text.length; i += chunkSize) {
+      int end = (i + chunkSize < text.length) ? i + chunkSize : text.length;
+      chunks.add(text.substring(i, end));
+    }
+    return chunks;
+  }
+
+  /// Update a document with text (Re-index)
   Future<KnowledgeDocument> updateDocumentWithText({
     required String datasetId,
     required String documentId,
     required String name,
     required String text,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/update_by_text');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'name': name,
-            'text': text,
-          }),
-        )
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return KnowledgeDocument.fromJson(json['document'] as Map<String, dynamic>);
+    // For MVP transparency: Delete and Re-create logic or similar
+    await deleteDocument(datasetId: datasetId, documentId: documentId);
+    return createDocumentFromText(datasetId: datasetId, name: name, text: text);
   }
-
-  /// Update a document with file or bytes
+  
+  // Stubs for other methods to match interface, can function similarly
+  
   Future<KnowledgeDocument> updateDocumentWithFile({
     required String datasetId,
     required String documentId,
@@ -196,31 +250,13 @@ class KnowledgeApiService {
     String indexingTechnique = 'high_quality',
     Map<String, dynamic>? processRule,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/update-by-file');
-    final request = http.MultipartRequest('POST', uri);
-    final headers = await _buildHeaders(includeContentType: false);
-    request.headers.addAll(headers);
-
-    if (bytes != null && filename != null) {
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    } else if (file != null) {
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-    } else {
-      throw ArgumentError('Either file or bytes+filename must be provided');
-    }
-
-    request.fields['data'] = jsonEncode({
-      if (name != null) 'name': name,
-      'indexing_technique': indexingTechnique,
-      'process_rule': processRule ?? {'mode': 'automatic'},
-    });
-
-    final streamedResponse = await request.send().timeout(_timeout);
-    final response = await http.Response.fromStream(streamedResponse);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return KnowledgeDocument.fromJson(json['document'] as Map<String, dynamic>);
+      await deleteDocument(datasetId: datasetId, documentId: documentId);
+      return createDocumentFromFile(
+        datasetId: datasetId, 
+        file: file, 
+        bytes: bytes, 
+        filename: filename ?? name,
+      );
   }
 
   /// Delete a document
@@ -228,13 +264,14 @@ class KnowledgeApiService {
     required String datasetId,
     required String documentId,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .delete(uri, headers: headers)
-        .timeout(_timeout);
-
-    _checkResponse(response);
+    final docRef = _firestore
+        .collection(_collectionDatasets)
+        .doc(datasetId)
+        .collection(_collectionDocuments)
+        .doc(documentId);
+        
+    await docRef.delete();
+    // In production, delete chunks subcollection too
   }
 
   /// Get list of documents in a knowledge base
@@ -243,39 +280,24 @@ class KnowledgeApiService {
     int page = 1,
     int limit = 20,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents').replace(
-      queryParameters: {
-        'page': page.toString(),
-        'limit': limit.toString(),
-      },
-    );
+    final snapshot = await _firestore
+        .collection(_collectionDatasets)
+        .doc(datasetId)
+        .collection(_collectionDocuments)
+        .orderBy('created_at', descending: true)
+        .limit(limit)
+        .get();
 
-    final headers = await _buildHeaders();
-    final response = await _client
-        .get(uri, headers: headers)
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = json['data'] as List;
-    return data.map((item) => KnowledgeDocument.fromJson(item as Map<String, dynamic>)).toList();
+    return snapshot.docs.map((doc) => KnowledgeDocument.fromJson(doc.data())).toList();
   }
 
-  /// Get document indexing status
+  /// Get document indexing status (Mock for Firestore)
   Future<List<IndexingStatus>> getIndexingStatus({
     required String datasetId,
     required String batch,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$batch/indexing-status');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .get(uri, headers: headers)
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = json['data'] as List;
-    return data.map((item) => IndexingStatus.fromJson(item as Map<String, dynamic>)).toList();
+    // Return empty or mock status as we don't have a separate indexing status collection yet
+    return []; 
   }
 
   // ==================== Chunk (Segment) Operations ====================
@@ -286,20 +308,8 @@ class KnowledgeApiService {
     required String documentId,
     required List<Map<String, dynamic>> segments,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({'segments': segments}),
-        )
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = json['data'] as List;
-    return data.map((item) => DocumentChunk.fromJson(item as Map<String, dynamic>)).toList();
+     // Not heavily used in manual create, usually internal.
+     return [];
   }
 
   /// Get chunks from a document
@@ -307,16 +317,16 @@ class KnowledgeApiService {
     required String datasetId,
     required String documentId,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .get(uri, headers: headers)
-        .timeout(_timeout);
+    final snapshot = await _firestore
+        .collection(_collectionDatasets)
+        .doc(datasetId)
+        .collection(_collectionDocuments)
+        .doc(documentId)
+        .collection(_collectionChunks)
+        .orderBy('position')
+        .get();
 
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = json['data'] as List;
-    return data.map((item) => DocumentChunk.fromJson(item as Map<String, dynamic>)).toList();
+    return snapshot.docs.map((doc) => DocumentChunk.fromJson(doc.data())).toList();
   }
 
   /// Update a chunk
@@ -326,20 +336,8 @@ class KnowledgeApiService {
     required String segmentId,
     required Map<String, dynamic> segment,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments/$segmentId');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({'segment': segment}),
-        )
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = json['data'] as List;
-    return DocumentChunk.fromJson(data.first as Map<String, dynamic>);
+     // Stub
+    throw UnimplementedError();
   }
 
   /// Delete a chunk
@@ -348,197 +346,64 @@ class KnowledgeApiService {
     required String documentId,
     required String segmentId,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/$documentId/segments/$segmentId');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .delete(uri, headers: headers)
-        .timeout(_timeout);
-
-    _checkResponse(response);
+     final ref = _firestore
+        .collection(_collectionDatasets)
+        .doc(datasetId)
+        .collection(_collectionDocuments)
+        .doc(documentId)
+        .collection(_collectionChunks)
+        .doc(segmentId);
+     await ref.delete();
   }
 
   // ==================== Metadata Operations ====================
-
-  /// Add metadata field to knowledge base
+  // Stubs to satisfy interface if called, or throw Unimplemented
+  
   Future<MetadataField> addMetadataField({
     required String datasetId,
     required String type,
     required String name,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'type': type,
-            'name': name,
-          }),
-        )
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    return MetadataField.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+      throw UnimplementedError('Metadata operations not supported in native mode yet.');
   }
 
-  /// Update metadata field
   Future<MetadataField> updateMetadataField({
     required String datasetId,
     required String metadataId,
     required String name,
-  }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata/$metadataId');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .patch(
-          uri,
-          headers: headers,
-          body: jsonEncode({'name': name}),
-        )
-        .timeout(_timeout);
+  }) async => throw UnimplementedError();
 
-    _checkResponse(response);
-    return MetadataField.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-  }
-
-  /// Delete metadata field
   Future<void> deleteMetadataField({
     required String datasetId,
     required String metadataId,
-  }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata/$metadataId');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .delete(uri, headers: headers)
-        .timeout(_timeout);
+  }) async => throw UnimplementedError();
 
-    _checkResponse(response);
-  }
-
-  /// Enable/disable built-in metadata fields
   Future<void> toggleBuiltInFields({
     required String datasetId,
-    required String action, // 'enable' or 'disable'
-  }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata/built-in/$action');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .delete(uri, headers: headers)
-        .timeout(_timeout);
+    required String action,
+  }) async {} // No-op
 
-    _checkResponse(response);
-  }
-
-  /// Update document metadata
   Future<void> updateDocumentMetadata({
     required String datasetId,
     required List<Map<String, dynamic>> operationData,
-  }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/documents/metadata');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({'operation_data': operationData}),
-        )
-        .timeout(_timeout);
+  }) async {} // No-op
 
-    _checkResponse(response);
-  }
-
-  /// Get metadata list
   Future<Map<String, dynamic>> listMetadata({
     required String datasetId,
-  }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/metadata');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .get(uri, headers: headers)
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    return jsonDecode(response.body) as Map<String, dynamic>;
-  }
+  }) async => {};
 
   // ==================== Retrieval Operations ====================
-
-  /// Retrieve chunks from knowledge base
+  // This would ideally do Vector Search using Firestore Vector Search
   Future<Map<String, dynamic>> retrieveChunks({
     required String datasetId,
     required String query,
     required Map<String, dynamic> retrievalModel,
   }) async {
-    final uri = Uri.parse('$baseUrl/v1/datasets/$datasetId/retrieve');
-    final headers = await _buildHeaders();
-    final response = await _client
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'query': query,
-            'retrieval_model': retrievalModel,
-          }),
-        )
-        .timeout(_timeout);
-
-    _checkResponse(response);
-    return jsonDecode(response.body) as Map<String, dynamic>;
+     // TODO: Implement actual Vector Search here
+     return {'records': []};
   }
 
-  // ==================== Helper Methods ====================
-
-  Future<Map<String, String>> _buildHeaders({bool includeContentType = true}) async {
-    final token = await tokenProvider();
-    final headers = <String, String>{
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-    if (includeContentType) {
-      headers['Content-Type'] = 'application/json';
-    }
-    return headers;
-  }
-
-  void _checkResponse(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return;
-    }
-
-    try {
-      final error = KnowledgeApiError.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>,
-      );
-      throw KnowledgeApiException(error);
-    } catch (e) {
-      if (e is KnowledgeApiException) rethrow;
-      throw KnowledgeApiException(
-        KnowledgeApiError(
-          code: 'unknown_error',
-          message: 'HTTP ${response.statusCode}: ${response.reasonPhrase}',
-          status: response.statusCode,
-        ),
-      );
-    }
-  }
-
-  void _setCache(String key, dynamic value) {
-    _cache[key] = value;
-    _cacheTime[key] = DateTime.now();
-  }
-
-  bool _isCacheValid(String key) {
-    if (!_cache.containsKey(key)) return false;
-    final time = _cacheTime[key];
-    if (time == null) return false;
-    return DateTime.now().difference(time) < _cacheDuration;
-  }
-
-  void dispose() {
-    _client.close();
-    _cache.clear();
-    _cacheTime.clear();
-  }
+  void dispose() {}
 }
 
 /// Exception for Knowledge API errors

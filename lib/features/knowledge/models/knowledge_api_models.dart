@@ -335,6 +335,26 @@ class KnowledgeBase {
       embeddingAvailable: json['embedding_available'] as bool?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'provider': provider,
+        'permission': permission,
+        'data_source_type': dataSourceType,
+        'indexing_technique': indexingTechnique,
+        'app_count': appCount,
+        'document_count': documentCount,
+        'word_count': wordCount,
+        'created_by': createdBy,
+        'created_at': createdAt,
+        'updated_by': updatedBy,
+        'updated_at': updatedAt,
+        'embedding_model': embeddingModel,
+        'embedding_model_provider': embeddingModelProvider,
+        'embedding_available': embeddingAvailable,
+      };
 }
 
 /// API error model

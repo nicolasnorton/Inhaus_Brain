@@ -11,7 +11,8 @@ import '../../adk/widgets/start_node_selector.dart';
 import '../../adk/models/app_type_models.dart' as adk;
 
 class CreateAppDialog extends ConsumerStatefulWidget {
-  const CreateAppDialog({super.key});
+  final AppTemplate? initialTemplate;
+  const CreateAppDialog({super.key, this.initialTemplate});
 
   @override
   ConsumerState<CreateAppDialog> createState() => _CreateAppDialogState();
@@ -25,6 +26,20 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
   String _selectedIcon = '🤖';
   AppTemplate? _selectedTemplate;
   adk.StartNodeType _startNodeType = adk.StartNodeType.userInput;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTemplate != null) {
+      _selectedTemplate = widget.initialTemplate;
+      _selectedType = widget.initialTemplate!.appType;
+      _selectedIcon = widget.initialTemplate!.icon;
+      _nameController.text = widget.initialTemplate!.name;
+      _descriptionController.text = widget.initialTemplate!.description;
+      _currentStep = 2; // Jump to configuration
+    }
+  }
+
 
   @override
   void dispose() {
@@ -291,17 +306,96 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
     }
   }
 
+  String _selectedCategory = 'All';
+
+  final List<String> _categories = [
+    'All',
+    'Retail',
+    'Media & Entertainment',
+    'Automotive & Logistics',
+    'Financial Services',
+    'Healthcare & Life Sciences',
+    'Telecommunications',
+    'Travel & Hospitality',
+    'Manufacturing & Energy',
+    'Public Sector',
+    'Productivity',
+    'Other'
+  ];
+
   Widget _buildTemplateSelection() {
-    return GridView.count(
-      crossAxisCount: 3,
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 1.5,
+    // 1. Get all templates (including new blueprints)
+    final allTemplates = AppTemplatesData.allTemplates;
+
+    // 2. Filter by category
+    final filteredTemplates = _selectedCategory == 'All'
+        ? allTemplates
+        : allTemplates.where((t) {
+            // Check if our special blueprint format (Industry: Description) matches
+            if (t.description.startsWith('$_selectedCategory:')) {
+              return true;
+            }
+            // For standard templates with no specific format, keep them in 'Other' or just All
+             if (_selectedCategory == 'Other' && !t.description.contains(':')) {
+               return true;
+            }
+            return false;
+          }).toList();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // "From Scratch" Card (Implicitly just going next)
-        // Actually, we list templates here.
-        for (final template in AppTemplatesData.templates)
-          _buildTemplateCard(template),
+        // Category Sidebar
+        Container(
+          width: 200,
+          margin: const EdgeInsets.only(right: 24),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.02),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: _categories.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 2),
+            itemBuilder: (context, index) {
+              final category = _categories[index];
+              final isSelected = category == _selectedCategory;
+              return ListTile(
+                title: Text(
+                  category,
+                  style: TextStyle(
+                    color: isSelected ? Colors.blueAccent : Colors.white70,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 13,
+                  ),
+                ),
+                selected: isSelected,
+                selectedTileColor: Colors.blueAccent.withValues(alpha: 0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                onTap: () => setState(() => _selectedCategory = category),
+                dense: true,
+                visualDensity: VisualDensity.compact,
+              );
+            },
+          ),
+        ),
+
+        // Template Grid
+        Expanded(
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: filteredTemplates.length,
+            itemBuilder: (context, index) {
+              return _buildTemplateCard(filteredTemplates[index]);
+            },
+          ),
+        ),
       ],
     );
   }
@@ -314,6 +408,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
           _selectedIcon = template.icon;
           _nameController.text = template.name;
           _descriptionController.text = template.description;
+          _selectedTemplate = template; // Track the template!
           _currentStep = 2; // Skip direct to config
         });
       },
@@ -339,20 +434,39 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       overflow: TextOverflow.ellipsis,
+                      fontSize: 14,
                     ),
+                    maxLines: 2,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Expanded(
               child: Text(
                 template.description,
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
-                maxLines: 3,
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+             const SizedBox(height: 8),
+             // Industry Tag (if applicable)
+             if (template.description.contains(':'))
+               Container(
+                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                 decoration: BoxDecoration(
+                   color: Colors.blueAccent.withValues(alpha: 0.1),
+                   borderRadius: BorderRadius.circular(4),
+                   border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2)),
+                 ),
+                 child: Text(
+                   template.description.split(':').first,
+                   style: const TextStyle(color: Colors.blueAccent, fontSize: 10),
+                   maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                 ),
+               ),
           ],
         ),
       ),

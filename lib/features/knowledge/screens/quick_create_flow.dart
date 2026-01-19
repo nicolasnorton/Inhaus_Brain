@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
-import '../providers/knowledge_service_providers.dart';
+import '../providers/knowledge_provider.dart';
 
 class QuickCreateFlow extends ConsumerStatefulWidget {
   const QuickCreateFlow({super.key});

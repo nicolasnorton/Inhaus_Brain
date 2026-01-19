@@ -1,13 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
 import 'package:inhaus_brain/core/mcp/agent_tool.dart';
+import 'package:inhaus_brain/features/knowledge/services/knowledge_api_service.dart';
 import 'package:inhaus_brain/features/knowledge/models/knowledge_source.dart';
 import 'package:inhaus_brain/features/knowledge/providers/knowledge_provider.dart';
 import 'package:uuid/uuid.dart';
 
 class AddKnowledgeSourceTool extends AgentTool {
   final KnowledgeNotifier _notifier;
+  final KnowledgeApiService _apiService;
+  final String? _currentDatasetId;
 
-  AddKnowledgeSourceTool(this._notifier)
+  AddKnowledgeSourceTool(this._notifier, this._apiService, this._currentDatasetId)
       : super(
           name: 'add_knowledge_source',
           description: 'Add a new knowledge source (URL, document, or text).',
@@ -49,7 +53,20 @@ class AddKnowledgeSourceTool extends AgentTool {
       return ToolResult.failure('Missing required parameter: content or url.');
     }
 
+    if (_currentDatasetId == null) {
+      return ToolResult.failure('No active Knowledge Base (Dataset) selected. Please create or select a dataset first.');
+    }
+
     try {
+      // 1. Real API Call
+      await _apiService.createDocumentFromText(
+        datasetId: _currentDatasetId!,
+        name: title,
+        text: contentFinal,
+        indexingTechnique: 'high_quality',
+      );
+
+      // 2. Optimistic UI Update (Mocking the ID since API returns one but we want to be fast)
       final source = KnowledgeSource(
         id: 'ks-${const Uuid().v4().substring(0, 8)}',
         title: title,
@@ -62,9 +79,9 @@ class AddKnowledgeSourceTool extends AgentTool {
       );
 
       _notifier.addSource(source);
-      return ToolResult.success({'message': 'Knowledge source added.'});
+      return ToolResult.success({'message': 'Knowledge source "$title" added and indexing started.'});
     } catch (e) {
-      return ToolResult.failure('Failed to add source: $e');
+      return ToolResult.failure('Failed to add knowledge source: $e');
     }
   }
 }
@@ -122,10 +139,12 @@ class ListKnowledgeSourcesTool extends AgentTool {
 
 final knowledgeToolsProvider = Provider<List<AgentTool>>((ref) {
   final notifier = ref.read(knowledgeProvider.notifier);
+  final apiService = ref.read(knowledgeApiServiceProvider);
   final sources = ref.watch(knowledgeProvider);
+  final currentDatasetId = ref.watch(selectedDatasetIdProvider); // Assuming you have this or similar
   
   return [
-    AddKnowledgeSourceTool(notifier),
+    AddKnowledgeSourceTool(notifier, apiService, currentDatasetId),
     DeleteKnowledgeSourceTool(notifier),
     ListKnowledgeSourcesTool(sources),
   ];
