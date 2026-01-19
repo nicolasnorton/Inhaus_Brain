@@ -1,19 +1,24 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'memory_ops_base.dart';
 
-class MemoryOps {
-  static const String _webMemoryKey = 'inhaus_brain_memory';
-
-  Future<void> init() async {}
-
-  Future<String> read() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_webMemoryKey) ?? "# Inhaus Brain External Memory (Web)\n\n## Initialized\n";
+class MemoryOpsImpl implements MemoryOpsBase {
+  @override
+  Future<void> init() async {
+    // SharedPreferences handles its own init
   }
 
+  @override
+  Future<String> read() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('external_memory') ?? "# Inhaus Brain External Memory\n\n## Initialized (Web)\n";
+  }
+
+  @override
   Future<void> append(String section, String content) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getString(_webMemoryKey) ?? "# Inhaus Brain External Memory (Web)\n\n## Initialized\n";
+    final current = await read();
     final newEntry = "\n\n## $section (${DateTime.now().toIso8601String()})\n$content";
-    await prefs.setString(_webMemoryKey, current + newEntry);
+    await prefs.setString('external_memory', current + newEntry);
   }
 }

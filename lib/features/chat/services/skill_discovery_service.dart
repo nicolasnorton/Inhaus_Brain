@@ -1,9 +1,10 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yaml/yaml.dart';
 import '../../../core/mcp/agent_tool.dart';
 import '../models/skill_models.dart';
+// Note: We use a deferred or conditional check for IO logic to avoid web crashes
+import 'skill_discovery_io.dart' if (dart.library.js_interop) 'skill_discovery_web_stub.dart';
 
 class SkillDiscoveryService {
   final List<AgentSkill> _skills = [];
@@ -11,29 +12,14 @@ class SkillDiscoveryService {
   List<AgentSkill> get skills => List.unmodifiable(_skills);
 
   Future<void> discoverSkills(String baseDir) async {
-    if (kIsWeb) return; // Skills from file system not supported on web
-    final dir = Directory(baseDir);
-    if (!await dir.exists()) {
-      debugPrint('SkillDiscoveryService: Base directory $baseDir does not exist.');
+    if (kIsWeb) {
+      debugPrint('SkillDiscoveryService: File system discovery not supported on web.');
       return;
     }
-
+    
     _skills.clear();
-    final entities = await dir.list().toList();
-    for (final entity in entities) {
-      if (entity is Directory) {
-        final skillFile = File('${entity.path}/SKILL.md');
-        if (await skillFile.exists()) {
-          try {
-            final content = await skillFile.readAsString();
-            final skill = _parseSkillFile(content, entity.path);
-            _skills.add(skill);
-          } catch (e) {
-            debugPrint('SkillDiscoveryService: Error parsing ${skillFile.path}: $e');
-          }
-        }
-      }
-    }
+    final discovered = await SkillDiscoveryIO.discover(baseDir, _parseSkillFile);
+    _skills.addAll(discovered);
   }
 
   AgentSkill _parseSkillFile(String content, String path) {

@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'memory_ops_base.dart';
 
-class MemoryOps {
+class MemoryOpsImpl implements MemoryOpsBase {
   File? _memoryFile;
 
+  @override
   Future<void> init() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -18,6 +20,7 @@ class MemoryOps {
     }
   }
 
+  @override
   Future<String> read() async {
     if (_memoryFile == null) await init();
     try {
@@ -27,6 +30,7 @@ class MemoryOps {
     }
   }
 
+  @override
   Future<void> append(String section, String content) async {
     if (_memoryFile == null) await init();
     try {

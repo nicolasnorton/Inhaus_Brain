@@ -30,6 +30,7 @@ class AgenticChatView extends ConsumerStatefulWidget {
 class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final FocusNode _chatFocusNode = FocusNode();
   List<Attachment> _pendingAttachments = [];
   AIModelConfig _selectedModelConfig = AIModelConfig.geminiFlash;
   bool _isAutoReadEnabled = false;
@@ -51,6 +52,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
     }
     _textController.dispose();
     _scrollController.dispose();
+    _chatFocusNode.dispose();
     super.dispose();
   }
 
@@ -185,6 +187,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                               InkWell(
                                 onTap: () {
                                   _textController.text = message.content;
+                                  _chatFocusNode.requestFocus();
                                 },
                                 child: const Padding(
                                   padding: EdgeInsets.all(4),
@@ -246,6 +249,15 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     content: message.content,
                     isUser: false,
                     modelName: _selectedModelConfig.displayName, 
+                    onDownload: () {
+                      // Handle download of message content as text file if needed
+                      // or if message has attachments, maybe download first one?
+                      if (message.attachments.isNotEmpty) {
+                        launchUrl(Uri.parse(message.attachments.first.url), mode: LaunchMode.externalApplication);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No media to download')));
+                      }
+                    },
                     onReport: () {
                          // Logic to report
                     },
@@ -571,6 +583,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                 Expanded(
                   child: TextField(
                     controller: _textController,
+                    focusNode: _chatFocusNode,
                     onSubmitted: (_) => _handleSend(),
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(

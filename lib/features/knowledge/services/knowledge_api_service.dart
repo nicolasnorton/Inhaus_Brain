@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+// import 'dart:io'; // Removed for web compatibility
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http; // Kept for file upload if needed, or remove if unused
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -194,7 +194,7 @@ class KnowledgeApiService {
   /// Create a document from file (Mock parsing for now)
   Future<KnowledgeDocument> createDocumentFromFile({
     required String datasetId,
-    File? file,
+    dynamic file,
     List<int>? bytes,
     String? filename,
     String indexingTechnique = 'high_quality',
@@ -243,7 +243,7 @@ class KnowledgeApiService {
   Future<KnowledgeDocument> updateDocumentWithFile({
     required String datasetId,
     required String documentId,
-    File? file,
+    dynamic file,
     List<int>? bytes,
     String? filename,
     String? name,

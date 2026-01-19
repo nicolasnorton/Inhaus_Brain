@@ -1,4 +1,4 @@
-import 'dart:io';
+// import 'dart:io'; // Removed for web compatibility
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -735,10 +735,13 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
             indexingTechnique: 'high_quality',
           );
         } else {
-          final file = File(_pickedFile!.path!);
+          // We use dynamic to avoid direct File type reference if possible, 
+          // or we just trust the runtime if not on web.
+          // Since dart:io is NOT imported, we can't use 'File' type name.
           await api.createDocumentFromFile(
             datasetId: kb.id,
-            file: file,
+            file: _pickedFile!.path, // Pass path or handle differently
+            filename: _pickedFile!.name,
             indexingTechnique: 'high_quality',
           );
         }

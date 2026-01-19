@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+// import 'dart:io'; // Removed for web compatibility
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../models/external_knowledge_models.dart';
@@ -118,37 +118,39 @@ class ExternalKnowledgeService {
             );
           }
         }
-      } on SocketException {
-        retries++;
-        if (retries >= _maxRetries) {
-          throw ExternalKnowledgeException(
-            ExternalKnowledgeError(
-              errorCode: 0,
-              errorMsg: 'Network connection failed after $retries attempts',
-            ),
-          );
-        }
-        await Future.delayed(Duration(milliseconds: 500 * retries));
-      } on TimeoutException {
-        retries++;
-        if (retries >= _maxRetries) {
-          throw ExternalKnowledgeException(
-            ExternalKnowledgeError(
-              errorCode: 0,
-              errorMsg: 'Request timeout after $retries attempts',
-            ),
-          );
-        }
-        await Future.delayed(Duration(milliseconds: 500 * retries));
-      } on ExternalKnowledgeException {
-        rethrow;
       } catch (e) {
-        throw ExternalKnowledgeException(
-          ExternalKnowledgeError(
-            errorCode: 0,
-            errorMsg: 'Unexpected error: $e',
-          ),
-        );
+        if (e.toString().contains('SocketException') || e.toString().contains('Connection failed')) {
+          retries++;
+          if (retries >= _maxRetries) {
+            throw ExternalKnowledgeException(
+              ExternalKnowledgeError(
+                errorCode: 0,
+                errorMsg: 'Network connection failed after $retries attempts',
+              ),
+            );
+          }
+          await Future.delayed(Duration(milliseconds: 500 * retries));
+        } else if (e is TimeoutException) {
+          retries++;
+          if (retries >= _maxRetries) {
+            throw ExternalKnowledgeException(
+              ExternalKnowledgeError(
+                errorCode: 0,
+                errorMsg: 'Request timeout after $retries attempts',
+              ),
+            );
+          }
+          await Future.delayed(Duration(milliseconds: 500 * retries));
+        } else if (e is ExternalKnowledgeException) {
+          rethrow;
+        } else {
+           throw ExternalKnowledgeException(
+            ExternalKnowledgeError(
+              errorCode: 0,
+              errorMsg: 'Unexpected error: $e',
+            ),
+          );
+        }
       }
     }
 
