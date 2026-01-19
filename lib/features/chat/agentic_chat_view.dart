@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/core/widgets/app_video_player.dart';
 import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
-import 'package:inhaus_brain/features/chat/widgets/watermarked_image.dart';
+import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
 import '../../core/services/voice_service.dart';
 import 'providers/chat_provider.dart';
 import 'models/chat_models.dart';
@@ -453,7 +453,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
       runSpacing: 8,
       children: attachments.map((attachment) {
         // Handle Video
-        if (attachment.mimeType?.startsWith('video/') == true || 
+        if (attachment.type == AttachmentType.video || 
             attachment.url.toLowerCase().endsWith('.mp4') ||
             attachment.url.toLowerCase().endsWith('.mov')) {
           return ClipRRect(
@@ -467,7 +467,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         }
 
         // Handle Audio
-        if (attachment.mimeType?.startsWith('audio/') == true || 
+        if (attachment.type == AttachmentType.voice || 
             attachment.url.toLowerCase().endsWith('.mp3') ||
             attachment.url.toLowerCase().endsWith('.wav')) {
           return SizedBox(
