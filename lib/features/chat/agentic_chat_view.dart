@@ -465,6 +465,16 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
             ),
           );
         }
+
+        // Handle Audio
+        if (attachment.mimeType?.startsWith('audio/') == true || 
+            attachment.url.toLowerCase().endsWith('.mp3') ||
+            attachment.url.toLowerCase().endsWith('.wav')) {
+          return SizedBox(
+            width: 300,
+            child: AppAudioPlayer(audioUrl: attachment.url),
+          );
+        }
         
         // Handle Images (Default)
         return ClipRRect(
