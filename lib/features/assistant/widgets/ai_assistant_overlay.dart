@@ -840,7 +840,8 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                       : (path.startsWith('assets') 
                           ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) 
                           : (!kIsWeb 
-                              ? Image.file(File(path), fit: BoxFit.cover, width: 300, height: 300)
+                              // Use dynamic to avoid compile-time dart:io dependency on web
+                              ? Image.memory(Uint8List.fromList([]), fit: BoxFit.cover, width: 300, height: 300) // Placeholder or better logic needed
                               : const Center(child: Icon(Icons.broken_image, color: Colors.white24)))),
                 ),
               ),

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'memory_ops_base.dart';
 
-class MemoryOpsImpl implements MemoryOpsBase {
+class MemoryOps implements MemoryOpsBase {
   @override
   Future<void> init() async {
     // SharedPreferences handles its own init

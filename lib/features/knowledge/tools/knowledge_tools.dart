@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:convert';
+// import 'dart:convert'; // Unused
 import 'package:inhaus_brain/core/mcp/agent_tool.dart';
 import 'package:inhaus_brain/features/knowledge/services/knowledge_api_service.dart';
 import 'package:inhaus_brain/features/knowledge/models/knowledge_source.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'memory_ops_base.dart';
 
-class MemoryOpsImpl implements MemoryOpsBase {
+class MemoryOps implements MemoryOpsBase {
   File? _memoryFile;
 
   @override

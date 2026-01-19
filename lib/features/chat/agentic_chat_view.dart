@@ -16,6 +16,7 @@ import '../../core/auth/auth_service.dart';
 import '../../core/tokens/llm_provider.dart';
 import '../../core/services/voice_command_processor.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'widgets/voice_visualizer.dart';
 import 'widgets/message_actions_row.dart';
 import 'widgets/watermarked_image.dart';

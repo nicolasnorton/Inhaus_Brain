@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'memory_ops_io.dart' if (dart.library.html) 'memory_ops_web.dart';
+import 'memory_ops.dart';
 
 class MemoryService {
   final _ops = MemoryOps();

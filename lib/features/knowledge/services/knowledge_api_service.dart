@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http; // Kept for file upload if needed, or remove if unused
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:uuid/uuid.dart';
+// import 'package:uuid/uuid.dart'; // Unused
 import '../../../core/services/vertex_ai_service.dart';
 import '../models/knowledge_api_models.dart';
 

@@ -131,13 +131,15 @@ class LoadSkillResourceTool extends AgentTool {
       return ToolResult.failure('Skill "$name" not found.');
     }
 
-    final file = File('${foundSkill.path}/$resourcePath');
-    if (!await file.exists()) {
-      return ToolResult.failure('Resource "$resourcePath" not found in skill "$name".');
+    if (kIsWeb) {
+      return ToolResult.failure('Loading resources from file system is not supported on web.');
     }
 
     try {
-      final content = await file.readAsString();
+      final content = await SkillDiscoveryIO.readResource(foundSkill.path, resourcePath);
+      if (content == null) {
+        return ToolResult.failure('Resource "$resourcePath" not found in skill "$name".');
+      }
       return ToolResult.success({
         'content': content,
         'message': 'Resource "$resourcePath" loaded successfully.',

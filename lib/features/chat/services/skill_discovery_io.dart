@@ -29,4 +29,11 @@ class SkillDiscoveryIO {
     }
     return skills;
   }
+  static Future<String?> readResource(String skillPath, String resourcePath) async {
+    final file = File('$skillPath/$resourcePath');
+    if (await file.exists()) {
+      return await file.readAsString();
+    }
+    return null;
+  }
 }
