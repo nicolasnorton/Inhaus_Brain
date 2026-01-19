@@ -734,6 +734,24 @@ abstract class AppLocalizations {
   /// **'No clients configured yet.'**
   String get noClientsConfigured;
 
+  /// No description provided for @approved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get approved;
+
+  /// No description provided for @approveInsight.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve Insight'**
+  String get approveInsight;
+
+  /// No description provided for @designConcept.
+  ///
+  /// In en, this message translates to:
+  /// **'DESIGN CONCEPT'**
+  String get designConcept;
+
   /// No description provided for @campaignsCountLabel.
   ///
   /// In en, this message translates to:

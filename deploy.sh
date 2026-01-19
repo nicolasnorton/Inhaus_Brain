@@ -28,17 +28,26 @@ if [ -z "$GEMINI_API_KEY" ]; then
   exit 1
 fi
 
+# Generate a dynamic tag (Git SHA or Timestamp)
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  TAG=$(git rev-parse --short HEAD)
+else
+  TAG=$(date +%Y%m%d%H%M%S)
+fi
+
+echo "🏷️  Deploying Version: $TAG"
+
 # 1. Build and Deploy via Cloud Build
 echo "📦 Submitting build to Google Cloud Build..."
 gcloud builds submit . \
   --config=cloudbuild.yaml \
-  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=latest" \
+  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=$TAG" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 2. Deploy to Cloud Run (Run locally as Cloud Build SA lacks permissions)
 echo "🚀 Deploying to Cloud Run..."
 gcloud run deploy $SERVICE_NAME \
-  --image $IMAGE_TAG:latest \
+  --image $IMAGE_TAG:$TAG \
   --platform managed \
   --region $REGION \
   --allow-unauthenticated \

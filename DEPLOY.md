@@ -27,22 +27,28 @@ This script will:
 If you prefer to run commands manually:
 
 ```bash
+```bash
 # 1. Set the project
 gcloud config set project inhausbrain
 
-# 2. Submit build to Cloud Build (Uses cloudbuild.yaml to inject secrets)
+# 2. Generate a Tag (Git Short Hash or Timestamp)
+TAG=$(git rev-parse --short HEAD)
+# Or: TAG=$(date +%Y%m%d%H%M%S)
+
+# 3. Submit build to Cloud Build (Pushes both :$TAG and :latest)
 gcloud builds submit . \
   --config=cloudbuild.yaml \
-  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=latest" \
+  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=$TAG" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
-# 3. Deploy to Cloud Run
+# 4. Deploy the specific version to Cloud Run
 gcloud run deploy inhaus-brain \
-  --image gcr.io/inhausbrain/inhaus-brain:latest \
+  --image gcr.io/inhausbrain/inhaus-brain:$TAG \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars "VERTEX_API_KEY=$VERTEX_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY"
+```
 ```
 
 **Note**: You must have `VERTEX_API_KEY` and `GEMINI_API_KEY` exported in your terminal session for these commands to work.

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/core/widgets/app_video_player.dart';
+import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
+import 'package:inhaus_brain/features/chat/widgets/watermarked_image.dart';
 import '../../core/services/voice_service.dart';
 import 'providers/chat_provider.dart';
 import 'models/chat_models.dart';
@@ -159,6 +163,37 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (isUser)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: message.content));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+                                  );
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.copy, size: 14, color: Colors.white70),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () {
+                                  _textController.text = message.content;
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.all(4),
+                                  child: Icon(Icons.edit, size: 14, color: Colors.white70),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       if (!isUser) ...[
                         Text(
                           _getAgentName(message.sender),
@@ -210,7 +245,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                   MessageActionsRow(
                     content: message.content,
                     isUser: false,
-                    modelName: _selectedModelConfig.displayName, // Ideally this comes from message metadata
+                    modelName: _selectedModelConfig.displayName, 
                     onReport: () {
                          // Logic to report
                     },
@@ -223,6 +258,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                   ),
                 ),
               ],
+
             ),
           ),
           const SizedBox(width: 12),
@@ -415,23 +451,38 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: attachments.map((a) => Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.attach_file, size: 12, color: Colors.white38),
-            const SizedBox(width: 4),
-            Text(a.name, style: const TextStyle(fontSize: 10, color: Colors.white54)),
-          ],
-        ),
-      )).toList(),
+      children: attachments.map((attachment) {
+        // Handle Video
+        if (attachment.mimeType?.startsWith('video/') == true || 
+            attachment.url.toLowerCase().endsWith('.mp4') ||
+            attachment.url.toLowerCase().endsWith('.mov')) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 300, 
+              // Using a restricted width for chat bubbles, player handles aspect ratio
+              child: AppVideoPlayer(videoUrl: attachment.url),
+            ),
+          );
+        }
+        
+        // Handle Images (Default)
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            height: 200,
+            width: 300, // Fixed constraint for consistency
+            child: WatermarkedImage(
+              imageUrl: attachment.url,
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
+
+
 
   Widget _buildInputArea() {
     return Container(

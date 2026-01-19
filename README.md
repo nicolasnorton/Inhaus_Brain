@@ -20,7 +20,7 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
 
 ### 🤖 Standardized Agentic Workbench (MCP)
-- **Collaborative Chat**: A unified "Workshop" interface where users, Research, Creative, Copywriter, and Developer agents collaborate.
+- **Collaborative Chat**: A unified "Workshop" interface where users can **edit and copy messages**, and collaborate with specialized agents (Researcher, Creative, Copywriter, Developer).
 - **Knowledge Module**: Inject "Ground Truth" context (URLs, PDFs, Briefs) via the **Context Board**.
 - **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.

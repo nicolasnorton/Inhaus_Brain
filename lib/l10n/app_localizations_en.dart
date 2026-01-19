@@ -355,6 +355,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noClientsConfigured => 'No clients configured yet.';
 
   @override
+  String get approved => 'Approved';
+
+  @override
+  String get approveInsight => 'Approve Insight';
+
+  @override
+  String get designConcept => 'DESIGN CONCEPT';
+
+  @override
   String get campaignsCountLabel => 'CAMPAIGNS';
 
   @override

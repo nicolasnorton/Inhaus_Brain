@@ -22,6 +22,8 @@ class DesignConcept {
   final bool isApproved;
   final String? finalCopy;
   final String? finalImageURL;
+  final String? finalVideoURL;
+  final String? finalAudioURL;
   final bool isFinalReady;
 
   DesignConcept({
@@ -34,6 +36,8 @@ class DesignConcept {
     this.isApproved = false,
     this.finalCopy,
     this.finalImageURL,
+    this.finalVideoURL,
+    this.finalAudioURL,
     this.isFinalReady = false,
   });
 
@@ -47,6 +51,8 @@ class DesignConcept {
     bool? isApproved,
     String? finalCopy,
     String? finalImageURL,
+    String? finalVideoURL,
+    String? finalAudioURL,
     bool? isFinalReady,
   }) {
     return DesignConcept(
@@ -59,6 +65,8 @@ class DesignConcept {
       isApproved: isApproved ?? this.isApproved,
       finalCopy: finalCopy ?? this.finalCopy,
       finalImageURL: finalImageURL ?? this.finalImageURL,
+      finalVideoURL: finalVideoURL ?? this.finalVideoURL,
+      finalAudioURL: finalAudioURL ?? this.finalAudioURL,
       isFinalReady: isFinalReady ?? this.isFinalReady,
     );
   }

@@ -76,5 +76,5 @@ The `PublishService` coordinates the deployment of workflows across multiple pla
 
 ## Deployment & Infrastructure (Step #4)
 - **Containerization**: Flutter Web is packaged into a multi-stage Docker image served by Nginx.
-- **CI/CD**: `cloudbuild.yaml` coordinates the transition from GitHub to Google Artifact Registry and Cloud Run.
+- **CI/CD**: `cloudbuild.yaml` coordinates the transition from GitHub to Google Artifact Registry and Cloud Run. Supports **dynamic version tagging** (Git SHA/Timestamp) for history and rollbacks.
 - **IaC**: Terraform models the infrastructure for repeatable, scalable environments.

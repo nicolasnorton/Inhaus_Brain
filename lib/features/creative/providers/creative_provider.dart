@@ -82,6 +82,8 @@ Format your response clearly.
       final updatedConcept = concept.copyWith(
         finalCopy: results['finalCopy'],
         finalImageURL: results['finalImageURL'],
+        finalVideoURL: results['finalVideoURL'],
+        finalAudioURL: results['finalAudioURL'],
         isFinalReady: true,
       );
 

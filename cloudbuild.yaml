@@ -9,12 +9,20 @@ steps:
       '.'
     ]
 
-  # 2. Push the image to Artifact Registry
+  # 2. Push the image to Artifact Registry (Versioned)
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG']
 
+  # 3. Tag and Push 'latest'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG', 'gcr.io/$PROJECT_ID/inhaus-brain:latest']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/inhaus-brain:latest']
+
 images:
   - 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG'
+  - 'gcr.io/$PROJECT_ID/inhaus-brain:latest'
 
 substitutions:
   _TAG: latest
