@@ -30,6 +30,13 @@ ARG FIREBASE_PROJECT_ID
 ARG FIREBASE_MESSAGING_SENDER_ID
 ARG FIREBASE_APP_ID
 ARG APP_ENCRYPTION_KEY
+ARG DIFY_API_KEY
+ARG ELEVEN_LABS_API_KEY
+ARG IMAGEN_API_KEY
+ARG LYRIA_API_KEY
+ARG XAI_API_KEY
+ARG RUNWAY_API_KEY
+ARG MIDJOURNEY_API_KEY
 
 # Build the web application
 # Note: Cleaning before build ensures no stale artifacts are included
@@ -45,7 +52,14 @@ RUN flutter clean && \
     --dart-define=FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID \
     --dart-define=FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID \
     --dart-define=FIREBASE_APP_ID=$FIREBASE_APP_ID \
-    --dart-define=APP_ENCRYPTION_KEY=$APP_ENCRYPTION_KEY
+    --dart-define=APP_ENCRYPTION_KEY=$APP_ENCRYPTION_KEY \
+    --dart-define=DIFY_API_KEY=$DIFY_API_KEY \
+    --dart-define=ELEVEN_LABS_API_KEY=$ELEVEN_LABS_API_KEY \
+    --dart-define=IMAGEN_API_KEY=$IMAGEN_API_KEY \
+    --dart-define=LYRIA_API_KEY=$LYRIA_API_KEY \
+    --dart-define=XAI_API_KEY=$XAI_API_KEY \
+    --dart-define=RUNWAY_API_KEY=$RUNWAY_API_KEY \
+    --dart-define=MIDJOURNEY_API_KEY=$MIDJOURNEY_API_KEY
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine
