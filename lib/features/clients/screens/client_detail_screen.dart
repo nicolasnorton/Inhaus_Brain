@@ -11,6 +11,7 @@ import '../models/client_model.dart';
 import '../models/project_model.dart';
 import '../models/task_model.dart';
 import 'project_detail_screen.dart';
+import '../../reports/models/report_model.dart';
 
 class ClientDetailScreen extends ConsumerStatefulWidget {
   final String clientId;
@@ -26,7 +27,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -69,11 +70,10 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           indicatorColor: Colors.blueAccent,
           tabs: [
             Tab(text: AppLocalizations.of(context)!.tabOverview),
-            Tab(text: AppLocalizations.of(context)!.tabContacts),
             Tab(text: AppLocalizations.of(context)!.tabProjects),
             Tab(text: AppLocalizations.of(context)!.tabTasks),
             Tab(text: AppLocalizations.of(context)!.tabIntegrations),
-            Tab(text: AppLocalizations.of(context)!.tabUCP),
+            Tab(text: AppLocalizations.of(context)!.tabReports),
           ],
         ),
       ),
@@ -81,18 +81,17 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
         controller: _tabController,
         children: [
           _buildOverviewTab(client),
-          _buildContactsTab(client),
           _buildProjectsTab(client),
           _buildTasksTab(client),
           _buildIntegrationsTab(client),
-          _buildUCPTab(client),
+          _buildReportsTab(client),
         ],
       ),
     );
   }
 
   Widget _buildOverviewTab(Client client) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,10 +134,78 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
               )).toList(),
             ),
           ],
-          const SizedBox(height: 32),
+          
+          const SizedBox(height: 40),
+          const Divider(height: 1),
+          const SizedBox(height: 40),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppLocalizations.of(context)!.clientContacts, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
+              ElevatedButton.icon(
+                onPressed: () => _showAddContactDialog(client),
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(AppLocalizations.of(context)!.addContact),
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (client.contacts.isEmpty)
+            Center(child: Text(AppLocalizations.of(context)!.noContactsAdded, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7)),))
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: client.contacts.length,
+              itemBuilder: (context, index) {
+                final contact = client.contacts[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                        child: Text(contact.firstName.characters.first, style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(contact.fullName, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text('${contact.role}  •  ${contact.email}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(contact.accessLevel, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7), fontSize: 10)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+          const SizedBox(height: 40),
+          const Divider(height: 1),
+          const SizedBox(height: 40),
+          
           Text(AppLocalizations.of(context)!.performanceSummary, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 16),
-          // Add some mock stats here
           Row(
             children: [
               _buildStatCard(AppLocalizations.of(context)!.activeCampaigns, '${client.campaignIds.length}'),
@@ -169,72 +236,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
     );
   }
 
-  Widget _buildContactsTab(Client client) {
-     return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(AppLocalizations.of(context)!.clientContacts, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
-              ElevatedButton.icon(
-                onPressed: () => _showAddContactDialog(client),
-                icon: const Icon(Icons.add),
-                label: Text(AppLocalizations.of(context)!.addContact),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          if (client.contacts.isEmpty)
-            Center(child: Text(AppLocalizations.of(context)!.noContactsAdded, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7)),))
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: client.contacts.length,
-                itemBuilder: (context, index) {
-                  final contact = client.contacts[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.blueAccent,
-                          child: Text(contact.firstName.characters.first, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
-                        ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(contact.fullName, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.bold, fontSize: 16)),
-                            Text('${contact.role}  •  ${contact.email}', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 12)),
-                          ],
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.light ? Colors.black.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(contact.accessLevel, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7), fontSize: 10)),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildProjectsTab(Client client) {
     final projects = ref.watch(projectProvider).where((p) => p.clientId == client.id).toList();
@@ -402,7 +404,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   Widget _buildIntegrationsTab(Client client) {
     final integrationState = ref.watch(clientIntegrationsProvider)[client.id] ?? ClientIntegrationState();
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,6 +416,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             childAspectRatio: 2.5,
@@ -424,51 +427,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
               _buildIntegrationCard('GoHighLevel', FontAwesomeIcons.rocket, integrationState.isGHLConnected, Colors.blueAccent, client.id),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntegrationCard(String name, IconData icon, bool isConnected, Color color, String clientId) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isConnected ? color.withValues(alpha: 0.3) : Theme.of(context).dividerColor),
-      ),
-      child: Row(
-        children: [
-          FaIcon(icon, color: color, size: 24),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold),),
-                Text(isConnected ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected, style: TextStyle(color: isConnected ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24), fontSize: 10)),
-              ],
-            ),
-          ),
-          Switch(
-            value: isConnected,
-            onChanged: (val) {
-              ref.read(clientIntegrationsProvider.notifier).toggleIntegration(clientId, name, val);
-            },
-            activeThumbColor: color,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUCPTab(Client client) {
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          
+          const SizedBox(height: 40),
+          const Divider(height: 1),
+          const SizedBox(height: 40),
+          
           Text(AppLocalizations.of(context)!.ucpTitle, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 8),
           Text(AppLocalizations.of(context)!.ucpSubTitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
@@ -540,6 +503,169 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       ),
     );
   }
+
+  Widget _buildReportsTab(Client client) {
+    final clientReports = mockReports.where((r) => r.clientId == client.id).toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Reports & Dashboards", style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
+              ElevatedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.add),
+                label: const Text("Create Analysis"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text("Manage your client's analysis reports and performance dashboards.", style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
+          
+          const SizedBox(height: 32),
+          Text("ACTIVE REPORTS", style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 350,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.5,
+            ),
+            itemCount: clientReports.length,
+            itemBuilder: (context, index) {
+              final report = clientReports[index];
+              return _buildSimpleReportCard(report);
+            },
+          ),
+          
+          const SizedBox(height: 40),
+          Text("DASHBOARDS", style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),),
+          const SizedBox(height: 16),
+          // Use a simplified version of DashboardsGrid here?
+          // For now, let's just add a placeholder or a few cards.
+          Row(
+            children: [
+              Expanded(child: _buildDashboardCard("Campaign Performance", FontAwesomeIcons.chartLine, Colors.blueAccent)),
+              const SizedBox(width: 16),
+              Expanded(child: _buildDashboardCard("Client ROI Tracker", FontAwesomeIcons.moneyBillTrendUp, Colors.greenAccent)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleReportCard(Report report) {
+    return Card(
+      color: Theme.of(context).cardColor,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
+      child: InkWell(
+        onTap: () => context.push('/reports/${report.id}'),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(FontAwesomeIcons.bookOpen, color: Colors.blueAccent, size: 14),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.more_horiz, color: Colors.white24, size: 18),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                report.title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "${report.sources.length} sources • ${report.updatedAt.month}/${report.updatedAt.day}/${report.updatedAt.year}",
+                style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard(String title, IconData icon, Color color) {
+    return Container(
+      height: 120,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FaIcon(icon, color: color, size: 24),
+          const Spacer(),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntegrationCard(String name, IconData icon, bool isConnected, Color color, String clientId) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isConnected ? color.withValues(alpha: 0.3) : Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          FaIcon(icon, color: color, size: 24),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold),),
+                Text(isConnected ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected, style: TextStyle(color: isConnected ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24), fontSize: 10)),
+              ],
+            ),
+          ),
+          Switch(
+            value: isConnected,
+            onChanged: (val) {
+              ref.read(clientIntegrationsProvider.notifier).toggleIntegration(clientId, name, val);
+            },
+            activeThumbColor: color,
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   void _showAddProjectDialog(Client client) {
     final nameController = TextEditingController();

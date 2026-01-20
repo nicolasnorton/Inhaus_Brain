@@ -109,7 +109,12 @@ class EdgeAIService {
                // Try Vertex Transport first to satisfy "use Vertex" requirement
                result = await _generateVertexGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType);
              } catch (e) {
-               debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $e. Falling back to Google Generative Language API.');
+               final errorStr = e.toString();
+               debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
+               // Special guidance for 401/403
+               if (errorStr.contains('401') || errorStr.contains('403')) {
+                  debugPrint('EdgeAI: [HINT] This likely means the API Key is not enabled for the Vertex AI (AI Platform) API specifically, or is restricted.');
+               }
                result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
              }
           }
@@ -725,17 +730,11 @@ class EdgeAIService {
     if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
     else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
 
-    // Vertex AI Gemini endpoint 
-    // If using API Key, Google prefers the streamGenerateContent or generateContent endpoints under v1 or v1beta
-    String baseUrl;
-    if (isApiKey) {
-       baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';
-    } else {
-       baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:predict';
-    }
+    // Vertex AI Gemini endpoint: Use generateContent which is the modern path for Gemini on Vertex
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';
     
     final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Gemini via ${isApiKey ? "API Key" : "OAuth Token"} ($baseUrl)');
+    debugPrint('EdgeAI: [VERTEX] Calling Gemini via ${isApiKey ? "API Key" : "OAuth Token"} ($modelId)');
 
     final Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -758,30 +757,43 @@ class EdgeAIService {
       url,
       headers: headers,
       body: jsonEncode({
-        "instances": [
+        "contents": [
           {
-            "content": prompt, // Alternatively uses "contents" format depending on specific Vertex sub-endpoint
+            "role": "user",
+            "parts": parts,
           }
         ],
-        "parameters": {
+        "generationConfig": {
           "temperature": config.temperature,
           "maxOutputTokens": 2048,
-        }
+        },
+        "safetySettings": [
+           {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+           {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+           {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+           {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
+        ]
       }),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      // Vertex AI response structure for 'predict' varies slightly from raw Gemini API
       String text = "";
-      if (data['predictions'] != null && data['predictions'].isNotEmpty) {
+      
+      // Handle array of candidates (Gemini style)
+      if (data['candidates'] != null && (data['candidates'] as List).isNotEmpty) {
+         final candidate = data['candidates'][0];
+         if (candidate['content'] != null && candidate['content']['parts'] != null) {
+            text = (candidate['content']['parts'] as List).map((p) => p['text'] ?? '').join("");
+         }
+      } 
+      // Handle 'predictions' fallback for older Vertex models or predict endpoint
+      else if (data['predictions'] != null && (data['predictions'] as List).isNotEmpty) {
          text = data['predictions'][0]['content'] ?? data['predictions'][0]['text'] ?? "";
-      } else if (data['candidates'] != null) {
-         text = data['candidates'][0]['content']['parts'][0]['text'];
       }
       
       if (text.isEmpty) text = "No content generated.";
-      return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Vertex: ${config.modelId}');
+      return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Vertex: $modelId');
     } else {
       throw Exception('Vertex Gemini Error: ${response.statusCode} ${response.body}');
     }

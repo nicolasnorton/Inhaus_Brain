@@ -59,19 +59,17 @@ The Inhaus Brain features an **AI Super Admin** (Management Agent) that allows y
 - **App/Agent CRUD**: Design and deploy new AI application pipelines directly through chat commands.
 - **Universal Search**: Intelligent retrieval of any platform entity (Tasks, Projects, Apps) across the workspace.
 
-### 🏢 Creative Studio & Client Factory
-- **Client Module**: Comprehensive portfolio management with **Project Plans**, **Task Boards**, and real-time tracking.
-- **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to sync agent activity with external tools.
-- **Campaign Wizard**: Conversational briefing with real-time agent grounding.
-- **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
-- **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.
-
-### 📊 Reports & Analytics Module (Reports)
+### 📊 Reports & Analytics (New)
 A sophisticated analysis engine inspired by "NotebookLM" and "Looker Studio":
+- **Reports Tab**: Integrated into the Client Detail view for quick access to client-specific insights.
 - **Reports Agent**: An autonomous analyst that synthesizes data from BigQuery, Drive, and Gmail.
-- **Notebooks**: Detailed, citation-backed written reports for deep dives.
 - **Dashboards**: Visual monitoring with permanent widgets and custom Looker Studio integrations.
-- **Studio**: Generate Audio Overviews, Video Summaries, and Mind Maps from your report data.
+
+### 🏢 Creative Studio & Client Factory
+- **Streamlined Client Module**: Merged navigation for faster workflows (Contacts integrated into Overview, Commerce into Integrations).
+- **Project Plans & Task Boards**: Comprehensive portfolio management with real-time tracking.
+- **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel**.
+- **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.
 
 ### 🎨 Premium Auth & Settings
 - **Full Auth Lifecycle**: Premium Sign Up / Login flow with Email/Password and Google support.

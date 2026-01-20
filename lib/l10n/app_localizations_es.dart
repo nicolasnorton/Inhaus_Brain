@@ -414,6 +414,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tabUCP => 'Comercio UCP';
 
   @override
+  String get tabReports => 'Reportes';
+
+  @override
   String get noDescriptionAvailable => 'No hay descripción disponible.';
 
   @override

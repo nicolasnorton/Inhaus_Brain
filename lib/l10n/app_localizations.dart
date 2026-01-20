@@ -848,6 +848,12 @@ abstract class AppLocalizations {
   /// **'UCP Commerce'**
   String get tabUCP;
 
+  /// No description provided for @tabReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get tabReports;
+
   /// No description provided for @noDescriptionAvailable.
   ///
   /// In en, this message translates to:

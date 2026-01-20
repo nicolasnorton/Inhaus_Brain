@@ -56,6 +56,12 @@ gcloud run deploy inhaus-brain \
 
 ## Troubleshooting
 
+### Vertex AI: 401 Unauthorized / API Key Blocked
+If you see a 401 error in the console related to Vertex AI despite having a valid key:
+1.  Ensure the **Vertex AI API** (also known as "AI Platform API") is explicitly enabled in your Google Cloud project.
+2.  **Verification**: If using an API Key, ensure it is not restricted to specific services, or add "Vertex AI API" to its allowed services list in the Google Cloud Console.
+3.  The app now automatically falls back from Vertex AI to the standard Google Generative Language API if transport fails.
+
 ### Cloud Build: Permission Denied / Forbidden
 If you see an error like `The user is forbidden from accessing the bucket [inhausbrain_cloudbuild]`, we have already provisioned a custom bucket to bypass this. Ensure you are using the latest `deploy.sh` which includes:
 `--gcs-source-staging-dir gs://inhaus-source-staging/source`

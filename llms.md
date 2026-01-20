@@ -58,8 +58,14 @@ The `PublishService` coordinates the deployment of workflows across multiple pla
 - **Embed Widgets**: Client-side chat widget and iframe generation.
 - **MCP Server**: Exposure of workflows as tools via the Model Context Protocol.
 
-### 6. Workspace & Configuration
+### 6. Reports & Analytics
+- **Reports Agent**: An autonomous analyst that synthesizes data from BigQuery, Drive, and Gmail.
+- **Client-Centric Reporting**: A dedicated "Reports" tab within the Client Detail Screen provides high-level dashboards and active report cards.
+- **Visual Dashboards**: Integrated dashboard widgets for real-time performance monitoring.
+
+### 7. Workspace & Configuration
 - **Model Providers**: Unified BYOK system for LLM, Embedding, Rerank, and Voice providers.
+- **Streamlined Navigation**: The Client Detail Screen features a simplified tab structure (Overview includes Contacts, Integrations includes Commerce) for improved UX.
 - **Plugins**: Modular extension system for integrating secondary AI services (e.g., LlamaCloud).
 - **Responsive Dashboard**: `DashboardHome` uses `LayoutBuilder` for adaptive navigation widgets (4 cols desktop / 3 cols mobile).
 

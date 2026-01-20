@@ -168,7 +168,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        AppLocalizations.of(context)!.campaignIdLabel(concept.campaignId.substring(0, 8)),
+                        AppLocalizations.of(context)!.campaignIdLabel(concept.campaignId.length > 8 ? concept.campaignId.substring(0, 8) : concept.campaignId),
                         style: const TextStyle(color: Colors.white38, fontSize: 13, fontFamily: 'monospace'),
                       ),
                     ],
@@ -439,7 +439,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           image: DecorationImage(
-                            image: NetworkImage(mb.imageUrls.first),
+                            image: NetworkImage(mb.imageUrls.isNotEmpty ? mb.imageUrls.first : 'https://placehold.co/600x400/1E2329/blueaccent?text=Idea'),
                             fit: BoxFit.cover,
                           ),
                         ),

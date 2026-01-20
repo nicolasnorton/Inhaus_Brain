@@ -80,7 +80,7 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
       final text = aiRes.text.trim();
       final jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
       final data = jsonDecode(jsonStr); // Assuming import 'dart:convert';
-      final intentStr = data['intent']?.toString().toLowerCase();
+      final intentStr = data['intent']?.toString().toLowerCase() ?? 'directchat';
       
       intent = RouterIntent.values.firstWhere(
         (e) => e.name.toLowerCase() == intentStr, 

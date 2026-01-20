@@ -16,7 +16,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../settings/providers/user_provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'artifact_renderer.dart';
-import '../../chat/models/chat_models.dart';
 import '../../../core/widgets/app_video_player.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
@@ -326,7 +325,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         const SizedBox(width: 8),
                         const Text(
                           'Brian',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const Spacer(),
                         IconButton(
@@ -350,11 +349,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                                itemBuilder: (context) => [
                                  const PopupMenuItem(
                                    value: AssistantMode.fast,
-                                    child: Row(children: [Icon(Icons.flash_on, size: 16, color: Colors.amber), SizedBox(width: 8), Text('Fast Mode', style: TextStyle(color: Colors.white))]),
+                                    child: Row(children: [Icon(Icons.flash_on, size: 16, color: Colors.amber), SizedBox(width: 8), Text('Fast Mode', style: TextStyle(color: Colors.white, fontSize: 16))]),
                                  ),
                                  const PopupMenuItem(
                                    value: AssistantMode.planning,
-                                    child: Row(children: [Icon(Icons.architecture, size: 16, color: Colors.purpleAccent), SizedBox(width: 8), Text('Planning Mode', style: TextStyle(color: Colors.white))]),
+                                    child: Row(children: [Icon(Icons.architecture, size: 16, color: Colors.purpleAccent), SizedBox(width: 8), Text('Planning Mode', style: TextStyle(color: Colors.white, fontSize: 16))]),
                                  ),
                                ],
                                color: const Color(0xFF2D333B),
@@ -474,13 +473,13 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                                 },
                                 child: TextField(
                                   controller: _controller,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
                                   minLines: 1,
                                   maxLines: 5,
                                   textInputAction: TextInputAction.newline,
                                   decoration: const InputDecoration(
                                     hintText: 'Type a message...',
-                                    hintStyle: TextStyle(color: Colors.white38),
+                                    hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
                                     border: InputBorder.none,
                                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                                   ),
@@ -539,14 +538,14 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                           children: [
                             Icon(Icons.audiotrack, color: Colors.white, size: 16),
                             SizedBox(width: 4),
-                            Text("Voice Message", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                            Text("Voice Message", style: TextStyle(color: Colors.white70, fontSize: 14)),
                           ],
                         ),
                       ),
                     if (message.text.isNotEmpty)
                       Text(
                         message.text,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.white, fontSize: 17),
                       ),
                   ],
                 ),
@@ -588,7 +587,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         'Powered by INHAUS BRAIN',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.2,
                         ),
@@ -612,21 +611,21 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         MarkdownBody(
                           data: message.text,
                           styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13, height: 1.6),
-                            h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                            h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            p: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 16, height: 1.6),
+                            h1: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                            h2: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.bold),
                             code: TextStyle(
                               backgroundColor: Colors.black.withValues(alpha: 0.3),
                               color: Colors.cyanAccent,
                               fontFamily: 'monospace',
-                              fontSize: 12,
+                              fontSize: 14,
                             ),
                             codeblockDecoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            tableBody: const TextStyle(color: Colors.white70, fontSize: 12),
-                            tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            tableBody: const TextStyle(color: Colors.white70, fontSize: 14),
+                            tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                             tableBorder: TableBorder.all(color: Colors.white10),
                           ),
                         ),
@@ -657,7 +656,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                              child: OutlinedButton.icon(
                                onPressed: () {}, // Expansion logic could go here
                                icon: const Icon(Icons.link, size: 12),
-                               label: const Text('Sources', style: TextStyle(fontSize: 10)),
+                               label: const Text('Sources', style: TextStyle(fontSize: 12)),
                                style: OutlinedButton.styleFrom(
                                  visualDensity: VisualDensity.compact,
                                  foregroundColor: Colors.white54,
@@ -673,7 +672,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             Expanded(
                               child: Text(
                                 'Powered by INHAUS BRAIN • ${message.modelName ?? 'DeepMind'} • ${message.processingTime != null ? '${(message.processingTime!.inMilliseconds / 1000).toStringAsFixed(1)}s' : 'Instant'}',
-                                style: const TextStyle(color: Colors.white24, fontSize: 9, letterSpacing: 0.5),
+                                style: const TextStyle(color: Colors.white24, fontSize: 11, letterSpacing: 0.5),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -899,7 +898,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                child: Container(
                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                 child: const Text("VEO-2", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                 child: const Text("VEO-2", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                ),
              )
           ],
@@ -932,7 +931,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
               child: Center(
                 child: Text(
                   '...', 
-                  style: TextStyle(color: Colors.white54, letterSpacing: 2, height: 1),
+                  style: TextStyle(color: Colors.white54, letterSpacing: 2, height: 1, fontSize: 16),
                 ),
               ),
             ),
