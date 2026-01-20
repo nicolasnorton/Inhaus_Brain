@@ -28,6 +28,7 @@ enum MessageSender {
   editorialManagerAgent,
   mediaBuyerAgent,
   managementAgent, // Phase 4: Client Management
+  reportsAgent,    // Phase 6: Reports Module
 
   humanAgent,
   system

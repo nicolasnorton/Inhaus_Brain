@@ -6,6 +6,14 @@ steps:
       '-t', 'gcr.io/$PROJECT_ID/inhaus-brain:$_TAG', 
       '--build-arg', 'VERTEX_API_KEY=$_VERTEX_API_KEY',
       '--build-arg', 'GEMINI_API_KEY=$_GEMINI_API_KEY',
+      '--build-arg', 'OPENAI_API_KEY=$_OPENAI_API_KEY',
+      '--build-arg', 'ANTHROPIC_API_KEY=$_ANTHROPIC_API_KEY',
+      '--build-arg', 'VEO_API_KEY=$_VEO_API_KEY',
+      '--build-arg', 'FIREBASE_API_KEY=$_FIREBASE_API_KEY',
+      '--build-arg', 'FIREBASE_PROJECT_ID=$_FIREBASE_PROJECT_ID',
+      '--build-arg', 'FIREBASE_MESSAGING_SENDER_ID=$_FIREBASE_MESSAGING_SENDER_ID',
+      '--build-arg', 'FIREBASE_APP_ID=$_FIREBASE_APP_ID',
+      '--build-arg', 'APP_ENCRYPTION_KEY=$_APP_ENCRYPTION_KEY',
       '.'
     ]
 
@@ -28,3 +36,11 @@ substitutions:
   _TAG: latest
   _VERTEX_API_KEY: ''
   _GEMINI_API_KEY: ''
+  _OPENAI_API_KEY: ''
+  _ANTHROPIC_API_KEY: ''
+  _VEO_API_KEY: ''
+  _FIREBASE_API_KEY: ''
+  _FIREBASE_PROJECT_ID: ''
+  _FIREBASE_MESSAGING_SENDER_ID: ''
+  _FIREBASE_APP_ID: ''
+  _APP_ENCRYPTION_KEY: ''

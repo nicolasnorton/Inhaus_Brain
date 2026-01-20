@@ -51,6 +51,7 @@ class DashboardScreen extends ConsumerWidget {
                           _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
                           _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
                           _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
+                          _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref), // Index 10 for Reports
                           _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
                           _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
                           
@@ -143,7 +144,9 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/knowledge')) return 6;
     if (location.startsWith('/settings') || location.startsWith('/workspace')) return 7;
     if (location.startsWith('/debug')) return 8;
+    if (location.startsWith('/debug')) return 8;
     if (location.startsWith('/admin')) return 9;
+    if (location.startsWith('/reports')) return 10;
     return 0;
   }
 
@@ -212,6 +215,9 @@ class DashboardScreen extends ConsumerWidget {
         break;
       case 9:
         context.go('/admin');
+        break;
+      case 10:
+        context.go('/reports');
         break;
     }
   }
@@ -303,6 +309,12 @@ class DashboardHome extends ConsumerWidget {
                     icon: FontAwesomeIcons.gear,
                     label: AppLocalizations.of(context)!.navSettings,
                     onTap: () => context.go('/settings'),
+                  ),
+                  _buildNavCard(
+                    context,
+                    icon: FontAwesomeIcons.clipboardList,
+                    label: "Reports",
+                    onTap: () => context.go('/reports'),
                   ),
                   _buildNavCard(
                     context,

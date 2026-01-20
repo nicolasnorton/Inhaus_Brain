@@ -65,9 +65,15 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
       });
 
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load video: $e';
-      });
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _errorMessage = 'Failed to load video: $e';
+            });
+          }
+        });
+      }
       print('Video Initialization Error: $e');
     }
   }
@@ -216,14 +222,18 @@ class _ControlsOverlay extends StatelessWidget {
           },
         ),
         Positioned(
-          top: 8,
-          right: 8,
-          child: IconButton(
-            icon: const Icon(Icons.download_rounded, color: Colors.white, size: 24),
-            tooltip: 'Download Video',
-            onPressed: onDownload,
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.black45,
+          top: 0,
+          right: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: IconButton(
+              icon: const Icon(Icons.download_rounded, color: Colors.white, size: 28), // Larger icon
+              tooltip: 'Download Video',
+              onPressed: onDownload,
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black45,
+                padding: const EdgeInsets.all(12), // Larger touch target
+              ),
             ),
           ),
         ),

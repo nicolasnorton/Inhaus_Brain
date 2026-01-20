@@ -100,7 +100,10 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     if (_isAutoReadEnabled && index == session.messages.length - 1 && message.sender != MessageSender.user) {
                        ref.read(voiceServiceProvider).speak(message.content);
                     }
-                    return _buildMessageBubble(message);
+                    return KeyedSubtree(
+                      key: ValueKey(message.id),
+                      child: _buildMessageBubble(message),
+                    );
                   },
                 ),
         ),
@@ -153,16 +156,23 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
             child: Column(
               crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
+                  Material(
                     color: isUser ? Colors.blueAccent : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20).copyWith(
                       bottomRight: isUser ? const Radius.circular(4) : null,
                       bottomLeft: !isUser ? const Radius.circular(4) : null,
                     ),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                  ),
+                    elevation: 1,
+                    clipBehavior: Clip.antiAlias,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                         borderRadius: BorderRadius.circular(20).copyWith(
+                            bottomRight: isUser ? const Radius.circular(4) : null,
+                            bottomLeft: !isUser ? const Radius.circular(4) : null,
+                         ),
+                      ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -175,24 +185,29 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                               InkWell(
                                 onTap: () {
                                   Clipboard.setData(ClipboardData(text: message.content));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
-                                  );
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+                                    );
+                                  }
                                 },
+                                borderRadius: BorderRadius.circular(12),
                                 child: const Padding(
-                                  padding: EdgeInsets.all(4),
-                                  child: Icon(Icons.copy, size: 14, color: Colors.white70),
+                                  padding: EdgeInsets.all(12.0), // Generous padding for touch target
+                                  child: Icon(Icons.copy, size: 18, color: Colors.white70),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               InkWell(
                                 onTap: () {
                                   _textController.text = message.content;
+                                  // Requests focus to ensure keyboard opens
                                   _chatFocusNode.requestFocus();
                                 },
+                                borderRadius: BorderRadius.circular(12),
                                 child: const Padding(
-                                  padding: EdgeInsets.all(4),
-                                  child: Icon(Icons.edit, size: 14, color: Colors.white70),
+                                  padding: EdgeInsets.all(12.0), // Generous padding for touch target
+                                  child: Icon(Icons.edit, size: 18, color: Colors.white70),
                                 ),
                               ),
                             ],
@@ -243,6 +258,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                         _buildAttachmentsList(message.attachments),
                       ],
                     ],
+                  ),
                   ),
                 ),
                 if (!isUser)

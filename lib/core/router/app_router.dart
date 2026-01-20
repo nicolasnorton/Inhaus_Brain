@@ -34,6 +34,9 @@ import '../../features/admin/screens/super_copilot_screen.dart';
 import '../../features/admin/screens/user_management_screen.dart';
 import '../../features/admin/screens/audit_logs_screen.dart';
 import '../../features/admin/screens/system_analytics_screen.dart';
+import '../../features/reports/screens/reports_dashboard_screen.dart';
+import '../../features/reports/screens/reports_main_screen.dart';
+import '../../features/reports/screens/report_detail_screen.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -146,6 +149,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/knowledge',
             builder: (context, state) => const KnowledgeManagementScreen(),
+          ),
+          GoRoute(
+            path: '/reports',
+            builder: (context, state) => const ReportsMainScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => ReportDetailScreen(
+                  reportId: state.pathParameters['id']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/camera-capture',

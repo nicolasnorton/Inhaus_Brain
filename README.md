@@ -66,6 +66,13 @@ The Inhaus Brain features an **AI Super Admin** (Management Agent) that allows y
 - **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
 - **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.
 
+### 📊 Reports & Analytics Module (Reports)
+A sophisticated analysis engine inspired by "NotebookLM" and "Looker Studio":
+- **Reports Agent**: An autonomous analyst that synthesizes data from BigQuery, Drive, and Gmail.
+- **Notebooks**: Detailed, citation-backed written reports for deep dives.
+- **Dashboards**: Visual monitoring with permanent widgets and custom Looker Studio integrations.
+- **Studio**: Generate Audio Overviews, Video Summaries, and Mind Maps from your report data.
+
 ### 🎨 Premium Auth & Settings
 - **Full Auth Lifecycle**: Premium Sign Up / Login flow with Email/Password and Google support.
 - **Account Management**: Edit profiles, manage API keys, and customize agent personas in a unified **Settings & Vault**.

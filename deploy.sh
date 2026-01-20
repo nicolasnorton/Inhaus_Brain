@@ -28,6 +28,14 @@ if [ -z "$GEMINI_API_KEY" ]; then
   exit 1
 fi
 
+if [ -z "$OPENAI_API_KEY" ]; then
+  echo "⚠️  Warning: OPENAI_API_KEY is missing. App may have reduced functionality."
+fi
+
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+  echo "⚠️  Warning: ANTHROPIC_API_KEY is missing. App may have reduced functionality."
+fi
+
 # Generate a dynamic tag (Git SHA or Timestamp)
 if git rev-parse --git-dir > /dev/null 2>&1; then
   TAG=$(git rev-parse --short HEAD)
@@ -41,7 +49,7 @@ echo "🏷️  Deploying Version: $TAG"
 echo "📦 Submitting build to Google Cloud Build..."
 gcloud builds submit . \
   --config=cloudbuild.yaml \
-  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_TAG=$TAG" \
+  --substitutions="_VERTEX_API_KEY=$VERTEX_API_KEY,_GEMINI_API_KEY=$GEMINI_API_KEY,_OPENAI_API_KEY=$OPENAI_API_KEY,_ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY,_VEO_API_KEY=$VEO_API_KEY,_FIREBASE_API_KEY=$FIREBASE_API_KEY,_FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID,_FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID,_FIREBASE_APP_ID=$FIREBASE_APP_ID,_APP_ENCRYPTION_KEY=$APP_ENCRYPTION_KEY,_TAG=$TAG" \
   --gcs-source-staging-dir gs://inhaus-source-staging/source
 
 # 2. Deploy to Cloud Run (Run locally as Cloud Build SA lacks permissions)
@@ -52,7 +60,7 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --project $PROJECT_ID \
-  --set-env-vars "VERTEX_API_KEY=$VERTEX_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY"
+  --set-env-vars "VERTEX_API_KEY=$VERTEX_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY,OPENAI_API_KEY=$OPENAI_API_KEY,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY,VEO_API_KEY=$VEO_API_KEY,FIREBASE_API_KEY=$FIREBASE_API_KEY,FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID,FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID,FIREBASE_APP_ID=$FIREBASE_APP_ID,APP_ENCRYPTION_KEY=$APP_ENCRYPTION_KEY"
 
 echo "✅ Deployment Complete!"
 echo "🌍 App available at: https://brain.inhauscorp.com"

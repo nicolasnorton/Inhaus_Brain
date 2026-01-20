@@ -38,7 +38,19 @@ class SecretVaultService {
   }
 
   Future<void> saveVeoKey(String key) async => await _storage.write(key: _veoKey, value: key);
-  Future<String?> getVeoKey() async => await _storage.read(key: _veoKey);
+  
+  Future<String?> getVeoKey() async {
+    // Priority 1: Environment Variable
+    final envKey = dotenv.maybeGet('VEO_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+
+    // Priority 1.5: Build-time Constant
+    const buildKey = String.fromEnvironment('VEO_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
+
+    // Priority 2: Secure Storage
+    return await _storage.read(key: _veoKey);
+  }
 
   Future<void> saveBananaKey(String key) async => await _storage.write(key: _bananaKey, value: key);
   Future<String?> getBananaKey() async => await _storage.read(key: _bananaKey);

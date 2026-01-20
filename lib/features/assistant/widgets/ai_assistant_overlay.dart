@@ -16,7 +16,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../settings/providers/user_provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'artifact_renderer.dart';
-import '../../chat/models/chat_models.dart'; // For Artifact model (if needed explicitly)
+import '../../chat/models/chat_models.dart';
+import '../../../core/widgets/app_video_player.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
   const AiAssistantOverlay({super.key});
@@ -869,34 +870,12 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white10),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           alignment: Alignment.center,
           children: [
-             // Placeholder gradient or thumbnail
-             Container(
-               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.purple.withValues(alpha: 0.2), Colors.blue.withValues(alpha: 0.2)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-               ),
-             ),
-             Column(
-               mainAxisSize: MainAxisSize.min,
-               children: [
-                 const Icon(Icons.play_circle_fill, size: 48, color: Colors.white70),
-                 const SizedBox(height: 8),
-                 Text(
-                   'Generated Video',
-                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.bold),
-                 ),
-                 Text(
-                   path.startsWith('http') ? 'Stream ready' : 'Local file ready',
-                   style: const TextStyle(color: Colors.white54, fontSize: 10),
-                 ),
-               ],
+             AppVideoPlayer(
+               videoUrl: path,
              ),
              Positioned(
                bottom: 8,

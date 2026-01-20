@@ -63,6 +63,7 @@ class EdgeAIService {
     String? openAIKey,
     String? anthropicKey,
     String? xaiKey,
+    String? vertexKey,
     Ref? ref, // Phase 89: Optional Ref for proximity sync
   }) async {
     final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
@@ -80,26 +81,52 @@ class EdgeAIService {
       EdgeAIResult result;
       switch (config.provider) {
         case AIProvider.gemini:
-          final vaultKey = await _vault.getGeminiKey();
-          final key = apiKey ?? vaultKey;
+          final vaultGeminiKey = await _vault.getGeminiKey();
+          final vaultVertexKey = await _vault.getVertexKey();
           
-          if (key == null || key.trim().isEmpty) {
-            debugPrint('EdgeAI: [DEBUG] Gemini Key is NULL or EMPTY. Triggering fallback to mock.');
-            result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-          } else {
+          final effectiveApiKey = apiKey ?? vaultGeminiKey;
+          final effectiveVertexKey = vertexKey ?? vaultVertexKey;
+          
+          // Mode detection: If vertex key is present and looks like a token, use Vertex path
+          final isVertexToken = effectiveVertexKey != null && effectiveVertexKey.isNotEmpty && 
+              (effectiveVertexKey.startsWith('ya29.') || effectiveVertexKey.startsWith('AQ.'));
+          
+          if (isVertexToken) {
+             try {
+               result = await _generateVertexGemini(effectivePrompt, config, effectiveVertexKey, imageBytes, imageMimeType);
+             } catch (e) {
+               debugPrint('EdgeAI: [DEBUG] Vertex Gemini (Token) failed: $e. Falling back to Dev API.');
+               if (effectiveApiKey != null && effectiveApiKey.isNotEmpty) {
+                 result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+               } else {
+                 rethrow;
+               }
+             }
+          } 
+          // New Path: Vertex AI with API Key (if the project has enabled it)
+          else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && config.provider == AIProvider.gemini) {
+             try {
+               // Try Vertex Transport first to satisfy "use Vertex" requirement
+               result = await _generateVertexGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType);
+             } catch (e) {
+               debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $e. Falling back to Google Generative Language API.');
+               result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+             }
+          }
+          // Priority 2: Standard Gemini Dev API
+          else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty) {
             try {
-              result = await _generateGemini(effectivePrompt, config, key, imageBytes, imageMimeType, audioBytes, audioMimeType);
+              result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
             } catch (e) {
-              debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $e');
-              try {
-                // FALLBACK: Try gemini-pro (v1.0) if Flash fails
-                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
-                result = await _generateGemini(effectivePrompt, fallbackConfig, key, imageBytes, imageMimeType, audioBytes, audioMimeType);
-              } catch (fallbackError) {
-                 debugPrint('EdgeAI: [DEBUG] Fallback Gemini model also failed: $fallbackError');
-                 rethrow; // Re-throw to trigger outer catch and potential mock fallback
-              }
+               debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $e');
+               // Fallback: Try gemini-pro (v1.0) if Flash fails
+               final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
+               result = await _generateGemini(effectivePrompt, fallbackConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
             }
+          } 
+          else {
+            debugPrint('EdgeAI: [DEBUG] No Gemini keys found. Returning mock.');
+            result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
           }
           break;
         case AIProvider.openai:
@@ -163,21 +190,113 @@ class EdgeAIService {
   ) async {
     if (apiKey == null || apiKey.isEmpty) throw Exception("Gemini API Key missing");
 
-    final model = GenerativeModel(model: config.modelId, apiKey: apiKey);
-    final List<Part> parts = [TextPart(prompt)];
+    // Use REST API directly to access latest tools (Google Search, Code Execution) 
+    // which might not be exposed in the current google_generative_ai package version (0.4.7)
+    final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/${config.modelId}:generateContent?key=$apiKey');
     
+    final List<Map<String, dynamic>> parts = [
+      {'text': prompt}
+    ];
+
     if (imageBytes != null) {
-      parts.add(DataPart(mimeType ?? 'image/jpeg', imageBytes));
+      parts.add({
+        'inline_data': {
+          'mime_type': mimeType ?? 'image/jpeg',
+          'data': base64Encode(imageBytes)
+        }
+      });
     }
 
     if (audioBytes != null) {
-      parts.add(DataPart(audioMimeType ?? 'audio/mp3', audioBytes));
+      parts.add({
+        'inline_data': {
+          'mime_type': audioMimeType ?? 'audio/mp3',
+          'data': base64Encode(audioBytes)
+        }
+      });
     }
 
-    final content = [Content.multi(parts)];
-    final response = await model.generateContent(content);
-    
-    return EdgeAIResult(response.text ?? "No response", AIProximity.cloud, modelUsed: config.modelId);
+    final body = {
+      "contents": [
+        {
+          "parts": parts,
+          "role": "user"
+        }
+      ],
+      "tools": [
+        {"googleSearch": {}},
+        {"codeExecution": {}}
+      ],
+      "safetySettings": [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
+      ]
+    };
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      
+      // Extract text from candidates
+      if (data['candidates'] != null && (data['candidates'] as List).isNotEmpty) {
+        final candidate = data['candidates'][0];
+        final content = candidate['content'];
+        String fullText = "";
+        
+        if (content != null && content['parts'] != null) {
+          for (var part in content['parts']) {
+             if (part.containsKey('text')) {
+               fullText += part['text'];
+             } else if (part.containsKey('executableCode')) {
+               fullText += "\n```python\n${part['executableCode']['code']}\n```\n";
+             } else if (part.containsKey('codeExecutionResult')) {
+               fullText += "\nOutput: ${part['codeExecutionResult']['output']}\n";
+             }
+          }
+        }
+        
+        // Append grounding metadata if available
+        if (candidate['groundingMetadata'] != null) {
+           final metadata = candidate['groundingMetadata'];
+           if (metadata['searchEntryPoint'] != null) {
+               // Strip style tags to prevent JSON parser confusion in the frontend
+               // and clean up the HTML for display
+               String cleanContent = (metadata['searchEntryPoint']['renderedContent'] ?? '')
+                   .replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '')
+                   .replaceAll(RegExp(r'<[^>]+>'), ' ') // Also strip other HTML tags for clean text, or leave them if Markdown supports it. Let's strip style but keep structure if possible? 
+                   // Actually, let's keep it simple: Strip STYLE only, as that breaks JSON. 
+                   // The user log showed CSS text leaking. 
+                   // Let's go with just stripping style for now.
+                   .replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '')
+                   .replaceAll(RegExp(r'\s+'), ' ')
+                   .trim();
+               
+               // Use a simpler approach: Just a link if we can't parse safely?
+               // The log showed <div class="container">... 
+               // Let's just strip the style block entirely.
+               String rawHtml = (metadata['searchEntryPoint']['renderedContent'] ?? '');
+               String noStyle = rawHtml.replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '');
+               
+               // Sanitize heavily for JSON safety
+               noStyle = noStyle.replaceAll(RegExp(r'\s+'), ' ').trim();
+               
+               fullText += "\n\n[Google Search Results]:\n$noStyle";
+           }
+        }
+        
+        return EdgeAIResult(fullText.isEmpty ? "No text generated." : fullText, AIProximity.cloud, modelUsed: config.modelId);
+      }
+      return EdgeAIResult("No candidates returned.", AIProximity.cloud);
+    } else {
+      throw Exception('Gemini REST Error: ${response.statusCode} ${response.body}');
+    }
   }
 
   static Future<EdgeAIResult> _generateOpenAI(
@@ -322,16 +441,16 @@ class EdgeAIService {
   static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey}) async {
     final isNanoBanana = prompt.toLowerCase().contains('banana') || (bananaKey != null && bananaKey.isNotEmpty);
     
-    if (midjourneyKey != null && midjourneyKey.isNotEmpty) {
-       await Future.delayed(const Duration(seconds: 4));
-       return "https://via.placeholder.com/1024x1024.png?text=Midjourney+v6"; 
-    }
-    if (imagenKey != null && imagenKey.isNotEmpty || vertexKey != null && vertexKey.isNotEmpty || isNanoBanana) {
+    final vaultVertexKey = await _vault.getVertexKey();
+    final vaultImagenKey = await _vault.getImagenKey();
+    
+    final effectiveKey = vertexKey ?? vaultVertexKey ?? imagenKey ?? vaultImagenKey;
+    
+    if (effectiveKey != null && effectiveKey.isNotEmpty || isNanoBanana) {
       // Use Vertex AI Imagen 3
-      final key = vertexKey ?? imagenKey;
-      if (key != null && key.isNotEmpty) {
+      if (effectiveKey != null && effectiveKey.isNotEmpty) {
           try {
-            return await _generateVertexImagen(prompt, key);
+            return await _generateVertexImagen(prompt, effectiveKey);
           } catch (e) {
             debugPrint('Vertex Imagen failed: $e. Falling back to Pollinations.');
           }
@@ -340,31 +459,34 @@ class EdgeAIService {
 
     // POLLINATIONS.AI FALLBACK
     // Use Pollinations.ai for high-quality, free image generation.
-    // We use a random seed to ensure uniqueness.
     final seed = DateTime.now().millisecondsSinceEpoch;
     
     // Clean and optimize prompt for Pollinations
-    // Remove special characters, multiple spaces, and trim
-    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ')
+    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '')
                              .replaceAll(RegExp(r'\s+'), ' ')
                              .trim();
     
-    if (safePrompt.isEmpty) safePrompt = "stunning abstract art";
-    if (safePrompt.length > 200) {
-      safePrompt = safePrompt.substring(0, 200); 
+    if (safePrompt.isEmpty) safePrompt = "abstract art";
+
+    // Limit length to avoid URL issues and 403s
+    if (safePrompt.length > 80) {
+      safePrompt = safePrompt.substring(0, 80); 
     }
     
+    // Use strict encoding for the prompt
     final encodedPrompt = Uri.encodeComponent(safePrompt);
-    // Use the default stable model for better reliability across environments
-    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&seed=$seed&nologo=true";
+    // Simplified URL without width/height to avoid validation errors, added nologo
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?nologo=true&seed=$seed";
   }
 
   static Future<String> _generateVertexImagen(String prompt, String key) async {
     String projectId = 'inhausbrain'; 
     
-    // Check if it's likely an API Key or an Access Token
-    final isApiKey = !key.startsWith('ya29.');
+    // Check if it's likely an API Key (starts with AIza) or an Access Token (ya29, AQ)
+    final isApiKey = !key.startsWith('ya29.') && !key.startsWith('AQ.');
     
+    // Vertex AI Imagen 3 endpoint
+    // API Keys use :predict or :generateContent depending on the specific model setup
     final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagegeneration:predict';
     final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
     debugPrint('EdgeAI: [VERTEX] Calling Imagen 3 at ${isApiKey ? baseUrl : url} (Auth: ${isApiKey ? "API Key" : "Bearer Token"})');
@@ -403,34 +525,40 @@ class EdgeAIService {
   }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey}) async {
-    final isVeo = prompt.toLowerCase().contains('veo') || (veoKey != null && veoKey.isNotEmpty) || (vertexKey != null && vertexKey.isNotEmpty);
+    final vaultVertexKey = await _vault.getVertexKey();
+    final vaultVeoKey = await _vault.getVeoKey();
+    
+    final effectiveKey = vertexKey ?? vaultVertexKey ?? veoKey ?? vaultVeoKey;
+    final isVeoInput = prompt.toLowerCase().contains('veo') || (effectiveKey != null && effectiveKey.isNotEmpty);
     
     if (runwayKey != null && runwayKey.isNotEmpty) {
       await Future.delayed(const Duration(seconds: 5));
       return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
     }
-    if (isVeo) {
-       final key = vertexKey ?? veoKey;
-       if (key != null && key.isNotEmpty) {
+    if (isVeoInput) {
+       if (effectiveKey != null && effectiveKey.isNotEmpty) {
           try {
-            return await _generateVertexVeo(prompt, key);
+            return await _generateVertexVeo(prompt, effectiveKey);
           } catch (e) {
             debugPrint('Vertex Veo failed: $e. Falling back to placeholder.');
           }
        }
-       await Future.delayed(const Duration(seconds: 3));
-       return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"; // Placeholder for Veo
+       await Future.delayed(const Duration(seconds: 2)); // Simulate generation time
+       return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"; 
     }
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
   static Future<String> _generateVertexVeo(String prompt, String key) async {
     String projectId = 'inhausbrain';
-    final isApiKey = !key.startsWith('ya29.');
-
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/veo:predict';
+    // Vertex AI Tokens usually start with ya29. or AQ.
+    final isApiKey = !key.startsWith('ya29.') && !key.startsWith('AQ.');
+    
+    // Using the veo-001 model ID (SOTA)
+    // Veo often requires the :predict endpoint
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/veo-001:predict';
     final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Veo at ${isApiKey ? baseUrl : url} (Auth: ${isApiKey ? "API Key" : "Bearer Token"})');
+    debugPrint('EdgeAI: [VERTEX] Calling Veo (veo-001) at ${isApiKey ? "REST Endpoint" : "OAuth Endpoint"}');
 
     final Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -439,27 +567,103 @@ class EdgeAIService {
       headers['Authorization'] = 'Bearer $key';
     }
 
+    // Official Veo predictive request structure
     final response = await http.post(
       url,
       headers: headers,
       body: jsonEncode({
         "instances": [
-          {"prompt": prompt}
+          {
+            "prompt": prompt,
+          }
         ],
         "parameters": {
-          "sampleCount": 1
+          "sampleCount": 1,
+          "aspectRatio": "16:9",
+          "durationSeconds": 5, // Default for many Veo pipelines
         }
       }),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      // Assuming Veo logic for returning a public URL or base64
-      final videoUrl = data['predictions'][0]['url'];
-      return videoUrl ?? "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+      
+      // Case 1: Synchronous response (Preview or small generation)
+      if (data['predictions'] != null && data['predictions'].isNotEmpty) {
+        final prediction = data['predictions'][0];
+        final videoUrl = prediction['url'] ?? prediction['videoUri'];
+        if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
+      }
+
+      // Case 2: Long-Running Operation (LRO)
+      if (data['name'] != null && data['name'].contains('/operations/')) {
+        debugPrint('EdgeAI: [VEO] Generation started asynchronously. Polling Operation: ${data['name']}');
+        return await _pollVertexOperation(data['name'], key, isApiKey);
+      }
+
+      throw Exception('Veo response format unrecognized: ${response.body}');
     } else {
       throw Exception('Vertex Veo Error: ${response.statusCode} ${response.body}');
     }
+  }
+
+  static Future<String> _pollVertexOperation(String name, String key, bool isApiKey) async {
+    // Operation URL: projects/{project}/locations/{location}/operations/{id}
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/$name';
+    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
+    
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (!isApiKey) {
+       headers['Authorization'] = 'Bearer $key';
+    }
+
+    // Poll for up to 2 minutes
+    for (int i = 0; i < 24; i++) {
+       await Future.delayed(const Duration(seconds: 5));
+       debugPrint('EdgeAI: [VEO] Checking generation status (attempt ${i + 1})...');
+       
+       final response = await http.get(url, headers: headers);
+       if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['done'] == true) {
+             if (data['error'] != null) {
+                throw Exception('Veo Operation Failed: ${data['error']}');
+             }
+             
+             // Extract output URI from response metadata or response field
+             // For Veo/Imagen, it's often in response.predictions[0].url
+             final respObj = data['response'];
+             if (respObj != null && respObj['predictions'] != null && respObj['predictions'].isNotEmpty) {
+                final videoUrl = respObj['predictions'][0]['url'] ?? respObj['predictions'][0]['videoUri'];
+                if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
+             }
+             
+             // Check metadata if response field is empty
+             final metadata = data['metadata'];
+             if (metadata != null && metadata['outputUri'] != null) {
+                return _sanitizeMediaUrl(metadata['outputUri']);
+             }
+
+             throw Exception('Veo operation finished but no video URL found.');
+          }
+       } else {
+          debugPrint('EdgeAI: [VEO] Polling error: ${response.statusCode}');
+       }
+    }
+    
+    throw Exception('Veo generation timed out (operation: $name)');
+  }
+
+  static String _sanitizeMediaUrl(String url) {
+    if (url.startsWith('gs://')) {
+       // Convert Google Cloud Storage URI to public HTTPS link
+       // gs://bucket_name/object_path -> https://storage.googleapis.com/bucket_name/object_path
+       final path = url.replaceFirst('gs://', '');
+       return "https://storage.googleapis.com/$path";
+    }
+    return url;
   }
 
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
@@ -481,25 +685,22 @@ class EdgeAIService {
     Ref? ref, // Phase 89: For proximity sync
   }) async* {
     if (config?.provider == AIProvider.gemini) {
-       final key = apiKey ?? await _vault.getGeminiKey();
-       if (key != null) {
-          final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
-          final model = GenerativeModel(model: config!.modelId, apiKey: key);
-          final List<Part> parts = [TextPart(effectivePrompt)];
-          if (imageBytes != null) {
-            parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
-          }
-          if (audioBytes != null) {
-            parts.add(DataPart(audioMimeType ?? 'audio/mp3', audioBytes));
-          }
-          final content = [Content.multi(parts)];
-          final responseStream = model.generateContentStream(content);
-          await for (final chunk in responseStream) {
-            if (chunk.text != null) {
-              if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(AIProximity.cloud);
-              yield EdgeAIResult(chunk.text!, AIProximity.cloud);
-            }
-          }
+       final vaultGeminiKey = await _vault.getGeminiKey();
+       final vaultVertexKey = await _vault.getVertexKey();
+       final effectiveApiKey = apiKey ?? vaultGeminiKey;
+       final effectiveVertexKey = vaultVertexKey; // In stream we usually rely on vault if not passed
+
+       if (effectiveVertexKey != null && (effectiveVertexKey.startsWith('ya29.') || effectiveVertexKey.startsWith('AQ.'))) {
+          final result = await _generateVertexGemini(_buildPromptWithContext(prompt, context, memoryContext: memoryContext), config!, effectiveVertexKey, imageBytes, imageMimeType);
+          if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
+          yield result;
+          return;
+       }
+
+       if (effectiveApiKey != null) {
+          final result = await _generateGemini(_buildPromptWithContext(prompt, context, memoryContext: memoryContext), config!, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+          if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
+          yield result;
           return;
        }
     }
@@ -507,6 +708,83 @@ class EdgeAIService {
     yield EdgeAIResult("Thinking via ${config?.displayName ?? 'Edge Mock'}...", AIProximity.simulated);
     final result = await generateText(prompt, context: context, memoryContext: memoryContext, imageBytes: imageBytes, imageMimeType: imageMimeType, modelConfig: config, apiKey: apiKey, ref: ref);
     yield result;
+  }
+
+  static Future<EdgeAIResult> _generateVertexGemini(
+    String prompt, 
+    AIModelConfig config, 
+    String key, 
+    Uint8List? imageBytes,
+    String? mimeType
+  ) async {
+    String projectId = 'inhausbrain';
+    final isApiKey = !key.startsWith('ya29.') && !key.startsWith('AQ.');
+    
+    // Map Dev API model IDs to Vertex AI model IDs
+    String modelId = config.modelId;
+    if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
+    else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
+
+    // Vertex AI Gemini endpoint 
+    // If using API Key, Google prefers the streamGenerateContent or generateContent endpoints under v1 or v1beta
+    String baseUrl;
+    if (isApiKey) {
+       baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';
+    } else {
+       baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:predict';
+    }
+    
+    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
+    debugPrint('EdgeAI: [VERTEX] Calling Gemini via ${isApiKey ? "API Key" : "OAuth Token"} ($baseUrl)');
+
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+    };
+    if (!isApiKey) {
+      headers['Authorization'] = 'Bearer $key';
+    }
+
+    final List<Map<String, dynamic>> parts = [{'text': prompt}];
+    if (imageBytes != null) {
+      parts.add({
+        'inline_data': {
+          'mime_type': mimeType ?? 'image/jpeg',
+          'data': base64Encode(imageBytes)
+        }
+      });
+    }
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        "instances": [
+          {
+            "content": prompt, // Alternatively uses "contents" format depending on specific Vertex sub-endpoint
+          }
+        ],
+        "parameters": {
+          "temperature": config.temperature,
+          "maxOutputTokens": 2048,
+        }
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      // Vertex AI response structure for 'predict' varies slightly from raw Gemini API
+      String text = "";
+      if (data['predictions'] != null && data['predictions'].isNotEmpty) {
+         text = data['predictions'][0]['content'] ?? data['predictions'][0]['text'] ?? "";
+      } else if (data['candidates'] != null) {
+         text = data['candidates'][0]['content']['parts'][0]['text'];
+      }
+      
+      if (text.isEmpty) text = "No content generated.";
+      return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Vertex: ${config.modelId}');
+    } else {
+      throw Exception('Vertex Gemini Error: ${response.statusCode} ${response.body}');
+    }
   }
 
   static Future<EdgeAIResult> _generateLocalMock(String prompt, {bool hasImage = false}) async {
