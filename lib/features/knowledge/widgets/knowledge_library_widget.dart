@@ -8,6 +8,7 @@ import '../providers/knowledge_provider.dart';
 import '../models/knowledge_source.dart';
 import '../models/knowledge_api_models.dart';
 import '../screens/document_detail_screen.dart';
+import 'add_source_dialog.dart';
 import '../../campaigns/models/campaign.dart';
 import '../../chat/providers/chat_provider.dart';
 
@@ -21,92 +22,19 @@ class KnowledgeLibraryWidget extends ConsumerStatefulWidget {
 }
 
 class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget> {
-  final _urlController = TextEditingController();
-  bool _isAdding = false;
-
-  void _addUrlSource() {
-    if (_urlController.text.isEmpty) return;
-
-    final newSource = KnowledgeSource(
-      id: const Uuid().v4(),
-      title: _urlController.text, // Simplified title for now
-      content: _urlController.text,
-      type: KnowledgeSourceType.url,
-      createdAt: DateTime.now(),
-    );
-
-    ref.read(knowledgeProvider.notifier).addSource(newSource);
-    _urlController.clear();
-    setState(() => _isAdding = false);
-  }
-
-  void _addFileSource() async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'txt', 'md', 'json', 'csv'],
-        withData: true, // Needed for web or to get bytes directly
+  void _onSourceAdded(KnowledgeSource source) {
+    ref.read(knowledgeProvider.notifier).addSource(source);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Source added: ${source.title}')),
       );
-
-      if (result != null) {
-        final file = result.files.single;
-        final String content = file.bytes != null 
-             ? String.fromCharCodes(file.bytes!) 
-             : 'File content not available directly. Path: ${file.path}';
-
-        final newSource = KnowledgeSource(
-          id: const Uuid().v4(),
-          title: file.name,
-          content: content,
-          type: KnowledgeSourceType.file,
-          createdAt: DateTime.now(),
-          metadata: {
-            'fileSize': '${(file.size / 1024).toStringAsFixed(2)} KB',
-            'extension': file.extension ?? 'unknown',
-          },
-        );
-        ref.read(knowledgeProvider.notifier).addSource(newSource);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking file: $e')),
-        );
-      }
     }
   }
 
-  void _addImageSource() async {
-    // Mock adding an image asset
-    final newSource = KnowledgeSource(
-      id: const Uuid().v4(),
-      title: 'Coffee_Ad_Variation_A.png',
-      content: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', // Mock 1x1 transparent pixel
-      type: KnowledgeSourceType.image,
-      createdAt: DateTime.now(),
-      metadata: {'dimensions': '1024x1024'},
-    );
-    ref.read(knowledgeProvider.notifier).addSource(newSource);
-  }
-
-  void _addDriveSource() async {
-     // Show "Coming Soon" dialog as per plan
-     showDialog(
+  void _showAddSourceDialog() {
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1C2128),
-        title: Text(AppLocalizations.of(context)!.googleDriveIntegration, style: const TextStyle(color: Colors.white)),
-        content: Text(
-          AppLocalizations.of(context)!.driveIntegrationComingSoon,
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.gotIt),
-          ),
-        ],
-      ),
+      builder: (context) => AddSourceDialog(onSourceAdded: _onSourceAdded),
     );
   }
 
@@ -313,58 +241,17 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
         color: Colors.black.withValues(alpha: 0.2),
         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
       ),
-      child: Column(
-        children: [
-          if (_isAdding) ...[
-            TextField(
-              controller: _urlController,
-              decoration: InputDecoration(
-                hintText: AppLocalizations.of(context)!.pasteUrlHint,
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.check, color: Colors.blueAccent),
-                  onPressed: _addUrlSource,
-                ),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              autofocus: true,
-              onSubmitted: (_) => _addUrlSource(),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              _buildActionButton(
-                onPressed: () => setState(() => _isAdding = !_isAdding),
-                icon: Icons.link,
-                label: AppLocalizations.of(context)!.addLinkLabel,
-                color: Colors.blueAccent,
-              ),
-              const SizedBox(width: 8),
-              _buildActionButton(
-                onPressed: _addFileSource,
-                icon: Icons.upload_file,
-                label: AppLocalizations.of(context)!.uploadLabel,
-                color: Colors.white70,
-              ),
-              const SizedBox(width: 8),
-              _buildActionButton(
-                onPressed: _addImageSource,
-                icon: Icons.image,
-                label: AppLocalizations.of(context)!.imageLabel,
-                color: Colors.purpleAccent,
-              ),
-              const SizedBox(width: 8),
-              _buildActionButton(
-                onPressed: _addDriveSource,
-                icon: FontAwesomeIcons.googleDrive,
-                label: AppLocalizations.of(context)!.driveLabel,
-                color: Colors.greenAccent,
-              ),
-            ],
+      child: Center(
+        child: ElevatedButton.icon(
+          onPressed: _showAddSourceDialog,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blueAccent,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           ),
-        ],
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text("Add Source", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
       ),
     );
   }
@@ -388,6 +275,15 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white24, fontSize: 13),
             ),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton(
+            onPressed: _showAddSourceDialog,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.white24),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Add Sources"),
           ),
         ],
       ),
@@ -586,6 +482,14 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
       case KnowledgeSourceType.image:
         icon = FontAwesomeIcons.image;
         color = Colors.purpleAccent;
+        break;
+      case KnowledgeSourceType.audio:
+        icon = FontAwesomeIcons.music;
+        color = Colors.pinkAccent;
+        break;
+      case KnowledgeSourceType.youtube:
+        icon = FontAwesomeIcons.youtube;
+        color = Colors.redAccent;
         break;
     }
 

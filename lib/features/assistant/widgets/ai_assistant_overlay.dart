@@ -312,10 +312,20 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.smart_toy, color: Colors.blueAccent),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.asset(
+                            'assets/images/ihb_favicon.png',
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => 
+                              const Icon(Icons.smart_toy, color: Colors.blueAccent, size: 24),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         const Text(
-                          'AI Assistant',
+                          'Brian',
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                         const Spacer(),
@@ -475,8 +485,9 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                                   ),
                                 ),
+                                ),
                               ),
-                            ),
+                            const SizedBox(width: 64), // Space for FAB/Send button
                           ],
                         ),
                       ),
@@ -552,10 +563,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           children: [
             Container(
               margin: const EdgeInsets.only(top: 4),
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 12,
-                backgroundColor: Colors.white10,
-                child: Icon(Icons.smart_toy, size: 14, color: Colors.white),
+                backgroundColor: Colors.transparent,
+                child: Image.asset(
+                   'assets/images/ihb_favicon.png',
+                   fit: BoxFit.cover,
+                   errorBuilder: (context, error, stackTrace) => 
+                     const Icon(Icons.smart_toy, size: 14, color: Colors.white),
+                ),
               ),
             ),
             const SizedBox(width: 12),

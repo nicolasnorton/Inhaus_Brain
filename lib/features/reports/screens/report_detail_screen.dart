@@ -4,7 +4,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../models/report_model.dart';
-import '../widgets/reports_notebook_view.dart'; // Recycling the markdown view for the "Studio" or "Chat"
+import '../widgets/reports_notebook_view.dart';
+import '../widgets/slide_deck_config_dialog.dart';
+import '../models/slide_deck_model.dart'; // For types
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -182,7 +184,27 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                            _buildStudioCard("Mind Map", FontAwesomeIcons.diagramProject, Colors.purple),
                            _buildStudioCard("Reports", FontAwesomeIcons.fileLines, Colors.orange),
                            _buildStudioCard("Infographic", FontAwesomeIcons.chartPie, Colors.pink),
-                           _buildStudioCard("Slide Deck", FontAwesomeIcons.layerGroup, Colors.amber),
+                           _buildStudioCard(
+                             "Slide Deck", 
+                             FontAwesomeIcons.layerGroup, 
+                             Colors.amber,
+                             onTap: () {
+                               showDialog(
+                                 context: context,
+                                 builder: (context) => SlideDeckConfigDialog(
+                                   onGenerate: (format, lang, length, prompt) {
+                                     // Mock generation trigger
+                                     ScaffoldMessenger.of(context).showSnackBar(
+                                       SnackBar(
+                                         content: Text("Generating $length ${format.name} deck in $lang..."),
+                                         backgroundColor: AppTheme.primary,
+                                       ),
+                                     );
+                                   },
+                                 ),
+                               );
+                             },
+                           ),
                          ],
                        ),
                      ),
@@ -196,7 +218,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  Widget _buildStudioCard(String title, IconData icon, Color color) {
+  Widget _buildStudioCard(String title, IconData icon, Color color, {VoidCallback? onTap}) {
     return Container(
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
@@ -206,7 +228,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {},
+          onTap: onTap ?? () {},
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

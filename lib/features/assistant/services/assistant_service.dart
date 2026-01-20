@@ -197,7 +197,7 @@ class AssistantService {
     final ephemeralMsg = _injectEphemeralMessages(currentMode);
 
     final mainPrompt = """
-You are the Inhaus Brain Super Admin Assistant.
+You are Brian, the Inhaus Brain Copilot.
 Current Mode: ${currentMode.name.toUpperCase()}
 Intent: $intentStr
 Memory Context:
@@ -341,7 +341,7 @@ $ephemeralMsg
        if (lower.contains('campaign')) return (await _executeTool(tools, 'create_campaign', {'title': 'New Campaign'})).text;
     }
 
-    return "I am Inhaus Super Admin. I can manage clients, build apps, navigate to any module, or orchestrate commerce via UCP. Try: 'Build a new app' or 'Go to clients'.";
+    return "I am Brian, your Inhaus Copilot. I can manage clients, build apps, navigate to any module, or orchestrate commerce via UCP. Try: 'Build a new app' or 'Go to clients'.";
   }
 
   Future<ToolExecutionSummary> _executeTool(List<AgentTool> tools, String name, Map<String, dynamic> args) async {
