@@ -7,6 +7,7 @@ REGION="us-central1"
 IMAGE_TAG="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
 echo "🚀 Starting Deployment for $PROJECT_ID..."
+# Features: Reports Module, Optimized Vertex AI Transport, Streamlined CRM
 
 # 1. Load local environment variables if .env exists
 if [ -f .env ]; then

@@ -40,6 +40,7 @@ ARG MIDJOURNEY_API_KEY
 
 # Build the web application
 # Note: Cleaning before build ensures no stale artifacts are included
+# Vertex AI Transport: Optimized for :generateContent and modern schema
 RUN flutter clean && \
     flutter pub get && \
     flutter build web --release --no-tree-shake-icons \
