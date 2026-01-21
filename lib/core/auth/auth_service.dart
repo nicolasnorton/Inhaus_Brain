@@ -5,12 +5,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../features/auth/models/user_model.dart';
 import 'package:flutter/foundation.dart'; // for kDebugMode
+import 'secret_vault_service.dart';
 
 class AuthService {
-  // Production Mode
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final SecretVaultService _vault = SecretVaultService();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'https://www.googleapis.com/auth/cloud-platform',
+    ],
+  );
 
   AuthService() {
     // Listen for Google Sign-In changes (especially for GIS on Web)
@@ -18,6 +24,13 @@ class AuthService {
       if (googleUser != null) {
         try {
           final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          
+          // Phase 89: Save OAuth Access Token to Vault for Vertex AI access
+          if (googleAuth.accessToken != null) {
+            await _vault.saveVertexKey(googleAuth.accessToken!);
+            if (kDebugMode) print('AuthService: Saved new Google Access Token to Vault.');
+          }
+
           final OAuthCredential credential = GoogleAuthProvider.credential(
             accessToken: googleAuth.accessToken,
             idToken: googleAuth.idToken,

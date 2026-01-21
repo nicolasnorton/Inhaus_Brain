@@ -168,7 +168,11 @@ class CreativeStudioScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        AppLocalizations.of(context)!.campaignIdLabel(concept.campaignId.length > 8 ? concept.campaignId.substring(0, 8) : concept.campaignId),
+                        AppLocalizations.of(context)!.campaignIdLabel(
+                          (concept.campaignId.isNotEmpty) 
+                            ? (concept.campaignId.length > 8 ? concept.campaignId.substring(0, 8) : concept.campaignId)
+                            : 'N/A'
+                        ),
                         style: const TextStyle(color: Colors.white38, fontSize: 13, fontFamily: 'monospace'),
                       ),
                     ],

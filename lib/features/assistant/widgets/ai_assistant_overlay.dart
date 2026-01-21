@@ -283,9 +283,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       borderRadius = 16;
     }
 
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+    return ExcludeFocus(
+      excluding: !isOpen,
+      child: AnimatedPositioned(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       top: top,
       right: right,
       bottom: bottom,
@@ -300,7 +302,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             final isOpen = ref.watch(isAssistantOpenProvider);
             return Visibility(
               visible: isOpen,
-              maintainState: false, // Force re-layout/focus evaluation only when visible
+              maintainState: true, // Keep state to avoid focus layout issues during transitions
               child: Column(
                 children: [
                   // Header
@@ -472,7 +474,9 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                                   }
                                 },
                                 child: TextField(
+                                  focusNode: _keyboardFocusNode,
                                   controller: _controller,
+                                  autofocus: false,
                                   style: const TextStyle(color: Colors.white, fontSize: 16),
                                   minLines: 1,
                                   maxLines: 5,

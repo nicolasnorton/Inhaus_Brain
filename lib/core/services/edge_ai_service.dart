@@ -480,8 +480,8 @@ class EdgeAIService {
     
     // Use strict encoding for the prompt
     final encodedPrompt = Uri.encodeComponent(safePrompt);
-    // Simplified URL without width/height to avoid validation errors, added nologo
-    return "https://image.pollinations.ai/prompt/$encodedPrompt?nologo=true&seed=$seed";
+    // Added width/height and model=flux to increase reliability and avoid 403s
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&model=flux&seed=$seed";
   }
 
   static Future<String> _generateVertexImagen(String prompt, String key) async {
@@ -795,7 +795,12 @@ class EdgeAIService {
       if (text.isEmpty) text = "No content generated.";
       return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Vertex: $modelId');
     } else {
-      throw Exception('Vertex Gemini Error: ${response.statusCode} ${response.body}');
+      final errorBody = response.body;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        debugPrint('EdgeAI: [VERTEX] Auth Error ${response.statusCode}: $errorBody');
+        debugPrint('EdgeAI: [HINT] Ensure the Vertex AI API is enabled in project "$projectId" and your OAuth token (Scopes: cloud-platform) has permissions.');
+      }
+      throw Exception('Vertex Gemini Error: ${response.statusCode} $errorBody');
     }
   }
 
