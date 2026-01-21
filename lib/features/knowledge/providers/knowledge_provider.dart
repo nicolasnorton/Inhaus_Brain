@@ -47,17 +47,19 @@ final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
   return KnowledgeApiService(
     vertexService: vertex,
     tokenProvider: () async {
-      // 1. Try Dify Key (serving as Vertex/Generic key slot if needed)
-      // Or 1.5 Try Vertex API Key specifically if added
-      // 2. Fallback to Dify Key logic (reused for MVP to pass ANY key)
+      // 1. Try Vertex Access Token (Saved from Google Sign-In)
+      final vertexKey = await vault.getVertexKey();
+      if (vertexKey != null && vertexKey.isNotEmpty) return vertexKey;
+
+      // 2. Try Dify Key (serving as generic key slot)
       final difyKey = await vault.getDifyKey();
       if (difyKey != null && difyKey.isNotEmpty) return difyKey;
 
-      // 3. Fallback to Gemini Key?
+      // 3. Fallback to Gemini Key
       final geminiKey = await vault.getGeminiKey();
       if (geminiKey != null && geminiKey.isNotEmpty) return geminiKey;
       
-      // 4. Fallback to user token (Access Token for Cloud)
+      // 4. Final fallback to user ID token (Firebase)
       return (await authService.currentUser)?.getIdToken();
     },
   );

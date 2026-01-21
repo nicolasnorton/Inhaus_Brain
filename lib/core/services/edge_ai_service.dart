@@ -525,7 +525,12 @@ class EdgeAIService {
       final base64Image = data['predictions'][0]['bytesBase64Encoded'];
       return "data:image/png;base64,$base64Image";
     } else {
-      throw Exception('Vertex AI Error: ${response.statusCode} ${response.body}');
+      final errorBody = response.body;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        debugPrint('EdgeAI: [VERTEX] Imagen Auth Error ${response.statusCode}: $errorBody');
+        debugPrint('EdgeAI: [HINT] Ensure the Vertex AI API is enabled in project "$projectId" and your OAuth token (Scopes: cloud-platform) has permissions.');
+      }
+      throw Exception('Vertex AI Error: ${response.statusCode} $errorBody');
     }
   }
 
@@ -608,7 +613,12 @@ class EdgeAIService {
 
       throw Exception('Veo response format unrecognized: ${response.body}');
     } else {
-      throw Exception('Vertex Veo Error: ${response.statusCode} ${response.body}');
+      final errorBody = response.body;
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        debugPrint('EdgeAI: [VERTEX] Veo Auth Error ${response.statusCode}: $errorBody');
+        debugPrint('EdgeAI: [HINT] Ensure the Vertex AI API (AI Platform) is enabled in project "$projectId" and the account has "Vertex AI User" role.');
+      }
+      throw Exception('Vertex Veo Error: ${response.statusCode} $errorBody');
     }
   }
 
