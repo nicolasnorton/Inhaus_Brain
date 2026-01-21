@@ -501,12 +501,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
               ),
             ),
           ),
-        ),
-            );
-          },
-        ),
-      ),
-    );
+        );
+      },
+    ),
+  ),
+);
   }
 
   Widget _buildMessageBubble(AssistantMessage message) {
