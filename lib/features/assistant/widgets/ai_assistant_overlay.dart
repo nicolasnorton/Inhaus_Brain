@@ -45,7 +45,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   @override
   void initState() {
     super.initState();
-    _keyboardFocusNode = FocusNode();
+    _keyboardFocusNode = FocusNode(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+          _sendMessage();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+    );
     _initTts();
   }
 
@@ -283,9 +291,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       borderRadius = 16;
     }
 
-    return ExcludeFocus(
-      excluding: !isOpen,
-      child: AnimatedPositioned(
+    return AnimatedPositioned(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       top: top,
@@ -303,8 +309,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             return Visibility(
               visible: isOpen,
               maintainState: true, // Keep state to avoid focus layout issues during transitions
-              child: Column(
-                children: [
+              child: FocusScope(
+                child: ExcludeFocus(
+                  excluding: !isOpen,
+                  child: Column(
+                    children: [
                   // Header
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -466,41 +475,32 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             ),
                             const SizedBox(width: 4),
                             Expanded(
-                              child: KeyboardListener(
+                              child: TextField(
                                 focusNode: _keyboardFocusNode,
-                                onKeyEvent: (event) {
-                                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
-                                    _sendMessage();
-                                  }
-                                },
-                                child: TextField(
-                                  focusNode: _keyboardFocusNode,
-                                  controller: _controller,
-                                  autofocus: false,
-                                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                                  minLines: 1,
-                                  maxLines: 5,
-                                  textInputAction: TextInputAction.newline,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Type a message...',
-                                    hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                                  ),
-                                ),
+                                controller: _controller,
+                                autofocus: false,
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
+                                minLines: 1,
+                                maxLines: 5,
+                                textInputAction: TextInputAction.newline,
+                                decoration: const InputDecoration(
+                                  hintText: 'Type a message...',
+                                  hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                                 ),
                               ),
+                            ),
                             const SizedBox(width: 64), // Space for FAB/Send button
                           ],
                         ),
                       ),
                     ],
                   ),
-                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -119,17 +119,25 @@ class DashboardScreen extends ConsumerWidget {
       child: CircleAvatar(
         radius: 18,
         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
-        backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-        onBackgroundImageError: user?.photoURL != null 
-          ? (e, s) => debugPrint('Dashboard Avatar Error: $e') 
-          : null,
-        child: user?.photoURL == null 
-          ? Text(
-              (user?.displayName ?? user?.email ?? roleName)[0].toUpperCase(),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-            )
-          : null,
+        child: ClipOval(
+          child: (user?.photoURL != null) 
+            ? Image.network(
+                user!.photoURL!,
+                fit: BoxFit.cover,
+                width: 36,
+                height: 36,
+                errorBuilder: (context, error, stackTrace) => _buildAvatarFallback(user, roleName),
+              )
+            : _buildAvatarFallback(user, roleName),
+        ),
       ),
+    );
+  }
+
+  Widget _buildAvatarFallback(dynamic user, String roleName) {
+    return Text(
+      (user?.displayName ?? user?.email ?? roleName)[0].toUpperCase(),
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
     );
   }
 
@@ -143,7 +151,6 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/publish')) return 5;
     if (location.startsWith('/knowledge')) return 6;
     if (location.startsWith('/settings') || location.startsWith('/workspace')) return 7;
-    if (location.startsWith('/debug')) return 8;
     if (location.startsWith('/debug')) return 8;
     if (location.startsWith('/admin')) return 9;
     if (location.startsWith('/reports')) return 10;
