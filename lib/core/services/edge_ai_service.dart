@@ -101,8 +101,16 @@ class EdgeAIService {
              } catch (e) {
                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (Token) failed: $e. Falling back to Dev API.');
                if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                  // Fallback: Use the config as-is (with version suffix if present)
-                  result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+                  // Fallback: Use the config BUT strip suffix for Developer API compatibility
+                  var fallbackId = config.modelId;
+                  if (fallbackId.contains('-001')) {
+                     fallbackId = fallbackId.replaceAll('-001', '');
+                  } else if (fallbackId.contains('-002')) {
+                     fallbackId = fallbackId.replaceAll('-002', '');
+                  }
+                  final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: fallbackId, temperature: config.temperature, maxTokens: config.maxTokens);
+                  
+                  result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
                } else {
                  rethrow;
                }
@@ -865,9 +873,11 @@ class EdgeAIService {
     
     // Map Dev API model IDs to Vertex AI model IDs
     // Using explicit versioned IDs to improve reliability in us-central1
+    // Use the configuration model ID directly
     String modelId = config.modelId;
-    if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
-    else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
+    // Overrides removed to respect configuration
+    // if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
+    // else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
 
     // Vertex AI Gemini endpoint: Use generateContent which is the modern path for Gemini on Vertex
     final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';
