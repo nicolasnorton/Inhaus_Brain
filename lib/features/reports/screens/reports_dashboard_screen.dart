@@ -74,8 +74,9 @@ class ReportsDashboardScreen extends ConsumerWidget {
       ),
       child: InkWell(
         onTap: () {
-          // In real app, create logic
-          context.go('/reports/1'); 
+          final newReport = Report.create(title: 'New Analysis', clientId: 'client_1');
+          mockReports.insert(0, newReport); // Add to beginning
+          context.go('/reports/${newReport.id}'); 
         },
         borderRadius: BorderRadius.circular(16),
         child: const Column(

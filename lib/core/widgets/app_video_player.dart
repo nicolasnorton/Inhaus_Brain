@@ -85,22 +85,24 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
   }
 
   Future<void> _downloadVideo() async {
-    final Uri url = Uri.parse(widget.videoUrl);
-    
-    if (kIsWeb) {
-      // On Web, we can try to force a download by using a specific launch mode 
-      // or by interacting with the DOM (though we avoid dart:html here).
-      // A common way without extra packages is to use launchUrl with external application,
-      // but for "download", many browsers need the 'download' attribute.
+    try {
+      final Uri? url = Uri.tryParse(widget.videoUrl);
+      if (url == null) {
+         _showError('Invalid video URL');
+         return;
+      }
       
-      // For now, let's just make it more robust.
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-         _showError('Could not download video');
+      if (kIsWeb) {
+        if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+           _showError('Could not download video');
+        }
+      } else {
+        if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+          _showError('Could not launch/download video');
+        }
       }
-    } else {
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        _showError('Could not launch/download video');
-      }
+    } catch (e) {
+      _showError('Error downloading: $e');
     }
   }
 

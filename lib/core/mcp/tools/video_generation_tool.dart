@@ -1,11 +1,13 @@
 import '../agent_tool.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/edge_ai_service.dart';
 
 class VideoGenerationTool extends AgentTool {
   final String? veoKey;
   final String? vertexKey;
+  final Ref ref;
 
-  VideoGenerationTool({this.veoKey, this.vertexKey})
+  VideoGenerationTool(this.ref, {this.veoKey, this.vertexKey})
       : super(
           name: 'video_generation',
           description: 'Generate a high-fidelity video asset.',
@@ -24,7 +26,7 @@ class VideoGenerationTool extends AgentTool {
       return ToolResult.failure('Missing required parameter: prompt');
     }
 
-    final url = await EdgeAIService.generateVideo(prompt, veoKey: veoKey, vertexKey: vertexKey);
+    final url = await EdgeAIService.generateVideo(prompt, veoKey: veoKey, vertexKey: vertexKey, ref: ref);
     return ToolResult.success({'url': url});
   }
 }

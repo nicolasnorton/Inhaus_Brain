@@ -46,6 +46,7 @@ final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
   
   return KnowledgeApiService(
     vertexService: vertex,
+    vault: vault,
     tokenProvider: () async {
       // 1. Try Vertex Access Token (Saved from Google Sign-In)
       final vertexKey = await vault.getVertexKey();

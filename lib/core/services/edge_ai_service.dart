@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../features/knowledge/models/knowledge_source.dart';
 import '../tokens/llm_provider.dart';
 import '../auth/secret_vault_service.dart';
+import '../auth/auth_service.dart';
 
 // --- JS Interop for Chrome Prompt API ---
 // These will only work on Chrome with experimental flags enabled.
@@ -88,38 +89,50 @@ class EdgeAIService {
           final effectiveVertexKey = vertexKey ?? vaultVertexKey;
           
           // Mode detection: If vertex key is present and looks like a token, use Vertex path
+          // Standard Access Tokens start with ya29. 
+          // Keys starting with AQ. are also treated as OAuth-style tokens for Vertex AI
           final isVertexToken = effectiveVertexKey != null && effectiveVertexKey.isNotEmpty && 
               (effectiveVertexKey.startsWith('ya29.') || effectiveVertexKey.startsWith('AQ.'));
           
           if (isVertexToken) {
              try {
-               result = await _generateVertexGemini(effectivePrompt, config, effectiveVertexKey, imageBytes, imageMimeType);
+               result = await _generateVertexGemini(effectivePrompt, config, effectiveVertexKey!, imageBytes, imageMimeType);
              } catch (e) {
                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (Token) failed: $e. Falling back to Dev API.');
-               if (effectiveApiKey != null && effectiveApiKey.isNotEmpty) {
+               if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
                  result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
                } else {
                  rethrow;
                }
              }
           } 
-          // New Path: Vertex AI with API Key (if the project has enabled it)
-          else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && config.provider == AIProvider.gemini) {
+          // Path 2: Explicit API Key (starts with AIza)
+          else if ((effectiveVertexKey != null && effectiveVertexKey.isNotEmpty) || (effectiveApiKey != null && effectiveApiKey.isNotEmpty)) {
+             final keyToUse = (effectiveVertexKey != null && effectiveVertexKey.isNotEmpty) ? effectiveVertexKey : effectiveApiKey!;
+             
              try {
-               // Try Vertex Transport first to satisfy "use Vertex" requirement
-               result = await _generateVertexGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType);
+                // Route based on key type: 
+                // ya29. or AQ. -> Vertex AI (Requires Authorization Header)
+                // AIza... -> Gemini Dev API (Requires ?key= query parameter)
+               if (keyToUse.startsWith('ya29.') || keyToUse.startsWith('AQ.')) {
+                  result = await _generateVertexGemini(effectivePrompt, config, keyToUse, imageBytes, imageMimeType);
+               } else {
+                  result = await _generateGemini(effectivePrompt, config, keyToUse, imageBytes, imageMimeType, audioBytes, audioMimeType);
+               }
              } catch (e) {
                final errorStr = e.toString();
                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
-               // Special guidance for 401/403
-               if (errorStr.contains('401') || errorStr.contains('403')) {
-                  debugPrint('EdgeAI: [HINT] This likely means the API Key is not enabled for the Vertex AI (AI Platform) API specifically, or is restricted.');
+               
+               // Fallback to standard Gemini API if we have a valid Dev API key
+               if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
+                  result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+               } else {
+                  rethrow;
                }
-               result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
              }
           }
-          // Priority 2: Standard Gemini Dev API
-          else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty) {
+          // Priority 3: Standard Gemini Dev API
+          else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
             try {
               result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
             } catch (e) {
@@ -443,13 +456,21 @@ class EdgeAIService {
     }
   }
 
-  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey}) async {
+  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey, Ref? ref}) async {
+    String? freshToken;
+    if (ref != null) {
+      try {
+        freshToken = await ref.read(authServiceProvider).getFreshVertexToken();
+      } catch (e) {/* ignore */}
+    }
+
     final isNanoBanana = prompt.toLowerCase().contains('banana') || (bananaKey != null && bananaKey.isNotEmpty);
     
     final vaultVertexKey = await _vault.getVertexKey();
     final vaultImagenKey = await _vault.getImagenKey();
     
-    final effectiveKey = vertexKey ?? vaultVertexKey ?? imagenKey ?? vaultImagenKey;
+    // Priority: Fresh Token > Passed Token > Vault Token > Legacy Keys
+    final effectiveKey = freshToken ?? vertexKey ?? vaultVertexKey ?? imagenKey ?? vaultImagenKey;
     
     if (effectiveKey != null && effectiveKey.isNotEmpty || isNanoBanana) {
       // Use Vertex AI Imagen 3
@@ -488,7 +509,7 @@ class EdgeAIService {
     String projectId = 'inhausbrain'; 
     
     // Check if it's likely an API Key (starts with AIza) or an Access Token (ya29, AQ)
-    final isApiKey = !key.startsWith('ya29.') && !key.startsWith('AQ.');
+    final isApiKey = !key.startsWith('ya29.');
     
     // Vertex AI Imagen 3 endpoint
     // API Keys use :predict or :generateContent depending on the specific model setup
@@ -534,11 +555,18 @@ class EdgeAIService {
     }
   }
 
-  static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey}) async {
+  static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {
+    String? freshToken;
+    if (ref != null) {
+      try {
+        freshToken = await ref.read(authServiceProvider).getFreshVertexToken();
+      } catch (e) {/* ignore */}
+    }
+
     final vaultVertexKey = await _vault.getVertexKey();
     final vaultVeoKey = await _vault.getVeoKey();
     
-    final effectiveKey = vertexKey ?? vaultVertexKey ?? veoKey ?? vaultVeoKey;
+    final effectiveKey = freshToken ?? vertexKey ?? vaultVertexKey ?? veoKey ?? vaultVeoKey;
     final isVeoInput = prompt.toLowerCase().contains('veo') || (effectiveKey != null && effectiveKey.isNotEmpty);
     
     if (runwayKey != null && runwayKey.isNotEmpty) {
@@ -562,7 +590,7 @@ class EdgeAIService {
   static Future<String> _generateVertexVeo(String prompt, String key) async {
     String projectId = 'inhausbrain';
     // Vertex AI Tokens usually start with ya29. or AQ.
-    final isApiKey = !key.startsWith('ya29.') && !key.startsWith('AQ.');
+    final isApiKey = !key.startsWith('ya29.');
     
     // Using the veo-001 model ID (SOTA)
     // Veo often requires the :predict endpoint
@@ -705,11 +733,16 @@ class EdgeAIService {
        final effectiveApiKey = apiKey ?? vaultGeminiKey;
        final effectiveVertexKey = vaultVertexKey; // In stream we usually rely on vault if not passed
 
-       if (effectiveVertexKey != null && (effectiveVertexKey.startsWith('ya29.') || effectiveVertexKey.startsWith('AQ.'))) {
-          final result = await _generateVertexGemini(_buildPromptWithContext(prompt, context, memoryContext: memoryContext), config!, effectiveVertexKey, imageBytes, imageMimeType);
-          if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
-          yield result;
-          return;
+       if (effectiveVertexKey != null && effectiveVertexKey.startsWith('ya29.')) {
+          try {
+             final result = await _generateVertexGemini(_buildPromptWithContext(prompt, context, memoryContext: memoryContext), config!, effectiveVertexKey, imageBytes, imageMimeType);
+             if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
+             yield result;
+             return;
+          } catch (e) {
+             debugPrint('EdgeAI: [VERTEX] Gemini failed ($e). Falling back to Dev API.');
+             // Fallthrough to standard API Key implementation
+          }
        }
 
        if (effectiveApiKey != null) {
@@ -733,7 +766,7 @@ class EdgeAIService {
     String? mimeType
   ) async {
     String projectId = 'inhausbrain';
-    final isApiKey = !key.startsWith('ya29.') && !key.startsWith('AQ.');
+    final isApiKey = !key.startsWith('ya29.');
     
     // Map Dev API model IDs to Vertex AI model IDs
     String modelId = config.modelId;

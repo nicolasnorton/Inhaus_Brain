@@ -227,7 +227,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
     state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
-    final videoTool = VideoGenerationTool(veoKey: veoKey);
+    final videoTool = VideoGenerationTool(ref, veoKey: veoKey);
     final result = await videoTool.execute({'prompt': userPrompt});
     
     final videoUrl = result.isSuccess ? result.data['url'] : "assets/videos/mock_render.mp4";
@@ -513,7 +513,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       );
       state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
-      final imageTool = ImageGenerationTool(imagenKey: imagenKey, bananaKey: bananaKey);
+      final imageTool = ImageGenerationTool(ref, imagenKey: imagenKey, bananaKey: bananaKey);
       final result = await imageTool.execute({'prompt': userPrompt});
       
       final imageUrl = result.isSuccess ? result.data['url'] : "assets/images/mock_concept.png";

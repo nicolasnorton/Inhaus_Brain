@@ -15,10 +15,19 @@ class CampaignDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final campaign = ref.watch(campaignListProvider).firstWhere(
-          (c) => c.id == campaignId,
-          orElse: () => throw Exception('Campaign not found'),
-        );
+    final campaigns = ref.watch(campaignListProvider);
+    final campaign = campaigns.where((c) => c.id == campaignId).firstOrNull;
+
+    if (campaign == null) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)?.loading ?? 'Loading...'),
+          backgroundColor: Colors.transparent,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,

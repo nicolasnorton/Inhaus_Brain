@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'AI Mock Mode: {status}'**
   String aiMockMode(Object status);
 
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loading;
+
   /// No description provided for @connectedAccounts.
   ///
   /// In en, this message translates to:

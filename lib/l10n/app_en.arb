@@ -9,6 +9,7 @@
   "mockAIModels": "Mock AI Models",
   "mockAIModelsSubtitle": "Use simulated responses for testing",
   "aiMockMode": "AI Mock Mode: {status}",
+  "loading": "Loading...",
   "connectedAccounts": "Connected Accounts",
   "connected": "Connected",
   "notConnected": "Not Connected",

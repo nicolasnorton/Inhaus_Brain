@@ -5,20 +5,23 @@ import 'package:http/http.dart' as http; // Kept for file upload if needed, or r
 import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:uuid/uuid.dart'; // Unused
 import '../../../core/services/vertex_ai_service.dart';
+import '../../../core/auth/secret_vault_service.dart';
 import '../models/knowledge_api_models.dart';
 
 /// Service for Knowledge Base operations (Native Vertex + Firestore)
 class KnowledgeApiService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final VertexApiService _vertexService;
+  final SecretVaultService _vault;
   final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
 
   KnowledgeApiService({
     required VertexApiService vertexService,
+    required SecretVaultService vault,
     required this.tokenProvider,
     String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _vertexService = vertexService;
+  }) : _vertexService = vertexService, _vault = vault;
 
   static const String _collectionDatasets = 'knowledge_datasets';
   static const String _collectionDocuments = 'documents';
@@ -108,28 +111,53 @@ class KnowledgeApiService {
     final chunks = _splitText(text, 500); // ~500 chars per chunk
     int totalTokens = text.split(' ').length; // Rough estimate
 
-    // 3. Embeddings via Vertex AI
+       // 3. Embeddings via Vertex AI
     List<List<double>> embeddings = [];
     try {
-      // Get auth token (API Key or Bearer)
-      final token = await tokenProvider();
+      // Strategy: Try Vertex (OAuth) first, then fallback to Gemini Key (API Key)
       
-      // Determine if it's an API Key or Access Token
-      String? apiKey;
-      String? accessToken;
-      if (token != null && !token.startsWith('ya29.')) {
-        apiKey = token;
-      } else {
-        accessToken = token;
+      // Attempt 1: Vertex Token
+      String? vertexKey = await _vault.getVertexKey();
+      
+      // If no vertex key in vault, fall back to our token provider which might have one
+      if (vertexKey == null) {
+          final t = await tokenProvider();
+          if (t != null && (t.startsWith('ya29.') || t.startsWith('AQ.'))) {
+             vertexKey = t;
+          }
       }
       
-      embeddings = await _vertexService.getEmbeddings(
-        chunks, 
-        apiKey: apiKey,
-        accessToken: accessToken,
-      );
+      try {
+         if (vertexKey != null) {
+            // Check if it's an API Key (AQ.) or OAuth Token (ya29.)
+            final isApiKey = vertexKey.startsWith('AQ.');
+            
+            embeddings = await _vertexService.getEmbeddings(
+              chunks, 
+              accessToken: isApiKey ? null : vertexKey,
+              apiKey: isApiKey ? vertexKey : null,
+            );
+         } else {
+           throw Exception('No Vertex Token available for initial attempt');
+         }
+      } catch (e) {
+         final err = e.toString();
+         debugPrint('KnowledgeApi: Vertex Embedding failed ($err). Attempting fallback to Gemini Key...');
+         
+         // Attempt 2: Gemini API Key
+         final geminiKey = await _vault.getGeminiKey();
+         if (geminiKey != null && geminiKey.isNotEmpty) {
+            embeddings = await _vertexService.getEmbeddings(
+              chunks, 
+              apiKey: geminiKey,
+            );
+         } else {
+            throw e; // Rethrow original error if no fallback
+         }
+      }
     } catch (e) {
-      debugPrint('Embedding generation failed: $e');
+      final err = e.toString();
+      debugPrint('Embedding generation failed: $err');
       // Continue without embeddings? Or fail? 
       // For MVP, we might fail or store empty. Let's fail to warn user.
       throw Exception('Failed to generate embeddings: $e');

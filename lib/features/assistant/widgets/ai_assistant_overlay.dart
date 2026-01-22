@@ -47,14 +47,24 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     super.initState();
     _keyboardFocusNode = FocusNode(
       onKeyEvent: (node, event) {
-        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+        if (event is KeyDownEvent && 
+            event.logicalKey == LogicalKeyboardKey.enter && 
+            !HardwareKeyboard.instance.isShiftPressed) {
           _sendMessage();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
+      debugLabel: 'AssistantInputFocus',
     );
     _initTts();
+    
+    // Safety: ensure focus is requested after layout to avoid "RenderBox was not laid out"
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _keyboardFocusNode.canRequestFocus) {
+         _keyboardFocusNode.requestFocus();
+      }
+    });
   }
 
   void _initTts() async {
@@ -278,17 +288,38 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     double borderRadius;
 
     if (_isFullWidth) {
-      top = 0; right = 0; bottom = 0; left = 0;
-      width = null;
+      top = 0; bottom = 0;
       borderRadius = 0;
-    } else if (isSmallScreen) {
-      top = 5; right = 5; bottom = 5; left = 5;
       width = null;
+      
+      if (isOpen) {
+        right = 0; left = 0;
+      } else {
+        // Slide out to the right
+        left = screenWidth; 
+        right = -screenWidth;
+      }
+    } else if (isSmallScreen) {
+      top = 5; bottom = 5;
       borderRadius = 16;
+      width = null;
+      
+      if (isOpen) {
+        right = 5; left = 5;
+      } else {
+        left = screenWidth;
+        right = -screenWidth;
+      }
     } else {
-      top = 20; right = 20; bottom = 20; left = null;
+      top = 20; bottom = 20; left = null;
       width = 520;
       borderRadius = 16;
+      
+      if (isOpen) {
+         right = 20;
+      } else {
+         right = -550; // Slide out to right
+      }
     }
 
     return AnimatedPositioned(
@@ -299,213 +330,204 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       bottom: bottom,
       left: left,
       width: width,
-      child: Material(
-        elevation: 16,
-        borderRadius: BorderRadius.circular(borderRadius),
-        color: const Color(0xFF1C2128), // Dark workspace background
-        child: Consumer(
-          builder: (context, ref, child) {
-            final isOpen = ref.watch(isAssistantOpenProvider);
-            return Visibility(
-              visible: isOpen,
-              maintainState: true, // Keep state to avoid focus layout issues during transitions
-              child: FocusScope(
-                child: ExcludeFocus(
-                  excluding: !isOpen,
-                  child: Column(
+      child: FocusScope(
+        child: ExcludeFocus(
+          excluding: !isOpen,
+          child: Material(
+            elevation: 16,
+            borderRadius: BorderRadius.circular(borderRadius),
+            color: const Color(0xFF1C2128), // Dark workspace background
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  ),
+                  child: Row(
                     children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Image.asset(
-                            'assets/images/ihb_favicon.png',
-                            width: 24,
-                            height: 24,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => 
-                              const Icon(Icons.smart_toy, color: Colors.blueAccent, size: 24),
-                          ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.asset(
+                          'assets/images/ihb_favicon.png',
+                          width: 24,
+                          height: 24,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => 
+                            const Icon(Icons.smart_toy, color: Colors.blueAccent, size: 24),
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Brian',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(_autoRead ? Icons.volume_up : Icons.volume_off, size: 20, color: _autoRead ? Colors.blueAccent : Colors.white54),
-                          onPressed: () => setState(() => _autoRead = !_autoRead),
-                          tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
-                        ),
-                        // Mode Switcher
-                        Consumer(
-                          builder: (context, ref, _) {
-                             final mode = ref.watch(assistantModeProvider);
-                             return PopupMenuButton<AssistantMode>(
-                               initialValue: mode,
-                               tooltip: 'Assistant Mode',
-                               icon: Icon(
-                                 mode == AssistantMode.planning ? Icons.architecture : Icons.flash_on, 
-                                 color: mode == AssistantMode.planning ? Colors.purpleAccent : Colors.amber,
-                                 size: 20
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Brian',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(_autoRead ? Icons.volume_up : Icons.volume_off, size: 20, color: _autoRead ? Colors.blueAccent : Colors.white54),
+                        onPressed: () => setState(() => _autoRead = !_autoRead),
+                        tooltip: _autoRead ? 'Mute Voice' : 'Enable Voice Response',
+                      ),
+                      // Mode Switcher
+                      Consumer(
+                        builder: (context, ref, _) {
+                           final mode = ref.watch(assistantModeProvider);
+                           return PopupMenuButton<AssistantMode>(
+                             initialValue: mode,
+                             tooltip: 'Assistant Mode',
+                             icon: Icon(
+                               mode == AssistantMode.planning ? Icons.architecture : Icons.flash_on, 
+                               color: mode == AssistantMode.planning ? Colors.purpleAccent : Colors.amber,
+                               size: 20
+                             ),
+                             onSelected: (newMode) => ref.read(assistantModeProvider.notifier).state = newMode,
+                             itemBuilder: (context) => [
+                               const PopupMenuItem(
+                                 value: AssistantMode.fast,
+                                  child: Row(children: [Icon(Icons.flash_on, size: 16, color: Colors.amber), SizedBox(width: 8), Text('Fast Mode', style: TextStyle(color: Colors.white, fontSize: 16))]),
                                ),
-                               onSelected: (newMode) => ref.read(assistantModeProvider.notifier).state = newMode,
-                               itemBuilder: (context) => [
-                                 const PopupMenuItem(
-                                   value: AssistantMode.fast,
-                                    child: Row(children: [Icon(Icons.flash_on, size: 16, color: Colors.amber), SizedBox(width: 8), Text('Fast Mode', style: TextStyle(color: Colors.white, fontSize: 16))]),
-                                 ),
-                                 const PopupMenuItem(
-                                   value: AssistantMode.planning,
-                                    child: Row(children: [Icon(Icons.architecture, size: 16, color: Colors.purpleAccent), SizedBox(width: 8), Text('Planning Mode', style: TextStyle(color: Colors.white, fontSize: 16))]),
-                                 ),
-                               ],
-                               color: const Color(0xFF2D333B),
-                             );
-                          }
-                        ),
-                        if (!isSmallScreen)
-                          IconButton(
-                            icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
-                            onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
-                            tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white54),
-                          onPressed: () => ref.read(assistantChatProvider.notifier).clearChat(),
-                          tooltip: 'Clear Chat',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20, color: Colors.white54),
-                          onPressed: () => ref.read(isAssistantOpenProvider.notifier).state = false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Message List
-                  Expanded(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      primary: false,
-                      itemCount: messages.length + (_isTyping ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == messages.length) {
-                           return _buildTypingIndicator();
+                               const PopupMenuItem(
+                                 value: AssistantMode.planning,
+                                  child: Row(children: [Icon(Icons.architecture, size: 16, color: Colors.purpleAccent), SizedBox(width: 8), Text('Planning Mode', style: TextStyle(color: Colors.white, fontSize: 16))]),
+                               ),
+                             ],
+                             color: const Color(0xFF2D333B),
+                           );
                         }
-                        return _buildMessageBubble(messages[index]);
-                      },
-                    ),
-                  ),
-
-                  // Input Area
-                  Column(
-                    children: [
-                      if (_selectedImage != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          color: const Color(0xFF0F1116),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.memory(
-                                  _selectedImage!,
-                                  height: 60,
-                                  width: 60,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _selectedImageName ?? 'Image',
-                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close, size: 20, color: Colors.white54),
-                                onPressed: _removeImage,
-                                tooltip: 'Remove image',
-                              ),
-                            ],
-                          ),
+                      ),
+                      if (!isSmallScreen)
+                        IconButton(
+                          icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
+                          onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
+                          tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
                         ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F1116),
-                          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              constraints: const BoxConstraints(),
-                              padding: const EdgeInsets.only(bottom: 8, right: 4),
-                              icon: Icon(Icons.add_circle_outline, color: _selectedImage != null ? Colors.blueAccent : Colors.white54, size: 22),
-                              onPressed: _pickImage,
-                              tooltip: 'Add attachment',
-                            ),
-                            GestureDetector(
-                              onTap: _toggleListening,
-                              onLongPress: _toggleAudioRecording,
-                              onLongPressUp: _toggleAudioRecording,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                                child: Icon(
-                                  _isRecordingAudio 
-                                      ? Icons.fiber_manual_record 
-                                      : (_isListening ? Icons.mic : Icons.mic_none), 
-                                  color: (_isListening || _isRecordingAudio) ? Colors.redAccent : Colors.white54,
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: TextField(
-                                focusNode: _keyboardFocusNode,
-                                controller: _controller,
-                                autofocus: false,
-                                style: const TextStyle(color: Colors.white, fontSize: 16),
-                                minLines: 1,
-                                maxLines: 5,
-                                textInputAction: TextInputAction.newline,
-                                decoration: const InputDecoration(
-                                  hintText: 'Type a message...',
-                                  hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 64), // Space for FAB/Send button
-                          ],
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white54),
+                        onPressed: () => ref.read(assistantChatProvider.notifier).clearChat(),
+                        tooltip: 'Clear Chat',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20, color: Colors.white54),
+                        onPressed: () => ref.read(isAssistantOpenProvider.notifier).state = false,
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                
+                // Message List
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    primary: false,
+                    itemCount: messages.length + (_isTyping ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == messages.length) {
+                         return _buildTypingIndicator();
+                      }
+                      return _buildMessageBubble(messages[index]);
+                    },
+                  ),
+                ),
+
+                // Input Area
+                Column(
+                  children: [
+                    if (_selectedImage != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        color: const Color(0xFF0F1116),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.memory(
+                                _selectedImage!,
+                                height: 60,
+                                width: 60,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _selectedImageName ?? 'Image',
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 20, color: Colors.white54),
+                              onPressed: _removeImage,
+                              tooltip: 'Remove image',
+                            ),
+                          ],
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F1116),
+                        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          IconButton(
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.only(bottom: 8, right: 4),
+                            icon: Icon(Icons.add_circle_outline, color: _selectedImage != null ? Colors.blueAccent : Colors.white54, size: 22),
+                            onPressed: _pickImage,
+                            tooltip: 'Add attachment',
+                          ),
+                          GestureDetector(
+                            onTap: _toggleListening,
+                            onLongPress: _toggleAudioRecording,
+                            onLongPressUp: _toggleAudioRecording,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                              child: Icon(
+                                _isRecordingAudio 
+                                    ? Icons.fiber_manual_record 
+                                    : (_isListening ? Icons.mic : Icons.mic_none), 
+                                color: (_isListening || _isRecordingAudio) ? Colors.redAccent : Colors.white54,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: TextField(
+                              focusNode: _keyboardFocusNode,
+                              controller: _controller,
+                              autofocus: false,
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              minLines: 1,
+                              maxLines: 5,
+                              textInputAction: TextInputAction.newline,
+                              decoration: const InputDecoration(
+                                hintText: 'Type a message...',
+                                hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 64), // Space for FAB/Send button
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        );
-      },
-    ),
-  ),
-);
+        ),
+      ),
+    );
   }
 
   Widget _buildMessageBubble(AssistantMessage message) {
@@ -755,12 +777,36 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     );
   }
 
-  void _downloadImage(String url) {
+  Future<void> _downloadImage(String url) async {
     if (kIsWeb) {
-      // In Flutter Web, we can use a simpler approach by launching the URL directly
-      // as a download if the headers support it, or just opening it in a new tab.
-      debugPrint('Downloading image: $url');
-      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      try {
+        final uri = Uri.tryParse(url);
+        if (uri != null) {
+           // Use platformDefault which is most robust on web (usually new tab)
+           if (!await launchUrl(uri, mode: LaunchMode.platformDefault)) {
+              debugPrint('Could not launch image URL: $url');
+              if (mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   const SnackBar(content: Text('Could not open image link')),
+                 );
+              }
+           }
+        } else {
+           debugPrint('Invalid URI: $url');
+           if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('Invalid image link')),
+             );
+           }
+        }
+      } catch (e) {
+        debugPrint('Error opening image: $e');
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Error opening image link')),
+           );
+        }
+      }
     } else {
        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Download not implemented for this platform')),

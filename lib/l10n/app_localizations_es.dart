@@ -41,6 +41,9 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get loading => 'Loading...';
+
+  @override
   String get connectedAccounts => 'Cuentas Conectadas';
 
   @override

@@ -242,6 +242,24 @@ class AuthService {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
+
+  /// Refreshes the Google OAuth token if the user is signed in.
+  /// Used by Vertex AI services to ensure valid credentials.
+  Future<String?> getFreshVertexToken() async {
+    try {
+      final googleUser = _googleSignIn.currentUser ?? await _googleSignIn.signInSilently();
+      if (googleUser != null) {
+        final auth = await googleUser.authentication;
+        if (auth.accessToken != null) {
+           await _vault.saveVertexKey(auth.accessToken!);
+           return auth.accessToken;
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error refreshing Vertex Token: $e');
+    }
+    return null;
+  }
 }
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());

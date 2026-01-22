@@ -14,7 +14,7 @@ class VertexApiService {
     String? accessToken,
   }) async {
     // Check if the key provided looks like a Bearer Token vs API Key
-    final isProbablyToken = (apiKey != null && (apiKey.startsWith('ya29.') || apiKey.startsWith('AQ.'))) || 
+    final isProbablyToken = (apiKey != null && apiKey.startsWith('ya29.')) || 
                             (accessToken != null && accessToken.isNotEmpty);
 
     // PATH 1: Vertex AI (Requires OAuth Access Token or Token-as-Key)
@@ -79,12 +79,19 @@ class VertexApiService {
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data.containsKey('error')) {
+         throw Exception('Gemini API Error: ${data['error']}');
+      }
+      
       final embeddings = data['embeddings'] as List?;
       
       if (embeddings == null) return [];
 
       return embeddings.map((e) {
-        return (e['values'] as List).cast<double>();
+        if (e is Map && e.containsKey('values')) {
+           return (e['values'] as List).cast<double>();
+        }
+        return <double>[]; // Return empty vector if malformed to avoid crash
       }).toList();
     }
 
