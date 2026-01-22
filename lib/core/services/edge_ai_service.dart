@@ -101,12 +101,8 @@ class EdgeAIService {
              } catch (e) {
                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (Token) failed: $e. Falling back to Dev API.');
                if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                  // Patch: Strip -001/-002 version suffix for Developer API compatibility
-                  var fallbackId = config.modelId;
-                  if (fallbackId.contains('-001')) fallbackId = fallbackId.replaceAll('-001', '');
-                  if (fallbackId.contains('-002')) fallbackId = fallbackId.replaceAll('-002', '');
-                  final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: fallbackId, temperature: config.temperature, maxTokens: config.maxTokens);
-                  result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+                  // Fallback: Use the config as-is (with version suffix if present)
+                  result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
                } else {
                  rethrow;
                }
@@ -949,7 +945,7 @@ class EdgeAIService {
 
   static Future<EdgeAIResult> _generateLocalMock(String prompt, {bool hasImage = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    return EdgeAIResult('{"tool": "none", "content": "Edge Mock: Analyzed local request. (Simulated Response)"}', AIProximity.simulated);
+    return EdgeAIResult("Edge Mock: Analyzed request locally. (Simulated Response)", AIProximity.simulated);
   }
 
   static String _buildPromptWithContext(String prompt, List<KnowledgeSource> context, {String? memoryContext}) {
