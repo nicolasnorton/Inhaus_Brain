@@ -949,7 +949,7 @@ class EdgeAIService {
 
   static Future<EdgeAIResult> _generateLocalMock(String prompt, {bool hasImage = false}) async {
     await Future.delayed(const Duration(milliseconds: 800));
-    return EdgeAIResult("Edge Mock: Analyzed '$prompt' locally.", AIProximity.simulated);
+    return EdgeAIResult('{"tool": "none", "content": "Edge Mock: Analyzed local request. (Simulated Response)"}', AIProximity.simulated);
   }
 
   static String _buildPromptWithContext(String prompt, List<KnowledgeSource> context, {String? memoryContext}) {
