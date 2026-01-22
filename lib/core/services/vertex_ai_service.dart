@@ -14,7 +14,7 @@ class VertexApiService {
     String? accessToken,
   }) async {
     // Check if the key provided looks like a Bearer Token vs API Key
-    final isProbablyToken = (apiKey != null && apiKey.startsWith('ya29.')) || 
+    final isProbablyToken = (apiKey != null && (apiKey.startsWith('ya29.') || apiKey.startsWith('AQ.'))) || 
                             (accessToken != null && accessToken.isNotEmpty);
 
     // PATH 1: Vertex AI (Requires OAuth Access Token or Token-as-Key)
@@ -51,8 +51,13 @@ class VertexApiService {
       final predictions = data['predictions'] as List;
 
       return predictions.map((p) {
-        final values = (p['embeddings']['values'] as List).cast<double>();
-        return values;
+        if (p is Map && p.containsKey('embeddings')) {
+          final emb = p['embeddings'] as Map?;
+          if (emb != null && emb.containsKey('values')) {
+            return (emb['values'] as List).cast<double>();
+          }
+        }
+        return <double>[]; // Graceful fallback for malformed response
       }).toList();
     }
 

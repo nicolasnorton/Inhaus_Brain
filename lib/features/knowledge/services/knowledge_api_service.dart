@@ -141,7 +141,7 @@ class KnowledgeApiService {
            throw Exception('No Vertex Token available for initial attempt');
          }
       } catch (e) {
-         final err = e.toString();
+         final err = e?.toString() ?? 'Unknown Embedding Error';
          debugPrint('KnowledgeApi: Vertex Embedding failed ($err). Attempting fallback to Gemini Key...');
          
          // Attempt 2: Gemini API Key
@@ -152,15 +152,15 @@ class KnowledgeApiService {
               apiKey: geminiKey,
             );
          } else {
-            throw e; // Rethrow original error if no fallback
+            // Rethrow original error if no fallback
+            throw Exception('Vertex Failed and no Gemini Key found: $err');
          }
       }
     } catch (e) {
-      final err = e.toString();
+      final err = e?.toString() ?? 'Fatal Embedding Error';
       debugPrint('Embedding generation failed: $err');
-      // Continue without embeddings? Or fail? 
       // For MVP, we might fail or store empty. Let's fail to warn user.
-      throw Exception('Failed to generate embeddings: $e');
+      throw Exception('Failed to generate embeddings: $err');
     }
 
     // 4. Store Chunks with Vectors

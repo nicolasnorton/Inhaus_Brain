@@ -120,32 +120,37 @@ class EdgeAIService {
                   result = await _generateGemini(effectivePrompt, config, keyToUse, imageBytes, imageMimeType, audioBytes, audioMimeType);
                }
              } catch (e) {
-               final errorStr = e.toString();
-               debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
-               
-               // Fallback to standard Gemini API if we have a valid Dev API key
-               if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                  result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-               } else {
-                  rethrow;
-               }
+                final errorStr = e?.toString() ?? 'Unknown Vertex Error';
+                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
+                // Special guidance for 401/403
+                if (errorStr.contains('401') || errorStr.contains('403')) {
+                   debugPrint('EdgeAI: [HINT] This likely means the API Key is not enabled for the Vertex AI (AI Platform) API specifically, or is restricted.');
+                }
+                
+                // Fallback to standard Gemini API if we have a key (and if the failed key wasn't the same, or just retry anyway)
+                if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
+                   result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+                } else {
+                   rethrow;
+                }
+              }
+           }
+           // Priority 3: Standard Gemini Dev API
+           else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
+             try {
+               result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+             } catch (e) {
+                final gemErr = e?.toString() ?? 'Unknown Gemini Error';
+                debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $gemErr');
+                // Fallback: Try gemini-pro (v1.0) if Flash fails
+                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
+                result = await _generateGemini(effectivePrompt, fallbackConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
              }
-          }
-          // Priority 3: Standard Gemini Dev API
-          else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-            try {
-              result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-            } catch (e) {
-               debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $e');
-               // Fallback: Try gemini-pro (v1.0) if Flash fails
-               final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
-               result = await _generateGemini(effectivePrompt, fallbackConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-            }
-          } 
-          else {
-            debugPrint('EdgeAI: [DEBUG] No Gemini keys found. Returning mock.');
-            result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-          }
+           } 
+           else {
+             debugPrint('EdgeAI: [DEBUG] No Gemini keys found. Returning mock.');
+             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+           }
           break;
         case AIProvider.openai:
           final key = openAIKey ?? await _vault.getOpenAIKey();
@@ -511,11 +516,10 @@ class EdgeAIService {
     // Check if it's likely an API Key (starts with AIza) or an Access Token (ya29, AQ)
     final isApiKey = !key.startsWith('ya29.');
     
-    // Vertex AI Imagen 3 endpoint
-    // API Keys use :predict or :generateContent depending on the specific model setup
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagegeneration:predict';
+    // Vertex AI Imagen 3 endpoint: Using the explicit modern path
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagen-3.0-generate-001:predict';
     final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Imagen 3 at ${isApiKey ? baseUrl : url} (Auth: ${isApiKey ? "API Key" : "Bearer Token"})');
+    debugPrint('EdgeAI: [VERTEX] Calling Imagen 3 at ${isApiKey ? "REST" : "OAuth"} endpoint');
     
     final Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -770,8 +774,8 @@ class EdgeAIService {
     
     // Map Dev API model IDs to Vertex AI model IDs
     String modelId = config.modelId;
-    if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
-    else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
+    if (modelId.contains('flash')) modelId = 'gemini-1.5-flash';
+    else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro';
 
     // Vertex AI Gemini endpoint: Use generateContent which is the modern path for Gemini on Vertex
     final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';
