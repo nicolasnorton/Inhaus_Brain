@@ -1,5 +1,6 @@
 enum AIProvider {
   gemini,
+  vertex, // Added for Vertex AI Proxy
   openai,
   claude,
   grok,
@@ -26,6 +27,7 @@ class AIModelConfig {
   String get displayName {
     switch (provider) {
       case AIProvider.gemini: return 'Google Gemini ($modelId)';
+      case AIProvider.vertex: return 'Google Vertex AI ($modelId)';
       case AIProvider.openai: return 'OpenAI ($modelId)';
       case AIProvider.claude: return 'Anthropic Claude ($modelId)';
       case AIProvider.grok: return 'xAI Grok ($modelId)';
@@ -37,7 +39,7 @@ class AIModelConfig {
 
   // Factory for known heavy hitters
   static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro-latest');
-  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-flash-latest');
+  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-001');
   
   static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4o');
   static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4-turbo');

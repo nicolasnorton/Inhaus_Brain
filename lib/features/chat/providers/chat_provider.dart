@@ -452,8 +452,17 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     
     String researchSummaray = "";
     if (result.isSuccess) {
-      final results = result.data['results'] as List;
-      researchSummaray = results.map((r) => "- ${r['title']}: ${r['snippet']}").join("\n");
+      final results = result.data['results'] as List?;
+      if (results != null && results.isNotEmpty) {
+        researchSummaray = results.map((r) {
+          if (r is Map) {
+            return "- ${r['title'] ?? 'Untitled'}: ${r['snippet'] ?? 'No snippet'}";
+          }
+          return "- Unknown result";
+        }).join("\n");
+      } else {
+        researchSummaray = "No relevant trends found in the Knowledge Base.";
+      }
     } else {
       researchSummaray = "Search failed: ${result.errorMessage}";
     }

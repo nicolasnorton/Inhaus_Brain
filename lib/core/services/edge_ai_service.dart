@@ -8,6 +8,7 @@ import '../../features/knowledge/models/knowledge_source.dart';
 import '../tokens/llm_provider.dart';
 import '../auth/secret_vault_service.dart';
 import '../auth/auth_service.dart';
+import 'ai_proxy_service.dart';
 
 // --- JS Interop for Chrome Prompt API ---
 // These will only work on Chrome with experimental flags enabled.
@@ -100,7 +101,12 @@ class EdgeAIService {
              } catch (e) {
                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (Token) failed: $e. Falling back to Dev API.');
                if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                 result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+                  // Patch: Strip -001/-002 version suffix for Developer API compatibility
+                  var fallbackId = config.modelId;
+                  if (fallbackId.contains('-001')) fallbackId = fallbackId.replaceAll('-001', '');
+                  if (fallbackId.contains('-002')) fallbackId = fallbackId.replaceAll('-002', '');
+                  final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: fallbackId, temperature: config.temperature, maxTokens: config.maxTokens);
+                  result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
                } else {
                  rethrow;
                }
@@ -120,16 +126,27 @@ class EdgeAIService {
                   result = await _generateGemini(effectivePrompt, config, keyToUse, imageBytes, imageMimeType, audioBytes, audioMimeType);
                }
              } catch (e) {
-                final errorStr = e?.toString() ?? 'Unknown Vertex Error';
+                final errorObj = e;
+                final errorStr = (errorObj != null) ? errorObj.toString() : 'Unknown Vertex Error';
                 debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
                 // Special guidance for 401/403
                 if (errorStr.contains('401') || errorStr.contains('403')) {
                    debugPrint('EdgeAI: [HINT] This likely means the API Key is not enabled for the Vertex AI (AI Platform) API specifically, or is restricted.');
                 }
                 
-                // Fallback to standard Gemini API if we have a key (and if the failed key wasn't the same, or just retry anyway)
+                // Fallback to standard Gemini API if we have a valid Dev API key
                 if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                   result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+                   // Dev API often uses 'gemini-1.5-flash' alias instead of specific version 'gemini-1.5-flash-001'
+                   // We strip the suffix to be safe during fallback.
+                   var fallbackId = config.modelId;
+                   if (fallbackId.contains('-001')) {
+                      fallbackId = fallbackId.replaceAll('-001', '');
+                   } else if (fallbackId.contains('-002')) {
+                      fallbackId = fallbackId.replaceAll('-002', '');
+                   }
+                   final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: fallbackId, temperature: config.temperature, maxTokens: config.maxTokens);
+                   
+                   result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
                 } else {
                    rethrow;
                 }
@@ -140,7 +157,8 @@ class EdgeAIService {
              try {
                result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
              } catch (e) {
-                final gemErr = e?.toString() ?? 'Unknown Gemini Error';
+                final gemErrObj = e;
+                final gemErr = (gemErrObj != null) ? gemErrObj.toString() : 'Unknown Gemini Error';
                 debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $gemErr');
                 // Fallback: Try gemini-pro (v1.0) if Flash fails
                 final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
@@ -247,7 +265,6 @@ class EdgeAIService {
         }
       ],
       "tools": [
-        {"googleSearch": {}},
         {"codeExecution": {}}
       ],
       "safetySettings": [
@@ -281,8 +298,16 @@ class EdgeAIService {
                fullText += "\n```python\n${part['executableCode']['code']}\n```\n";
              } else if (part.containsKey('codeExecutionResult')) {
                fullText += "\nOutput: ${part['codeExecutionResult']['output']}\n";
+             } else if (part.containsKey('functionCall')) {
+               final fc = part['functionCall'];
+               fullText += "\n[System: Calling Native Tool ${fc['name']} with args: ${fc['args']}]\n";
              }
           }
+        }
+        
+        // Handle stop reasons like SAFETY or RECITATION if text is likely empty
+        if (fullText.trim().isEmpty && candidate['finishReason'] != null) {
+           fullText = "Generation stopped: ${candidate['finishReason']}";
         }
         
         // Append grounding metadata if available
@@ -477,8 +502,32 @@ class EdgeAIService {
     // Priority: Fresh Token > Passed Token > Vault Token > Legacy Keys
     final effectiveKey = freshToken ?? vertexKey ?? vaultVertexKey ?? imagenKey ?? vaultImagenKey;
     
-    if (effectiveKey != null && effectiveKey.isNotEmpty || isNanoBanana) {
-      // Use Vertex AI Imagen 3
+    // WEB PROXY PATH (Always use proxy if on web and trying to use Vertex/Imagen)
+    if (kIsWeb && (effectiveKey != null || isNanoBanana)) {
+       try {
+         debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy...');
+         final proxyResponse = await AIProxyService.generateContent(
+           prompt: prompt,
+           config: AIModelConfig(provider: AIProvider.vertex, modelId: 'imagen-3.0-generate-001'),
+         );
+         
+         // Parse Proxy Response (Custom 'imagen' or standard Gemini)
+         // Our backend returns { custom_type: 'imagen', predictions: [...] }
+         if (proxyResponse['custom_type'] == 'imagen') {
+            final predictions = proxyResponse['predictions'] as List?;
+            if (predictions != null && predictions.isNotEmpty) {
+               final firstPred = predictions[0];
+               final base64Image = firstPred['bytesBase64Encoded'];
+               if (base64Image != null) {
+                  return "data:image/png;base64,$base64Image";
+               }
+            }
+         }
+       } catch (e) {
+         debugPrint('EdgeAI: [WEB] Proxy Image Gen Failed: $e. Falling back to Pollinations.');
+       }
+    } else if (effectiveKey != null && effectiveKey.isNotEmpty || isNanoBanana) {
+      // Use Vertex AI Imagen 3 (Direct / Native Mobile)
       if (effectiveKey != null && effectiveKey.isNotEmpty) {
           try {
             return await _generateVertexImagen(prompt, effectiveKey);
@@ -506,15 +555,16 @@ class EdgeAIService {
     
     // Use strict encoding for the prompt
     final encodedPrompt = Uri.encodeComponent(safePrompt);
-    // Added width/height and model=flux to increase reliability and avoid 403s
-    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&model=flux&seed=$seed";
+    // Removed model=flux to check if that resolves the 403. Using default model.
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&seed=$seed";
   }
 
   static Future<String> _generateVertexImagen(String prompt, String key) async {
     String projectId = 'inhausbrain'; 
     
     // Check if it's likely an API Key (starts with AIza) or an Access Token (ya29, AQ)
-    final isApiKey = !key.startsWith('ya29.');
+    final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
+    final isApiKey = !isToken;
     
     // Vertex AI Imagen 3 endpoint: Using the explicit modern path
     final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagen-3.0-generate-001:predict';
@@ -547,7 +597,15 @@ class EdgeAIService {
       final data = jsonDecode(response.body);
       // Vertex AI Image generation response structure
       // predictions[0].bytesBase64Encoded
-      final base64Image = data['predictions'][0]['bytesBase64Encoded'];
+      final predictions = data['predictions'] as List?;
+      if (predictions == null || predictions.isEmpty) {
+        throw Exception('Vertex Imagen: No predictions in response: ${response.body}');
+      }
+      final firstPred = predictions[0] as Map?;
+      final base64Image = firstPred?['bytesBase64Encoded'];
+      if (base64Image == null) {
+        throw Exception('Vertex Imagen: No image bytes in response: ${response.body}');
+      }
       return "data:image/png;base64,$base64Image";
     } else {
       final errorBody = response.body;
@@ -594,7 +652,8 @@ class EdgeAIService {
   static Future<String> _generateVertexVeo(String prompt, String key) async {
     String projectId = 'inhausbrain';
     // Vertex AI Tokens usually start with ya29. or AQ.
-    final isApiKey = !key.startsWith('ya29.');
+    final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
+    final isApiKey = !isToken;
     
     // Using the veo-001 model ID (SOTA)
     // Veo often requires the :predict endpoint
@@ -769,13 +828,50 @@ class EdgeAIService {
     Uint8List? imageBytes,
     String? mimeType
   ) async {
+    // WEB PROXY PATH
+    if (kIsWeb) {
+      try {
+        debugPrint('EdgeAI: [WEB] Routing Vertex AI request via Secure Proxy...');
+        final proxyResponse = await AIProxyService.generateContent(
+          prompt: prompt,
+          config: config,
+        );
+        
+        // Parse Proxy Response (Standard Gemini JSON structure)
+        final candidates = proxyResponse['candidates'] as List?;
+        if (candidates != null && candidates.isNotEmpty) {
+           final firstCandidate = candidates[0];
+           final content = firstCandidate['content'];
+           String fullText = "";
+           if (content != null && content['parts'] != null) {
+              for (var part in content['parts']) {
+                 if (part['text'] != null) fullText += part['text'];
+              }
+           }
+           if (fullText.isEmpty && firstCandidate['finishReason'] != null) {
+              fullText = "Stopped: ${firstCandidate['finishReason']}";
+           }
+           return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId);
+        }
+        return EdgeAIResult("No text generated (Proxy).", AIProximity.cloud);
+      } catch (e) {
+        debugPrint('EdgeAI: [WEB] Proxy Request Failed: $e');
+        // Optional: Fallback to direct API if Proxy fails? 
+        // For now, rethrow because direct Vertex on Web is known to fail (CORS).
+        rethrow;
+      }
+    }
+
+    // NATIVE / MOBILE PATH (Existing direct logic)
     String projectId = 'inhausbrain';
-    final isApiKey = !key.startsWith('ya29.');
+    final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
+    final isApiKey = !isToken;
     
     // Map Dev API model IDs to Vertex AI model IDs
+    // Using explicit versioned IDs to improve reliability in us-central1
     String modelId = config.modelId;
-    if (modelId.contains('flash')) modelId = 'gemini-1.5-flash';
-    else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro';
+    if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
+    else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
 
     // Vertex AI Gemini endpoint: Use generateContent which is the modern path for Gemini on Vertex
     final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';

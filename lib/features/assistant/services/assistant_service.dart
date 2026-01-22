@@ -234,11 +234,41 @@ $ephemeralMsg
       // Robust Parsing (Markdown + Function Call Support)
       String cleanResponse = rawResponse.trim();
       
-      // 1. Strip Markdown Code Blocks
+      // 1. Strip Markdown Code Blocks (Iterate all matches to find JSON)
       final codeBlockRegex = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true);
-      final codeMatch = codeBlockRegex.firstMatch(cleanResponse);
-      if (codeMatch != null) {
-        cleanResponse = codeMatch.group(1)!.trim();
+      final matches = codeBlockRegex.allMatches(cleanResponse);
+      
+      // If code blocks exist, try to parse ANY of them as JSON
+      if (matches.isNotEmpty) {
+        bool foundJson = false;
+        for (final match in matches) {
+           final content = match.group(1)!.trim();
+           // Quick check if it looks like a JSON object
+           if (content.startsWith('{') && content.endsWith('}')) {
+             try {
+                // validation logic duplicated for safety
+                final safeContent = content.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (m) {
+                     return m.group(0)?.replaceAll('\n', '\\n') ?? '';
+                });
+                jsonDecode(safeContent);
+                cleanResponse = content; // Found valid JSON block!
+                foundJson = true;
+                break;
+             } catch (_) {
+                // Not valid JSON, continue searching
+             }
+           }
+        }
+        // If we found code blocks but none were valid JSON, we might fallback to raw text 
+        // OR if the model gave us python print statements, we might want to extract from there.
+        // For now, if we didn't find specific JSON block, let's fall back to the largest bracketed section in the WHOLE text
+        // assuming the Main extraction logic below handles it.
+        if (!foundJson) {
+           // If we have a python script, maybe we ignore the script wrapper and just look at the raw text 
+           // but the raw text IS the script. 
+           // Let's just strip the ``` markers and let the bracket finder do its work.
+           cleanResponse = cleanResponse.replaceAll(RegExp(r'```\w*\n?'), '').replaceAll('```', '');
+        }
       }
 
       // 2. Find JSON Object

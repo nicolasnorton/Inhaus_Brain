@@ -141,8 +141,14 @@ class KnowledgeApiService {
            throw Exception('No Vertex Token available for initial attempt');
          }
       } catch (e) {
-         final err = e?.toString() ?? 'Unknown Embedding Error';
-         debugPrint('KnowledgeApi: Vertex Embedding failed ($err). Attempting fallback to Gemini Key...');
+         // JavaScript interop: explicitly check distinct from null before toString
+         final err = (e != null) ? e.toString() : 'Unknown Embedding Error';
+         
+         if (err.contains('401') || err.contains('UNAUTHENTICATED')) {
+            debugPrint('KnowledgeApi: Vertex Embedding 401 (Expected with API Key). Fallback to Gemini Key...');
+         } else {
+            debugPrint('KnowledgeApi: Vertex Embedding failed ($err). Attempting fallback to Gemini Key...');
+         }
          
          // Attempt 2: Gemini API Key
          final geminiKey = await _vault.getGeminiKey();
@@ -157,7 +163,7 @@ class KnowledgeApiService {
          }
       }
     } catch (e) {
-      final err = e?.toString() ?? 'Fatal Embedding Error';
+      final err = (e != null) ? e.toString() : 'Fatal Embedding Error';
       debugPrint('Embedding generation failed: $err');
       // For MVP, we might fail or store empty. Let's fail to warn user.
       throw Exception('Failed to generate embeddings: $err');
@@ -441,5 +447,5 @@ class KnowledgeApiException implements Exception {
   KnowledgeApiException(this.error);
 
   @override
-  String toString() => 'KnowledgeApiException: ${error.message} (${error.code})';
+  String toString() => 'KnowledgeApiException: ${error?.message ?? 'Unknown'} (${error?.code ?? 'Unknown'})';
 }

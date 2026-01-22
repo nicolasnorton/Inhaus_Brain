@@ -48,13 +48,19 @@ class VertexApiService {
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final predictions = data['predictions'] as List;
+      final predictions = data['predictions'] as List?;
+      if (predictions == null) {
+        throw Exception('Vertex Embedding Failed: No predictions in response: ${response.body}');
+      }
 
       return predictions.map((p) {
         if (p is Map && p.containsKey('embeddings')) {
           final emb = p['embeddings'] as Map?;
           if (emb != null && emb.containsKey('values')) {
-            return (emb['values'] as List).cast<double>();
+            final values = emb['values'] as List?;
+            if (values != null) {
+               return values.cast<double>();
+            }
           }
         }
         return <double>[]; // Graceful fallback for malformed response
@@ -63,41 +69,53 @@ class VertexApiService {
 
     // PATH 2: Gemini Developer API (Supports API Key)
     if (apiKey != null && apiKey.isNotEmpty) {
-      final baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$_embeddingModel:batchEmbedContents?key=$apiKey';
-      final requests = texts.map((t) => {
-        'model': 'models/$_embeddingModel',
-        'content': {
-          'parts': [{'text': t}]
+      try {
+        final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$_embeddingModel:batchEmbedContents?key=$apiKey');
+        debugPrint('VertexAI: Calls Gemini Developer API (Embeddings)');
+        
+        final requests = texts.map((t) => {
+          'model': 'models/$_embeddingModel',
+          'content': {
+            'parts': [{'text': t}]
+          }
+        }).toList();
+
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'requests': requests}),
+        );
+
+        if (response.statusCode != 200) {
+          debugPrint('VertexAI: Gemini Embedding Http Error: ${response.statusCode}');
+          throw Exception('Gemini Embedding Failed: ${response.statusCode} ${response.body}');
         }
-      }).toList();
 
-      debugPrint('VertexAI: Calls Gemini Developer API (Embeddings) ($baseUrl)');
-
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'requests': requests}),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Gemini Embedding Failed: ${response.statusCode} ${response.body}');
-      }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (data.containsKey('error')) {
-         throw Exception('Gemini API Error: ${data['error']}');
-      }
-      
-      final embeddings = data['embeddings'] as List?;
-      
-      if (embeddings == null) return [];
-
-      return embeddings.map((e) {
-        if (e is Map && e.containsKey('values')) {
-           return (e['values'] as List).cast<double>();
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data.containsKey('error')) {
+           throw Exception('Gemini API Error: ${data['error']}');
         }
-        return <double>[]; // Return empty vector if malformed to avoid crash
-      }).toList();
+        
+        final embeddings = data['embeddings'] as List?;
+        if (embeddings == null) return [];
+
+        return embeddings.map((e) {
+          if (e is Map && e.containsKey('values')) {
+             final val = e['values'];
+             if (val is List) return val.cast<double>();
+          }
+          return <double>[]; 
+        }).toList();
+      } catch (e) {
+        // Safe toString
+        String errStr = 'Unknown';
+        try {
+           if (e != null) errStr = e.toString();
+        } catch (_) { errStr = 'Error getting error string'; }
+        
+        debugPrint('VertexAI: Gemini Fallback crashed: $errStr');
+        return <List<double>>[]; // Fail safely by returning empty typed list
+      }
     }
 
     throw Exception('VertexApiService: No valid API Key or Access Token provided.');
