@@ -101,49 +101,66 @@ class AssistantService {
 
   Future<AssistantMessage> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment}) async {
     // 1. Add user message
-    _history.add(AssistantMessage(
+    final userMsg = AssistantMessage(
       id: DateTime.now().toString(),
       text: text,
       isUser: true,
       timestamp: DateTime.now(),
       attachment: attachment,
       audioAttachment: audioAttachment,
-    ));
+    );
+    _history.add(userMsg);
     await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
 
-    // 2. Simulate AI Intent Matching (Mock)
-    final stopwatch = Stopwatch()..start();
-    
-    final tools = _ref.read(assistantToolRegistryProvider);
-    final executionResult = await _matchIntentAndExecute(text, tools, attachment: attachment, audioAttachment: audioAttachment);
-    
-    stopwatch.stop();
+    try {
+      // 2. Simulate AI Intent Matching
+      final stopwatch = Stopwatch()..start();
+      
+      final tools = _ref.read(assistantToolRegistryProvider);
+      final executionResult = await _matchIntentAndExecute(text, tools, attachment: attachment, audioAttachment: audioAttachment);
+      
+      stopwatch.stop();
 
-    // 3. Add response
-    final message = AssistantMessage(
-      id: DateTime.now().toString(),
-      text: executionResult.text,
-      isUser: false,
-      timestamp: DateTime.now(),
-      isToolOutput: executionResult.assetPath != null, // Mark as tool output if we have an asset
-      generatedAssetPath: executionResult.assetPath,
-      generatedAssetType: executionResult.assetType,
-      modelName: executionResult.modelName ?? 'Gemini 2.0 Flash',
-      processingTime: stopwatch.elapsed,
-      sources: executionResult.sources,
-      artifacts: executionResult.artifacts,
-    );
+      // 3. Add response
+      final message = AssistantMessage(
+        id: DateTime.now().toString(),
+        text: executionResult.text,
+        isUser: false,
+        timestamp: DateTime.now(),
+        isToolOutput: executionResult.assetPath != null,
+        generatedAssetPath: executionResult.assetPath,
+        generatedAssetType: executionResult.assetType,
+        modelName: executionResult.modelName ?? 'Gemini 2.0 Flash',
+        processingTime: stopwatch.elapsed,
+        sources: executionResult.sources,
+        artifacts: executionResult.artifacts,
+      );
 
-    _history.add(message);
-    await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
-    
-    // Ingest into knowledge autonomously
-    _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
-      "Query: $text\nResponse: ${message.text}",
-      attachment: attachment,
-    );
-    
-    return message;
+      _history.add(message);
+      await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
+      
+      // Ingest into knowledge autonomously
+      try {
+        _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
+          "Query: $text\nResponse: ${message.text}",
+          attachment: attachment,
+        );
+      } catch (e) {
+        debugPrint('Knowledge Auto-Ingest Error: $e');
+      }
+      
+      return message;
+    } catch (e) {
+      debugPrint('Assistant Service Error: $e');
+      final errorMsg = AssistantMessage(
+        id: DateTime.now().toString(),
+        text: "Sorry, I encountered an internal error. Please try again or check your connection.",
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+      _history.add(errorMsg);
+      return errorMsg;
+    }
   }
 
   Future<ToolExecutionSummary> _matchIntentAndExecute(String text, List<AgentTool> tools, {List<int>? attachment, List<int>? audioAttachment}) async {

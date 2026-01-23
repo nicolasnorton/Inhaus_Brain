@@ -131,7 +131,7 @@ class EdgeAIService {
                }
              } catch (e) {
                 final errorObj = e;
-                final errorStr = (errorObj != null) ? errorObj.toString() : 'Unknown Vertex Error';
+                final errorStr = "$e";
                 debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
                 // Special guidance for 401/403
                 if (errorStr.contains('401') || errorStr.contains('403')) {
@@ -162,7 +162,7 @@ class EdgeAIService {
                result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
              } catch (e) {
                 final gemErrObj = e;
-                final gemErr = (gemErrObj != null) ? gemErrObj.toString() : 'Unknown Gemini Error';
+                final gemErr = "$e";
                 debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $gemErr');
                 // Fallback: Try gemini-pro (v1.0) if Flash fails
                 final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');

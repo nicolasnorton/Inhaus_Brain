@@ -62,15 +62,17 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     _initTts();
     
     // Safety: ensure focus is requested after layout to avoid "RenderBox was not laid out"
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted && _keyboardFocusNode.canRequestFocus) {
-             _keyboardFocusNode.requestFocus();
-          }
-        });
-      }
-    });
+    if (isOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && isOpen && _keyboardFocusNode.canRequestFocus) {
+               _keyboardFocusNode.requestFocus();
+            }
+          });
+        }
+      });
+    }
   }
 
   void _initTts() async {
@@ -791,7 +793,9 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
            final anchor = web.HTMLAnchorElement()
              ..href = url
              ..download = 'inhaus_brain_image_${DateTime.now().millisecondsSinceEpoch}.png';
+           web.document.body?.append(anchor);
            anchor.click();
+           anchor.remove();
            return;
         }
 

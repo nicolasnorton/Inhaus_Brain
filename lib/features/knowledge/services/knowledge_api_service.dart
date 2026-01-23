@@ -448,8 +448,12 @@ class KnowledgeApiException implements Exception {
 
   @override
   String toString() {
-    final msg = error?.message ?? 'Unknown';
-    final code = error?.code ?? 'Unknown';
-    return 'KnowledgeApiException: $msg ($code)';
+    try {
+      final m = error?.message?.toString() ?? 'Unknown Error';
+      final c = error?.code?.toString() ?? 'Unknown Code';
+      return 'KnowledgeApiException: $m ($c)';
+    } catch (_) {
+      return 'KnowledgeApiException: (Unable to parse error details)';
+    }
   }
 }
