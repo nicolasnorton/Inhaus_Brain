@@ -909,7 +909,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         )
                       : (path.startsWith('data:')
                           ? Image.memory(
-                              base64Decode(path.split(',').last),
+                              base64.decode(path.split(',').last),
                               fit: BoxFit.cover,
                               width: 300,
                               height: 300,
