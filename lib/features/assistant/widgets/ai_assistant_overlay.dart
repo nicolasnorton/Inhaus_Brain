@@ -62,11 +62,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     _initTts();
     
     // Safety: ensure focus is requested after layout to avoid "RenderBox was not laid out"
-    if (isOpen) {
+    if (ref.read(isAssistantOpenProvider)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted && isOpen && _keyboardFocusNode.canRequestFocus) {
+            if (mounted && ref.read(isAssistantOpenProvider) && _keyboardFocusNode.canRequestFocus) {
                _keyboardFocusNode.requestFocus();
             }
           });

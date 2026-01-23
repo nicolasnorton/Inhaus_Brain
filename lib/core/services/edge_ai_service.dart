@@ -622,6 +622,38 @@ class EdgeAIService {
   }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {
+    // WEB PROXY PATH (Priority)
+    if (kIsWeb) {
+      debugPrint('EdgeAI: [WEB] Routing Veo request via Secure Proxy...');
+      try {
+        final proxyResponse = await AIProxyService.generateContent(
+          prompt: prompt,
+          config: const AIModelConfig(
+            provider: AIProvider.vertex, 
+            modelId: 'veo-001',
+            temperature: 0.5, // Default for video
+            maxTokens: 100,
+          ),
+        );
+
+        if (proxyResponse['custom_type'] == 'veo_lro') {
+          final opName = proxyResponse['operationName'];
+          debugPrint('EdgeAI: [VEO] Proxy returned LRO: $opName. Starting Poll...');
+          return await _pollProxyVeoOperation(opName);
+        } else if (proxyResponse['custom_type'] == 'veo_result') {
+           final predictions = proxyResponse['predictions'] as List?;
+           if (predictions != null && predictions.isNotEmpty) {
+             final videoUrl = predictions[0]['url'] ?? predictions[0]['videoUri'];
+             if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
+           }
+        }
+        throw Exception('Veo Proxy returned no valid video URL.');
+      } catch (e) {
+        debugPrint('EdgeAI: [WEB] Veo Proxy failed: $e. Falling back to native/placeholder if possible.');
+        // If critical, rethrow. For now let's allow fallback to try direct keys if present (unlikely on web due to CORS but safe).
+      }
+    }
+
     String? freshToken;
     if (ref != null) {
       try {
@@ -764,6 +796,41 @@ class EdgeAIService {
     }
     
     throw Exception('Veo generation timed out (operation: $name)');
+  }
+
+  static Future<String> _pollProxyVeoOperation(String operationName) async {
+    // Poll for up to 2 minutes
+    for (int i = 0; i < 24; i++) {
+        await Future.delayed(const Duration(seconds: 5));
+        debugPrint('EdgeAI: [VEO-PROXY] Checking generation status (attempt ${i + 1})...');
+        
+        try {
+            final data = await AIProxyService.pollOperation(operationName);
+            
+            if (data['done'] == true) {
+                if (data['error'] != null) {
+                    throw Exception('Veo Operation Failed: ${data['error']}');
+                }
+                
+                // Extract output URI
+                final respObj = data['response'];
+                if (respObj != null && respObj['predictions'] != null && (respObj['predictions'] as List).isNotEmpty) {
+                    final videoUrl = respObj['predictions'][0]['url'] ?? respObj['predictions'][0]['videoUri'];
+                    if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
+                }
+
+                 final metadata = data['metadata'];
+                 if (metadata != null && metadata['outputUri'] != null) {
+                    return _sanitizeMediaUrl(metadata['outputUri']);
+                 }
+
+                 throw Exception('Veo operation finished but no video URL found.');
+            }
+        } catch (e) {
+            debugPrint('EdgeAI: [VEO-PROXY] Polling error: $e');
+        }
+    }
+     throw Exception('Veo generation timed out (operation: $operationName)');
   }
 
   static String _sanitizeMediaUrl(String url) {

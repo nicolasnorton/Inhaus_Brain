@@ -179,6 +179,90 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
 
         res.json(response);
 
+        // --- PATH C: VIDEO GENERATION (Veo) ---
+        if (modelId.toLowerCase().includes('veo')) {
+            const { GoogleAuth } = require('google-auth-library');
+            const auth = new GoogleAuth({
+                scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            const projectId = await auth.getProjectId();
+
+            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    instances: [{ prompt: prompt }],
+                    parameters: config || { sampleCount: 1, aspectRatio: "16:9", durationSeconds: 5 }
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw { status: response.status, message: `Vertex Veo Error: ${errText}` };
+            }
+
+            const data = await response.json();
+            // Check if it's an LRO (Long Running Operation)
+            if (data.name && data.name.includes('/operations/')) {
+                res.json({
+                    custom_type: 'veo_lro',
+                    operationName: data.name
+                });
+            } else if (data.predictions && data.predictions.length > 0) {
+                // Immediate result (unlikely for video but possible)
+                res.json({
+                    custom_type: 'veo_result',
+                    predictions: data.predictions
+                });
+            } else {
+                throw { status: 500, message: 'Veo response unrecognized.' };
+            }
+            return;
+        }
+
+        // --- PATH D: OPERATION POLLING ---
+        // If the request body contains 'operationName', we are polling status.
+        const { operationName } = req.body;
+        if (operationName) {
+            const { GoogleAuth } = require('google-auth-library');
+            const auth = new GoogleAuth({
+                scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            const projectId = await auth.getProjectId();
+
+            // Operation name usually looks like: projects/.../locations/.../publishers/.../models/.../operations/...
+            // But the API endpoint for getting operation is: 
+            // https://us-central1-aiplatform.googleapis.com/v1/{name}
+
+            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/${operationName}`;
+
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw { status: response.status, message: `Vertex Poll Error: ${errText}` };
+            }
+
+            const data = await response.json();
+            res.json(data);
+            return;
+        }
+
     } catch (error) {
         console.error('Vertex AI Proxy Error:', error);
         const status = error.status || 500;

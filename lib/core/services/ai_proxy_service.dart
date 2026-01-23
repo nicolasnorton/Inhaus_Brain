@@ -62,4 +62,40 @@ class AIProxyService {
       rethrow;
     }
   }
+
+  static Future<Map<String, dynamic>> pollOperation(String operationName) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User must be logged in to poll operations.');
+    }
+
+    final idToken = await user.getIdToken();
+    if (idToken == null) {
+      throw Exception('Failed to retrieve ID Token.');
+    }
+
+    final body = {
+      "operationName": operationName,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(_functionUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Proxy Poll Error ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('AIProxyService Poll Error: $e');
+      rethrow;
+    }
+  }
 }
