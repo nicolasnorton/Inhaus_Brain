@@ -113,7 +113,7 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             throw { status: 400, message: 'Bad Request: Missing "prompt" in body.' };
         }
 
-        const modelId = model || 'gemini-1.5-flash';
+        const modelId = model || 'gemini-2.0-flash';
 
         // --- PATH A: IMAGE GENERATION (Imagen) ---
         if (modelId.toLowerCase().includes('imagen')) {
