@@ -906,12 +906,18 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             return const Center(child: CircularProgressIndicator());
                           },
                         )
-                      : (path.startsWith('assets') 
-                          ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) 
-                          : (!kIsWeb 
-                              // Use dynamic to avoid compile-time dart:io dependency on web
-                              ? Image.memory(Uint8List.fromList([]), fit: BoxFit.cover, width: 300, height: 300) // Placeholder or better logic needed
-                              : const Center(child: Icon(Icons.broken_image, color: Colors.white24)))),
+                      : (path.startsWith('data:')
+                          ? Image.memory(
+                              base64Decode(path.split(',').last),
+                              fit: BoxFit.cover,
+                              width: 300,
+                              height: 300,
+                            )
+                          : (path.startsWith('assets') 
+                              ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) 
+                              : (!kIsWeb 
+                                  ? Image.memory(Uint8List.fromList([]), fit: BoxFit.cover, width: 300, height: 300) 
+                                  : const Center(child: Icon(Icons.broken_image, color: Colors.white24))))),
                 ),
               ),
               // Watermark Overlay (Asset Based)

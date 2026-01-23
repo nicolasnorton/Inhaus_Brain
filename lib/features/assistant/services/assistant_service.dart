@@ -128,7 +128,7 @@ class AssistantService {
       isToolOutput: executionResult.assetPath != null, // Mark as tool output if we have an asset
       generatedAssetPath: executionResult.assetPath,
       generatedAssetType: executionResult.assetType,
-      modelName: executionResult.modelName ?? 'Gemini 1.5 Flash',
+      modelName: executionResult.modelName ?? 'Gemini 2.0 Flash',
       processingTime: stopwatch.elapsed,
       sources: executionResult.sources,
       artifacts: executionResult.artifacts,

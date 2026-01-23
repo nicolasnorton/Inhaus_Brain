@@ -447,5 +447,9 @@ class KnowledgeApiException implements Exception {
   KnowledgeApiException(this.error);
 
   @override
-  String toString() => 'KnowledgeApiException: ${error?.message ?? 'Unknown'} (${error?.code ?? 'Unknown'})';
+  String toString() {
+    final msg = error?.message ?? 'Unknown';
+    final code = error?.code ?? 'Unknown';
+    return 'KnowledgeApiException: $msg ($code)';
+  }
 }
