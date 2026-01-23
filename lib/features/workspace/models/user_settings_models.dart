@@ -105,12 +105,14 @@ class UserSettings {
   final ThemePreference theme;
   final NotificationSettings notifications;
   final List<WorkspaceApiKey> apiKeys;
+  final String preferredModelId;
 
   const UserSettings({
     required this.profile,
     required this.theme,
     required this.notifications,
     required this.apiKeys,
+    this.preferredModelId = 'gemini-2.0-flash',
   });
 
   UserSettings copyWith({
@@ -118,12 +120,14 @@ class UserSettings {
     ThemePreference? theme,
     NotificationSettings? notifications,
     List<WorkspaceApiKey>? apiKeys,
+    String? preferredModelId,
   }) {
     return UserSettings(
       profile: profile ?? this.profile,
       theme: theme ?? this.theme,
       notifications: notifications ?? this.notifications,
       apiKeys: apiKeys ?? this.apiKeys,
+      preferredModelId: preferredModelId ?? this.preferredModelId,
     );
   }
 }
