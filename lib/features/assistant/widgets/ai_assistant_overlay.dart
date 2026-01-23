@@ -1,6 +1,7 @@
 // import 'dart:io' show File, Directory; // Removed to avoid web crashes 
 
 import 'dart:convert';
+import 'package:web/web.dart' as web;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -62,8 +63,12 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     
     // Safety: ensure focus is requested after layout to avoid "RenderBox was not laid out"
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _keyboardFocusNode.canRequestFocus) {
-         _keyboardFocusNode.requestFocus();
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted && _keyboardFocusNode.canRequestFocus) {
+             _keyboardFocusNode.requestFocus();
+          }
+        });
       }
     });
   }
@@ -781,32 +786,23 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   Future<void> _downloadImage(String url) async {
     if (kIsWeb) {
       try {
+        if (url.startsWith('data:')) {
+           // Standard Hack for downloading Base64 on Web
+           final anchor = web.HTMLAnchorElement()
+             ..href = url
+             ..download = 'inhaus_brain_image_${DateTime.now().millisecondsSinceEpoch}.png';
+           anchor.click();
+           return;
+        }
+
         final uri = Uri.tryParse(url);
         if (uri != null) {
-           // Use platformDefault which is most robust on web (usually new tab)
            if (!await launchUrl(uri, mode: LaunchMode.platformDefault)) {
               debugPrint('Could not launch image URL: $url');
-              if (mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   const SnackBar(content: Text('Could not open image link')),
-                 );
-              }
-           }
-        } else {
-           debugPrint('Invalid URI: $url');
-           if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('Invalid image link')),
-             );
            }
         }
       } catch (e) {
-        debugPrint('Error opening image: $e');
-        if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Error opening image link')),
-           );
-        }
+        debugPrint('Error downloading image: $e');
       }
     } else {
        ScaffoldMessenger.of(context).showSnackBar(
