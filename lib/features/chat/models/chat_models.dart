@@ -68,12 +68,17 @@ class Artifact {
 
   factory Artifact.fromJson(Map<String, dynamic> json) {
     return Artifact(
-      id: json['id'],
-      title: json['title'],
-      type: ArtifactType.values.firstWhere((e) => e.name == json['type']),
-      content: json['content'],
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      title: json['title']?.toString() ?? 'Untitled',
+      type: ArtifactType.values.firstWhere(
+        (e) => e.name == json['type'], 
+        orElse: () => ArtifactType.markdown
+      ),
+      content: json['content']?.toString() ?? '',
       version: json['version'] ?? 1,
-      updatedAt: DateTime.parse(json['updatedAt']),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 

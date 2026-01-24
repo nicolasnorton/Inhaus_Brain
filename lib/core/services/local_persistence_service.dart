@@ -105,9 +105,39 @@ class LocalPersistenceService {
 
   // --- Assistant History Persistence ---
   Future<void> saveAssistantHistory(List<AssistantMessage> messages) async {
-    final List<Map<String, dynamic>> json = messages.map((m) => m.toJson()).toList();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('assistant_history', jsonEncode(json));
+    try {
+      // 1. Truncate to last 20 messages to keep storage small
+      final limitedHistory = messages.length > 20 
+          ? messages.sublist(messages.length - 20) 
+          : messages;
+
+      // 2. Prepare JSON, stripping large base64 attachments if necessary
+      final List<Map<String, dynamic>> jsonList = limitedHistory.map((m) {
+        final j = m.toJson();
+        // Clear large base64 strings to save space (~100kb limit)
+        if (j['attachment'] != null && (j['attachment'] as String).length > 100000) {
+          j['attachment'] = null; // Don't persist huge images
+        }
+        return j;
+      }).toList();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('assistant_history', jsonEncode(jsonList));
+    } catch (e) {
+      debugPrint('LocalPersistence: Quota or Save Error: $e');
+      // If we hit quota, try to at least save the last 5 messages without any attachments
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final emergencyHistory = messages.length > 5 ? messages.sublist(messages.length - 5) : messages;
+        final emergencyJson = emergencyHistory.map((m) {
+          final j = m.toJson();
+          j['attachment'] = null;
+          j['audioAttachment'] = null;
+          return j;
+        }).toList();
+        await prefs.setString('assistant_history', jsonEncode(emergencyJson));
+      } catch (_) {}
+    }
   }
 
   Future<List<AssistantMessage>> getAssistantHistory() async {

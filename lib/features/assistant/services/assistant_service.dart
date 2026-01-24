@@ -63,21 +63,31 @@ class AssistantMessage {
     'artifacts': artifacts?.map((a) => a.toJson()).toList(),
   };
 
-  factory AssistantMessage.fromJson(Map<String, dynamic> json) => AssistantMessage(
-    id: json['id'],
-    text: json['text'],
-    isUser: json['isUser'],
-    timestamp: DateTime.parse(json['timestamp']),
-    isToolOutput: json['isToolOutput'] ?? false,
-    generatedAssetPath: json['generatedAssetPath'],
-    generatedAssetType: json['generatedAssetType'],
-    modelName: json['modelName'],
-    processingTime: json['processingTimeMs'] != null ? Duration(milliseconds: json['processingTimeMs']) : null,
-    sources: json['sources'] != null ? List<String>.from(json['sources']) : null,
-    attachment: json['attachment'] != null ? base64Decode(json['attachment']) : null,
-    audioAttachment: json['audioAttachment'] != null ? base64Decode(json['audioAttachment']) : null,
-    artifacts: (json['artifacts'] as List?)?.map((e) => Artifact.fromJson(e)).toList(),
-  );
+  factory AssistantMessage.fromJson(Map<String, dynamic> json) {
+    return AssistantMessage(
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      text: json['text']?.toString() ?? '',
+      isUser: json['isUser'] ?? false,
+      timestamp: json['timestamp'] != null 
+          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      isToolOutput: json['isToolOutput'] ?? false,
+      generatedAssetPath: json['generatedAssetPath']?.toString(),
+      generatedAssetType: json['generatedAssetType']?.toString(),
+      modelName: json['modelName']?.toString(),
+      processingTime: json['processingTimeMs'] != null 
+          ? Duration(milliseconds: int.tryParse(json['processingTimeMs'].toString()) ?? 0) 
+          : null,
+      sources: json['sources'] != null ? List<String>.from(json['sources']) : null,
+      attachment: (json['attachment'] != null && json['attachment'] is String) 
+          ? base64Decode(json['attachment']) 
+          : null,
+      audioAttachment: (json['audioAttachment'] != null && json['audioAttachment'] is String) 
+          ? base64Decode(json['audioAttachment']) 
+          : null,
+      artifacts: (json['artifacts'] as List?)?.map((e) => Artifact.fromJson(e)).toList(),
+    );
+  }
 }
 
 class AssistantService {
@@ -159,6 +169,10 @@ class AssistantService {
         timestamp: DateTime.now(),
       );
       _history.add(errorMsg);
+      // Persist the error state so user knows what happened on reload
+      try {
+        await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
+      } catch (_) {}
       return errorMsg;
     }
   }
