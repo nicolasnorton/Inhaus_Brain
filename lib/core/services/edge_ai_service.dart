@@ -621,6 +621,7 @@ class EdgeAIService {
     }
   }
 
+  static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {
     // WEB PROXY PATH (Priority)
     if (kIsWeb) {
       debugPrint('EdgeAI: [WEB] Routing Veo request via Secure Proxy...');
