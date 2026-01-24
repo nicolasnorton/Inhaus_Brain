@@ -676,16 +676,24 @@ class EdgeAIService {
       return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
     }
     if (isVeoInput) {
+       // Attempt 1: Effective Key (Vertex Token/Key)
        if (effectiveKey != null && effectiveKey.isNotEmpty) {
           try {
             return await _generateVertexVeo(prompt, effectiveKey);
           } catch (e) {
-            String errStr = 'Unknown Vertex Veo Error';
+            String errStr = _safeError(e);
+            debugPrint('Vertex Veo (Primary Key) failed: $errStr. Attempting fallback to Gemini Key...');
+            
+            // Attempt 2: Gemini API Key Fallback
+            // (Often AIza keys work on Vertex if the AQ token is restricted)
             try {
-              final dynamic errObj = e;
-              if (errObj != null) errStr = errObj.toString();
-            } catch (_) {}
-            debugPrint('Vertex Veo failed: $errStr. Falling back to placeholder.');
+               final geminiKey = await _vault.getGeminiKey();
+               if (geminiKey != null && geminiKey.isNotEmpty && geminiKey != effectiveKey) {
+                  return await _generateVertexVeo(prompt, geminiKey);
+               }
+            } catch (e2) {
+               debugPrint('Vertex Veo (Gemini Key Fallback) failed: ${_safeError(e2)}');
+            }
           }
        }
        await Future.delayed(const Duration(seconds: 2)); // Simulate generation time
