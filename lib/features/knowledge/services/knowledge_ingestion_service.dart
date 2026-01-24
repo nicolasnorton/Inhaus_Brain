@@ -46,20 +46,36 @@ $taskSummary
   }
 
   Future<void> ingestCopilotScreencap(String historySnippet, {List<int>? attachment}) async {
-    // Collect interesting learnings from copilot chats
+    // Create the future but don't await it yet
+    final ingestionFuture = _knowledgeApi.createDocumentFromText(
+      datasetId: 'agent-learnings',
+      name: 'Copilot Learning ${DateTime.now().toIso8601String()}',
+      text: historySnippet,
+    );
+
+    // CRITICAL: Attach a catchError to the ORIGINAL future to prevent uncaught exceptions
+    // if the timeout fires first and the original future subsequently fails.
+    ingestionFuture.catchError((e) {
+      debugPrint('Background Ingestion Failed (Silently Caught): ${_safeError(e)}');
+      return null; // Return value doesn't matter, just need to handle the error
+    });
+
     try {
-      await _knowledgeApi.createDocumentFromText(
-        datasetId: 'agent-learnings',
-        name: 'Copilot Learning ${DateTime.now().toIso8601String()}',
-        text: historySnippet,
-      );
+      // Now await with timeout
+      await ingestionFuture.timeout(const Duration(seconds: 10));
     } catch (e) {
       // Swallowed to prevent dangling future crashes after timeout
-      String safeE = "Unknown/Null Error";
-      try {
-        if (e != null) safeE = e.toString();
-      } catch (_) {}
-      debugPrint('Ingestion Background Error (Handled): $safeE');
+      debugPrint('Ingestion Timeout/Error (Handled): ${_safeError(e)}');
+    }
+  }
+
+  static String _safeError(dynamic e) {
+    if (e == null) return "Unknown Error (null)";
+    try {
+      final dynamic err = e;
+      return err.toString();
+    } catch (_) {
+      return "Error parsing exception";
     }
   }
 }
