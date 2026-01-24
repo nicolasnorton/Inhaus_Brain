@@ -629,7 +629,7 @@ class EdgeAIService {
           prompt: prompt,
           config: const AIModelConfig(
             provider: AIProvider.vertex, 
-            modelId: 'veo-2.0-generate-001', // Updated to 2.0
+            modelId: 'veo-3.0-fast-generate-preview', // Updated to 3.0 Fast Preview
             temperature: 0.5, 
             maxTokens: 100,
           ),
@@ -678,7 +678,7 @@ class EdgeAIService {
        // Attempt 1: Effective Key (Vertex Token/Key)
        if (effectiveKey != null && effectiveKey.isNotEmpty) {
           try {
-            return await _generateVertexVeo(prompt, effectiveKey, modelId: 'veo-2.0-generate-001');
+            return await _generateVertexVeo(prompt, effectiveKey, modelId: 'veo-3.0-fast-generate-preview');
           } catch (e) {
             String errStr = _safeError(e);
             debugPrint('Vertex Veo (Primary Key) failed: $errStr. Attempting fallback to Gemini Key...');
@@ -687,7 +687,7 @@ class EdgeAIService {
             try {
                final geminiKey = await _vault.getGeminiKey();
                if (geminiKey != null && geminiKey.isNotEmpty && geminiKey != effectiveKey) {
-                  return await _generateVertexVeo(prompt, geminiKey, modelId: 'veo-2.0-generate-001');
+                  return await _generateVertexVeo(prompt, geminiKey, modelId: 'veo-3.0-fast-generate-preview');
                }
             } catch (e2) {
                debugPrint('Vertex Veo (Gemini Key Fallback) failed: ${_safeError(e2)}');
@@ -755,10 +755,15 @@ class EdgeAIService {
         debugPrint('EdgeAI: [VERTEX] Veo Auth Error ${response.statusCode}: $errorBody');
       }
       
-      // Fallback to legacy veo-001 if 404 and we haven't tried it yet
-      if (response.statusCode == 404 && modelId == 'veo-2.0-generate-001') {
-         debugPrint('EdgeAI: [VERTEX] Veo 2.0 404. Attempting legacy model veo-001...');
-         return await _generateVertexVeo(prompt, key, modelId: 'veo-001');
+      // Fallback Chain: 3.0 Fast -> 2.0 -> 001
+      if (response.statusCode == 404) {
+         if (modelId == 'veo-3.0-fast-generate-preview') {
+            debugPrint('EdgeAI: [VERTEX] Veo 3.0 Not Found. Falling back to Veo 2.0...');
+            return await _generateVertexVeo(prompt, key, modelId: 'veo-2.0-generate-001');
+         } else if (modelId == 'veo-2.0-generate-001') {
+            debugPrint('EdgeAI: [VERTEX] Veo 2.0 Not Found. Falling back to Veo Legacy...');
+            return await _generateVertexVeo(prompt, key, modelId: 'veo-001');
+         }
       }
 
       throw Exception('Vertex Veo Error: ${response.statusCode} $errorBody');
