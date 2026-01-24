@@ -59,7 +59,11 @@ class VertexApiService {
           if (emb is Map) {
             final values = emb['values'];
             if (values is List) {
-              return values.map((v) => (v as num).toDouble()).toList();
+              return values.map((v) {
+                if (v == null) return 0.0;
+                if (v is num) return v.toDouble();
+                return 0.0;
+              }).toList();
             }
           }
         }
@@ -106,14 +110,18 @@ class VertexApiService {
           if (e is Map) {
             final val = e['values'];
             if (val is List) {
-              return val.map((v) => (v as num).toDouble()).toList();
+              return val.map((v) {
+                if (v == null) return 0.0;
+                if (v is num) return v.toDouble();
+                return 0.0;
+              }).toList();
             }
           }
           return <double>[]; 
         }).toList();
       } catch (e) {
         // ULTIMATE Safe toString for Web JS Interop
-        String errStr = 'Unknown';
+        String errStr = 'Unknown Error';
         try {
            final dynamic errObj = e;
            if (errObj != null) {

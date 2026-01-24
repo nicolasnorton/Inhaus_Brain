@@ -83,10 +83,10 @@ class ProjectTask {
 
   factory ProjectTask.fromJson(Map<String, dynamic> json) {
     return ProjectTask(
-      id: json['id'] as String,
-      projectId: json['projectId'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
+      id: json['id']?.toString() ?? 'unknown-task',
+      projectId: json['projectId']?.toString() ?? 'unknown-project',
+      title: json['title']?.toString() ?? 'Untitled Task',
+      description: json['description']?.toString() ?? '',
       status: TaskStatus.values.firstWhere(
         (e) => e.toString() == json['status'],
         orElse: () => TaskStatus.todo,
@@ -95,15 +95,15 @@ class ProjectTask {
         (e) => e.toString() == json['priority'],
         orElse: () => TaskPriority.medium,
       ),
-      dueDate: json['dueDate'] != null ? DateTime.parse(json['dueDate'] as String) : null,
-      startDate: json['startDate'] != null ? DateTime.parse(json['startDate'] as String) : null,
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate'] as String) : null,
-      doneDate: json['doneDate'] != null ? DateTime.parse(json['doneDate'] as String) : null,
-      assigneeId: json['assigneeId'] as String?,
-      sectionId: json['sectionId'] as String?,
-      tags: (json['tags'] as List? ?? []).cast<String>(),
-      orderIndex: json['orderIndex'] as int? ?? 0,
-      customFields: Map<String, dynamic>.from(json['customFields'] ?? {}),
+      dueDate: json['dueDate'] != null ? DateTime.tryParse(json['dueDate'].toString()) : null,
+      startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
+      endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+      doneDate: json['doneDate'] != null ? DateTime.tryParse(json['doneDate'].toString()) : null,
+      assigneeId: json['assigneeId']?.toString(),
+      sectionId: json['sectionId']?.toString(),
+      tags: (json['tags'] as List? ?? []).map((e) => e.toString()).toList(),
+      orderIndex: json['orderIndex'] is int ? json['orderIndex'] : 0,
+      customFields: json['customFields'] is Map ? Map<String, dynamic>.from(json['customFields']) : {},
     );
   }
 

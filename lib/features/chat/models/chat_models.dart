@@ -115,16 +115,24 @@ class ChatMessage {
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
-      id: json['id'] as String,
-      content: json['content'] as String,
-      sender: MessageSender.values.firstWhere((e) => e.name == json['sender']),
-      type: MessageType.values.firstWhere((e) => e.name == json['type']),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      content: json['content']?.toString() ?? '',
+      sender: MessageSender.values.firstWhere(
+        (e) => e.name == json['sender'],
+        orElse: () => MessageSender.system,
+      ),
+      type: MessageType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => MessageType.text,
+      ),
+      createdAt: json['createdAt'] != null 
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       attachments: (json['attachments'] as List? ?? [])
-          .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+          .map((a) => Attachment.fromJson(Map<String, dynamic>.from(a as Map? ?? {})))
           .toList(),
-      metadata: json['metadata'] as Map<String, dynamic>?,
-      suggestedPrompts: (json['suggestedPrompts'] as List?)?.cast<String>(),
+      metadata: json['metadata'] is Map ? Map<String, dynamic>.from(json['metadata']) : null,
+      suggestedPrompts: (json['suggestedPrompts'] as List?)?.map((e) => e.toString()).toList(),
     );
   }
 
@@ -155,12 +163,14 @@ class ChatSession {
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
     return ChatSession(
-      id: json['id'] as String,
-      campaignId: json['campaignId'] as String,
+      id: json['id']?.toString() ?? 'unknown-session',
+      campaignId: json['campaignId']?.toString() ?? 'unknown-campaign',
       messages: (json['messages'] as List? ?? [])
-          .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+          .map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m as Map? ?? {})))
           .toList(),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 

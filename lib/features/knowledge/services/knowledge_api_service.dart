@@ -457,11 +457,19 @@ class KnowledgeApiException implements Exception {
   @override
   String toString() {
     try {
-      final m = error?.message?.toString() ?? 'Unknown Error';
-      final c = error?.code?.toString() ?? 'Unknown Code';
+      final dynError = error as dynamic;
+      if (dynError == null) return 'KnowledgeApiException: (Internal error is null)';
+      
+      final m = dynError.message?.toString() ?? 'Unknown Error';
+      final c = dynError.code?.toString() ?? 'Unknown Code';
       return 'KnowledgeApiException: $m ($c)';
-    } catch (_) {
-      return 'KnowledgeApiException: (Unable to parse error details)';
+    } catch (e) {
+      // LAST RESORT SAFE STRING
+      String safeE = 'Unknown';
+      try {
+        if (e != null) safeE = e.toString();
+      } catch (_) {}
+      return 'KnowledgeApiException: (Unable to parse details) - nested error: $safeE';
     }
   }
 }

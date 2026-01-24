@@ -62,18 +62,18 @@ class Client {
 
   factory Client.fromJson(Map<String, dynamic> json) {
     return Client(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      industry: json['industry'] as String,
-      logoUrl: json['logoUrl'] as String?,
-      campaignIds: (json['campaignIds'] as List? ?? []).cast<String>(),
-      primaryContactEmail: json['primaryContactEmail'] as String?,
-      website: json['website'] as String?,
-      address: json['address'] as String?,
-      size: json['size'] as String?,
-      description: json['description'] as String?,
+      id: json['id']?.toString() ?? 'unknown-client',
+      name: json['name']?.toString() ?? 'Unnamed Client',
+      industry: json['industry']?.toString() ?? 'Other',
+      logoUrl: json['logoUrl']?.toString(),
+      campaignIds: (json['campaignIds'] as List? ?? []).map((e) => e.toString()).toList(),
+      primaryContactEmail: json['primaryContactEmail']?.toString(),
+      website: json['website']?.toString(),
+      address: json['address']?.toString(),
+      size: json['size']?.toString(),
+      description: json['description']?.toString(),
       contacts: (json['contacts'] as List? ?? [])
-          .map((e) => ClientContact.fromJson(e as Map<String, dynamic>))
+          .map((e) => ClientContact.fromJson(Map<String, dynamic>.from(e as Map? ?? {})))
           .toList(),
       customFields: Map<String, dynamic>.from(json['customFields'] ?? {}),
     );

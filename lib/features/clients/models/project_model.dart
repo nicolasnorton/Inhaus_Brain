@@ -59,10 +59,10 @@ class Project {
 
   factory Project.fromJson(Map<String, dynamic> json) {
     return Project(
-      id: json['id'] as String,
-      clientId: json['clientId'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String,
+      id: json['id']?.toString() ?? 'unknown-project',
+      clientId: json['clientId']?.toString() ?? 'unknown-client',
+      name: json['name']?.toString() ?? 'Unnamed Project',
+      description: json['description']?.toString() ?? '',
       status: ProjectStatus.values.firstWhere(
         (e) => e.toString() == json['status'],
         orElse: () => ProjectStatus.planning,
@@ -71,9 +71,11 @@ class Project {
         (e) => e.toString() == json['priority'],
         orElse: () => ProjectPriority.medium,
       ),
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate'] as String) : null,
-      sections: (json['sections'] as List? ?? ['To Do', 'In Progress', 'Done']).cast<String>(),
+      startDate: json['startDate'] != null 
+          ? DateTime.tryParse(json['startDate'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+      sections: (json['sections'] as List? ?? ['To Do', 'In Progress', 'Done']).map((e) => e.toString()).toList(),
     );
   }
 

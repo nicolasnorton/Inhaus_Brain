@@ -131,7 +131,7 @@ class EdgeAIService {
                }
              } catch (e) {
                 final errorObj = e;
-                final errorStr = "$e";
+                final errorStr = _safeError(e);
                 debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
                 // Special guidance for 401/403
                 if (errorStr.contains('401') || errorStr.contains('403')) {
@@ -1054,5 +1054,19 @@ class EdgeAIService {
     }
     buffer.writeln('\nUSER PROMPT: $prompt');
     return buffer.toString();
+  }
+
+  static String _safeError(dynamic e) {
+    if (e == null) return "Unknown Error (null)";
+    try {
+      final dynamic err = e;
+      return err.toString();
+    } catch (_) {
+      try {
+        return "$e";
+      } catch (e2) {
+        return "Critical Error parsing exception";
+      }
+    }
   }
 }
