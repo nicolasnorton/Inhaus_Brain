@@ -132,7 +132,10 @@ class ChatMessage {
           .map((a) => Attachment.fromJson(Map<String, dynamic>.from(a as Map? ?? {})))
           .toList(),
       metadata: json['metadata'] is Map ? Map<String, dynamic>.from(json['metadata']) : null,
-      suggestedPrompts: (json['suggestedPrompts'] as List?)?.map((e) => e.toString()).toList(),
+      suggestedPrompts: (json['suggestedPrompts'] as List?)
+          ?.where((e) => e != null)
+          .map((e) => e.toString())
+          .toList(),
     );
   }
 

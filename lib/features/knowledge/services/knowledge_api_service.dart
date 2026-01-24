@@ -77,7 +77,27 @@ class KnowledgeApiService {
         .limit(limit)
         .get();
 
-    return snapshot.docs.map((doc) => KnowledgeBase.fromJson(doc.data())).toList();
+    return snapshot.docs.map((doc) {
+      try {
+        return KnowledgeBase.fromJson(doc.data());
+      } catch (e) {
+        debugPrint('KnowledgeApi: Failed to parse KB ${doc.id}: ${_safeError(e)}');
+        // Return a mock/safe KB if parsing fails to avoid crashing the whole list
+        return KnowledgeBase(
+          id: doc.id,
+          name: 'Corrupted Knowledge Base',
+          provider: 'unknown',
+          permission: 'only_me',
+          appCount: 0,
+          documentCount: 0,
+          wordCount: 0,
+          createdBy: 'system',
+          createdAt: 0,
+          updatedBy: 'system',
+          updatedAt: 0,
+        );
+      }
+    }).toList();
   }
 
   /// Delete a knowledge base
@@ -141,12 +161,7 @@ class KnowledgeApiService {
            throw Exception('No Vertex Token available for initial attempt');
          }
       } catch (e) {
-         // JavaScript interop: explicitly check distinct from null before toString
-         String errStr = 'Unknown Embedding Error';
-         try {
-           final dynamic errObj = e;
-           if (errObj != null) errStr = errObj.toString();
-         } catch (_) {}
+         final errStr = _safeError(e);
          
          if (errStr.contains('401') || errStr.contains('UNAUTHENTICATED')) {
             debugPrint('KnowledgeApi: Vertex Embedding 401 (Expected with API Key). Fallback to Gemini Key...');
@@ -167,14 +182,10 @@ class KnowledgeApiService {
          }
       }
     } catch (e) {
-      String fatalErr = 'Fatal Embedding Error';
-      try {
-        final dynamic errObj = e;
-        if (errObj != null) fatalErr = errObj.toString();
-      } catch (_) {}
-      
-      debugPrint('Embedding generation failed: $fatalErr');
-      throw Exception('Failed to generate embeddings: $fatalErr');
+      final err = _safeError(e);
+      debugPrint('Embedding generation failed: $err');
+      // For MVP, we might fail or store empty. Let's fail to warn user.
+      throw Exception('Failed to generate embeddings: $err');
     }
 
     // 4. Store Chunks with Vectors
@@ -446,6 +457,20 @@ class KnowledgeApiService {
   }
 
   void dispose() {}
+
+  static String _safeError(dynamic e) {
+    if (e == null) return "Unknown Error (null)";
+    try {
+      final dynamic err = e;
+      return err.toString();
+    } catch (_) {
+      try {
+        return "$e";
+      } catch (e2) {
+        return "Internal error parsing exception stack";
+      }
+    }
+  }
 }
 
 /// Exception for Knowledge API errors

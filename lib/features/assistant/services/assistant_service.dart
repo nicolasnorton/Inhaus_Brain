@@ -67,25 +67,27 @@ class AssistantMessage {
     return AssistantMessage(
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       text: json['text']?.toString() ?? '',
-      isUser: json['isUser'] ?? false,
+      isUser: json['isUser'] == true,
       timestamp: json['timestamp'] != null 
           ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      isToolOutput: json['isToolOutput'] ?? false,
+      isToolOutput: json['isToolOutput'] == true,
       generatedAssetPath: json['generatedAssetPath']?.toString(),
       generatedAssetType: json['generatedAssetType']?.toString(),
       modelName: json['modelName']?.toString(),
       processingTime: json['processingTimeMs'] != null 
           ? Duration(milliseconds: int.tryParse(json['processingTimeMs'].toString()) ?? 0) 
           : null,
-      sources: json['sources'] != null ? List<String>.from(json['sources']) : null,
+      sources: (json['sources'] as List?)?.map((e) => e.toString()).toList(),
       attachment: (json['attachment'] != null && json['attachment'] is String) 
-          ? base64Decode(json['attachment']) 
+          ? base64Decode(json['attachment'] as String) 
           : null,
       audioAttachment: (json['audioAttachment'] != null && json['audioAttachment'] is String) 
-          ? base64Decode(json['audioAttachment']) 
+          ? base64Decode(json['audioAttachment'] as String) 
           : null,
-      artifacts: (json['artifacts'] as List?)?.map((e) => Artifact.fromJson(e)).toList(),
+      artifacts: (json['artifacts'] as List?)
+          ?.map((e) => Artifact.fromJson(Map<String, dynamic>.from(e as Map? ?? {})))
+          .toList(),
     );
   }
 }
@@ -149,19 +151,18 @@ class AssistantService {
       _history.add(message);
       await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
       
-      // Ingest into knowledge autonomously
       try {
-        _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
+        await _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
           "Query: $text\nResponse: ${message.text}",
           attachment: attachment,
-        );
+        ).timeout(const Duration(seconds: 10));
       } catch (e) {
-        debugPrint('Knowledge Auto-Ingest Error: $e');
+        debugPrint('Knowledge Auto-Ingest Error: ${_safeError(e)}');
       }
       
       return message;
     } catch (e) {
-      debugPrint('Assistant Service Error: $e');
+      debugPrint('Assistant Service Error: ${_safeError(e)}');
       final errorMsg = AssistantMessage(
         id: DateTime.now().toString(),
         text: "Sorry, I encountered an internal error. Please try again or check your connection.",
@@ -468,6 +469,20 @@ Format: {"tool": "create_artifact", "args": {"title": "Title", "type": "markdown
 ''';
     }
     return "";
+  }
+
+  static String _safeError(dynamic e) {
+    if (e == null) return "Unknown Error (null)";
+    try {
+      final dynamic err = e;
+      return err.toString();
+    } catch (_) {
+      try {
+        return "$e";
+      } catch (e2) {
+        return "Internal error parsing exception stack";
+      }
+    }
   }
 }
 

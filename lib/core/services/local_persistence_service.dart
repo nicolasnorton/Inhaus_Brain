@@ -124,7 +124,7 @@ class LocalPersistenceService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('assistant_history', jsonEncode(jsonList));
     } catch (e) {
-      debugPrint('LocalPersistence: Quota or Save Error: $e');
+      debugPrint('LocalPersistence: Quota or Save Error: ${_safeError(e)}');
       // Level 2: Try only last 3 messages without ANY non-essential meta
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -138,7 +138,7 @@ class LocalPersistenceService {
         await prefs.setString('assistant_history', jsonEncode(tinyJson));
       } catch (e2) {
         // Level 3: Total Failure - clear everything to recover functionality
-        debugPrint('LocalPersistence: CRITICAL QUOTA FAILURE. Clearing history key.');
+        debugPrint('LocalPersistence: CRITICAL QUOTA FAILURE. Clearing history key: ${_safeError(e2)}');
         try {
           final prefs = await SharedPreferences.getInstance();
           await prefs.remove('assistant_history');
@@ -155,6 +155,20 @@ class LocalPersistenceService {
       return jsonList.map((j) => AssistantMessage.fromJson(j)).toList();
     }
     return [];
+  }
+
+  static String _safeError(dynamic e) {
+    if (e == null) return "Unknown Error (null)";
+    try {
+      final dynamic err = e;
+      return err.toString();
+    } catch (_) {
+      try {
+        return "$e";
+      } catch (e2) {
+        return "Internal error parsing exception stack";
+      }
+    }
   }
 }
 

@@ -120,22 +120,26 @@ class VertexApiService {
           return <double>[]; 
         }).toList();
       } catch (e) {
-        // ULTIMATE Safe toString for Web JS Interop
-        String errStr = 'Unknown Error';
-        try {
-           final dynamic errObj = e;
-           if (errObj != null) {
-              errStr = errObj.toString();
-           }
-        } catch (_) { 
-           errStr = 'Fatal Error during toString()'; 
-        }
-        
+        final errStr = _safeError(e);
         debugPrint('VertexAI: Gemini Fallback failed: $errStr');
         return <List<double>>[];
       }
     }
 
     throw Exception('VertexApiService: No valid API Key or Access Token provided.');
+  }
+
+  static String _safeError(dynamic e) {
+    if (e == null) return "Unknown Error (null)";
+    try {
+      final dynamic err = e;
+      return err.toString();
+    } catch (_) {
+      try {
+        return "$e";
+      } catch (e2) {
+        return "Internal error parsing exception stack";
+      }
+    }
   }
 }

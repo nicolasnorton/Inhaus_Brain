@@ -31,11 +31,16 @@ class Attachment {
 
   factory Attachment.fromJson(Map<String, dynamic> json) {
     return Attachment(
-      id: json['id'] as String,
-      url: json['url'] as String,
-      name: json['name'] as String,
-      type: AttachmentType.values.firstWhere((e) => e.name == json['type']),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      url: json['url']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unnamed Attachment',
+      type: AttachmentType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => AttachmentType.file,
+      ),
+      createdAt: json['createdAt'] != null 
+          ? (DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now())
+          : DateTime.now(),
     );
   }
 
@@ -61,9 +66,9 @@ class ResearchInsight {
 
   factory ResearchInsight.fromJson(Map<String, dynamic> json) {
     return ResearchInsight(
-      id: json['id'] as String,
-      content: json['content'] as String,
-      isApproved: json['isApproved'] as bool? ?? false,
+      id: json['id']?.toString() ?? 'unknown-insight',
+      content: json['content']?.toString() ?? '',
+      isApproved: json['isApproved'] == true,
     );
   }
 
@@ -121,22 +126,22 @@ class Campaign {
     }
 
     return Campaign(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      clientName: json['clientName'] as String?,
-      clientId: json['clientId'] as String?,
-      industry: json['industry'] as String?,
+      id: json['id']?.toString() ?? 'unknown-campaign',
+      title: json['title']?.toString() ?? 'Untitled Campaign',
+      description: json['description']?.toString() ?? '',
+      clientName: json['clientName']?.toString(),
+      clientId: json['clientId']?.toString(),
+      industry: json['industry']?.toString(),
       status: CampaignStatus.values.firstWhere(
         (e) => e.name == json['status'],
         orElse: () => CampaignStatus.draft,
       ),
       createdAt: parseDate(json['createdAt']),
       insights: (json['insights'] as List? ?? [])
-          .map((i) => ResearchInsight.fromJson(i as Map<String, dynamic>))
+          .map((i) => ResearchInsight.fromJson(Map<String, dynamic>.from(i as Map? ?? {})))
           .toList(),
       attachments: (json['attachments'] as List? ?? [])
-          .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+          .map((a) => Attachment.fromJson(Map<String, dynamic>.from(a as Map? ?? {})))
           .toList(),
     );
   }
