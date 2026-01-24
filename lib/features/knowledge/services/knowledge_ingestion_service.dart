@@ -47,10 +47,19 @@ $taskSummary
 
   Future<void> ingestCopilotScreencap(String historySnippet, {List<int>? attachment}) async {
     // Collect interesting learnings from copilot chats
-    await _knowledgeApi.createDocumentFromText(
-      datasetId: 'agent-learnings',
-      name: 'Copilot Learning ${DateTime.now().toIso8601String()}',
-      text: historySnippet,
-    );
+    try {
+      await _knowledgeApi.createDocumentFromText(
+        datasetId: 'agent-learnings',
+        name: 'Copilot Learning ${DateTime.now().toIso8601String()}',
+        text: historySnippet,
+      );
+    } catch (e) {
+      // Swallowed to prevent dangling future crashes after timeout
+      String safeE = "Unknown/Null Error";
+      try {
+        if (e != null) safeE = e.toString();
+      } catch (_) {}
+      debugPrint('Ingestion Background Error (Handled): $safeE');
+    }
   }
 }
