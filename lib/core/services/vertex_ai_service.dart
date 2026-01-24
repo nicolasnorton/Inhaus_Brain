@@ -54,16 +54,16 @@ class VertexApiService {
       }
 
       return predictions.map((p) {
-        if (p is Map && p.containsKey('embeddings')) {
-          final emb = p['embeddings'] as Map?;
-          if (emb != null && emb.containsKey('values')) {
-            final values = emb['values'] as List?;
-            if (values != null) {
-               return values.cast<double>();
+        if (p is Map) {
+          final emb = p['embeddings'];
+          if (emb is Map) {
+            final values = emb['values'];
+            if (values is List) {
+              return values.map((v) => (v as num).toDouble()).toList();
             }
           }
         }
-        return <double>[]; // Graceful fallback for malformed response
+        return <double>[]; 
       }).toList();
     }
 
@@ -97,24 +97,34 @@ class VertexApiService {
         }
         
         final embeddings = data['embeddings'] as List?;
-        if (embeddings == null) return [];
+        if (embeddings == null) {
+          debugPrint('VertexAI: Gemini Response has no embeddings field.');
+          return [];
+        }
 
         return embeddings.map((e) {
-          if (e is Map && e.containsKey('values')) {
-             final val = e['values'];
-             if (val is List) return val.cast<double>();
+          if (e is Map) {
+            final val = e['values'];
+            if (val is List) {
+              return val.map((v) => (v as num).toDouble()).toList();
+            }
           }
           return <double>[]; 
         }).toList();
       } catch (e) {
-        // Safe toString
+        // ULTIMATE Safe toString for Web JS Interop
         String errStr = 'Unknown';
         try {
-           if (e != null) errStr = e.toString();
-        } catch (_) { errStr = 'Error getting error string'; }
+           final dynamic errObj = e;
+           if (errObj != null) {
+              errStr = errObj.toString();
+           }
+        } catch (_) { 
+           errStr = 'Fatal Error during toString()'; 
+        }
         
-        debugPrint('VertexAI: Gemini Fallback crashed: $errStr');
-        return <List<double>>[]; // Fail safely by returning empty typed list
+        debugPrint('VertexAI: Gemini Fallback failed: $errStr');
+        return <List<double>>[];
       }
     }
 

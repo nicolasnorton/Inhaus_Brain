@@ -649,8 +649,12 @@ class EdgeAIService {
         }
         throw Exception('Veo Proxy returned no valid video URL.');
       } catch (e) {
-        debugPrint('EdgeAI: [WEB] Veo Proxy failed: $e. Falling back to native/placeholder if possible.');
-        // If critical, rethrow. For now let's allow fallback to try direct keys if present (unlikely on web due to CORS but safe).
+        String errStr = 'Unknown Veo Proxy Error';
+        try {
+           final dynamic errObj = e;
+           if (errObj != null) errStr = errObj.toString();
+        } catch (_) {}
+        debugPrint('EdgeAI: [WEB] Veo Proxy failed: $errStr. Falling back to native/placeholder if possible.');
       }
     }
 
@@ -676,7 +680,12 @@ class EdgeAIService {
           try {
             return await _generateVertexVeo(prompt, effectiveKey);
           } catch (e) {
-            debugPrint('Vertex Veo failed: $e. Falling back to placeholder.');
+            String errStr = 'Unknown Vertex Veo Error';
+            try {
+              final dynamic errObj = e;
+              if (errObj != null) errStr = errObj.toString();
+            } catch (_) {}
+            debugPrint('Vertex Veo failed: $errStr. Falling back to placeholder.');
           }
        }
        await Future.delayed(const Duration(seconds: 2)); // Simulate generation time
@@ -685,7 +694,7 @@ class EdgeAIService {
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
-  static Future<String> _generateVertexVeo(String prompt, String key) async {
+  static Future<String> _generateVertexVeo(String prompt, String key, {String modelId = 'veo-001'}) async {
     String projectId = 'inhausbrain';
     // Vertex AI Tokens usually start with ya29. or AQ.
     final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
@@ -693,9 +702,9 @@ class EdgeAIService {
     
     // Using the veo-001 model ID (SOTA)
     // Veo often requires the :predict endpoint
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/veo-001:predict';
+    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:predict';
     final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Veo (veo-001) at ${isApiKey ? "REST Endpoint" : "OAuth Endpoint"}');
+    debugPrint('EdgeAI: [VERTEX] Calling Veo ($modelId) at ${isApiKey ? "REST Endpoint" : "OAuth Endpoint"}');
 
     final Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -743,8 +752,14 @@ class EdgeAIService {
       final errorBody = response.body;
       if (response.statusCode == 401 || response.statusCode == 403) {
         debugPrint('EdgeAI: [VERTEX] Veo Auth Error ${response.statusCode}: $errorBody');
-        debugPrint('EdgeAI: [HINT] Ensure the Vertex AI API (AI Platform) is enabled in project "$projectId" and the account has "Vertex AI User" role.');
       }
+      
+      // Try alternative model name veo-001@001 if veo-001 failed with 404
+      if (response.statusCode == 404 && !modelId.contains('@')) {
+         debugPrint('EdgeAI: [VERTEX] Veo 404. Attempting versioned model ID...');
+         return await _generateVertexVeo(prompt, key, modelId: 'veo-001@001');
+      }
+
       throw Exception('Vertex Veo Error: ${response.statusCode} $errorBody');
     }
   }

@@ -142,12 +142,16 @@ class KnowledgeApiService {
          }
       } catch (e) {
          // JavaScript interop: explicitly check distinct from null before toString
-         final err = (e != null) ? e.toString() : 'Unknown Embedding Error';
+         String errStr = 'Unknown Embedding Error';
+         try {
+           final dynamic errObj = e;
+           if (errObj != null) errStr = errObj.toString();
+         } catch (_) {}
          
-         if (err.contains('401') || err.contains('UNAUTHENTICATED')) {
+         if (errStr.contains('401') || errStr.contains('UNAUTHENTICATED')) {
             debugPrint('KnowledgeApi: Vertex Embedding 401 (Expected with API Key). Fallback to Gemini Key...');
          } else {
-            debugPrint('KnowledgeApi: Vertex Embedding failed ($err). Attempting fallback to Gemini Key...');
+            debugPrint('KnowledgeApi: Vertex Embedding failed ($errStr). Attempting fallback to Gemini Key...');
          }
          
          // Attempt 2: Gemini API Key
@@ -159,14 +163,18 @@ class KnowledgeApiService {
             );
          } else {
             // Rethrow original error if no fallback
-            throw Exception('Vertex Failed and no Gemini Key found: $err');
+            throw Exception('Vertex Failed and no Gemini Key found: $errStr');
          }
       }
     } catch (e) {
-      final err = (e != null) ? e.toString() : 'Fatal Embedding Error';
-      debugPrint('Embedding generation failed: $err');
-      // For MVP, we might fail or store empty. Let's fail to warn user.
-      throw Exception('Failed to generate embeddings: $err');
+      String fatalErr = 'Fatal Embedding Error';
+      try {
+        final dynamic errObj = e;
+        if (errObj != null) fatalErr = errObj.toString();
+      } catch (_) {}
+      
+      debugPrint('Embedding generation failed: $fatalErr');
+      throw Exception('Failed to generate embeddings: $fatalErr');
     }
 
     // 4. Store Chunks with Vectors

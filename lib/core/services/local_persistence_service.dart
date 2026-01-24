@@ -125,18 +125,25 @@ class LocalPersistenceService {
       await prefs.setString('assistant_history', jsonEncode(jsonList));
     } catch (e) {
       debugPrint('LocalPersistence: Quota or Save Error: $e');
-      // If we hit quota, try to at least save the last 5 messages without any attachments
+      // Level 2: Try only last 3 messages without ANY non-essential meta
       try {
         final prefs = await SharedPreferences.getInstance();
-        final emergencyHistory = messages.length > 5 ? messages.sublist(messages.length - 5) : messages;
-        final emergencyJson = emergencyHistory.map((m) {
-          final j = m.toJson();
-          j['attachment'] = null;
-          j['audioAttachment'] = null;
-          return j;
+        final tinyHistory = messages.length > 3 ? messages.sublist(messages.length - 3) : messages;
+        final tinyJson = tinyHistory.map((m) => {
+          'id': m.id,
+          'text': m.text,
+          'isUser': m.isUser,
+          'timestamp': m.timestamp.toIso8601String(),
         }).toList();
-        await prefs.setString('assistant_history', jsonEncode(emergencyJson));
-      } catch (_) {}
+        await prefs.setString('assistant_history', jsonEncode(tinyJson));
+      } catch (e2) {
+        // Level 3: Total Failure - clear everything to recover functionality
+        debugPrint('LocalPersistence: CRITICAL QUOTA FAILURE. Clearing history key.');
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('assistant_history');
+        } catch (_) {}
+      }
     }
   }
 
