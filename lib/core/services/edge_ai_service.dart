@@ -621,7 +621,6 @@ class EdgeAIService {
     }
   }
 
-  static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {
     // WEB PROXY PATH (Priority)
     if (kIsWeb) {
       debugPrint('EdgeAI: [WEB] Routing Veo request via Secure Proxy...');
@@ -630,8 +629,8 @@ class EdgeAIService {
           prompt: prompt,
           config: const AIModelConfig(
             provider: AIProvider.vertex, 
-            modelId: 'veo-001',
-            temperature: 0.5, // Default for video
+            modelId: 'veo-2.0-generate-001', // Updated to 2.0
+            temperature: 0.5, 
             maxTokens: 100,
           ),
         );
@@ -679,37 +678,34 @@ class EdgeAIService {
        // Attempt 1: Effective Key (Vertex Token/Key)
        if (effectiveKey != null && effectiveKey.isNotEmpty) {
           try {
-            return await _generateVertexVeo(prompt, effectiveKey);
+            return await _generateVertexVeo(prompt, effectiveKey, modelId: 'veo-2.0-generate-001');
           } catch (e) {
             String errStr = _safeError(e);
             debugPrint('Vertex Veo (Primary Key) failed: $errStr. Attempting fallback to Gemini Key...');
             
             // Attempt 2: Gemini API Key Fallback
-            // (Often AIza keys work on Vertex if the AQ token is restricted)
             try {
                final geminiKey = await _vault.getGeminiKey();
                if (geminiKey != null && geminiKey.isNotEmpty && geminiKey != effectiveKey) {
-                  return await _generateVertexVeo(prompt, geminiKey);
+                  return await _generateVertexVeo(prompt, geminiKey, modelId: 'veo-2.0-generate-001');
                }
             } catch (e2) {
                debugPrint('Vertex Veo (Gemini Key Fallback) failed: ${_safeError(e2)}');
             }
           }
        }
+       
        await Future.delayed(const Duration(seconds: 2)); // Simulate generation time
        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"; 
     }
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
-  static Future<String> _generateVertexVeo(String prompt, String key, {String modelId = 'veo-001'}) async {
+  static Future<String> _generateVertexVeo(String prompt, String key, {String modelId = 'veo-2.0-generate-001'}) async {
     String projectId = 'inhausbrain';
-    // Vertex AI Tokens usually start with ya29. or AQ.
     final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
     final isApiKey = !isToken;
     
-    // Using the veo-001 model ID (SOTA)
-    // Veo often requires the :predict endpoint
     final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:predict';
     final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
     debugPrint('EdgeAI: [VERTEX] Calling Veo ($modelId) at ${isApiKey ? "REST Endpoint" : "OAuth Endpoint"}');
@@ -721,7 +717,6 @@ class EdgeAIService {
       headers['Authorization'] = 'Bearer $key';
     }
 
-    // Official Veo predictive request structure
     final response = await http.post(
       url,
       headers: headers,
@@ -734,7 +729,7 @@ class EdgeAIService {
         "parameters": {
           "sampleCount": 1,
           "aspectRatio": "16:9",
-          "durationSeconds": 5, // Default for many Veo pipelines
+          "durationSeconds": 5, 
         }
       }),
     );
@@ -742,14 +737,12 @@ class EdgeAIService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       
-      // Case 1: Synchronous response (Preview or small generation)
       if (data['predictions'] != null && data['predictions'].isNotEmpty) {
         final prediction = data['predictions'][0];
         final videoUrl = prediction['url'] ?? prediction['videoUri'];
         if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
       }
 
-      // Case 2: Long-Running Operation (LRO)
       if (data['name'] != null && data['name'].contains('/operations/')) {
         debugPrint('EdgeAI: [VEO] Generation started asynchronously. Polling Operation: ${data['name']}');
         return await _pollVertexOperation(data['name'], key, isApiKey);
@@ -762,10 +755,10 @@ class EdgeAIService {
         debugPrint('EdgeAI: [VERTEX] Veo Auth Error ${response.statusCode}: $errorBody');
       }
       
-      // Try alternative model name veo-001@001 if veo-001 failed with 404
-      if (response.statusCode == 404 && !modelId.contains('@')) {
-         debugPrint('EdgeAI: [VERTEX] Veo 404. Attempting versioned model ID...');
-         return await _generateVertexVeo(prompt, key, modelId: 'veo-001@001');
+      // Fallback to legacy veo-001 if 404 and we haven't tried it yet
+      if (response.statusCode == 404 && modelId == 'veo-2.0-generate-001') {
+         debugPrint('EdgeAI: [VERTEX] Veo 2.0 404. Attempting legacy model veo-001...');
+         return await _generateVertexVeo(prompt, key, modelId: 'veo-001');
       }
 
       throw Exception('Vertex Veo Error: ${response.statusCode} $errorBody');
