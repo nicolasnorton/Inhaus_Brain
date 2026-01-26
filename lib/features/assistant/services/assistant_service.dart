@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inhaus_brain/features/knowledge/providers/knowledge_service_providers.dart';
 import 'assistant_tool_registry.dart';
+import '../../../core/services/semantic_cache_service.dart';
 import '../../../core/mcp/agent_tool.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../chat/services/memory_service.dart';
@@ -309,6 +310,22 @@ Return ONLY a JSON object:
     // D. Main Execution
     final currentMode = _ref.read(assistantModeProvider);
     final ephemeralMsg = _injectEphemeralMessages(currentMode);
+    
+    // State Machine & Observability Integration
+    final blackboard = _ref.read(blackboardProvider.notifier);
+    
+    // Transition based on Intent
+    if (intentEnum == RouterIntent.research) {
+      blackboard.transitionTo(BlackboardPhase.analyzingIntent); // Or specific research phase
+      blackboard.updateAgentStatus('TrendScout', AgentStatus.working);
+    } else if (intentEnum == RouterIntent.creative) {
+       blackboard.transitionTo(BlackboardPhase.creative);
+       blackboard.updateAgentStatus('Creative', AgentStatus.working);
+    } else if (intentEnum == RouterIntent.management) {
+       blackboard.transitionTo(BlackboardPhase.strategy);
+       blackboard.updateAgentStatus('Strategist', AgentStatus.working);
+    }
+    // ... add more as needed
 
     final mainPrompt = """
 You are Brian, the Inhaus Brain Copilot.
@@ -340,6 +357,21 @@ CRITICAL INSTRUCTIONS:
 
 $ephemeralMsg
 """;
+
+    // Semantic Cache Check
+    final semanticCache = _ref.read(semanticCacheServiceProvider);
+    final cachedResponse = await semanticCache.lookup(intentEnum.name, mainPrompt);
+    if (cachedResponse != null) {
+      debugPrint('Assistant: Cache Hit! Returning cached response.');
+      // Update blackboard to reflect "fast" path
+      blackboard.postFact('cacheHit', true);
+      // Reset agent status
+      blackboard.updateAgentStatus('TrendScout', AgentStatus.idle);
+      blackboard.updateAgentStatus('Creative', AgentStatus.idle);
+      blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
+
+      return ToolExecutionSummary(text: cachedResponse);
+    }
 
     String responseText = "";
 
@@ -432,12 +464,29 @@ $ephemeralMsg
       return ToolExecutionSummary(text: "I encountered an error while processing your request: $e");
     }
 
+
     // ... Verification Layer ...
     bool needsVerification = intentEnum == RouterIntent.research || intentEnum == RouterIntent.copywriting;
     if (needsVerification && responseText.length > 50) {
        final verifiedResponse = await verificationService.verifyOutput(text, responseText);
+       // Reset agents
+       blackboard.updateAgentStatus('TrendScout', AgentStatus.idle);
+       blackboard.updateAgentStatus('Creative', AgentStatus.idle);
+       blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
+       
+       // Store in Cache
+       await semanticCache.store(intentEnum.name, mainPrompt, verifiedResponse);
+       
        return ToolExecutionSummary(text: verifiedResponse);
     }
+
+    // Reset agents
+    blackboard.updateAgentStatus('TrendScout', AgentStatus.idle);
+    blackboard.updateAgentStatus('Creative', AgentStatus.idle);
+    blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
+
+    // Store in Cache
+    await semanticCache.store(intentEnum.name, mainPrompt, responseText);
 
     return ToolExecutionSummary(text: responseText);
   }

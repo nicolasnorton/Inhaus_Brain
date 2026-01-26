@@ -5,26 +5,51 @@ import 'package:uuid/uuid.dart';
 /// 
 /// Instead of sequential A -> B chains, agents observe the state and 
 /// "post" facts or "request" help.
+
+enum BlackboardPhase {
+  idle,
+  analyzingIntent,
+  strategy,
+  creative,
+  approval,
+  production,
+}
+
+enum AgentStatus {
+  idle,
+  working,
+  blocked,
+  failed,
+}
+
 class BlackboardState {
   final Map<String, dynamic> facts;
   final List<WorkflowTask> tasks;
   final List<WorkflowEvent> events;
+  final BlackboardPhase phase;
+  final Map<String, AgentStatus> activeAgents;
 
   BlackboardState({
     this.facts = const {},
     this.tasks = const [],
     this.events = const [],
+    this.phase = BlackboardPhase.idle,
+    this.activeAgents = const {},
   });
 
   BlackboardState copyWith({
     Map<String, dynamic>? facts,
     List<WorkflowTask>? tasks,
     List<WorkflowEvent>? events,
+    BlackboardPhase? phase,
+    Map<String, AgentStatus>? activeAgents,
   }) {
     return BlackboardState(
       facts: facts ?? this.facts,
       tasks: tasks ?? this.tasks,
       events: events ?? this.events,
+      phase: phase ?? this.phase,
+      activeAgents: activeAgents ?? this.activeAgents,
     );
   }
 }
@@ -53,7 +78,9 @@ enum WorkflowEventType {
   userRequested, 
   taskFinished, 
   errorOccurred, 
-  humanFeedbackNeeded 
+  humanFeedbackNeeded,
+  phaseTransition,
+  agentStatusChange
 }
 
 class WorkflowEvent {
@@ -90,6 +117,32 @@ class BlackboardNotifier extends StateNotifier<BlackboardState> {
       timestamp: DateTime.now(),
     );
     state = state.copyWith(events: [...state.events, event]);
+  }
+
+  void transitionTo(BlackboardPhase nextPhase) {
+    if (state.phase == nextPhase) return;
+    
+    // Simple state transition validation could go here
+    // For now, we allow flexible transitions but log them
+    
+    state = state.copyWith(phase: nextPhase);
+    addEvent(
+      WorkflowEventType.phaseTransition, 
+      "Phase transitioned to ${nextPhase.name}",
+      data: {'from': state.phase.name, 'to': nextPhase.name}
+    );
+  }
+
+  void updateAgentStatus(String agentName, AgentStatus status) {
+    final updatedAgents = Map<String, AgentStatus>.from(state.activeAgents);
+    updatedAgents[agentName] = status;
+    
+    state = state.copyWith(activeAgents: updatedAgents);
+    addEvent(
+      WorkflowEventType.agentStatusChange, 
+      "$agentName is now ${status.name}",
+      data: {'agent': agentName, 'status': status.name}
+    );
   }
 
   void finishTask(String id, Map<String, dynamic> result) {
