@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'ai_proxy_service.dart';
 
 class VertexApiService {
   static const String _projectId = 'inhausbrain';

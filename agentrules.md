@@ -10,6 +10,7 @@ This document defines the constraints and standards for **Antigravity** and **Ju
 ## 2. Technical Stack & Standards
 - **Language**: Dart (Ensure `extra_pedantic` linting rules are followed).
 - **Framework**: Flutter (Targeting Desktop/Web).
+- **Security & Proxy**: On Flutter Web, **never** call `aiplatform.googleapis.com` directly. Always route Vertex AI calls (Embeddings, Imagen, Veo) through `AIProxyService` to ensure secure authentication via Cloud Functions.
 - **State Management**: Riverpod (Preferred for Agent dependency injection).
 - **Testing**: Every new agent tool or utility must have a corresponding test in the `test/` directory. Use `flutter test` to verify.
 

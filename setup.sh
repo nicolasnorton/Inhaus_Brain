@@ -28,4 +28,21 @@ if [ -d "functions" ]; then
     cd ..
 fi
 
+# 4. Check for .env file
+if [ ! -f ".env" ]; then
+    echo "📄 .env file missing. Creating from .env.example..."
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo "✅ .env created. PLEASE UPDATE YOUR API KEYS."
+    else
+        echo "⚠️ .env.example not found. Please create .env manually."
+    fi
+fi
+
+# 5. Check for Firebase Tools
+if ! npx firebase --version &> /dev/null; then
+    echo "ℹ️ Firebase Tools not found globally, but will be used via npx when needed."
+fi
+
 echo "🚀 Setup Complete! You are ready to build."
+echo "💡 To start: flutter run -d chrome"
