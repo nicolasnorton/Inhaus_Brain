@@ -71,11 +71,6 @@ exports.generateFinalAssets = functions.https.onCall(async (data, context) => {
  * Secures API access by validating Firebase Auth ID Tokens.
  * This prevents exposing credentials or allowing unauthenticated access from the client.
  */
-/**
- * PROXY FOR VERTEX AI
- * Secures API access by validating Firebase Auth ID Tokens.
- * This prevents exposing credentials or allowing unauthenticated access from the client.
- */
 exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
     // CORS Configuration - Apply to ALL responses
     res.set('Access-Control-Allow-Origin', '*');
@@ -114,41 +109,71 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
         // --- PATH A: OPERATION POLLING ---
         // Priority: If operationName is present, we are polling status. No prompt required.
         if (operationName) {
-            const { GoogleAuth } = require('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: 'https://www.googleapis.com/auth/cloud-platform'
-            });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
+            console.log(`[PROXY] Polling Operation via SDK: ${operationName}`);
 
-            // Logic: Determine the correct host.
-            // UUID-style IDs (e.g. 39caca36-...) for publisher models often require the global host.
-            // Numeric Long IDs usually belong to the regional host.
-            const isUuid = operationName.split('/').pop().includes('-');
-            const host = isUuid ? 'aiplatform.googleapis.com' : 'us-central1-aiplatform.googleapis.com';
+            try {
+                // Fallback to manual REST polling to avoid Google-GAX versioning issues/bugs in the emulator
+                console.log(`[PROXY] Polling LRO via REST: ${operationName}`);
 
-            // Try v1beta1 first as most new GenAI features are there.
-            const endpoint = `https://${host}/v1beta1/${operationName}`;
-            console.log(`[PROXY] Polling Endpoint (UUID: ${isUuid}): ${endpoint}`);
+                const { GoogleAuth } = require('google-auth-library');
+                const auth = new GoogleAuth({
+                    scopes: ['https://www.googleapis.com/auth/cloud-platform']
+                });
+                const client = await auth.getClient();
+                const tokenResponse = await client.getAccessToken();
+                const accessToken = tokenResponse.token;
 
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
+                const pollUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
+
+                // Fix for possible incorrect operation names coming from Veo response
+                // If operationName contains 'publishers/', it might be a model path mixed in. 
+                // We will try to fetch it as is, but if it fails (404), we will try to extract the ID.
+                let targetUrl = pollUrl;
+                if (operationName.includes('publishers/') && operationName.includes('/operations/')) {
+                    // Try to extract operation ID: .../operations/UUID
+                    const parts = operationName.split('/operations/');
+                    if (parts.length > 1) {
+                        const opId = parts[1];
+                        // Reconstruct standard path: projects/inhausbrain/locations/us-central1/operations/UUID
+                        // Assuming strictly us-central1 and inhausbrain for now as per this function's context
+                        const canonicalName = `projects/inhausbrain/locations/us-central1/operations/${opId}`;
+                        console.log(`[PROXY] Detected non-standard Operation Name. Trying canonical: ${canonicalName}`);
+                        targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
+                    }
                 }
-            });
 
-            if (!response.ok) {
-                const errText = await response.text();
-                // If it's a 404, maybe we should try the other version? 
-                // For now, throw and catch.
-                throw { status: response.status, message: `Vertex Poll Error: ${errText}` };
+                const response = await fetch(targetUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
+                    throw new Error(`Polling failed with status ${response.status}: ${errorText}`);
+                }
+
+                const operationData = await response.json();
+
+                // Mimic the SDK response structure [operation, null, rawResponse] for compatibility if needed, 
+                // but the client just expects the operation object.
+                // The client (Flutter) expects { done: boolean, response: ... }
+
+                if (operationData.done) {
+                    // Normalize the response for the client
+                    // Vertex AI LROs usually have 'response' or 'error' field when done.
+                    return res.status(200).json(operationData);
+                } else {
+                    return res.status(200).json(operationData);
+                }
+            } catch (error) {
+                console.error('[PROXY] Polling Error:', error);
+                res.status(500).json({ error: error.message });
+                return;
             }
-
-            const data = await response.json();
-            res.json(data);
-            return;
         }
 
         // --- VALIDATION FOR GENERATION REQUESTS ---

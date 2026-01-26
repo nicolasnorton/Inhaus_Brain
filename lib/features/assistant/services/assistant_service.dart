@@ -16,6 +16,8 @@ import '../../chat/models/chat_models.dart'; // For Artifact model
 import '../../copilot/data/copilot_repository.dart';
 import '../../copilot/presentation/copilot_view.dart';
 import '../../../core/tokens/llm_provider.dart';
+import '../../../core/architecture/blackboard.dart';
+import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
 
 enum AssistantMode { fast, planning }
@@ -34,6 +36,7 @@ class AssistantMessage {
   final Duration? processingTime;
   final List<String>? sources;
   final List<Artifact>? artifacts;
+  final Map<String, dynamic>? uiPayload; // For GenUI components
 
   AssistantMessage({
     required this.id,
@@ -49,6 +52,7 @@ class AssistantMessage {
     this.processingTime,
     this.sources,
     this.artifacts,
+    this.uiPayload,
   });
 
   Map<String, dynamic> toJson() => {
@@ -65,6 +69,7 @@ class AssistantMessage {
     'attachment': attachment != null ? base64Encode(attachment!) : null,
     'audioAttachment': audioAttachment != null ? base64Encode(audioAttachment!) : null,
     'artifacts': artifacts?.map((a) => a.toJson()).toList(),
+    'uiPayload': uiPayload,
   };
 
   factory AssistantMessage.fromJson(Map<String, dynamic> json) {
@@ -92,6 +97,9 @@ class AssistantMessage {
       artifacts: (json['artifacts'] as List?)
           ?.map((e) => Artifact.fromJson(Map<String, dynamic>.from(e as Map? ?? {})))
           .toList(),
+      uiPayload: (json['uiPayload'] != null && json['uiPayload'] is Map) 
+          ? Map<String, dynamic>.from(json['uiPayload'] as Map) 
+          : null,
     );
   }
 }
@@ -128,16 +136,29 @@ class AssistantService {
     _history.add(userMsg);
     await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
 
+    // 2. Initialize Blackboard for this request (Blackboard Pattern)
+    final blackboard = _ref.read(blackboardProvider.notifier);
+    blackboard.clear();
+    blackboard.addEvent(
+      WorkflowEventType.userRequested, 
+      "New User Request: $text",
+      data: {
+        'prompt': text,
+        'hasAttachment': attachment != null,
+      }
+    );
+
     try {
-      // 2. Simulate AI Intent Matching
       final stopwatch = Stopwatch()..start();
       
+      // 3. Orchestration Loop (Tiered Orchestration)
+      // Phase A: Intent & Routing
       final tools = _ref.read(assistantToolRegistryProvider);
       final executionResult = await _matchIntentAndExecute(text, tools, attachment: attachment, audioAttachment: audioAttachment);
       
       stopwatch.stop();
 
-      // 3. Add response
+      // 4. Add response
       final message = AssistantMessage(
         id: DateTime.now().toString(),
         text: executionResult.text,
@@ -154,6 +175,12 @@ class AssistantService {
 
       _history.add(message);
       await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
+      
+      // Update Blackboard with final result
+      blackboard.postFact('finalResponse', message.text);
+      if (message.artifacts != null) {
+        blackboard.postFact('artifacts', message.artifacts!.map((a) => a.toJson()).toList());
+      }
       
       try {
         await _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
@@ -174,6 +201,9 @@ class AssistantService {
         timestamp: DateTime.now(),
       );
       _history.add(errorMsg);
+      
+      blackboard.addEvent(WorkflowEventType.errorOccurred, "Service Error: $e");
+      
       // Persist the error state so user knows what happened on reload
       try {
         await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
@@ -266,12 +296,14 @@ Return ONLY a JSON object:
     combinedTools.addAll(allTools.where((t) => 
       t.name == 'image_generation' || 
       t.name == 'video_generation' || 
-      t.name == 'navigate_to'
+      t.name == 'navigate_to' || 
+      t.name == 'gen_ui_component'
     ));
 
     final toolDefinitions = combinedTools.map((t) {
       final schema = t.toFunctionSchema();
-      return "- ${t.name}: ${t.description}. Params: ${jsonEncode(schema['parameters']['properties'])}";
+      final params = (schema['parameters'] as Map?)?['properties'] ?? {};
+      return "- ${t.name}: ${t.description}. Params: ${jsonEncode(params)}";
     }).join("\n");
 
     // D. Main Execution
@@ -443,6 +475,15 @@ $ephemeralMsg
                artifacts: [artifact]
              );
         }
+        if (name == 'gen_ui_component' || name == 'render_gen_ui') {
+             return ToolExecutionSummary(
+               text: args['summary_text'] ?? "I've generated a visual component for you.",
+               uiPayload: {
+                 'type': args['component_type'],
+                 ...Map<String, dynamic>.from(args['data'] ?? {}),
+               },
+             );
+        }
         return ToolExecutionSummary(text: "Executed $name successfully.\n\n```json\n${jsonEncode(result.data)}\n```");
       } else {
         return ToolExecutionSummary(text: "Error executing $name: ${result.errorMessage}");
@@ -498,6 +539,7 @@ class ToolExecutionSummary {
   final String? modelName;
   final List<String>? sources;
   final List<Artifact>? artifacts;
+  final Map<String, dynamic>? uiPayload;
 
   ToolExecutionSummary({
     required this.text, 
@@ -506,6 +548,7 @@ class ToolExecutionSummary {
     this.modelName,
     this.sources,
     this.artifacts,
+    this.uiPayload,
   });
 
   String get displayText => text;

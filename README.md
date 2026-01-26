@@ -18,6 +18,7 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **Nano Banana 🍌**: Agentic visual refinement and image editing.
 - **Multi-Model Sovereignty**: Support for **OpenAI (GPT-4o)**, **Anthropic (Claude 3.5 Sonnet)**, **xAI (Grok Beta)**, **Eleven Labs (Voice)**, **Runway (Video)**, and **Midjourney** via BYOK (Bring Your Own Keys).
 - **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
+- **Rich GenUI Library**: Triggers interactive Flutter widgets (`BudgetChart`, `KanbanBoard`, `StrategyBoard`) directly in the chat stream via natural language.
 
 ### 🤖 Standardized Agentic Workbench (MCP)
 - **Collaborative Chat**: A unified "Workshop" interface where users can **edit and copy messages**, and collaborate with specialized agents (Researcher, Creative, Copywriter, Developer).

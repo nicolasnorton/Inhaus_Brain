@@ -237,6 +237,27 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/copilot',
             builder: (context, state) => const CopilotView(),
           ),
+          // Fallback routes for GenUI components if Assistant navigates
+          GoRoute(
+            path: '/kanban',
+            builder: (context, state) => Scaffold(
+              appBar: AppBar(title: const Text('Project Board')),
+              body: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: Text('Interact with the Assistant to populate this board.')),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/budget',
+            builder: (context, state) => Scaffold(
+              appBar: AppBar(title: const Text('Budget Overview')),
+              body: const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: Text('Interact with the Assistant to visualize budget data.')),
+              ),
+            ),
+          ),
         ],
       ),
     ],

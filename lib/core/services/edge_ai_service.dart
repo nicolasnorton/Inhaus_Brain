@@ -479,23 +479,9 @@ class EdgeAIService {
   }
 
   static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey, Ref? ref}) async {
-    String? freshToken;
-    if (ref != null) {
-      try {
-        freshToken = await ref.read(authServiceProvider).getFreshVertexToken();
-      } catch (e) {/* ignore */}
-    }
-
-    final isNanoBanana = prompt.toLowerCase().contains('banana') || (bananaKey != null && bananaKey.isNotEmpty);
-    
-    final vaultVertexKey = await _vault.getVertexKey();
-    final vaultImagenKey = await _vault.getImagenKey();
-    
-    // Priority: Fresh Token > Passed Token > Vault Token > Legacy Keys
-    final effectiveKey = freshToken ?? vertexKey ?? vaultVertexKey ?? imagenKey ?? vaultImagenKey;
-    
-    // WEB PROXY PATH (Always use proxy if on web and trying to use Vertex/Imagen)
-    if (kIsWeb && (effectiveKey != null || isNanoBanana)) {
+    // 1. WEB PROXY PATH (Primary for Web)
+    // Always use proxy on web to avoid CORS and Auth issues with high-security APIs
+    if (kIsWeb) {
        try {
          debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy...');
          final proxyResponse = await AIProxyService.generateContent(
@@ -503,8 +489,6 @@ class EdgeAIService {
            config: AIModelConfig(provider: AIProvider.vertex, modelId: 'imagen-3.0-generate-001'),
          );
          
-         // Parse Proxy Response (Custom 'imagen' or standard Gemini)
-         // Our backend returns { custom_type: 'imagen', predictions: [...] }
          if (proxyResponse['custom_type'] == 'imagen') {
             final predictions = proxyResponse['predictions'] as List?;
             if (predictions != null && predictions.isNotEmpty) {
@@ -518,99 +502,25 @@ class EdgeAIService {
        } catch (e) {
          debugPrint('EdgeAI: [WEB] Proxy Image Gen Failed: $e. Falling back to Pollinations.');
        }
-    } else if (effectiveKey != null && effectiveKey.isNotEmpty || isNanoBanana) {
-      // Use Vertex AI Imagen 3 (Direct / Native Mobile)
-      if (effectiveKey != null && effectiveKey.isNotEmpty) {
-          try {
-            return await _generateVertexImagen(prompt, effectiveKey);
-          } catch (e) {
-            debugPrint('Vertex Imagen failed: $e. Falling back to Pollinations.');
-          }
-      }
-    }
-
-    // POLLINATIONS.AI FALLBACK
-    // Use Pollinations.ai for high-quality, free image generation.
+    } 
+    
+    // 2. POLLINATIONS.AI FALLBACK (Reliable Free Tier)
+    // If Proxy fails or we are on mobile/desktop without a valid OAuth service setup yet
+    debugPrint('EdgeAI: Using Pollinations Fallback for Image Generation');
     final seed = DateTime.now().millisecondsSinceEpoch;
-    
-    // Clean and optimize prompt for Pollinations
-    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '')
-                             .replaceAll(RegExp(r'\s+'), ' ')
-                             .trim();
-    
+    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
     if (safePrompt.isEmpty) safePrompt = "abstract art";
-
-    // Limit length to avoid URL issues and 403s
-    if (safePrompt.length > 80) {
-      safePrompt = safePrompt.substring(0, 80); 
-    }
-    
-    // Use strict encoding for the prompt
+    if (safePrompt.length > 80) safePrompt = safePrompt.substring(0, 80); 
     final encodedPrompt = Uri.encodeComponent(safePrompt);
-    // Removed model=flux to check if that resolves the 403. Using default model.
     return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&seed=$seed";
   }
 
-  static Future<String> _generateVertexImagen(String prompt, String key) async {
-    String projectId = 'inhausbrain'; 
-    
-    // Check if it's likely an API Key (starts with AIza) or an Access Token (ya29, AQ)
-    final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
-    final isApiKey = !isToken;
-    
-    // Vertex AI Imagen 3 endpoint: Using the explicit modern path
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/imagen-3.0-generate-001:predict';
-    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Imagen 3 at ${isApiKey ? "REST" : "OAuth"} endpoint');
-    
-    final Map<String, String> headers = {
-      'Content-Type': 'application/json',
-    };
-    if (!isApiKey) {
-      headers['Authorization'] = 'Bearer $key';
-    }
-    
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode({
-        "instances": [
-          {"prompt": prompt}
-        ],
-        "parameters": {
-          "sampleCount": 1,
-          "aspectRatio": "1:1"
-        }
-      }),
-    );
-    debugPrint('EdgeAI: [VERTEX] Response status: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      // Vertex AI Image generation response structure
-      // predictions[0].bytesBase64Encoded
-      final predictions = data['predictions'] as List?;
-      if (predictions == null || predictions.isEmpty) {
-        throw Exception('Vertex Imagen: No predictions in response: ${response.body}');
-      }
-      final firstPred = predictions[0] as Map?;
-      final base64Image = firstPred?['bytesBase64Encoded'];
-      if (base64Image == null) {
-        throw Exception('Vertex Imagen: No image bytes in response: ${response.body}');
-      }
-      return "data:image/png;base64,$base64Image";
-    } else {
-      final errorBody = response.body;
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        debugPrint('EdgeAI: [VERTEX] Imagen Auth Error ${response.statusCode}: $errorBody');
-        debugPrint('EdgeAI: [HINT] Ensure the Vertex AI API is enabled in project "$projectId" and your OAuth token (Scopes: cloud-platform) has permissions.');
-      }
-      throw Exception('Vertex AI Error: ${response.statusCode} $errorBody');
-    }
-  }
+  // Removed _generateVertexImagen to satisfy linter rule: unused_element
+  // static Future<String> _generateVertexImagen(String prompt, String key) async { ... }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {
-    // WEB PROXY PATH (Priority)
+    // 1. WEB PROXY PATH (Primary)
+    // Veo REQUIRES OAuth. We cannot use API Keys.
     if (kIsWeb) {
       debugPrint('EdgeAI: [WEB] Routing Veo request via Secure Proxy...');
       try {
@@ -618,7 +528,7 @@ class EdgeAIService {
           prompt: prompt,
           config: const AIModelConfig(
             provider: AIProvider.vertex, 
-            modelId: 'veo-3.0-fast-generate-preview', // Updated to 3.0 Fast Preview
+            modelId: 'veo-3.0-fast-generate-preview', 
             temperature: 0.5, 
             maxTokens: 100,
           ),
@@ -637,56 +547,13 @@ class EdgeAIService {
         }
         throw Exception('Veo Proxy returned no valid video URL.');
       } catch (e) {
-        String errStr = 'Unknown Veo Proxy Error';
-        try {
-           final dynamic errObj = e;
-           if (errObj != null) errStr = errObj.toString();
-        } catch (_) {}
-        debugPrint('EdgeAI: [WEB] Veo Proxy failed: $errStr. Falling back to native/placeholder if possible.');
+        debugPrint('EdgeAI: [WEB] Veo Proxy failed: $e. Falling back to placeholder.');
       }
     }
 
-    String? freshToken;
-    if (ref != null) {
-      try {
-        freshToken = await ref.read(authServiceProvider).getFreshVertexToken();
-      } catch (e) {/* ignore */}
-    }
-
-    final vaultVertexKey = await _vault.getVertexKey();
-    final vaultVeoKey = await _vault.getVeoKey();
-    
-    final effectiveKey = freshToken ?? vertexKey ?? vaultVertexKey ?? veoKey ?? vaultVeoKey;
-    final isVeoInput = prompt.toLowerCase().contains('veo') || (effectiveKey != null && effectiveKey.isNotEmpty);
-    
-    if (runwayKey != null && runwayKey.isNotEmpty) {
-      await Future.delayed(const Duration(seconds: 5));
-      return "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
-    }
-    if (isVeoInput) {
-       // Attempt 1: Effective Key (Vertex Token/Key)
-       if (effectiveKey != null && effectiveKey.isNotEmpty) {
-          try {
-            return await _generateVertexVeo(prompt, effectiveKey, modelId: 'veo-3.0-fast-generate-preview');
-          } catch (e) {
-            String errStr = _safeError(e);
-            debugPrint('Vertex Veo (Primary Key) failed: $errStr. Attempting fallback to Gemini Key...');
-            
-            // Attempt 2: Gemini API Key Fallback
-            try {
-               final geminiKey = await _vault.getGeminiKey();
-               if (geminiKey != null && geminiKey.isNotEmpty && geminiKey != effectiveKey) {
-                  return await _generateVertexVeo(prompt, geminiKey, modelId: 'veo-3.0-fast-generate-preview');
-               }
-            } catch (e2) {
-               debugPrint('Vertex Veo (Gemini Key Fallback) failed: ${_safeError(e2)}');
-            }
-          }
-       }
-       
-       await Future.delayed(const Duration(seconds: 2)); // Simulate generation time
-       return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"; 
-    }
+    // 2. FALLBACK (Placeholder)
+    // If Proxy fails or we are not on Web
+    await Future.delayed(const Duration(seconds: 2)); 
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 

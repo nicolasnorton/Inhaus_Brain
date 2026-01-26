@@ -24,8 +24,16 @@ All agent capabilities are abstracted into the `AgentTool` (at `lib/core/mcp/`) 
 - **`WebSearchTool`**: Drives the Research Agent; returns structured market snippets and URLs.
 - **`ImageGenerationTool`**: Interfaces with Imagen/Banana; returns generated asset URLs.
 - **`VideoGenerationTool` / `AudioGenerationTool`**: Specialized tool interfaces for multi-modal expansion.
+- **`GenUIComponentTool`**: (`gen_ui_component`) Triggers rich, interactive Flutter widgets directly in the chat stream (e.g., `BudgetChart`, `KanbanBoard`, `StrategyBoard`).
 
-### 3. Agent Roster & Behavior
+### 3. Rich GenUI Library
+The assistant can render specialized interactive components via the `gen_ui_component` tool:
+- **Budget Chart**: Visualizes linear progress bars for financial allocation.
+- **Kanban Board**: Multi-column task board for project status management.
+- **Strategy Board**: Structured views for high-level strategic objectives and milestones.
+- **Fallback Routing**: Routes like `/budget` and `/kanban` provide full-screen fallbacks for these components.
+
+### 4. Agent Roster & Behavior
 The Inhaus Brain features an 11-step specialized agency roster:
 - **Trend Scout**: Analyzes real-time market signals and bolts.
 - **Account Director**: Manages client expectations and campaign high-level strategy.

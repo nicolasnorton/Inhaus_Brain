@@ -19,6 +19,9 @@ import '../../settings/providers/user_provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'artifact_renderer.dart';
 import '../../../core/widgets/app_video_player.dart';
+import '../presentation/widgets/gen_ui/strategy_board_widget.dart';
+import '../presentation/widgets/gen_ui/budget_chart_widget.dart';
+import '../presentation/widgets/gen_ui/kanban_board_widget.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
   const AiAssistantOverlay({super.key});
@@ -679,6 +682,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             padding: const EdgeInsets.only(top: 12.0),
                             child: _buildGeneratedAsset(message.generatedAssetPath!, message.generatedAssetType),
                           ),
+                        if (message.uiPayload != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: _buildGenUI(message.uiPayload!),
+                          ),
                       ],
                     ),
                   ),
@@ -1002,5 +1010,19 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         ],
       ),
     );
+  }
+
+  Widget _buildGenUI(Map<String, dynamic> payload) {
+    final type = payload['type'];
+    switch (type) {
+      case 'strategy_board':
+        return StrategyBoardWidget(data: payload);
+      case 'budget_chart':
+        return BudgetChartWidget(data: payload);
+      case 'kanban_board':
+        return KanbanBoardWidget(data: payload);
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

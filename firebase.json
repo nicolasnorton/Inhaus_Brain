@@ -8,5 +8,18 @@
             "firebase-debug.*.log",
             "*.local"
         ]
+    },
+    "emulators": {
+        "functions": {
+            "port": 5005,
+            "host": "0.0.0.0"
+        },
+        "firestore": {
+            "port": 8080
+        },
+        "ui": {
+            "enabled": true,
+            "port": 4000
+        }
     }
 }

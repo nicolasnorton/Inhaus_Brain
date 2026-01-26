@@ -13,6 +13,7 @@ import 'package:inhaus_brain/core/mcp/tools/image_generation_tool.dart';
 import 'package:inhaus_brain/core/mcp/tools/video_generation_tool.dart';
 import 'package:inhaus_brain/core/mcp/tools/audio_generation_tool.dart';
 import 'package:inhaus_brain/core/tools/web_tools.dart';
+import 'package:inhaus_brain/core/tools/gen_ui_tools.dart';
 import 'package:inhaus_brain/core/auth/secret_vault_service.dart';
 
 /// Aggregates all available tools for the assistant
@@ -55,5 +56,6 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...webTools,
     ...generationTools,
     ...ucpTools,
+    GenUIComponentTool(),
   ];
 });

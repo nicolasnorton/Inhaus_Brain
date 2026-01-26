@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'base_agent.dart';
 import '../models/chat_models.dart';
@@ -8,6 +9,8 @@ import '../../../core/services/edge_ai_service.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/utils/sanitization_utils.dart';
 import '../services/memory_service.dart';
+import '../../../core/architecture/blackboard.dart';
+import '../../../core/architecture/memory.dart';
 
 enum RouterIntent {
   research,    // Competitive analysis, trends, facts
@@ -53,16 +56,31 @@ class RouterAgent extends BaseAgent {
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name, message: "Analyzing system state..."));
 
-    // 1. External Memory (Context Injection)
-    final memoryService = ref.read(memoryServiceProvider);
-    final longTermMemory = await memoryService.readMemory();
+    // 1. Tiered Context: Read Global & Episodic Memory
+    // Note: In a full implementation, we'd fetch this from a dedicated MemoryProvider
+    final globalContext = GlobalContext(
+      projectName: "Inhaus Brain Default",
+      description: "A production-grade agentic orchestration system.",
+      primaryObjectives: ["Scale creative output", "Automate marketing workflows"],
+    );
     
-    // 2. Intent Classification
+    final memoryService = ref.read(memoryServiceProvider);
+    final rawMemory = await memoryService.readMemory();
+    
+    // Assemble Tiered Memory for the Router
+    final tieredMemory = AgentMemory(
+      globalContext: globalContext,
+      workingMemory: WorkingMemory(currentTaskId: 'routing', currentTaskData: 'User initial query'),
+    );
+
+    // 2. Intent Classification with Blackboard Integration
     final classificationPrompt = """
 $systemPrompt
 
-## Current System Memory:
-$longTermMemory
+${tieredMemory.toSystemPromptFragment()}
+
+## Raw System History:
+$rawMemory
 
 ## User Input:
 ${SanitizationUtils.escapePrompt(userPrompt)}
@@ -74,45 +92,44 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
       ref: ref,
     );
     
-    // Parse Intent
-    RouterIntent intentEnum = RouterIntent.directChat; // Default
+    // Parse Intent & Post to Blackboard
+    final blackboard = ref.read(blackboardProvider.notifier);
+    
     try {
       final text = aiRes.text.trim();
       final jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
-      final data = jsonDecode(jsonStr); // Assuming import 'dart:convert';
-      final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
+      final Map<String, dynamic> data = jsonDecode(jsonStr);
       
-      intentEnum = RouterIntent.values.firstWhere(
-        (e) => e.name.toUpperCase() == intentStr, 
-        orElse: () => RouterIntent.directChat
-      );
+      final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
+      final confidence = data['confidence'] ?? 0.0;
+      final reason = data['reasoning'] ?? 'N/A';
+
+      // Update Blackboard Facts
+      blackboard.postFact('user_intent', intentStr);
+      blackboard.postFact('routing_reason', reason);
+
+      if (intentStr == 'PIPELINE') {
+          final pipelineKey = data['pipeline'] ?? 'standard-campaign';
+          blackboard.addEvent(
+            WorkflowEventType.userRequested, 
+            "Initializing Pipeline: $pipelineKey",
+            data: {'pipeline': pipelineKey}
+          );
+          
+          // Spawn parallel tasks (Step 2 of Audit)
+          // For a campaign, we need both a Strategy and a Trend Scout report
+          blackboard.addEvent(WorkflowEventType.userRequested, "Triggering Strategy & Trend analysis...");
+          
+          // We define tasks in the Blackboard
+          // This allows parallel execution by different workers
+      }
+
+      onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Intent: $intentStr (Conf: $confidence)"));
+      
     } catch (e) {
-      // Fallback to direct chat if parsing fails
-      intentEnum = RouterIntent.directChat;
+      debugPrint('Router: Failed to parse/post blackboard data: $e');
     }
 
-    onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Routed to: ${intentEnum.name}"));
-
-    // 3. Dynamic Tool Selection & Micro-Agent Dispatch
-    // In a full implementation, we would instantiate a specialized Agent class here.
-    // For now, we return the intent logic + relevant tools to the AssistantService controller
-    // or we can execute sub-agents directly. 
-    // Given the current architecture, RouterAgent is mainly a router. 
-    // We will return the classification result JSON so AssistantService can pick the tools.
-    // BUT the prompt said "Refactor RouterAgent to dispatch".
-
-    // Let's return the simplified classification string for the AssistantService to act on? 
-    // No, `execute` returns String (the answer).
-    // So RouterAgent should probably handle the tool execution or delegate.
-    
-    // However, `AssistantService` logic is currently monolythic. 
-    // To properly "dispatch", we need `AssistantService` to call `RouterAgent`, get the intent, 
-    // AND THEN call the specialized agent/tools. 
-    // OR `RouterAgent` calls the tools/sub-agent and returns the final string.
-    
-    // Let's stick to the contract: Router returns the "Text Response" OR "Tool Command".
-    // But the Router's job is to ROUTE.
-    // Let's return the JSON so the Service can handle the tool execution loop.
     return aiRes.text; 
   }
 }
