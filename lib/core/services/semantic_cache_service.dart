@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
+import 'package:flutter/foundation.dart'; // For debugPrint
+
 /// Stubs for future vector database integration
 class SemanticCacheService {
   final Ref _ref;
@@ -16,14 +18,17 @@ class SemanticCacheService {
     // In a real implementation, we would query a vector DB here
     // for semantic similarity > 0.9
     if (_memoryCache.containsKey(key)) {
+      debugPrint('[SemanticCache] HIT: $intent - "${prompt.substring(0, 10)}..."');
       return _memoryCache[key];
     }
+    debugPrint('[SemanticCache] MISS: $intent - "${prompt.substring(0, 10)}..."');
     return null;
   }
 
   Future<void> store(String intent, String prompt, String response) async {
     final key = _generateKey(intent, prompt);
     _memoryCache[key] = response;
+    debugPrint('[SemanticCache] STORE: $intent - "${prompt.substring(0, 10)}..."');
     // In future: Store vector embedding
   }
 

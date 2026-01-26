@@ -20,11 +20,18 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
 - **Rich GenUI Library**: Triggers interactive Flutter widgets (`BudgetChart`, `KanbanBoard`, `StrategyBoard`) directly in the chat stream via natural language.
 
-### 🤖 Standardized Agentic Workbench (MCP)
+### � Standardized Agentic Workbench (MCP)
 - **Collaborative Chat**: A unified "Workshop" interface where users can **edit and copy messages**, and collaborate with specialized agents (Researcher, Creative, Copywriter, Developer).
 - **Knowledge Module**: Inject "Ground Truth" context (URLs, PDFs, Briefs) via the **Context Board**.
 - **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
+
+### 🦅 Blackboard 2.0 & Observability
+A robust, event-driven architecture designed for stability and transparency:
+- **Phase-Based State Machine**: Enforces strict transitions (Idle -> Research -> Creative -> Strategy) to prevent race conditions and ensure logical workflow progression.
+- **Flight Recorder**: Real-time observability widget (accessible via the ⚡️ icon) that visualizes agent status, phase changes, and workflow events.
+- **Semantic Cache**: Intelligent in-memory caching that stores LLM responses (hashed by intent and prompt) to reduce latency and token usage for repeated queries.
+- **Resilient Parsing**: Enhanced JSON extraction logic ensures reliable tool execution even with "noisy" LLM outputs.
 
 ### 🏗️ Agent Development Kit (ADK)
 A powerful orchestration layer that allows for complex, multi-step workflows:

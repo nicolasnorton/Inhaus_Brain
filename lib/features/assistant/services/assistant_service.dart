@@ -417,44 +417,70 @@ $ephemeralMsg
         }
       }
 
-      // 2. Find JSON Object
-      int jsonStart = cleanResponse.indexOf('{');
-      int jsonEnd = cleanResponse.lastIndexOf('}');
+      // 2. Find JSON Object using Brace Counting (Robust)
+      int startIndex = 0;
+      while (true) {
+        int jsonStart = cleanResponse.indexOf('{', startIndex);
+        if (jsonStart == -1) break;
 
-      if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
-        var jsonStr = cleanResponse.substring(jsonStart, jsonEnd + 1);
-        jsonStr = jsonStr.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (match) {
-             return match.group(0)?.replaceAll('\n', '\\n') ?? '';
-        });
-
-        try {
-          final dynamic parsed = jsonDecode(jsonStr);
-          if (parsed is Map<String, dynamic>) {
-             String? toolName;
-             Map<String, dynamic>? toolArgs;
-
-             if (parsed.containsKey('tool')) {
-               toolName = parsed['tool'];
-               toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
-             } else {
-               // Heuristic inference
-               final prefix = cleanResponse.substring(0, jsonStart).trim();
-               final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
-               if (funcMatch != null) {
-                 toolName = funcMatch.group(1);
-                 toolArgs = parsed;
-               }
-             }
-
-             if (toolName != null && toolArgs != null) {
-               if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
-                 toolArgs = Map<String, dynamic>.from(toolArgs['args']);
-               }
-               return await _executeTool(combinedTools.toList(), toolName, toolArgs);
-             }
+        int braceCount = 0;
+        int jsonEnd = -1;
+        
+        for (int i = jsonStart; i < cleanResponse.length; i++) {
+          if (cleanResponse[i] == '{') {
+            braceCount++;
+          } else if (cleanResponse[i] == '}') {
+            braceCount--;
+            if (braceCount == 0) {
+              jsonEnd = i;
+              break;
+            }
           }
-        } catch (e) {
-           debugPrint('Assistant: Failed to parse tool JSON: $e');
+        }
+
+        if (jsonEnd != -1) {
+          String candidate = cleanResponse.substring(jsonStart, jsonEnd + 1);
+          // Sanitize formatting
+          candidate = candidate.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (match) {
+               return match.group(0)?.replaceAll('\n', '\\n') ?? '';
+          });
+          
+          try {
+            final dynamic parsed = jsonDecode(candidate);
+            if (parsed is Map<String, dynamic>) {
+               String? toolName;
+               Map<String, dynamic>? toolArgs;
+
+               if (parsed.containsKey('tool')) {
+                 toolName = parsed['tool'];
+                 toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
+               } else {
+                 // Heuristic inference
+                 final prefix = cleanResponse.substring(0, jsonStart).trim();
+                 final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
+                 if (funcMatch != null) {
+                   toolName = funcMatch.group(1);
+                   toolArgs = parsed;
+                 }
+               }
+
+               if (toolName != null && toolArgs != null) {
+                 if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
+                   toolArgs = Map<String, dynamic>.from(toolArgs['args']);
+                 }
+                 debugPrint('Assistant: Found valid tool JSON: $toolName');
+                 return await _executeTool(combinedTools.toList(), toolName, toolArgs);
+               }
+            }
+          } catch (e) {
+             // Continue searching if this bracket pair wasn't valid JSON
+             debugPrint('Assistant: skipped invalid JSON candidate: $e');
+          }
+          // Move past this block to find next candidate
+          startIndex = jsonEnd + 1;
+        } else {
+          // Unclosed brace, stop searching
+          break;
         }
       }
 
