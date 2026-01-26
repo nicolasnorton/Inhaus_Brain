@@ -9,7 +9,8 @@ class AIProxyService {
   // TODO: Update this URL after deployment. For local testing, use the emulator URL.
   // Emulator default: http://127.0.0.1:5001/inhausbrain/us-central1/proxyVertexAI
   // Production default: https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI
-  static const String _functionUrl = 'http://localhost:5005/inhausbrain/us-central1/proxyVertexAI'; 
+  // Enable Firebase App Check in console for abuse protection
+  static const String _functionUrl = 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';  
 
   /// Routes a generation request through the secure Cloud Function proxy.
   /// 

@@ -98,7 +98,10 @@ class SecretVaultService {
     final envKey = dotenv.maybeGet('VERTEX_API_KEY');
     if (envKey != null && envKey.isNotEmpty) return envKey;
     
+    // Priority 1.5: Build-time Constant (--dart-define)
+    // WARNING: Do not use --dart-define for keys in production builds, as they can be extracted from the binary.
     const buildKey = String.fromEnvironment('VERTEX_API_KEY');
+    // Prefer Firebase Auth / App Check for Vertex in prod
     if (buildKey.isNotEmpty) return buildKey;
     return await _storage.read(key: _vertexKey);
   }

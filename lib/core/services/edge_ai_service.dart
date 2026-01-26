@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:http/http.dart' as http;
 import '../../features/knowledge/models/knowledge_source.dart';
 import '../tokens/llm_provider.dart';
@@ -83,97 +83,39 @@ class EdgeAIService {
       EdgeAIResult result;
       switch (config.provider) {
         case AIProvider.gemini:
-          final vaultGeminiKey = await _vault.getGeminiKey();
-          final vaultVertexKey = await _vault.getVertexKey();
-          
-          final effectiveApiKey = apiKey ?? vaultGeminiKey;
-          final effectiveVertexKey = vertexKey ?? vaultVertexKey;
-          
-          // Mode detection: If vertex key is present and looks like a token, use Vertex path
-          // Standard Access Tokens start with ya29. 
-          // Keys starting with AQ. are also treated as OAuth-style tokens for Vertex AI
-          final isVertexToken = effectiveVertexKey != null && effectiveVertexKey.isNotEmpty && 
-              (effectiveVertexKey.startsWith('ya29.') || effectiveVertexKey.startsWith('AQ.'));
-          
-          if (isVertexToken) {
-             try {
-               result = await _generateVertexGemini(effectivePrompt, config, effectiveVertexKey!, imageBytes, imageMimeType);
-             } catch (e) {
-               debugPrint('EdgeAI: [DEBUG] Vertex Gemini (Token) failed: $e. Falling back to Dev API.');
-               if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                  // Fallback: Use the config BUT strip suffix for Developer API compatibility
-                  var fallbackId = config.modelId;
-                  if (fallbackId.contains('-001')) {
-                     fallbackId = fallbackId.replaceAll('-001', '');
-                  } else if (fallbackId.contains('-002')) {
-                     fallbackId = fallbackId.replaceAll('-002', '');
-                  }
-                  // Fallback: Use gemini-2.0-flash as a safe default for Dev API
-                  final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', temperature: config.temperature, maxTokens: config.maxTokens);
-                  
-                  result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-               } else {
-                 rethrow;
-               }
-             }
-          } 
-          // Path 2: Explicit API Key (starts with AIza)
-          else if ((effectiveVertexKey != null && effectiveVertexKey.isNotEmpty) || (effectiveApiKey != null && effectiveApiKey.isNotEmpty)) {
-             final keyToUse = (effectiveVertexKey != null && effectiveVertexKey.isNotEmpty) ? effectiveVertexKey : effectiveApiKey!;
-             
-             try {
-                // Route based on key type: 
-                // ya29. or AQ. -> Vertex AI (Requires Authorization Header)
-                // AIza... -> Gemini Dev API (Requires ?key= query parameter)
-               if (keyToUse.startsWith('ya29.') || keyToUse.startsWith('AQ.')) {
-                  result = await _generateVertexGemini(effectivePrompt, config, keyToUse, imageBytes, imageMimeType);
-               } else {
-                  result = await _generateGemini(effectivePrompt, config, keyToUse, imageBytes, imageMimeType, audioBytes, audioMimeType);
-               }
-             } catch (e) {
-                final errorObj = e;
-                final errorStr = _safeError(e);
-                debugPrint('EdgeAI: [DEBUG] Vertex Gemini (API Key) failed: $errorStr. Falling back to Google Generative Language API.');
-                // Special guidance for 401/403
-                if (errorStr.contains('401') || errorStr.contains('403')) {
-                   debugPrint('EdgeAI: [HINT] This likely means the API Key is not enabled for the Vertex AI (AI Platform) API specifically, or is restricted.');
-                }
-                
-                // Fallback to standard Gemini API if we have a valid Dev API key
-                if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-                   // Dev API often uses 'gemini-1.5-flash' alias instead of specific version 'gemini-1.5-flash-001'
-                   // We strip the suffix to be safe during fallback.
-                   var fallbackId = config.modelId;
-                   if (fallbackId.contains('-001')) {
-                      fallbackId = fallbackId.replaceAll('-001', '');
-                   } else if (fallbackId.contains('-002')) {
-                      fallbackId = fallbackId.replaceAll('-002', '');
+          // Unified FirebaseAI Path (Vertex or Google AI Dev)
+          try {
+             // Prefer Vertex if we have a token/key for it
+             result = await _generateFirebaseAI(
+               effectivePrompt, 
+               config, 
+               vertexKeyOverride: vertexKey,
+               apiKeyOverride: apiKey,
+               imageBytes: imageBytes, 
+               imageMimeType: imageMimeType,
+               audioBytes: audioBytes,
+               audioMimeType: audioMimeType
+             );
+          } catch (e) {
+             debugPrint('EdgeAI: [DEBUG] FirebaseAI failed: $e. Falling back to Proxy/Mock.');
+             // If direct SDK fails (e.g. Web CORS or Auth), try Proxy if on Web
+             if (kIsWeb) {
+                try {
+                   final proxyRes = await AIProxyService.generateContent(prompt: effectivePrompt, config: config);
+                   String text = "No proxy content.";
+                   if (proxyRes['candidates'] != null && (proxyRes['candidates'] as List).isNotEmpty) {
+                      text = proxyRes['candidates'][0]['content']['parts'][0]['text'] ?? "No text.";
                    }
-                   final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: fallbackId, temperature: config.temperature, maxTokens: config.maxTokens);
-                   
-                   result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-                } else {
-                   rethrow;
+                   result = EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Proxy: ${config.modelId}');
+                } catch (proxyErr) {
+                   debugPrint('EdgeAI: [DEBUG] Proxy fallback failed: $proxyErr');
+                   if (forceMock) rethrow; 
+                   result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
                 }
-              }
-           }
-           // Priority 3: Standard Gemini Dev API
-           else if (effectiveApiKey != null && effectiveApiKey.isNotEmpty && !effectiveApiKey.startsWith('AQ.')) {
-             try {
-               result = await _generateGemini(effectivePrompt, config, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-             } catch (e) {
-                final gemErrObj = e;
-                final gemErr = "$e";
-                debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $gemErr');
-                // Fallback: Try gemini-pro (v1.0) if Flash fails
-                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash'); // More stable fallback?
-                result = await _generateGemini(effectivePrompt, fallbackConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
+             } else {
+                result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
              }
-           } 
-           else {
-             debugPrint('EdgeAI: [DEBUG] No Gemini keys found. Returning mock.');
-             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-           }
+          }
           break;
         case AIProvider.openai:
           final key = openAIKey ?? await _vault.getOpenAIKey();
@@ -225,124 +167,163 @@ class EdgeAIService {
 
   // --- PROVIDER IMPLEMENTATIONS ---
 
-  static Future<EdgeAIResult> _generateGemini(
+  static Future<EdgeAIResult> _generateFirebaseAI(
     String prompt, 
-    AIModelConfig config, 
-    String? apiKey, 
+    AIModelConfig config, {
+    String? vertexKeyOverride,
+    String? apiKeyOverride,
     Uint8List? imageBytes,
-    String? mimeType,
+    String? imageMimeType,
     Uint8List? audioBytes,
-    String? audioMimeType
-  ) async {
-    if (apiKey == null || apiKey.isEmpty) throw Exception("Gemini API Key missing");
-
-    // Use REST API directly to access latest tools (Google Search, Code Execution) 
-    // which might not be exposed in the current google_generative_ai package version (0.4.7)
-    final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/${config.modelId}:generateContent?key=$apiKey');
+    String? audioMimeType,
+  }) async {
+    final ai = FirebaseAI.instance;
+    // Resolve Keys
+    final vertexKey = vertexKeyOverride ?? await _vault.getVertexKey(); 
+    final geminiKey = apiKeyOverride ?? await _vault.getGeminiKey();
     
-    final List<Map<String, dynamic>> parts = [
-      {'text': prompt}
-    ];
+    final isVertexToken = vertexKey != null && (vertexKey.startsWith('ya29.') || vertexKey.startsWith('AQ.'));
+    
+    // Check if key is for Google AI (starts with AIza)
+    final useGoogleAI = (geminiKey != null && geminiKey.startsWith('AIza')) && !isVertexToken;
 
-    if (imageBytes != null) {
-      parts.add({
-        'inline_data': {
-          'mime_type': mimeType ?? 'image/jpeg',
-          'data': base64Encode(imageBytes)
-        }
-      });
-    }
-
-    if (audioBytes != null) {
-      parts.add({
-        'inline_data': {
-          'mime_type': audioMimeType ?? 'audio/mp3',
-          'data': base64Encode(audioBytes)
-        }
-      });
-    }
-
-    final body = {
-      "contents": [
-        {
-          "parts": parts,
-          "role": "user"
-        }
+    final model = ai.generativeModel(
+      model: _sanitizeModelName(config.modelId),
+      apiKey: useGoogleAI ? geminiKey : null,
+      backend: useGoogleAI ? Backend.googleAI : Backend.vertexAI,
+      generationConfig: GenerationConfig(
+        temperature: config.temperature,
+        maxOutputTokens: config.maxTokens,
+        responseMimeType: config.responseMimeType,
+      ),
+      safetySettings: [
+        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium), 
+        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium),
+        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.medium),
+        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.medium),
       ],
-      "tools": [
-        {"codeExecution": {}}
-      ],
-      "safetySettings": [
-        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
-      ],
-      "generationConfig": {
-        "temperature": config.temperature,
-        "maxOutputTokens": config.maxTokens ?? 2048,
-        if (config.responseMimeType != null) "responseMimeType": config.responseMimeType,
-      }
-    };
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+      tools: [Tool.codeExecution()],
     );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      
-      // Extract text from candidates
-      if (data['candidates'] != null && (data['candidates'] as List).isNotEmpty) {
-        final candidate = data['candidates'][0];
-        final content = candidate['content'];
-        String fullText = "";
-        
-        if (content != null && content['parts'] != null) {
-          for (var part in content['parts']) {
-             if (part.containsKey('text')) {
-               fullText += part['text'];
-             } else if (part.containsKey('executableCode')) {
-               fullText += "\n```python\n${part['executableCode']['code']}\n```\n";
-             } else if (part.containsKey('codeExecutionResult')) {
-               fullText += "\nOutput: ${part['codeExecutionResult']['output']}\n";
-             } else if (part.containsKey('functionCall')) {
-               final fc = part['functionCall'];
-               fullText += "\n[System: Calling Native Tool ${fc['name']} with args: ${fc['args']}]\n";
-             }
-          }
-        }
-        
-        // Handle stop reasons like SAFETY or RECITATION if text is likely empty
-        if (fullText.trim().isEmpty && candidate['finishReason'] != null) {
-           fullText = "Generation stopped: ${candidate['finishReason']}";
-        }
-        
-        // Append grounding metadata if available
-        if (candidate['groundingMetadata'] != null) {
-           final metadata = candidate['groundingMetadata'];
-           if (metadata['searchEntryPoint'] != null) {
-               // Strip style tags to prevent JSON parser confusion in the frontend
-               // and clean up the HTML for display
-                // Sanitize heavily for JSON safety
-                String rawHtml = (metadata['searchEntryPoint']['renderedContent'] ?? '');
-                String noStyle = rawHtml.replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '');
-                noStyle = noStyle.replaceAll(RegExp(r'\s+'), ' ').trim();
-                
-                // Add a visual separator for grounding
-                fullText += "\n\n**Grounding Sources:**\n$noStyle";
-            }
-        }
-        
-        return EdgeAIResult(fullText.isEmpty ? "No text generated." : fullText, AIProximity.cloud, modelUsed: config.modelId);
-      }
-      return EdgeAIResult("No candidates returned.", AIProximity.cloud);
-    } else {
-      throw Exception('Gemini REST Error: ${response.statusCode} ${response.body}');
+    final parts = <Part>[TextPart(prompt)];
+    
+    if (imageBytes != null) {
+      parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
     }
+    
+    if (audioBytes != null) {
+      parts.add(DataPart(audioMimeType ?? 'audio/mp3', audioBytes));
+    }
+
+    final content = Content.multi(parts);
+    
+    final response = await model.generateContent([content]);
+    
+    String fullText = response.text ?? 'No content generated.';
+    
+    // Check for Function Calls (if SDK returns them separately or in parts)
+    if (response.candidates.isNotEmpty) {
+       for (var part in response.candidates.first.content.parts) {
+          if (part is ExecutableCode) {
+             fullText += "\n\n```${part.language.toLowerCase()}\n${part.code}\n```\n";
+          } else if (part is CodeExecutionResult) {
+             fullText += "\n**Result:**\n```\n${part.output}\n```\n";
+          }
+       }
+    }
+    
+    // Check for grounding
+    if (response.candidates.isNotEmpty && response.candidates.first.groundingMetadata != null) {
+       final metadata = response.candidates.first.groundingMetadata!;
+       if (metadata.groundingChunks.isNotEmpty) {
+          final sources = metadata.groundingChunks
+              .map((c) => c.web?.uri.toString())
+              .where((uri) => uri != null)
+              .toSet() 
+              .join(', ');
+          if (sources.isNotEmpty) {
+             fullText += "\n\n**Sources:** $sources";
+          }
+       }
+    }
+
+    return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId);
   }
+
+  static String _sanitizeModelName(String modelId) {
+    if (modelId.contains('-001')) return modelId.replaceAll('-001', '');
+    if (modelId.contains('-002')) return modelId.replaceAll('-002', '');
+    return modelId;
+  }
+
+  static Stream<EdgeAIResult> generateTextStream(
+    String prompt, {
+    List<KnowledgeSource> context = const [],
+    String? memoryContext,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Uint8List? audioBytes,
+    String? audioMimeType,
+    AIModelConfig? config,
+    String? apiKey,
+    Ref? ref, 
+  }) async* {
+    final effectiveConfig = config ?? AIModelConfig.geminiFlash;
+     
+     // Only Gemini supports our native stream refactor right now.
+     // TODO: Extend streaming support to OpenAI/Claude/Grok providers
+     if (effectiveConfig.provider != AIProvider.gemini) {
+        yield EdgeAIResult("Thinking...", AIProximity.simulated);
+        yield await generateText(
+           prompt, 
+           context: context, 
+           memoryContext: memoryContext, 
+           imageBytes: imageBytes, 
+           imageMimeType: imageMimeType, 
+           modelConfig: effectiveConfig, 
+           apiKey: apiKey, 
+           ref: ref
+        );
+        return;
+     }
+
+     try {
+       final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
+       final ai = FirebaseAI.instance;
+       
+       final geminiKey = apiKey ?? await _vault.getGeminiKey();
+       final useGoogleAI = (geminiKey != null && geminiKey.startsWith('AIza'));
+       
+       final model = ai.generativeModel(
+          model: _sanitizeModelName(effectiveConfig.modelId),
+          apiKey: useGoogleAI ? geminiKey : null,
+          backend: useGoogleAI ? Backend.googleAI : Backend.vertexAI,
+          generationConfig: GenerationConfig(
+            temperature: effectiveConfig.temperature,
+            maxOutputTokens: effectiveConfig.maxTokens,
+            responseMimeType: effectiveConfig.responseMimeType,
+          )
+       );
+
+       final parts = <Part>[TextPart(effectivePrompt)];
+       if (imageBytes != null) parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+       
+       final content = Content.multi(parts);
+       final stream = model.generateContentStream([content]);
+       
+       await for (final chunk in stream) {
+          if (chunk.text != null && chunk.text!.isNotEmpty) {
+             yield EdgeAIResult(chunk.text!, AIProximity.cloud, modelUsed: effectiveConfig.modelId);
+          }
+       }
+
+     } catch (e) {
+        debugPrint('EdgeAI: [STREAM] Error: $e');
+        yield EdgeAIResult("Stream Error: $e", AIProximity.simulated);
+     }
+  }
+
+  // --- NON-GEMINI PROVIDERS ---
 
   static Future<EdgeAIResult> _generateOpenAI(
     String prompt, 
@@ -485,7 +466,6 @@ class EdgeAIService {
 
   static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey, Ref? ref}) async {
     // 1. WEB PROXY PATH (Primary for Web)
-    // Always use proxy on web to avoid CORS and Auth issues with high-security APIs
     if (kIsWeb) {
        try {
          debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy...');
@@ -509,8 +489,7 @@ class EdgeAIService {
        }
     } 
     
-    // 2. POLLINATIONS.AI FALLBACK (Reliable Free Tier)
-    // If Proxy fails or we are on mobile/desktop without a valid OAuth service setup yet
+    // 2. POLLINATIONS.AI FALLBACK
     debugPrint('EdgeAI: Using Pollinations Fallback for Image Generation');
     final seed = DateTime.now().millisecondsSinceEpoch;
     String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -520,12 +499,8 @@ class EdgeAIService {
     return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&seed=$seed";
   }
 
-  // Removed _generateVertexImagen to satisfy linter rule: unused_element
-  // static Future<String> _generateVertexImagen(String prompt, String key) async { ... }
-
   static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {
     // 1. WEB PROXY PATH (Primary)
-    // Veo REQUIRES OAuth. We cannot use API Keys.
     if (kIsWeb) {
       debugPrint('EdgeAI: [WEB] Routing Veo request via Secure Proxy...');
       try {
@@ -557,155 +532,29 @@ class EdgeAIService {
     }
 
     // 2. FALLBACK (Placeholder)
-    // If Proxy fails or we are not on Web
     await Future.delayed(const Duration(seconds: 2)); 
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
-  static Future<String> _generateVertexVeo(String prompt, String key, {String modelId = 'veo-2.0-generate-001'}) async {
-    String projectId = 'inhausbrain';
-    final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
-    final isApiKey = !isToken;
-    
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:predict';
-    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Veo ($modelId) at ${isApiKey ? "REST Endpoint" : "OAuth Endpoint"}');
-
-    final Map<String, String> headers = {
-      'Content-Type': 'application/json',
-    };
-    if (!isApiKey) {
-      headers['Authorization'] = 'Bearer $key';
-    }
-
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode({
-        "instances": [
-          {
-            "prompt": prompt,
-          }
-        ],
-        "parameters": {
-          "sampleCount": 1,
-          "aspectRatio": "16:9",
-          "durationSeconds": 5, 
-        }
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      
-      if (data['predictions'] != null && data['predictions'].isNotEmpty) {
-        final prediction = data['predictions'][0];
-        final videoUrl = prediction['url'] ?? prediction['videoUri'];
-        if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
-      }
-
-      if (data['name'] != null && data['name'].contains('/operations/')) {
-        debugPrint('EdgeAI: [VEO] Generation started asynchronously. Polling Operation: ${data['name']}');
-        return await _pollVertexOperation(data['name'], key, isApiKey);
-      }
-
-      throw Exception('Veo response format unrecognized: ${response.body}');
-    } else {
-      final errorBody = response.body;
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        debugPrint('EdgeAI: [VERTEX] Veo Auth Error ${response.statusCode}: $errorBody');
-      }
-      
-      // Fallback Chain: 3.0 Fast -> 2.0 -> 001
-      if (response.statusCode == 404) {
-         if (modelId == 'veo-3.0-fast-generate-preview') {
-            debugPrint('EdgeAI: [VERTEX] Veo 3.0 Not Found. Falling back to Veo 2.0...');
-            return await _generateVertexVeo(prompt, key, modelId: 'veo-2.0-generate-001');
-         } else if (modelId == 'veo-2.0-generate-001') {
-            debugPrint('EdgeAI: [VERTEX] Veo 2.0 Not Found. Falling back to Veo Legacy...');
-            return await _generateVertexVeo(prompt, key, modelId: 'veo-001');
-         }
-      }
-
-      throw Exception('Vertex Veo Error: ${response.statusCode} $errorBody');
-    }
-  }
-
-  static Future<String> _pollVertexOperation(String name, String key, bool isApiKey) async {
-    // Operation URL: projects/{project}/locations/{location}/operations/{id}
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/$name';
-    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    
-    final Map<String, String> headers = {
-      'Content-Type': 'application/json',
-    };
-    if (!isApiKey) {
-       headers['Authorization'] = 'Bearer $key';
-    }
-
-    // Poll for up to 2 minutes
-    for (int i = 0; i < 24; i++) {
-       await Future.delayed(const Duration(seconds: 5));
-       debugPrint('EdgeAI: [VEO] Checking generation status (attempt ${i + 1})...');
-       
-       final response = await http.get(url, headers: headers);
-       if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data['done'] == true) {
-             if (data['error'] != null) {
-                throw Exception('Veo Operation Failed: ${data['error']}');
-             }
-             
-             // Extract output URI from response metadata or response field
-             // For Veo/Imagen, it's often in response.predictions[0].url
-             final respObj = data['response'];
-             if (respObj != null && respObj['predictions'] != null && respObj['predictions'].isNotEmpty) {
-                final videoUrl = respObj['predictions'][0]['url'] ?? respObj['predictions'][0]['videoUri'];
-                if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
-             }
-             
-             // Check metadata if response field is empty
-             final metadata = data['metadata'];
-             if (metadata != null && metadata['outputUri'] != null) {
-                return _sanitizeMediaUrl(metadata['outputUri']);
-             }
-
-             throw Exception('Veo operation finished but no video URL found.');
-          }
-       } else {
-          debugPrint('EdgeAI: [VEO] Polling error: ${response.statusCode}');
-       }
-    }
-    
-    throw Exception('Veo generation timed out (operation: $name)');
-  }
-
   static Future<String> _pollProxyVeoOperation(String operationName) async {
-    // Poll for up to 2 minutes
     for (int i = 0; i < 24; i++) {
         await Future.delayed(const Duration(seconds: 5));
         debugPrint('EdgeAI: [VEO-PROXY] Checking generation status (attempt ${i + 1})...');
         
         try {
             final data = await AIProxyService.pollOperation(operationName);
-            
             if (data['done'] == true) {
-                if (data['error'] != null) {
-                    throw Exception('Veo Operation Failed: ${data['error']}');
-                }
+                if (data['error'] != null) throw Exception('Veo Operation Failed: ${data['error']}');
                 
-                // Extract output URI
                 final respObj = data['response'];
                 if (respObj != null && respObj['predictions'] != null && (respObj['predictions'] as List).isNotEmpty) {
                     final videoUrl = respObj['predictions'][0]['url'] ?? respObj['predictions'][0]['videoUri'];
                     if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
                 }
-
                  final metadata = data['metadata'];
                  if (metadata != null && metadata['outputUri'] != null) {
                     return _sanitizeMediaUrl(metadata['outputUri']);
                  }
-
                  throw Exception('Veo operation finished but no video URL found.');
             }
         } catch (e) {
@@ -717,8 +566,6 @@ class EdgeAIService {
 
   static String _sanitizeMediaUrl(String url) {
     if (url.startsWith('gs://')) {
-       // Convert Google Cloud Storage URI to public HTTPS link
-       // gs://bucket_name/object_path -> https://storage.googleapis.com/bucket_name/object_path
        final path = url.replaceFirst('gs://', '');
        return "https://storage.googleapis.com/$path";
     }
@@ -726,181 +573,9 @@ class EdgeAIService {
   }
 
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
-    // Phase 89: Mock/Simulate Lyria
     debugPrint('EdgeAI: [AUDIO] Generating audio for: "$prompt" (MOCKED)');
     await Future.delayed(const Duration(seconds: 3));
     return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; 
-  }
-
-  static Stream<EdgeAIResult> generateTextStream(
-    String prompt, {
-    List<KnowledgeSource> context = const [],
-    String? memoryContext,
-    Uint8List? imageBytes,
-    String? imageMimeType,
-    Uint8List? audioBytes,
-    String? audioMimeType,
-    AIModelConfig? config,
-    String? apiKey,
-    Ref? ref, // Phase 89: For proximity sync
-  }) async* {
-    if (config?.provider == AIProvider.gemini) {
-       final vaultGeminiKey = await _vault.getGeminiKey();
-       final vaultVertexKey = await _vault.getVertexKey();
-       final effectiveApiKey = apiKey ?? vaultGeminiKey;
-       final effectiveVertexKey = vaultVertexKey; // In stream we usually rely on vault if not passed
-
-       if (effectiveVertexKey != null && effectiveVertexKey.startsWith('ya29.')) {
-          try {
-             final result = await _generateVertexGemini(_buildPromptWithContext(prompt, context, memoryContext: memoryContext), config!, effectiveVertexKey, imageBytes, imageMimeType);
-             if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
-             yield result;
-             return;
-          } catch (e) {
-             debugPrint('EdgeAI: [VERTEX] Gemini failed ($e). Falling back to Dev API.');
-             // Fallthrough to standard API Key implementation
-          }
-       }
-
-       if (effectiveApiKey != null) {
-          final result = await _generateGemini(_buildPromptWithContext(prompt, context, memoryContext: memoryContext), config!, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
-          if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
-          yield result;
-          return;
-       }
-    }
-    
-    yield EdgeAIResult("Thinking via ${config?.displayName ?? 'Edge Mock'}...", AIProximity.simulated);
-    final result = await generateText(prompt, context: context, memoryContext: memoryContext, imageBytes: imageBytes, imageMimeType: imageMimeType, modelConfig: config, apiKey: apiKey, ref: ref);
-    yield result;
-  }
-
-  static Future<EdgeAIResult> _generateVertexGemini(
-    String prompt, 
-    AIModelConfig config, 
-    String key, 
-    Uint8List? imageBytes,
-    String? mimeType
-  ) async {
-    // WEB PROXY PATH
-    if (kIsWeb) {
-      try {
-        debugPrint('EdgeAI: [WEB] Routing Vertex AI request via Secure Proxy...');
-        final proxyResponse = await AIProxyService.generateContent(
-          prompt: prompt,
-          config: config,
-        );
-        
-        // Parse Proxy Response (Standard Gemini JSON structure)
-        final candidates = proxyResponse['candidates'] as List?;
-        if (candidates != null && candidates.isNotEmpty) {
-           final firstCandidate = candidates[0];
-           final content = firstCandidate['content'];
-           String fullText = "";
-           if (content != null && content['parts'] != null) {
-              for (var part in content['parts']) {
-                 if (part['text'] != null) fullText += part['text'];
-              }
-           }
-           if (fullText.isEmpty && firstCandidate['finishReason'] != null) {
-              fullText = "Stopped: ${firstCandidate['finishReason']}";
-           }
-           return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId);
-        }
-        return EdgeAIResult("No text generated (Proxy).", AIProximity.cloud);
-      } catch (e) {
-        debugPrint('EdgeAI: [WEB] Proxy Request Failed: $e');
-        // Optional: Fallback to direct API if Proxy fails? 
-        // For now, rethrow because direct Vertex on Web is known to fail (CORS).
-        rethrow;
-      }
-    }
-
-    // NATIVE / MOBILE PATH (Existing direct logic)
-    String projectId = 'inhausbrain';
-    final isToken = key.startsWith('ya29.') || key.startsWith('AQ.');
-    final isApiKey = !isToken;
-    
-    // Map Dev API model IDs to Vertex AI model IDs
-    // Using explicit versioned IDs to improve reliability in us-central1
-    // Use the configuration model ID directly
-    String modelId = config.modelId;
-    // Overrides removed to respect configuration
-    // if (modelId.contains('flash')) modelId = 'gemini-1.5-flash-002';
-    // else if (modelId.contains('pro')) modelId = 'gemini-1.5-pro-002';
-
-    // Vertex AI Gemini endpoint: Use generateContent which is the modern path for Gemini on Vertex
-    final baseUrl = 'https://us-central1-aiplatform.googleapis.com/v1/projects/$projectId/locations/us-central1/publishers/google/models/$modelId:generateContent';
-    
-    final url = Uri.parse(isApiKey ? '$baseUrl?key=$key' : baseUrl);
-    debugPrint('EdgeAI: [VERTEX] Calling Gemini via ${isApiKey ? "API Key" : "OAuth Token"} ($modelId)');
-
-    final Map<String, String> headers = {
-      'Content-Type': 'application/json',
-    };
-    if (!isApiKey) {
-      headers['Authorization'] = 'Bearer $key';
-    }
-
-    final List<Map<String, dynamic>> parts = [{'text': prompt}];
-    if (imageBytes != null) {
-      parts.add({
-        'inline_data': {
-          'mime_type': mimeType ?? 'image/jpeg',
-          'data': base64Encode(imageBytes)
-        }
-      });
-    }
-
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode({
-        "contents": [
-          {
-            "role": "user",
-            "parts": parts,
-          }
-        ],
-        "generationConfig": {
-          "temperature": config.temperature,
-          "maxOutputTokens": 2048,
-        },
-        "safetySettings": [
-           {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-           {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-           {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
-           {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
-        ]
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      String text = "";
-      
-      // Handle array of candidates (Gemini style)
-      if (data['candidates'] != null && (data['candidates'] as List).isNotEmpty) {
-         final candidate = data['candidates'][0];
-         if (candidate['content'] != null && candidate['content']['parts'] != null) {
-            text = (candidate['content']['parts'] as List).map((p) => p['text'] ?? '').join("");
-         }
-      } 
-      // Handle 'predictions' fallback for older Vertex models or predict endpoint
-      else if (data['predictions'] != null && (data['predictions'] as List).isNotEmpty) {
-         text = data['predictions'][0]['content'] ?? data['predictions'][0]['text'] ?? "";
-      }
-      
-      if (text.isEmpty) text = "No content generated.";
-      return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Vertex: $modelId');
-    } else {
-      final errorBody = response.body;
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        debugPrint('EdgeAI: [VERTEX] Auth Error ${response.statusCode}: $errorBody');
-        debugPrint('EdgeAI: [HINT] Ensure the Vertex AI API is enabled in project "$projectId" and your OAuth token (Scopes: cloud-platform) has permissions.');
-      }
-      throw Exception('Vertex Gemini Error: ${response.statusCode} $errorBody');
-    }
   }
 
   static Future<EdgeAIResult> _generateLocalMock(String prompt, {bool hasImage = false}) async {

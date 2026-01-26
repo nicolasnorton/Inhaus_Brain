@@ -99,7 +99,7 @@ A sophisticated analysis engine inspired by "NotebookLM" and "Looker Studio":
 - **Frontend**: Flutter (3.0+ architecture)
 - **State Management**: Riverpod (Notifier system)
 - **AI Integration**:
-    - **Cloud**: `google_generative_ai` for Vertex AI features.
+    - **Cloud**: `firebase_ai` (Unified SDK) for Gemini & Vertex AI features.
     - **Protocol**: Model Context Protocol (MCP) for tool definitions.
 - **Auth & Storage**:
     - `firebase_auth` & `google_sign_in` for Identity.
