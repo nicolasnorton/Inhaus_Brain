@@ -35,3 +35,13 @@ These are role-based system prompts located in `assets/prompts`. They define the
 - **Developer** (`developer.md`): Code generation, debugging, and technical architecture.
 - **Data Engineer** (`data_engineer.md`): Data pipeline management and structural integrity.
 - **Security** (`security.md`): Ensuring compliance, safety, and data protection.
+
+---
+
+## AI Development Rules
+All agents (Antigravity, Jules) must adhere to the rules defined in `agentrules.md`. These rules enforce architectural integrity, state management standards, and workflow consistency.
+
+## Live Deployment
+- **Live URL**: [https://brain.inhauscorp.com](https://brain.inhauscorp.com)
+- **Functions Host**: `us-central1-inhausbrain.cloudfunctions.net`
+- **Environment**: Managed by Google Cloud Run & Firebase.
