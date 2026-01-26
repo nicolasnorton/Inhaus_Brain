@@ -98,4 +98,45 @@ class AIProxyService {
       rethrow;
     }
   }
+
+  /// Specialized routing for Embeddings
+  static Future<Map<String, dynamic>> generateEmbeddings({
+    required String model,
+    required List<Map<String, dynamic>> instances,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User must be logged in to use AI Proxy.');
+    }
+
+    final idToken = await user.getIdToken();
+    if (idToken == null) {
+      throw Exception('Failed to retrieve ID Token.');
+    }
+
+    final body = {
+      "model": model,
+      "instances": instances,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(_functionUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Proxy Embedding Error ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('AIProxyService Embedding Error: $e');
+      rethrow;
+    }
+  }
 }

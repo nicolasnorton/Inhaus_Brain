@@ -13,6 +13,29 @@ class VertexApiService {
     String? apiKey,
     String? accessToken,
   }) async {
+    // PATH 0: WEB PROXY (Use for all requests on web if possible to avoid CORS/Auth issues)
+    if (kIsWeb) {
+      try {
+        debugPrint('VertexAI: [WEB] Routing Embeddings via Secure Proxy...');
+        final instances = texts.map((t) => {
+          'content': t,
+          'task_type': 'RETRIEVAL_DOCUMENT', 
+        }).toList();
+
+        final proxyResponse = await AIProxyService.generateEmbeddings(
+          model: _embeddingModel, 
+          instances: instances,
+        );
+
+        final predictions = proxyResponse['predictions'] as List?;
+        if (predictions == null) throw Exception('No predictions in proxy response.');
+
+        return _parsePredictions(predictions);
+      } catch (e) {
+        debugPrint('VertexAI: [WEB] Proxy Embeddings failed: $e. Falling back to native if keys exist.');
+      }
+    }
+
     // Check if the key provided looks like a Bearer Token vs API Key
     final isProbablyToken = (apiKey != null && (apiKey.startsWith('ya29.') || apiKey.startsWith('AQ.'))) || 
                             (accessToken != null && accessToken.isNotEmpty);
@@ -53,22 +76,7 @@ class VertexApiService {
         throw Exception('Vertex Embedding Failed: No predictions in response: ${response.body}');
       }
 
-      return predictions.map((p) {
-        if (p is Map) {
-          final emb = p['embeddings'];
-          if (emb is Map) {
-            final values = emb['values'];
-            if (values is List) {
-              return values.map((v) {
-                if (v == null) return 0.0;
-                if (v is num) return v.toDouble();
-                return 0.0;
-              }).toList();
-            }
-          }
-        }
-        return <double>[]; 
-      }).toList();
+      return _parsePredictions(predictions);
     }
 
     // PATH 2: Gemini Developer API (Supports API Key)
@@ -127,6 +135,25 @@ class VertexApiService {
     }
 
     throw Exception('VertexApiService: No valid API Key or Access Token provided.');
+  }
+
+  List<List<double>> _parsePredictions(List predictions) {
+      return predictions.map((p) {
+        if (p is Map) {
+          final emb = p['embeddings'];
+          if (emb is Map) {
+            final values = emb['values'];
+            if (values is List) {
+              return values.map((v) {
+                if (v == null) return 0.0;
+                if (v is num) return v.toDouble();
+                return 0.0;
+              }).toList();
+            }
+          }
+        }
+        return <double>[]; 
+      }).toList();
   }
 
   static String _safeError(dynamic e) {

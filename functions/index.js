@@ -121,11 +121,15 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             const client = await auth.getClient();
             const accessToken = await client.getAccessToken();
 
-            // The operationName is the full resource name.
-            // For Veo, it's typically: "projects/.../locations/us-central1/publishers/google/models/.../operations/..."
-            // We poll this directly on the regional v1beta1 endpoint.
-            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
-            console.log(`[PROXY] Polling Endpoint: ${endpoint}`);
+            // Logic: Determine the correct host.
+            // UUID-style IDs (e.g. 39caca36-...) for publisher models often require the global host.
+            // Numeric Long IDs usually belong to the regional host.
+            const isUuid = operationName.split('/').pop().includes('-');
+            const host = isUuid ? 'aiplatform.googleapis.com' : 'us-central1-aiplatform.googleapis.com';
+
+            // Try v1beta1 first as most new GenAI features are there.
+            const endpoint = `https://${host}/v1beta1/${operationName}`;
+            console.log(`[PROXY] Polling Endpoint (UUID: ${isUuid}): ${endpoint}`);
 
             const response = await fetch(endpoint, {
                 method: 'GET',
@@ -137,6 +141,8 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
 
             if (!response.ok) {
                 const errText = await response.text();
+                // If it's a 404, maybe we should try the other version? 
+                // For now, throw and catch.
                 throw { status: response.status, message: `Vertex Poll Error: ${errText}` };
             }
 
@@ -146,13 +152,46 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
         }
 
         // --- VALIDATION FOR GENERATION REQUESTS ---
-        if (!prompt) {
-            throw { status: 400, message: 'Bad Request: Missing "prompt" in body.' };
+        if (!prompt && !req.body.instances) {
+            throw { status: 400, message: 'Bad Request: Missing "prompt" or "instances" in body.' };
         }
 
         const modelId = model || 'gemini-2.0-flash';
 
-        // --- PATH B: IMAGE GENERATION (Imagen) ---
+        // --- PATH B: EMBEDDINGS (New) ---
+        if (modelId.toLowerCase().includes('embedding') || req.body.instances) {
+            const { GoogleAuth } = require('google-auth-library');
+            const auth = new GoogleAuth({
+                scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+            const projectId = await auth.getProjectId();
+
+            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    instances: req.body.instances || [{ content: prompt }]
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw { status: response.status, message: `Vertex Embedding Error: ${errText}` };
+            }
+
+            const data = await response.json();
+            res.json(data);
+            return;
+        }
+
+        // --- PATH C: IMAGE GENERATION (Imagen) ---
         if (modelId.toLowerCase().includes('imagen')) {
             const { GoogleAuth } = require('google-auth-library');
             const auth = new GoogleAuth({
@@ -190,7 +229,7 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             return;
         }
 
-        // --- PATH B: VIDEO GENERATION (Veo) ---
+        // --- PATH D: VIDEO GENERATION (Veo) ---
         if (modelId.toLowerCase().includes('veo')) {
             const { GoogleAuth } = require('google-auth-library');
             const auth = new GoogleAuth({
