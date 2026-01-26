@@ -18,6 +18,8 @@ The application coordinates several specialized models via the `EdgeAIService` a
 - **Lyria**: Advanced music/soundtrack composition via `AudioGenerationTool`.
 - **Nano Banana 🍌**: Agentic visual refinement and image editing.
 - **External Providers**: Support for **OpenAI**, **Anthropic**, **xAI (Grok)**, **Runway**, **Midjourney**, and **Eleven Labs** via `EdgeAIService` routing.
+- **Strict Mode**: `EdgeAIService` enforces structured JSON output using Dart classes (`StrategyOutput`) and `responseMimeType`.
+- **The Arbiter**: Intelligent stall detection that monitors agent retries and escalates supervision to a human when `retryCount > 2`.
 
 ### 2. Model Context Protocol (MCP) Standards
 All agent capabilities are abstracted into the `AgentTool` (at `lib/core/mcp/`) class, providing a standardized input/output schema:
@@ -57,6 +59,8 @@ The Inhaus Brain features an 11-step specialized agency roster:
     - **`VariableInspector`**: Real-time tree view of `PipelineContext` variables with live editing.
     - **`TestRunDialog`**: Sandbox for executing single nodes with custom inputs.
     - **`RunHistory`**: Persistent logs of execution paths and performance metrics.
+    - **`GraphValidator`**: Prevents execution of invalid graphs (cycles, dead ends) at compile time.
+    - **`BudgetGovernor`**: Economic limiter ensuring workflows do not exceed credit allocations.
 - **User Input & Variables**: Persistent variable store in `PipelineContext` with dynamic resolution in `AdkService`.
 
 ### 5. Publishing & Deployment

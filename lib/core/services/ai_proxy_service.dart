@@ -38,6 +38,7 @@ class AIProxyService {
       "config": {
         "temperature": config.temperature,
         "maxOutputTokens": config.maxTokens,
+        if (config.responseMimeType != null) "responseMimeType": config.responseMimeType,
       },
       if (systemInstruction != null) "systemInstruction": systemInstruction, 
     };

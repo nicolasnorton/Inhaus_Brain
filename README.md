@@ -32,6 +32,8 @@ A robust, event-driven architecture designed for stability and transparency:
 - **Flight Recorder**: Real-time observability widget (accessible via the ⚡️ icon) that visualizes agent status, phase changes, and workflow events.
 - **Semantic Cache**: Intelligent in-memory caching that stores LLM responses (hashed by intent and prompt) to reduce latency and token usage for repeated queries.
 - **Resilient Parsing**: Enhanced JSON extraction logic ensures reliable tool execution even with "noisy" LLM outputs.
+- **Human-in-the-Loop (The Gavel)**: Formal "Arbiter" pattern that detects stalled agents (retries > 2) and pauses execution for manual user review via specific `ApprovalCard` widgets.
+- **Strict Schema Enforcement**: "Typed Agents" use strict JSON validation to eliminate hallucinated structures.
 
 ### 🏗️ Agent Development Kit (ADK)
 A powerful orchestration layer that allows for complex, multi-step workflows:
@@ -45,6 +47,8 @@ A powerful orchestration layer that allows for complex, multi-step workflows:
 - **Responsive Dashboard**: Premium home screen with intelligent quick-access widgets for all core modules.
 - **User Input Node**: Dify-style variable collection with support for Text, Select, Number, Checkbox, and Files.
 - **Variable Injection**: Dynamic mustache-style `{{variable}}` resolution across all node configurations.
+- **Graph Validator (The Compiler)**: Topological sort engine that prevents infinite loops, detects dead ends, and ensures all dependencies are met before execution starts.
+- **Budget Governor**: "Token Bucket" economic system that tracks and limits credit usage per workflow run to prevent runaway API costs.
 
 ### 🚀 Publishing & Distribution
 Effortless deployment of your AI agents across multiple channels:

@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../chat/services/memory_service.dart';
-import '../../chat/services/verification_service.dart';
 import '../models/workflow_execution_models.dart';
+import '../../adk/logic/graph_validator.dart';
+import '../../adk/logic/budget_governor.dart';
+import '../../../core/adk/models/pipeline_models.dart';
 
 /// Provider for workflow execution state
 final workflowExecutionProvider =
@@ -28,6 +30,7 @@ final validationResultProvider = StateProvider<ValidationResult?>((ref) => null)
 /// State notifier for workflow execution
 class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
   final Ref _ref;
+  final BudgetGovernor _governor = BudgetGovernor();
   
   WorkflowExecutionNotifier(this._ref) : super(const WorkflowExecutionState());
 
@@ -38,6 +41,7 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
       startTime: DateTime.now(),
       endTime: null,
     );
+    _governor.reset(); // Reset budget on start
     
     // Inject Memory Context
     try {
@@ -55,6 +59,17 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
       ));
     } catch (e) {
       // Fail silently or log error
+    }
+  }
+
+  /// Validate workflow
+  void validateWorkflow(List<PipelineStep> steps) {
+    final result = GraphValidator.validate(steps);
+    _ref.read(validationResultProvider.notifier).state = result;
+    
+    if (!result.isValid) {
+      // Potentially block execution or just log
+      // state = state.copyWith(nodeStatuses: {}); // Clear statuses?
     }
   }
 
@@ -90,6 +105,23 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecutionState> {
 
   /// Execute a single node
   Future<void> executeNode(String appId, String nodeId, Map<String, dynamic> inputs) async {
+    try {
+       // Budget Check
+       _governor.debit(1, "Node Execution: $nodeId"); // Default cost for now
+    } catch (e) {
+       updateNodeStatus(nodeId, ExecutionStatus.error);
+       addRunLog(RunLog(
+          nodeId: nodeId,
+          nodeName: nodeId,
+          timestamp: DateTime.now(),
+          status: ExecutionStatus.error,
+          inputs: inputs,
+          errorMessage: e.toString(),
+       ));
+       state = state.copyWith(isRunning: false);
+       return;
+    }
+
     updateNodeStatus(nodeId, ExecutionStatus.running);
     
     // Simulate execution

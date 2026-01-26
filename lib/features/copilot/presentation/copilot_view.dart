@@ -2,6 +2,8 @@ import 'package:ag_ui/ag_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/copilot_repository.dart';
+import '../../../core/architecture/blackboard.dart';
+import '../../chat/widgets/approval_card.dart';
 
 // Use a simplified provider for now. In real app, use environment variable.
 final copilotRepositoryProvider = Provider((ref) {
@@ -94,6 +96,8 @@ class _CopilotViewState extends ConsumerState<CopilotView> {
 
   @override
   Widget build(BuildContext context) {
+    final blackboardState = ref.watch(blackboardProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Inhaus Copilot')),
       body: Column(
@@ -132,6 +136,23 @@ class _CopilotViewState extends ConsumerState<CopilotView> {
           _isLoading 
             ? const LinearProgressIndicator()
             : const SizedBox(height: 4),
+          if (blackboardState.phase == BlackboardPhase.reviewPending)
+             Padding(
+               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+               child: ApprovalCard(
+                 title: "Review Required",
+                 description: "The agent has proposed a strategy or content. Please review to proceed.",
+                 onApprove: () {
+                    ref.read(blackboardProvider.notifier).transitionTo(BlackboardPhase.copywriting);
+                 },
+                 onReject: (feedback) {
+                    _controller.text = "Feedback: $feedback";
+                    _sendMessage();
+                    // Agent logic (AssistantService) should see the feedback and phase state
+                    ref.read(blackboardProvider.notifier).transitionTo(BlackboardPhase.strategy);
+                 },
+               ),
+             ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(

@@ -277,7 +277,12 @@ class EdgeAIService {
         {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
         {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
         {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
-      ]
+      ],
+      "generationConfig": {
+        "temperature": config.temperature,
+        "maxOutputTokens": config.maxTokens ?? 2048,
+        if (config.responseMimeType != null) "responseMimeType": config.responseMimeType,
+      }
     };
 
     final response = await http.post(

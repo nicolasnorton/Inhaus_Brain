@@ -15,6 +15,7 @@ class AIModelConfig {
   final double temperature;
   final int? maxTokens;
   final String? overrideBaseUrl; // For local proxies or enterprise endpoints
+  final String? responseMimeType; // e.g. 'application/json'
 
   const AIModelConfig({
     required this.provider,
@@ -22,6 +23,7 @@ class AIModelConfig {
     this.temperature = 0.7,
     this.maxTokens,
     this.overrideBaseUrl,
+    this.responseMimeType,
   });
 
   String get displayName {
@@ -57,6 +59,7 @@ class AIModelConfig {
     'temperature': temperature,
     'maxTokens': maxTokens,
     'overrideBaseUrl': overrideBaseUrl,
+    'responseMimeType': responseMimeType,
   };
 
   factory AIModelConfig.fromJson(Map<String, dynamic> json) {
@@ -66,6 +69,7 @@ class AIModelConfig {
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.7,
       maxTokens: json['maxTokens'] as int?,
       overrideBaseUrl: json['overrideBaseUrl'] as String?,
+      responseMimeType: json['responseMimeType'] as String?,
     );
   }
 }

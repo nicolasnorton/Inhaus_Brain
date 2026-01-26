@@ -20,6 +20,8 @@ import '../../../core/tokens/llm_provider.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import '../domain/agent_outputs.dart';
 
 enum AssistantMode { fast, planning }
 
@@ -375,6 +377,20 @@ $ephemeralMsg
 
     String responseText = "";
 
+    // 3. Strict Mode Check (Typed Agents)
+    if (intentEnum == RouterIntent.management || blackboard.state.phase == BlackboardPhase.strategy) {
+       debugPrint('Assistant: Strict Mode Active for Strategy.');
+       final strictResult = await _runStrictAgent(
+         "Generate a comprehensive marketing strategy for: $text",
+         StrategyOutput.fromJson,
+         StrategyOutput.schemaDescription
+       );
+       
+       if (strictResult != null) {
+          blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
+          return strictResult;
+       }
+    }
     
     // DIRECT EDGE AI SERVICE (Primary)
     // CopilotKit bypassed due to protocol errors
@@ -515,6 +531,54 @@ $ephemeralMsg
     await semanticCache.store(intentEnum.name, mainPrompt, responseText);
 
     return ToolExecutionSummary(text: responseText);
+  }
+
+  Future<ToolExecutionSummary?> _runStrictAgent<T extends AgentOutput>(
+      String prompt, 
+      T Function(Map<String, dynamic>) factory, 
+      String schemaDescription) async {
+    
+    // Config: Force JSON
+    final config = AIModelConfig(
+      provider: AIProvider.gemini, 
+      modelId: 'gemini-1.5-flash',
+      responseMimeType: 'application/json',
+      temperature: 0.2 // Lower temp for logic
+    );
+
+    final fullPrompt = "$prompt\n\nCRITICAL: Output must be valid JSON adhering to this schema:\n$schemaDescription";
+
+    try {
+       final result = await EdgeAIService.generateText(
+         fullPrompt,
+         modelConfig: config,
+         ref: _ref
+       );
+       
+       final json = jsonDecode(result.text);
+       final output = factory(json); // Verify it parses
+       
+       debugPrint('Assistant: Strict Agent Success! Type: $T');
+       
+       // For now, we return the JSON as text so the chat can see it. 
+       // In production, we would likely return a custom UI widget or just the refined message.
+       _ref.read(blackboardProvider.notifier).resetRetry();
+       return ToolExecutionSummary(text: "Strategy Generated (Strict Type):\n```json\n${jsonEncode(output.toJson())}\n```");
+    } catch (e) {
+       debugPrint('Assistant: Strict Agent Error: $e');
+       
+       // ARBITER LOGIC
+       final blackboard = _ref.read(blackboardProvider.notifier);
+       blackboard.incrementRetry();
+       
+       if (_ref.read(blackboardProvider).retryCount > 2) {
+           debugPrint('Assistant: Agent Stalled. Calling Arbiter.');
+           blackboard.transitionTo(BlackboardPhase.userArbitration);
+           return ToolExecutionSummary(text: "I'm having trouble structuring the strategy correctly. I've paused so you can review the partial output or redirect me.");
+       }
+
+       return null; // Fallback to normal chat
+    }
   }
 
 

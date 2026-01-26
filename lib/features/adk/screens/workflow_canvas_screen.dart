@@ -76,6 +76,12 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
     } else {
       _steps = [];
     }
+      _steps = [];
+    }
+    // Initial Validation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       ref.read(workflowExecutionProvider.notifier).validateWorkflow(_steps);
+    });
   }
 
   @override
@@ -141,9 +147,29 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
             icon: const Icon(Icons.dns, size: 20, color: Colors.tealAccent),
             onPressed: () => _showMCPServerDialog(),
           ),
+
           IconButton(
             icon: const Icon(Icons.rocket_launch, color: Colors.blueAccent),
             onPressed: () => _showPublishDialog(),
+          ),
+          // Validation Status
+          Consumer(
+            builder: (context, ref, _) {
+              final validation = ref.watch(validationResultProvider);
+              if (validation == null || validation.isValid) {
+                 return IconButton(
+                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                    onPressed: () {}, // Show details?
+                    tooltip: 'Graph Valid',
+                 );
+              } else {
+                 return IconButton(
+                    icon: Icon(Icons.warning, color: validation.hasErrors ? Colors.red : Colors.orange),
+                    tooltip: 'Validation Issues Found',
+                    onPressed: () => _showValidationIssues(validation),
+                 );
+              }
+            }
           ),
           IconButton(
             icon: const Icon(Icons.save),
@@ -346,6 +372,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         config: {},
       ));
     });
+    ref.read(workflowExecutionProvider.notifier).validateWorkflow(_steps);
   }
 
   Widget _buildTool(IconData icon, String label, WorkflowNodeType type) {
@@ -397,6 +424,13 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
              // Create connection
              if (!step.dependencies.contains(_connectingFromId)) {
                 step.dependencies.add(_connectingFromId!);
+                ref.read(workflowExecutionProvider.notifier).validateWorkflow(_steps);
+             }
+             _connectingFromId = null;
+          }
+             if (!step.dependencies.contains(_connectingFromId)) {
+                step.dependencies.add(_connectingFromId!);
+                ref.read(workflowExecutionProvider.notifier).validateWorkflow(_steps);
              }
              _connectingFromId = null;
           }

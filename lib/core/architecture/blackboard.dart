@@ -10,9 +10,12 @@ enum BlackboardPhase {
   idle,
   analyzingIntent,
   strategy,
+  copywriting,
   creative,
   approval,
   production,
+  reviewPending, // Human-in-the-Loop
+  userArbitration, // The Gavel
 }
 
 enum AgentStatus {
@@ -28,6 +31,7 @@ class BlackboardState {
   final List<WorkflowEvent> events;
   final BlackboardPhase phase;
   final Map<String, AgentStatus> activeAgents;
+  final int retryCount; // For The Gavel protocol
 
   BlackboardState({
     this.facts = const {},
@@ -35,6 +39,7 @@ class BlackboardState {
     this.events = const [],
     this.phase = BlackboardPhase.idle,
     this.activeAgents = const {},
+    this.retryCount = 0,
   });
 
   BlackboardState copyWith({
@@ -43,6 +48,7 @@ class BlackboardState {
     List<WorkflowEvent>? events,
     BlackboardPhase? phase,
     Map<String, AgentStatus>? activeAgents,
+    int? retryCount,
   }) {
     return BlackboardState(
       facts: facts ?? this.facts,
@@ -50,6 +56,7 @@ class BlackboardState {
       events: events ?? this.events,
       phase: phase ?? this.phase,
       activeAgents: activeAgents ?? this.activeAgents,
+      retryCount: retryCount ?? this.retryCount,
     );
   }
 }
@@ -160,6 +167,14 @@ class BlackboardNotifier extends StateNotifier<BlackboardState> {
       ).toList()
     );
     addEvent(WorkflowEventType.taskFinished, "Completed: $id", data: {'taskId': id});
+  }
+
+  void incrementRetry() {
+    state = state.copyWith(retryCount: state.retryCount + 1);
+  }
+
+  void resetRetry() {
+    state = state.copyWith(retryCount: 0);
   }
 
   void clear() {
