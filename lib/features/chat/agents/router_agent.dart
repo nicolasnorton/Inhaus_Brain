@@ -75,23 +75,23 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
     );
     
     // Parse Intent
-    RouterIntent intent = RouterIntent.directChat; // Default
+    RouterIntent intentEnum = RouterIntent.directChat; // Default
     try {
       final text = aiRes.text.trim();
       final jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
       final data = jsonDecode(jsonStr); // Assuming import 'dart:convert';
-      final intentStr = data['intent']?.toString().toLowerCase() ?? 'directchat';
+      final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
       
-      intent = RouterIntent.values.firstWhere(
-        (e) => e.name.toLowerCase() == intentStr, 
+      intentEnum = RouterIntent.values.firstWhere(
+        (e) => e.name.toUpperCase() == intentStr, 
         orElse: () => RouterIntent.directChat
       );
     } catch (e) {
       // Fallback to direct chat if parsing fails
-      intent = RouterIntent.directChat;
+      intentEnum = RouterIntent.directChat;
     }
 
-    onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Routed to: ${intent.name}"));
+    onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Routed to: ${intentEnum.name}"));
 
     // 3. Dynamic Tool Selection & Micro-Agent Dispatch
     // In a full implementation, we would instantiate a specialized Agent class here.

@@ -1,6 +1,8 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { VertexAI } = require("@google-cloud/vertexai");
+// Import the Copilot handler
+const { copilotHandler } = require('./copilot');
 
 admin.initializeApp();
 
@@ -106,16 +108,51 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             throw { status: 401, message: 'Unauthorized: Invalid Token.' };
         }
 
-        // 2. Vertex AI Execution
-        const { model, prompt, config, systemInstruction } = req.body;
+        // 2. Body Extraction
+        const { model, prompt, config, systemInstruction, operationName } = req.body;
 
+        // --- PATH A: OPERATION POLLING ---
+        // Priority: If operationName is present, we are polling status. No prompt required.
+        if (operationName) {
+            const { GoogleAuth } = require('google-auth-library');
+            const auth = new GoogleAuth({
+                scopes: 'https://www.googleapis.com/auth/cloud-platform'
+            });
+            const client = await auth.getClient();
+            const accessToken = await client.getAccessToken();
+
+            // The operationName is the full resource name.
+            // For Veo, it's typically: "projects/.../locations/us-central1/publishers/google/models/.../operations/..."
+            // We poll this directly on the regional v1beta1 endpoint.
+            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
+            console.log(`[PROXY] Polling Endpoint: ${endpoint}`);
+
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw { status: response.status, message: `Vertex Poll Error: ${errText}` };
+            }
+
+            const data = await response.json();
+            res.json(data);
+            return;
+        }
+
+        // --- VALIDATION FOR GENERATION REQUESTS ---
         if (!prompt) {
             throw { status: 400, message: 'Bad Request: Missing "prompt" in body.' };
         }
 
         const modelId = model || 'gemini-2.0-flash';
 
-        // --- PATH A: IMAGE GENERATION (Imagen) ---
+        // --- PATH B: IMAGE GENERATION (Imagen) ---
         if (modelId.toLowerCase().includes('imagen')) {
             const { GoogleAuth } = require('google-auth-library');
             const auth = new GoogleAuth({
@@ -153,33 +190,7 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             return;
         }
 
-        // --- PATH B: TEXT GENERATION (Gemini) ---
-        const generativeModel = vertexAI.getGenerativeModel({
-            model: modelId,
-            systemInstruction: systemInstruction, // Optional system prompt
-            generationConfig: config // Pass through temperature, maxTokens, etc.
-        });
-
-        // Handle multimodal input 
-        let requestContent;
-        if (typeof prompt === 'string') {
-            requestContent = prompt;
-        } else {
-            requestContent = prompt; // Array of parts
-        }
-
-        const result = await generativeModel.generateContent(requestContent);
-        const response = await result.response;
-        const candidates = response.candidates;
-
-        if (!candidates || candidates.length === 0) {
-            res.json({ candidates: [] });
-            return;
-        }
-
-        res.json(response);
-
-        // --- PATH C: VIDEO GENERATION (Veo) ---
+        // --- PATH B: VIDEO GENERATION (Veo) ---
         if (modelId.toLowerCase().includes('veo')) {
             const { GoogleAuth } = require('google-auth-library');
             const auth = new GoogleAuth({
@@ -189,7 +200,7 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             const accessToken = await client.getAccessToken();
             const projectId = await auth.getProjectId();
 
-            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
+            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predictLongRunning`;
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -227,41 +238,33 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
             return;
         }
 
-        // --- PATH D: OPERATION POLLING ---
-        // If the request body contains 'operationName', we are polling status.
-        const { operationName } = req.body;
-        if (operationName) {
-            const { GoogleAuth } = require('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: 'https://www.googleapis.com/auth/cloud-platform'
-            });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-            const projectId = await auth.getProjectId();
+        // --- PATH C: TEXT GENERATION (Gemini) ---
+        const generativeModel = vertexAI.getGenerativeModel({
+            model: modelId,
+            systemInstruction: systemInstruction, // Optional system prompt
+            generationConfig: config // Pass through temperature, maxTokens, etc.
+        });
 
-            // Operation name usually looks like: projects/.../locations/.../publishers/.../models/.../operations/...
-            // But the API endpoint for getting operation is: 
-            // https://us-central1-aiplatform.googleapis.com/v1/{name}
+        // Handle multimodal input 
+        let requestContent;
+        if (typeof prompt === 'string') {
+            requestContent = prompt;
+        } else {
+            requestContent = prompt; // Array of parts
+        }
 
-            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/${operationName}`;
+        const result = await generativeModel.generateContent(requestContent);
+        const response = await result.response;
+        const candidates = response.candidates;
 
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw { status: response.status, message: `Vertex Poll Error: ${errText}` };
-            }
-
-            const data = await response.json();
-            res.json(data);
+        if (!candidates || candidates.length === 0) {
+            res.json({ candidates: [] });
             return;
         }
+
+        res.json(response);
+
+
 
     } catch (error) {
         console.error('Vertex AI Proxy Error:', error);
@@ -270,3 +273,6 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
         res.status(status).json({ error: message });
     }
 });
+
+// Expose CopilotKit Runtime
+exports.copilotRuntime = functions.https.onRequest(copilotHandler);

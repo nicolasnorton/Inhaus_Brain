@@ -77,16 +77,16 @@ class WebSearchTool extends AgentTool {
     if (query == null) return ToolResult.failure('query is required');
 
     // Without a backend or paid API, client-side search is limited.
-    // robust fallback:
+    // However, the Assistant System Prompt should prefer built-in "Grounding" where available.
     return ToolResult.success({
       'results': [
         {
-          'title': 'Search Functionality Limited',
-          'snippet': 'Direct web search is currently limited without an API key. Please provide a direct URL to the page you want me to read using the "read_url" tool.',
+          'title': 'Limited Web Search Access',
+          'snippet': 'I do not have direct independent internet access for broad searches. For fact-checking, please enable "Grounding" if available, or provide specific URLs I can read with the "read_url" tool.',
           'url': 'https://google.com/search?q=${Uri.encodeComponent(query)}'
         }
       ],
-      'message': 'I cannot perform a live broad web search right now, but if you provide a specific URL (like a company website or wiki page), I can read it directly.'
+      'message': 'Web search is limited. Try to rely on my internal knowledge or provide specific URLs for me to read.'
     });
   }
 }

@@ -100,7 +100,11 @@ A sophisticated analysis engine inspired by "NotebookLM" and "Looker Studio":
 To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-1a7b5673ab0/google_ai_setup.md).
 
  1.  Clone the repository.
- 2.  Run `flutter pub get`.
+ 2.  **Run Setup**: Execute the new setup script to bootstrap dependencies:
+     ```bash
+     ./setup.sh
+     ```
+ 3.  **Agent Rules**: All AI agents contributing to this repo must follow the constraints defined in `agentrules.md` and `.cursorrules`.
  3.  **Environment Setup**: Copy `.env.example` to `.env` and add your keys:
     ```bash
     cp .env.example .env

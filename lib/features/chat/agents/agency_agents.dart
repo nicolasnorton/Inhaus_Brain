@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
@@ -5,6 +6,11 @@ import '../../../core/services/edge_ai_service.dart';
 import '../../../features/knowledge/models/knowledge_source.dart';
 import '../models/chat_models.dart';
 import 'base_agent.dart';
+
+/// Helper to reduce boilerplate
+import 'package:inhaus_brain/features/copilot/data/copilot_repository.dart';
+import 'package:inhaus_brain/features/copilot/presentation/copilot_view.dart';
+import 'package:ag_ui/ag_ui.dart';
 
 /// Helper to reduce boilerplate
 Future<String> _simpleExecute({
@@ -18,12 +24,61 @@ Future<String> _simpleExecute({
   Uint8List? imageBytes,
   String? imageMimeType,
   Function(AdkEvent)? onEvent,
-  Ref? ref, // Phase 89
+  Ref? ref, // Phase 89: Required for CopilotKit
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
   
-  // Use provided systemPrompt or fallback to a default structure
   final promptHeader = systemPrompt ?? "You are the $agentName. Act accordingly.";
+
+  // COPILOTKIT MIGRATION
+  // If we have a Ref, use the CopilotRepository to execute via the Runtime
+  if (ref != null) {
+      try {
+          final repo = ref.read(copilotRepositoryProvider);
+          final buffer = StringBuffer();
+          final completer = Completer<String>();
+          
+          final systemMsg = SystemMessage(
+             id: 'sys_${DateTime.now().millisecondsSinceEpoch}',
+             content: promptHeader
+          );
+
+          // We append context to the user prompt for now, as SimpleRunAgentInput has specific context fields
+          // but just prepending is easier for migration.
+          String augmentedPrompt = userPrompt;
+          if (context.isNotEmpty) {
+             augmentedPrompt += "\n\nCONTEXT:\n${context.map((k) => k.content).join('\n')}";
+          }
+
+          repo.sendMessage(augmentedPrompt, systemMessage: systemMsg).listen(
+             (event) {
+                if (event is TextMessageContentEvent) {
+                   buffer.write(event.delta);
+                } else if (event is TextMessageChunkEvent) {
+                   if (event.delta != null) buffer.write(event.delta);
+                } else if (event is RunErrorEvent) {
+                   if (!completer.isCompleted) completer.completeError(event.message);
+                }
+             },
+             onDone: () {
+                if (!completer.isCompleted) completer.complete(buffer.toString());
+             },
+             onError: (err) {
+                 if (!completer.isCompleted) completer.completeError(err);
+             }
+          );
+          
+          final result = await completer.future;
+          onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
+          return result;
+      } catch (e) {
+          // Fallback to core edge service if copilot fails? 
+          // Or just log and rethrow.
+          print("Copilot Execution Failed: $e. Falling back to EdgeAIService.");
+      }
+  }
+
+  // Legacy / Fallback Path
   final fullPrompt = "SYSTEM: $promptHeader\nUSER: $userPrompt";
   
   final result = await EdgeAIService.generateText(

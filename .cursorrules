@@ -1,0 +1,27 @@
+# Inhaus Brain Agent Rules
+
+## 1. Core Mission
+- **Project**: Inhaus_Brain — Agentic AI orchestration with Flutter.
+- **Directive**: Respect separation between Logic (`lib/features/chat/agents`) and Persona (`assets/prompts`).
+
+## 2. Technical Standards
+- **Stack**: Dart, Flutter (Web/Desktop), Riverpod.
+- **Linting**: Follow `extra_pedantic`.
+- **Testing**: Verify all new tools with tests.
+
+## 3. Builder Constraints (Jules/Antigravity)
+- **Router Agent**: Do NOT modify `router_agent.dart` without valid reason/diagram.
+- **Persona Prompts**: Do NOT put code in `.md` prompts (except examples).
+- **Tooling**: Add new capabilities as discrete Tools in `lib/core/tools`.
+
+## 4. Workflow
+- **Branching**: Use feature branches (`jules/fix-issue-x`).
+- **Validation**: Verify UI with Agentic Browser before completing tasks.
+- **Documentation**: Update `agents.md` if APIs change.
+
+## 5. Prohibited
+- **NO** deleting version comments in prompts.
+- **NO** bypassing Router Agent (no direct agent-to-agent hardcoding).
+- **NO** `print()` debugging (use Logger).
+
+> **Reference**: See `agentrules.md` for full details.

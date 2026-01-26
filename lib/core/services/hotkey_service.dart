@@ -111,18 +111,21 @@ class _GlobalHotkeyListenerState extends ConsumerState<GlobalHotkeyListener> {
   Widget build(BuildContext context) {
     final service = ref.watch(hotkeyProvider);
 
-    return Focus(
-      focusNode: _focusNode,
-      // autofocus: true, // Removed to prevent RenderBox was not laid out error on Chrome startup
-      onKey: (node, event) {
-        if (event is RawKeyDownEvent) {
-          if (service.handleKeyEvent(event, context)) {
-            return KeyEventResult.handled;
+    return FocusTraversalGroup(
+      policy: WidgetOrderTraversalPolicy(),
+      child: Focus(
+        focusNode: _focusNode,
+        // autofocus: true, // Removed to prevent RenderBox was not laid out error on Chrome startup
+        onKey: (node, event) {
+          if (event is RawKeyDownEvent) {
+            if (service.handleKeyEvent(event, context)) {
+              return KeyEventResult.handled;
+            }
           }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: widget.child,
+          return KeyEventResult.ignored;
+        },
+        child: widget.child,
+      ),
     );
   }
 }

@@ -13,6 +13,10 @@ import '../../chat/services/verification_service.dart';
 import '../../chat/agents/router_agent.dart';
 import '../../../core/services/local_persistence_service.dart';
 import '../../chat/models/chat_models.dart'; // For Artifact model
+import '../../copilot/data/copilot_repository.dart';
+import '../../copilot/presentation/copilot_view.dart';
+import '../../../core/tokens/llm_provider.dart';
+import 'package:ag_ui/ag_ui.dart';
 
 enum AssistantMode { fast, planning }
 
@@ -190,39 +194,85 @@ class AssistantService {
     final longTermMemory = await memoryService.readMemory();
 
     // B. Intent Classification
-    // Reuse existing heuristic for speed if API not available, or use Router properly
-    // For this 'Super Assistant' upgrade, let's try to be smart about Intent.
+    // Use RouterAgent to determine intent and tool selection
+    final routerPrompt = """
+Analyze the user's request and determine the user's intent.
+User Input: "$text"
+
+Classify into one of:
+- CREATIVE: User wants to GENERATE or CREATE an image, video, logo, or artistic asset.
+- RESEARCH: User is asking for facts, searching for info, or analysis.
+- MANAGEMENT: User wants to create/manage clients, campaigns, or tasks.
+- DEVELOPMENT: User is asking for code or technical help.
+- DIRECT_CHAT: Simple conversation or greeting.
+
+Return ONLY a JSON object:
+{
+  "intent": "INTENT_NAME",
+  "confidence": 0.9,
+  "required_tools": ["tool_name_1", "tool_name_2"]
+}
+""";
+
+    RouterIntent intentEnum = RouterIntent.directChat;
+    List<String> suggestedTools = [];
     
-    String intentStr = "DIRECT_CHAT";
-    final creativeKeywords = ['image', 'logo', 'picture', 'painting', 'sketch', 'drawing', 'art', 'photo', 'video', 'movie', 'clip', 'footage'];
-    final creationVerbs = ['generate', 'create', 'make', 'draw', 'design', 'render'];
-    
-    bool isCreative = false;
-    // Check if any creative keyword is present
-    if (creativeKeywords.any((k) => lower.contains(k))) {
-       // If it contains a creation verb OR specific strong nouns like 'image', it's likely creative
-       if (creationVerbs.any((v) => lower.contains(v)) || lower.contains('image') || lower.contains('video')) {
-          isCreative = true;
+    try {
+       // Use RouterAgent via EdgeAIService directly for speed, or properly instantiate Agent
+       final routerRes = await EdgeAIService.generateText(
+          routerPrompt, 
+          modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash'), // Fast router
+          ref: _ref
+       );
+       
+       final rawText = routerRes.text.trim();
+       final jsonStart = rawText.indexOf('{');
+       final jsonEnd = rawText.lastIndexOf('}');
+       
+       if (jsonStart != -1 && jsonEnd != -1) {
+          final jsonStr = rawText.substring(jsonStart, jsonEnd + 1);
+          final data = jsonDecode(jsonStr);
+          final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
+          
+          intentEnum = RouterIntent.values.firstWhere(
+            (e) => e.name.toUpperCase() == intentStr, 
+            orElse: () => RouterIntent.directChat
+          );
+          
+          if (data['required_tools'] != null) {
+              suggestedTools = List<String>.from(data['required_tools']);
+          }
+          debugPrint('Assistant: Router Intent: $intentStr, Suggested Tools: $suggestedTools');
        }
+    } catch (e) {
+       debugPrint('Assistant: Router failed ($e). Fallback to heuristic.');
+       // Fallback Heuristic
+       if (lower.contains('image') || lower.contains('video') || lower.contains('logo')) intentEnum = RouterIntent.creative;
+       else if (lower.contains('search') || lower.contains('find')) intentEnum = RouterIntent.research;
     }
-
-    if (isCreative) {
-       intentStr = "CREATIVE";
-    } else if (lower.contains('research') || lower.contains('find') || lower.contains('search')) {
-       intentStr = "RESEARCH";
-    } else if (lower.contains('add') || lower.contains('create') || lower.contains('build') || lower.contains('new')) {
-       // "Create" falls here ONLY if not caught by Creative logic above
-       intentStr = "MANAGEMENT";
-    }
-
-    final intentEnum = RouterIntent.values.firstWhere(
-      (e) => e.name.toUpperCase() == intentStr.toUpperCase(), 
-      orElse: () => RouterIntent.directChat
-    );
 
     // C. Dynamic Tool Loading
-    final relevantTools = toolRetrieval.getToolsForIntent(intentEnum);
-    final toolDefinitions = relevantTools.map((t) => "- ${t.name}: ${t.description}").join("\n");
+    // Load tools based on intent AND specific suggestions from Router
+    final intentTools = toolRetrieval.getToolsForIntent(intentEnum);
+    
+    // Merge explicitly requested tools if available in registry
+    final allTools = _ref.read(assistantToolRegistryProvider);
+    final specificTools = allTools.where((t) => suggestedTools.contains(t.name)).toList();
+    
+    // Combine and deduplicate
+    final Set<AgentTool> combinedTools = {...intentTools, ...specificTools};
+    
+    // Always ensure generation and navigation tools are available
+    combinedTools.addAll(allTools.where((t) => 
+      t.name == 'image_generation' || 
+      t.name == 'video_generation' || 
+      t.name == 'navigate_to'
+    ));
+
+    final toolDefinitions = combinedTools.map((t) {
+      final schema = t.toFunctionSchema();
+      return "- ${t.name}: ${t.description}. Params: ${jsonEncode(schema['parameters']['properties'])}";
+    }).join("\n");
 
     // D. Main Execution
     final currentMode = _ref.read(assistantModeProvider);
@@ -230,75 +280,75 @@ class AssistantService {
 
     final mainPrompt = """
 You are Brian, the Inhaus Brain Copilot.
-Current Mode: ${currentMode.name.toUpperCase()}
-Intent: $intentStr
-Memory Context:
-$longTermMemory
+You are deeply integrated into the Inhaus Brain web/desktop application.
+You HAVE the power to navigate the interface, generate media, and orchestrate commerce.
+NEVER claim you are 'just an AI' or 'cannot access settings'—you have tools explicitly for these tasks.
 
-Available Tools:
+Context:
+- Current Mode: ${currentMode.name.toUpperCase()}
+- Detected Intent: ${intentEnum.name.toUpperCase()}
+- System Memory: $longTermMemory
+
+AVAILABLE TOOLS:
 $toolDefinitions
 
-VISION CAPABILITY: I can see any images you attach. I use Gemini 1.5 Flash/Pro for visual reasoning.
-MULTIMODAL CAPABILITY: I can generate images using Imagen 3 and videos using Veo.
+VISION/MULTIMODAL:
+- I can see attached images (Gemini 1.5 Flash).
+- I generate images via 'image_generation'.
+- I generate videos via 'video_generation'.
 
 User Input: "$text"
 
-Instructions:
-1. If the user wants to generate an image or video, YOU MUST use the 'image_generation' or 'video_generation' tool.
-2. If using a tool, return ONLY a JSON object: {"tool": "name", "args": {...}}. 
-3. Do NOT wrap the JSON in markdown code blocks.
-4. If no tool matches, answer helpfully using rich Markdown formatting.
-${currentMode == AssistantMode.planning ? _planningModeInstructions : ""}
+CRITICAL INSTRUCTIONS:
+1. If the user wants to navigate (e.g., "go to settings", "show campaigns"), YOU MUST use the 'navigate_to' tool.
+2. If the user wants an image or video, YOU MUST use the corresponding generation tool.
+3. To use a tool, return ONLY a JSON object: {"tool": "name", "args": {...}}.
+4. DO NOT explain yourself first. DO NOT wrap JSON in code blocks.
+5. If NO tool applies, answer helpfully with rich Markdown.
 
 $ephemeralMsg
 """;
 
     String responseText = "";
+
+    
+    // DIRECT EDGE AI SERVICE (Primary)
+    // CopilotKit bypassed due to protocol errors
     try {
-      final aiRes = await EdgeAIService.generateText(
-        mainPrompt, 
+      final edgeResult = await EdgeAIService.generateText(
+        mainPrompt,
+        modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash'),
+        apiKey: null, // Use internal tokens
         ref: _ref,
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
-        audioBytes: audioAttachment != null ? Uint8List.fromList(audioAttachment) : null,
       );
-      final rawResponse = aiRes.text.trim();
-      debugPrint('Assistant: AI Raw Response: "$rawResponse"');
-      // Robust Parsing (Markdown + Function Call Support)
-      String cleanResponse = rawResponse.trim();
       
-      // 1. Strip Markdown Code Blocks (Iterate all matches to find JSON)
+      responseText = edgeResult.text;
+      
+      // Parse JSON from EdgeAI response if present
+      String cleanResponse = responseText.trim();
+      
+      // 1. Strip Markdown Code Blocks
       final codeBlockRegex = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true);
       final matches = codeBlockRegex.allMatches(cleanResponse);
-      
-      // If code blocks exist, try to parse ANY of them as JSON
+
       if (matches.isNotEmpty) {
         bool foundJson = false;
         for (final match in matches) {
            final content = match.group(1)!.trim();
-           // Quick check if it looks like a JSON object
            if (content.startsWith('{') && content.endsWith('}')) {
              try {
-                // validation logic duplicated for safety
                 final safeContent = content.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (m) {
                      return m.group(0)?.replaceAll('\n', '\\n') ?? '';
                 });
                 jsonDecode(safeContent);
-                cleanResponse = content; // Found valid JSON block!
+                cleanResponse = content; 
                 foundJson = true;
                 break;
-             } catch (_) {
-                // Not valid JSON, continue searching
-             }
+             } catch (_) {}
            }
         }
-        // If we found code blocks but none were valid JSON, we might fallback to raw text 
-        // OR if the model gave us python print statements, we might want to extract from there.
-        // For now, if we didn't find specific JSON block, let's fall back to the largest bracketed section in the WHOLE text
-        // assuming the Main extraction logic below handles it.
         if (!foundJson) {
-           // If we have a python script, maybe we ignore the script wrapper and just look at the raw text 
-           // but the raw text IS the script. 
-           // Let's just strip the ``` markers and let the bracket finder do its work.
            cleanResponse = cleanResponse.replaceAll(RegExp(r'```\w*\n?'), '').replaceAll('```', '');
         }
       }
@@ -309,53 +359,34 @@ $ephemeralMsg
 
       if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
         var jsonStr = cleanResponse.substring(jsonStart, jsonEnd + 1);
-        debugPrint('Assistant: Found JSON block candidate: $jsonStr');
-        
-        // Validation: Create a safe JSON string by escaping unescaped newlines
-        // This handles cases where models output multi-line strings invalidly
         jsonStr = jsonStr.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (match) {
              return match.group(0)?.replaceAll('\n', '\\n') ?? '';
         });
 
         try {
           final dynamic parsed = jsonDecode(jsonStr);
-          debugPrint('Assistant: Parsed JSON: $parsed');
           if (parsed is Map<String, dynamic>) {
              String? toolName;
              Map<String, dynamic>? toolArgs;
 
              if (parsed.containsKey('tool')) {
-               // Case A: Standard Protocol {"tool": "name", "args": {...}}
                toolName = parsed['tool'];
                toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
              } else {
-               // Case B: Function Call inferred `tool_name({...})`
-               // Check text BEFORE the JSON
+               // Heuristic inference
                final prefix = cleanResponse.substring(0, jsonStart).trim();
-               // Look for "tool_name(" pattern
                final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
                if (funcMatch != null) {
                  toolName = funcMatch.group(1);
                  toolArgs = parsed;
-                 debugPrint('Assistant: Inferred tool $toolName from function prefix');
-               } else if (cleanResponse.contains('(') && cleanResponse.endsWith(')')) {
-                  // Fallback: simple prefix check if no strict regex match
-                   final cleanPrefix = prefix.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
-                   if (cleanPrefix.isNotEmpty) {
-                      toolName = cleanPrefix;
-                      toolArgs = parsed;
-                      debugPrint('Assistant: Inferred tool $toolName from dirty prefix');
-                   }
                }
              }
 
              if (toolName != null && toolArgs != null) {
-               debugPrint('Assistant: Executing tool $toolName with $toolArgs');
-               // Special handling for bad args nesting (sometimes models wrap args in "args" key inside the function call)
                if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
                  toolArgs = Map<String, dynamic>.from(toolArgs['args']);
                }
-               return await _executeTool(relevantTools, toolName, toolArgs);
+               return await _executeTool(combinedTools.toList(), toolName, toolArgs);
              }
           }
         } catch (e) {
@@ -363,19 +394,14 @@ $ephemeralMsg
         }
       }
 
-      responseText = rawResponse;
+      // If no tool was executed, responseText remains the raw text
     } catch (e) {
       debugPrint('Assistant AI Error: $e');
-      if (e.toString().contains("Tool not found")) {
-         return ToolExecutionSummary(text: "I tried to use a tool but it wasn't available. Please try a simpler request.");
-      }
-      return ToolExecutionSummary(text: await _runHardcodedHeuristics(lower, tools));
+      return ToolExecutionSummary(text: "I encountered an error while processing your request: $e");
     }
 
-    // E. Verification Layer (Agent B)
-    // Only verify if the output is long/complex or critical
+    // ... Verification Layer ...
     bool needsVerification = intentEnum == RouterIntent.research || intentEnum == RouterIntent.copywriting;
-    
     if (needsVerification && responseText.length > 50) {
        final verifiedResponse = await verificationService.verifyOutput(text, responseText);
        return ToolExecutionSummary(text: verifiedResponse);
@@ -384,27 +410,6 @@ $ephemeralMsg
     return ToolExecutionSummary(text: responseText);
   }
 
-  Future<String> _runHardcodedHeuristics(String lower, List<AgentTool> tools) async {
-    // 1. NAVIGATION (High Priority)
-    if (lower.contains('go to') || lower.contains('navigate') || lower.contains('show') || lower.contains('open')) {
-      if (lower.contains('settings')) return (await _executeTool(tools, 'navigate_to', {'route': '/settings'})).text;
-      if (lower.contains('client')) return (await _executeTool(tools, 'navigate_to', {'route': '/clients'})).text;
-      if (lower.contains('workflow') || lower.contains('dashboard') || lower.contains('app')) {
-         return (await _executeTool(tools, 'navigate_to', {'route': '/dashboard'})).text; 
-      }
-      if (lower.contains('campaign')) return (await _executeTool(tools, 'navigate_to', {'route': '/campaigns'})).text;
-      if (lower.contains('monitor')) return (await _executeTool(tools, 'navigate_to', {'route': '/monitor'})).text;
-      if (lower.contains('knowledge')) return (await _executeTool(tools, 'navigate_to', {'route': '/knowledge'})).text;
-    }
-
-    // 2. CREATION / ADDITION
-    if (lower.contains('create') || lower.contains('add') || lower.contains('build') || lower.contains('new')) {
-       if (lower.contains('client')) return (await _executeTool(tools, 'add_client', {'name': 'New Client', 'industry': 'Other'})).text;
-       if (lower.contains('campaign')) return (await _executeTool(tools, 'create_campaign', {'title': 'New Campaign'})).text;
-    }
-
-    return "I am Brian, your Inhaus Copilot. I can manage clients, build apps, navigate to any module, or orchestrate commerce via UCP. Try: 'Build a new app' or 'Go to clients'.";
-  }
 
   Future<ToolExecutionSummary> _executeTool(List<AgentTool> tools, String name, Map<String, dynamic> args) async {
     final tool = tools.firstWhere((t) => t.name == name, orElse: () => throw Exception('Tool not found: $name'));

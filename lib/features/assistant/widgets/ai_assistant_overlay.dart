@@ -339,7 +339,9 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       left: left,
       width: width,
       child: FocusScope(
-        child: ExcludeFocus(
+        child: FocusTraversalGroup(
+          policy: WidgetOrderTraversalPolicy(),
+          child: ExcludeFocus(
           excluding: !isOpen,
           child: Material(
             elevation: 16,
@@ -351,7 +353,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                    border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
                   ),
                   child: Row(
                     children: [
@@ -479,7 +481,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                       margin: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0F1116),
-                        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -535,8 +537,9 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildMessageBubble(AssistantMessage message) {
     if (message.isUser) {

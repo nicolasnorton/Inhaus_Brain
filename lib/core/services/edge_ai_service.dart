@@ -108,7 +108,8 @@ class EdgeAIService {
                   } else if (fallbackId.contains('-002')) {
                      fallbackId = fallbackId.replaceAll('-002', '');
                   }
-                  final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: fallbackId, temperature: config.temperature, maxTokens: config.maxTokens);
+                  // Fallback: Use gemini-2.0-flash as a safe default for Dev API
+                  final devApiConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', temperature: config.temperature, maxTokens: config.maxTokens);
                   
                   result = await _generateGemini(effectivePrompt, devApiConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
                } else {
@@ -165,7 +166,7 @@ class EdgeAIService {
                 final gemErr = "$e";
                 debugPrint('EdgeAI: [DEBUG] Primary Gemini model (${config.modelId}) failed: $gemErr');
                 // Fallback: Try gemini-pro (v1.0) if Flash fails
-                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro');
+                final fallbackConfig = AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash'); // More stable fallback?
                 result = await _generateGemini(effectivePrompt, fallbackConfig, effectiveApiKey, imageBytes, imageMimeType, audioBytes, audioMimeType);
              }
            } 
@@ -320,27 +321,14 @@ class EdgeAIService {
            if (metadata['searchEntryPoint'] != null) {
                // Strip style tags to prevent JSON parser confusion in the frontend
                // and clean up the HTML for display
-               String cleanContent = (metadata['searchEntryPoint']['renderedContent'] ?? '')
-                   .replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '')
-                   .replaceAll(RegExp(r'<[^>]+>'), ' ') // Also strip other HTML tags for clean text, or leave them if Markdown supports it. Let's strip style but keep structure if possible? 
-                   // Actually, let's keep it simple: Strip STYLE only, as that breaks JSON. 
-                   // The user log showed CSS text leaking. 
-                   // Let's go with just stripping style for now.
-                   .replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '')
-                   .replaceAll(RegExp(r'\s+'), ' ')
-                   .trim();
-               
-               // Use a simpler approach: Just a link if we can't parse safely?
-               // The log showed <div class="container">... 
-               // Let's just strip the style block entirely.
-               String rawHtml = (metadata['searchEntryPoint']['renderedContent'] ?? '');
-               String noStyle = rawHtml.replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '');
-               
-               // Sanitize heavily for JSON safety
-               noStyle = noStyle.replaceAll(RegExp(r'\s+'), ' ').trim();
-               
-               fullText += "\n\n[Google Search Results]:\n$noStyle";
-           }
+                // Sanitize heavily for JSON safety
+                String rawHtml = (metadata['searchEntryPoint']['renderedContent'] ?? '');
+                String noStyle = rawHtml.replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>', caseSensitive: false), '');
+                noStyle = noStyle.replaceAll(RegExp(r'\s+'), ' ').trim();
+                
+                // Add a visual separator for grounding
+                fullText += "\n\n**Grounding Sources:**\n$noStyle";
+            }
         }
         
         return EdgeAIResult(fullText.isEmpty ? "No text generated." : fullText, AIProximity.cloud, modelUsed: config.modelId);
@@ -867,8 +855,9 @@ class EdgeAIService {
 
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
     // Phase 89: Mock/Simulate Lyria
+    debugPrint('EdgeAI: [AUDIO] Generating audio for: "$prompt" (MOCKED)');
     await Future.delayed(const Duration(seconds: 3));
-    return "assets/audio/mock_soundtrack.mp3"; 
+    return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; 
   }
 
   static Stream<EdgeAIResult> generateTextStream(

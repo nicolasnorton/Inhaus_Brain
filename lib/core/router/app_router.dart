@@ -37,6 +37,7 @@ import '../../features/admin/screens/system_analytics_screen.dart';
 import '../../features/reports/screens/reports_dashboard_screen.dart';
 import '../../features/reports/screens/reports_main_screen.dart';
 import '../../features/reports/screens/report_detail_screen.dart';
+import '../../features/copilot/presentation/copilot_view.dart';
 import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -231,6 +232,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/copilot',
+            builder: (context, state) => const CopilotView(),
           ),
         ],
       ),

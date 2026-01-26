@@ -97,6 +97,12 @@ class InhausBrainApp extends ConsumerWidget {
           Locale('es'), // Spanish
         ],
         locale: Locale(preferences.language.code),
+        builder: (context, child) {
+          return FocusTraversalGroup(
+            policy: WidgetOrderTraversalPolicy(),
+            child: child!,
+          );
+        },
       ),
     );
   }
