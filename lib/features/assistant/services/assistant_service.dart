@@ -20,7 +20,7 @@ import '../../../core/tokens/llm_provider.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+
 import '../domain/agent_outputs.dart';
 
 enum AssistantMode { fast, planning }
