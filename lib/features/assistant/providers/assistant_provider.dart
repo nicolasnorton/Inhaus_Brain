@@ -4,6 +4,9 @@ import '../services/assistant_service.dart';
 // State for the open/close status of the assistant overlay
 final isAssistantOpenProvider = StateProvider<bool>((ref) => false);
 
+// Current status of the assistant (e.g. "Searching...", "Thinking...")
+final assistantStatusProvider = StateProvider<String?>((ref) => null);
+
 // Trigger for sending message from FAB
 final assistantSendTriggerProvider = StateProvider<int>((ref) => 0);
 

@@ -22,6 +22,7 @@ import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
 
 import '../domain/agent_outputs.dart';
+import '../providers/assistant_provider.dart';
 
 enum AssistantMode { fast, planning }
 
@@ -212,6 +213,8 @@ class AssistantService {
         await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
       } catch (_) {}
       return errorMsg;
+    } finally {
+      _ref.read(assistantStatusProvider.notifier).state = null;
     }
   }
 
@@ -251,6 +254,8 @@ Return ONLY a JSON object:
     List<String> suggestedTools = [];
     
     try {
+       print('DEBUG: Assistant - Setting status: Analyzing intent...');
+       _ref.read(assistantStatusProvider.notifier).state = "Analyzing intent...";
        // Use RouterAgent via EdgeAIService directly for speed, or properly instantiate Agent
        final routerRes = await EdgeAIService.generateText(
           routerPrompt, 
@@ -331,6 +336,8 @@ Return ONLY a JSON object:
 
     final mainPrompt = """
 You are Brian, the Inhaus Brain Copilot.
+You share the core personality traits of Grok: maximum adherence to truth, maximally useful, and helpful. You are concise but not terse.
+You possess a distinct sense of humor that is witty yet remains professional at all times.
 You are deeply integrated into the Inhaus Brain web/desktop application.
 You HAVE the power to navigate the interface, generate media, and orchestrate commerce.
 NEVER claim you are 'just an AI' or 'cannot access settings'—you have tools explicitly for these tasks.
@@ -353,9 +360,10 @@ User Input: "$text"
 CRITICAL INSTRUCTIONS:
 1. If the user wants to navigate (e.g., "go to settings", "show campaigns"), YOU MUST use the 'navigate_to' tool.
 2. If the user wants an image or video, YOU MUST use the corresponding generation tool.
-3. To use a tool, return ONLY a JSON object: {"tool": "name", "args": {...}}.
-4. DO NOT explain yourself first. DO NOT wrap JSON in code blocks.
-5. If NO tool applies, answer helpfully with rich Markdown.
+3. TREND REPORTS and outputs typically requiring structure MUST be presented via 'gen_ui_component' (e.g., component_type: 'strategy_board') rather than long text. GEN UI FIRST.
+4. To use a tool, return ONLY a JSON object: {"tool": "name", "args": {...}}.
+5. DO NOT explain yourself first. DO NOT wrap JSON in code blocks.
+6. If NO tool applies, answer helpfully with rich Markdown.
 
 $ephemeralMsg
 """;
@@ -395,13 +403,15 @@ $ephemeralMsg
     // DIRECT EDGE AI SERVICE (Primary)
     // CopilotKit bypassed due to protocol errors
     try {
+      _ref.read(assistantStatusProvider.notifier).state = "Thinking...";
       final edgeResult = await EdgeAIService.generateText(
         mainPrompt,
         modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash'),
-        apiKey: null, // Use internal tokens
         ref: _ref,
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
       );
+      
+      print('DEBUG: Assistant - Received AI Response: ${edgeResult.text.substring(0, edgeResult.text.length > 50 ? 50 : edgeResult.text.length)}...');
       
       responseText = edgeResult.text;
       
@@ -485,7 +495,10 @@ $ephemeralMsg
                    toolArgs = Map<String, dynamic>.from(toolArgs['args']);
                  }
                  debugPrint('Assistant: Found valid tool JSON: $toolName');
-                 return await _executeTool(combinedTools.toList(), toolName, toolArgs);
+                 _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
+                 final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
+                 _ref.read(assistantStatusProvider.notifier).state = null;
+                 return result;
                }
             }
           } catch (e) {
@@ -610,7 +623,7 @@ $ephemeralMsg
                updatedAt: DateTime.now(),
              );
              return ToolExecutionSummary(
-               text: "Created artifact: \${artifact.title}",
+               text: "Created artifact: ${artifact.title}",
                artifacts: [artifact]
              );
         }
@@ -621,6 +634,31 @@ $ephemeralMsg
                  'type': args['component_type'],
                  ...Map<String, dynamic>.from(args['data'] ?? {}),
                },
+             );
+        }
+        print('DEBUG: Assistant - _executeTool result success for tool: $name');
+        print('DEBUG: Assistant - result.data: ${jsonEncode(result.data)}');
+        
+        // Normalize tool name check
+        final normalizedName = name.toLowerCase().trim();
+        if (normalizedName == 'web_search' || normalizedName == 'search_web' || normalizedName == 'search') {
+             print('DEBUG: Assistant - Matched web_search tool output block');
+             final results = result.data['results'] as List?;
+             final List<String> sources = [];
+             String summary = "I've researched market trends for your request.\n\n";
+             
+             if (results != null) {
+               for (var r in results) {
+                 if (r is Map) {
+                   sources.add(r['url'] ?? '');
+                   summary += "- **${r['title']}**: ${r['snippet']}\n";
+                 }
+               }
+             }
+
+             return ToolExecutionSummary(
+               text: summary,
+               sources: sources,
              );
         }
         return ToolExecutionSummary(text: "Executed $name successfully.\n\n```json\n${jsonEncode(result.data)}\n```");

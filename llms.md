@@ -96,3 +96,9 @@ The `PublishService` coordinates the deployment of workflows across multiple pla
 - **Containerization**: Flutter Web is packaged into a multi-stage Docker image served by Nginx.
 - **CI/CD**: `cloudbuild.yaml` coordinates the transition from GitHub to Google Artifact Registry and Cloud Run. Supports **dynamic version tagging** (Git SHA/Timestamp) for history and rollbacks.
 - **IaC**: Terraform models the infrastructure for repeatable, scalable environments.
+- **Firebase Functions**: The backend logic (including `proxyVertexAI` for Veo video generation) resides in `functions/` and must be deployed via `firebase deploy --only functions`.
+
+## Important Configuration Notes
+- **Vertex AI API**: Must be enabled in Google Cloud Console for the project.
+- **App Check**: Enforced in Production (ReCaptcha). Local development uses a Debug Token and requires the Firestore Emulator (`npx firebase emulators:start --only functions,firestore`).
+

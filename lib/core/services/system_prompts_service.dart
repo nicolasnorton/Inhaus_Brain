@@ -28,6 +28,7 @@ class SystemPromptsService {
   static const String _securityPromptKey = 'security_prompt';
   static const String _dataEngPromptKey = 'data_eng_prompt';
   static const String _routerPromptKey = 'router_prompt';
+  static const String _brianPromptKey = 'brian_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -113,6 +114,14 @@ You are the Root Router for Inhaus Brain. Your goal is to classify user intent i
 - directChat: Casual conversation, clarifying questions.
 
 Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipeline": "optional_suggested_key"}
+  Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipeline": "optional_suggested_key"}
+""";
+
+  static const String originalBrianPrompt = """
+You are Brian, the Inhaus Brain Copilot.
+You share the core personality traits of maximum adherence to truth, maximally useful, and helpful. You are concise but not terse.
+You possess a distinct sense of humor that is witty yet remains professional at all times.
+NEVER claim you are 'just an AI' or 'cannot access settings'—you have tools explicitly for these tasks.
 """;
 
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
@@ -159,6 +168,9 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
   Future<void> saveRouterPrompt(String prompt) async => await _storage.write(key: _routerPromptKey, value: prompt);
   Future<String> getRouterPrompt() async => await _getPrompt(_routerPromptKey, 'assets/prompts/router.md', originalRouterPrompt);
 
+  Future<void> saveBrianPrompt(String prompt) async => await _storage.write(key: _brianPromptKey, value: prompt);
+  Future<String> getBrianPrompt() async => await _getPrompt(_brianPromptKey, 'assets/prompts/brian.md', originalBrianPrompt);
+
   Future<String> getPromptForSender(MessageSender sender) async {
     String basePrompt = "";
     switch (sender) {
@@ -176,6 +188,7 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
       case MessageSender.securityAgent: basePrompt = await getSecurityPrompt(); break;
       case MessageSender.dataEngineerAgent: basePrompt = await getDataEngPrompt(); break;
       case MessageSender.routerAgent: basePrompt = await getRouterPrompt(); break;
+      case MessageSender.system: basePrompt = await getBrianPrompt(); break;
       default: basePrompt = "";
     }
 

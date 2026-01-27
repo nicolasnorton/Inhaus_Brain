@@ -149,6 +149,28 @@ class ChatMessage {
     'metadata': metadata,
     'suggestedPrompts': suggestedPrompts,
   };
+
+  ChatMessage copyWith({
+    String? id,
+    String? content,
+    MessageSender? sender,
+    MessageType? type,
+    DateTime? createdAt,
+    List<Attachment>? attachments,
+    Map<String, dynamic>? metadata,
+    List<String>? suggestedPrompts,
+  }) {
+    return ChatMessage(
+      id: id ?? this.id,
+      content: content ?? this.content,
+      sender: sender ?? this.sender,
+      type: type ?? this.type,
+      createdAt: createdAt ?? this.createdAt,
+      attachments: attachments ?? this.attachments,
+      metadata: metadata ?? this.metadata,
+      suggestedPrompts: suggestedPrompts ?? this.suggestedPrompts,
+    );
+  }
 }
 
 class ChatSession {

@@ -17,11 +17,14 @@ import '../services/assistant_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../settings/providers/user_provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import '../../chat/widgets/sources_carousel.dart';
+import '../../chat/widgets/thinking_indicator.dart';
 import 'artifact_renderer.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../presentation/widgets/gen_ui/strategy_board_widget.dart';
 import '../presentation/widgets/gen_ui/budget_chart_widget.dart';
 import '../presentation/widgets/gen_ui/kanban_board_widget.dart';
+import '../../chat/models/chat_models.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
   const AiAssistantOverlay({super.key});
@@ -46,6 +49,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   final FlutterTts _flutterTts = FlutterTts();
   bool _autoRead = false;
   late final FocusNode _keyboardFocusNode;
+  DateTime? _statusStartTime;
 
   @override
   void initState() {
@@ -672,6 +676,10 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             tableBorder: TableBorder.all(color: Colors.white10),
                           ),
                         ),
+                        if (message.sources != null && message.sources!.isNotEmpty)
+                          SourcesCarousel(
+                            sources: message.sources!.map((s) => {'url': s, 'title': _getDomain(s)}).toList(),
+                          ),
                         if (message.artifacts != null && message.artifacts!.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 12.0),
@@ -980,36 +988,53 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   }
 
   Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 12,
-            backgroundColor: Colors.white10,
-            child: Icon(Icons.smart_toy, size: 14, color: Colors.white),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(20).copyWith(topLeft: Radius.zero),
-            ),
-            child: const SizedBox(
-              width: 24,
-              height: 12,
-              child: Center(
-                child: Text(
-                  '...', 
-                  style: TextStyle(color: Colors.white54, letterSpacing: 2, height: 1, fontSize: 16),
+    return Consumer(
+      builder: (context, ref, _) {
+        final status = ref.watch(assistantStatusProvider);
+        if (status != null && _statusStartTime == null) {
+          _statusStartTime = DateTime.now();
+        } else if (status == null) {
+          _statusStartTime = null;
+        }
+        
+        print('DEBUG: AiAssistantOverlay - Status updated: $status, StartTime: $_statusStartTime');
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CircleAvatar(
+                radius: 12,
+                backgroundColor: Colors.white10,
+                child: Icon(Icons.smart_toy, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ThinkingIndicator(
+                  message: ChatMessage(
+                    id: 'temp',
+                    content: status ?? 'Thinking...',
+                    sender: MessageSender.system,
+                    type: MessageType.toolUsage,
+                    createdAt: _statusStartTime ?? DateTime.now(),
+                    metadata: {'status': status ?? 'thinking'},
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  String _getDomain(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.host.replaceFirst('www.', '');
+    } catch (_) {
+      return 'web';
+    }
   }
 
   Widget _buildGenUI(Map<String, dynamic> payload) {

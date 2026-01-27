@@ -18,8 +18,10 @@ import '../../core/services/voice_command_processor.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'widgets/voice_visualizer.dart';
-import 'widgets/message_actions_row.dart';
 import 'widgets/watermarked_image.dart';
+import 'widgets/thinking_indicator.dart';
+import 'widgets/sources_carousel.dart';
+import 'widgets/message_actions_row.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
@@ -253,6 +255,8 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                           return WatermarkedImage(imageUrl: uri.toString(), fit: BoxFit.contain);
                         },
                       ),
+                      if (message.metadata != null && message.metadata!.containsKey('sources'))
+                         SourcesCarousel(sources: (message.metadata!['sources'] as List).cast<Map<String, dynamic>>()),
                       if (message.attachments.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _buildAttachmentsList(message.attachments),
@@ -450,30 +454,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   }
 
   Widget _buildToolUsageIndicator(ChatMessage message) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.blueAccent.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            message.content,
-            style: const TextStyle(fontSize: 11, color: Colors.blueAccent, fontStyle: FontStyle.italic),
-          ),
-        ],
-      ),
-    );
+    return ThinkingIndicator(message: message);
   }
 
   Widget _buildAttachmentsList(List<Attachment> attachments) {
