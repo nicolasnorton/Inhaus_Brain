@@ -216,4 +216,14 @@ class ValidationResult {
 
   bool get hasErrors => issues.any((i) => i.severity == ValidationSeverity.error);
   bool get hasWarnings => issues.any((i) => i.severity == ValidationSeverity.warning);
+
+  List<String> get errors => issues
+      .where((i) => i.severity == ValidationSeverity.error)
+      .map((i) => i.message)
+      .toList();
+
+  List<String> get warnings => issues
+      .where((i) => i.severity == ValidationSeverity.warning)
+      .map((i) => i.message)
+      .toList();
 }

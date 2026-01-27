@@ -126,18 +126,19 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const pollUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
 
                 // Fix for possible incorrect operation names coming from Veo response
-                // If operationName contains 'publishers/', it might be a model path mixed in. 
-                // We will try to fetch it as is, but if it fails (404), we will try to extract the ID.
+                // If operationName contains 'publishers/', it implies a model-specific operation path that might not support UUIDs in some endpoints.
+                // We rewrite it to the generic project-level operations path which handles UUIDs correctly.
                 let targetUrl = pollUrl;
+
                 if (operationName.includes('publishers/') && operationName.includes('/operations/')) {
                     // Try to extract operation ID: .../operations/UUID
                     const parts = operationName.split('/operations/');
                     if (parts.length > 1) {
                         const opId = parts[1];
                         // Reconstruct standard path: projects/inhausbrain/locations/us-central1/operations/UUID
-                        // Assuming strictly us-central1 and inhausbrain for now as per this function's context
+                        // We hardcode project/location here to ensure it matches the proxy's environment, avoiding 'publishers/google' prefix.
                         const canonicalName = `projects/inhausbrain/locations/us-central1/operations/${opId}`;
-                        console.log(`[PROXY] Detected non-standard Operation Name. Trying canonical: ${canonicalName}`);
+                        console.log(`[PROXY] Detected non-standard Operation Name. Rewriting to canonical: ${canonicalName}`);
                         targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
                     }
                 }

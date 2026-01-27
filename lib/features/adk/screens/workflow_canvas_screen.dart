@@ -76,8 +76,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
     } else {
       _steps = [];
     }
-      _steps = [];
-    }
+
     // Initial Validation
     WidgetsBinding.instance.addPostFrameCallback((_) {
        ref.read(workflowExecutionProvider.notifier).validateWorkflow(_steps);
@@ -428,13 +427,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
              }
              _connectingFromId = null;
           }
-             if (!step.dependencies.contains(_connectingFromId)) {
-                step.dependencies.add(_connectingFromId!);
-                ref.read(workflowExecutionProvider.notifier).validateWorkflow(_steps);
-             }
-             _connectingFromId = null;
-          }
         });
+
       },
       child: Semantics(
         label: '${step.nodeType.name} node: ${step.instruction.isEmpty ? 'Unconfigured' : step.instruction}',
@@ -646,6 +640,38 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
     );
   }
 
+  void _showValidationIssues(ValidationResult? validation) {
+    if (validation == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Validation Issues'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (validation.errors.isNotEmpty) ...[
+              const Text('Errors:', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              ...validation.errors.map((e) => Text('• $e')),
+              const SizedBox(height: 10),
+            ],
+            if (validation.warnings.isNotEmpty) ...[
+              const Text('Warnings:', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+              ...validation.warnings.map((w) => Text('• $w')),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showCommitDialog() {
     final messageController = TextEditingController();
     final user = ref.read(currentUserProvider);
@@ -726,19 +752,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
     );
   }
 
-  void _updateStep(String id, {String? instruction, MessageSender? agentType, Map<String, dynamic>? config, Map<String, String>? inputMappings}) {
-    setState(() {
-      final index = _steps.indexWhere((s) => s.id == id);
-      if (index != -1) {
-        _steps[index] = _steps[index].copyWith(
-           agentType: agentType,
-           instruction: instruction,
-           config: config,
-           inputMappings: inputMappings,
-        );
-      }
-    });
-  }
+
 
 
   IconData _getNodeIcon(WorkflowNodeType type) {
@@ -764,7 +778,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.documentExtractor: return FontAwesomeIcons.filePdf;
       case WorkflowNodeType.variableAssigner: return FontAwesomeIcons.penToSquare;
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
-      case WorkflowNodeType.note: return FontAwesomeIcons.stickyNote;
+      case WorkflowNodeType.note: return FontAwesomeIcons.noteSticky;
     }
   }
 

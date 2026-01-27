@@ -74,14 +74,20 @@ class AuthService {
     }
 
     try {
+      if (kDebugMode) print('AuthService: Fetching user profile for ${user.uid}...');
       final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (kDebugMode) print('AuthService: Profile fetch status: ${doc.exists ? "EXISTS" : "MISSING"}');
+      
       if (doc.exists && doc.data() != null) {
         final profile = AppUser.fromJson(doc.data()!);
         _userProfiles[user.uid] = profile;
         return profile;
       }
-    } catch (e) {
-      if (kDebugMode) print('Error fetching user profile: $e');
+    } catch (e, stack) {
+      if (kDebugMode) {
+        print('Error fetching user profile: $e');
+        print('Stack trace: $stack');
+      }
     }
 
     // Fallback / First time creation

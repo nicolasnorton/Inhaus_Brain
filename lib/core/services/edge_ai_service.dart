@@ -1,13 +1,14 @@
 import 'dart:async';
+import 'package:logger/logger.dart';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:http/http.dart' as http;
+import 'package:retry/retry.dart';
 import '../../features/knowledge/models/knowledge_source.dart';
 import '../tokens/llm_provider.dart';
 import '../auth/secret_vault_service.dart';
-import '../auth/auth_service.dart';
 import 'ai_proxy_service.dart';
 
 // --- JS Interop for Chrome Prompt API ---
@@ -51,6 +52,8 @@ class EdgeAIService {
   static bool forceMock = false;
   static final _vault = SecretVaultService();
 
+  static final _logger = Logger();
+
   static Future<EdgeAIResult> generateText(
     String prompt, {
     List<KnowledgeSource> context = const [],
@@ -72,10 +75,10 @@ class EdgeAIService {
     
     final config = modelConfig ?? AIModelConfig.geminiFlash;
     
-    debugPrint('EdgeAI: [DEBUG] Generating text via ${config.provider} (${config.modelId})');
+    _logger.d('EdgeAI: Generating text via ${config.provider} (${config.modelId})');
 
     if (forceMock) {
-      debugPrint('EdgeAI: [DEBUG] forceMock is TRUE. Returning mock.');
+      _logger.i('EdgeAI: forceMock is TRUE. Returning mock.');
       return await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
     }
 
@@ -97,18 +100,33 @@ class EdgeAIService {
                audioMimeType: audioMimeType
              );
           } catch (e) {
-             debugPrint('EdgeAI: [DEBUG] FirebaseAI failed: $e. Falling back to Proxy/Mock.');
+             _logger.w('EdgeAI: FirebaseAI failed: $e. Falling back to Proxy/Mock.');
              // If direct SDK fails (e.g. Web CORS or Auth), try Proxy if on Web
              if (kIsWeb) {
                 try {
-                   final proxyRes = await AIProxyService.generateContent(prompt: effectivePrompt, config: config);
+                   final proxyRes = await retry(
+                     () => AIProxyService.generateContent(prompt: effectivePrompt, config: config),
+                     maxAttempts: 3,
+                     delayFactor: const Duration(milliseconds: 500),
+                   );
+                   
                    String text = "No proxy content.";
-                   if (proxyRes['candidates'] != null && (proxyRes['candidates'] as List).isNotEmpty) {
-                      text = proxyRes['candidates'][0]['content']['parts'][0]['text'] ?? "No text.";
-                   }
+                   try {
+                      final candidates = proxyRes['candidates'] as List?;
+                      if (candidates?.isNotEmpty == true) {
+                        final candidate = candidates!.first;
+                        final parts = candidate['content']?['parts'] as List?;
+                        if (parts?.isNotEmpty == true) {
+                          text = parts!.first['text'] ?? parts.first.toString();
+                        }
+                      }
+                    } catch (parseErr) {
+                      _logger.w('EdgeAI: Proxy parse error: $parseErr');
+                    }
+                   
                    result = EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Proxy: ${config.modelId}');
                 } catch (proxyErr) {
-                   debugPrint('EdgeAI: [DEBUG] Proxy fallback failed: $proxyErr');
+                   _logger.e('EdgeAI: Proxy fallback failed: $proxyErr');
                    if (forceMock) rethrow; 
                    result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
                 }
@@ -119,7 +137,7 @@ class EdgeAIService {
           break;
         case AIProvider.openai:
           final key = openAIKey ?? await _vault.getOpenAIKey();
-          debugPrint('EdgeAI: [DEBUG] OpenAI Key found: ${key != null && key.isNotEmpty}');
+          _logger.d('EdgeAI: OpenAI Key found: ${key != null && key.isNotEmpty}');
           if (key == null || key.isEmpty) {
              result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
           } else {
@@ -128,7 +146,7 @@ class EdgeAIService {
           break;
         case AIProvider.claude:
           final key = anthropicKey ?? await _vault.getAnthropicKey();
-          debugPrint('EdgeAI: [DEBUG] Claude Key found: ${key != null && key.isNotEmpty}');
+          _logger.d('EdgeAI: Claude Key found: ${key != null && key.isNotEmpty}');
           if (key == null || key.isEmpty) {
              result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
           } else {
@@ -137,7 +155,7 @@ class EdgeAIService {
           break;
         case AIProvider.grok:
           final key = xaiKey ?? await _vault.getXAIKey();
-          debugPrint('EdgeAI: [DEBUG] Grok Key found: ${key != null && key.isNotEmpty}');
+          _logger.d('EdgeAI: Grok Key found: ${key != null && key.isNotEmpty}');
           if (key == null || key.isEmpty) {
              result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
           } else {
@@ -145,7 +163,7 @@ class EdgeAIService {
           }
           break;
         default:
-          debugPrint('EdgeAI: [DEBUG] Unknown provider ${config.provider}. Returning mock.');
+          _logger.w('EdgeAI: Unknown provider ${config.provider}. Returning mock.');
           result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
       }
       
@@ -155,8 +173,8 @@ class EdgeAIService {
       }
       
       return result;
-    } catch (e) {
-      debugPrint('EdgeAI: [DEBUG] ERROR during ${config.provider} generation: $e');
+    } catch (e, stack) {
+      _logger.e('EdgeAI: ERROR during ${config.provider} generation', error: e, stackTrace: stack);
       final mockRes = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
       if (ref != null) {
         ref.read(aiProximityProvider.notifier).setProximity(mockRes.proximity);
@@ -166,6 +184,7 @@ class EdgeAIService {
   }
 
   // --- PROVIDER IMPLEMENTATIONS ---
+
 
   static Future<EdgeAIResult> _generateFirebaseAI(
     String prompt, 
@@ -177,30 +196,21 @@ class EdgeAIService {
     Uint8List? audioBytes,
     String? audioMimeType,
   }) async {
-    final ai = FirebaseAI.instance;
-    // Resolve Keys
-    final vertexKey = vertexKeyOverride ?? await _vault.getVertexKey(); 
-    final geminiKey = apiKeyOverride ?? await _vault.getGeminiKey();
+    final ai = FirebaseAI.vertexAI();
+    // Note: apiKey and backend are now automatically handled by FirebaseAI based on project config
     
-    final isVertexToken = vertexKey != null && (vertexKey.startsWith('ya29.') || vertexKey.startsWith('AQ.'));
-    
-    // Check if key is for Google AI (starts with AIza)
-    final useGoogleAI = (geminiKey != null && geminiKey.startsWith('AIza')) && !isVertexToken;
-
     final model = ai.generativeModel(
       model: _sanitizeModelName(config.modelId),
-      apiKey: useGoogleAI ? geminiKey : null,
-      backend: useGoogleAI ? Backend.googleAI : Backend.vertexAI,
       generationConfig: GenerationConfig(
         temperature: config.temperature,
-        maxOutputTokens: config.maxTokens,
+        maxOutputTokens: config.maxTokens ?? 2048,
         responseMimeType: config.responseMimeType,
       ),
       safetySettings: [
-        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium), 
-        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium),
-        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.medium),
-        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.medium),
+            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.high, HarmBlockMethod.probability), 
+            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.high, HarmBlockMethod.probability),
+            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.high, HarmBlockMethod.probability),
+            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.high, HarmBlockMethod.probability),
       ],
       tools: [Tool.codeExecution()],
     );
@@ -208,38 +218,41 @@ class EdgeAIService {
     final parts = <Part>[TextPart(prompt)];
     
     if (imageBytes != null) {
-      parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+      parts.add(InlineDataPart(imageMimeType ?? 'image/jpeg', imageBytes));
     }
     
     if (audioBytes != null) {
-      parts.add(DataPart(audioMimeType ?? 'audio/mp3', audioBytes));
+      parts.add(InlineDataPart(audioMimeType ?? 'audio/mp3', audioBytes));
     }
 
     final content = Content.multi(parts);
     
     final response = await model.generateContent([content]);
     
-    String fullText = response.text ?? 'No content generated.';
+    String fullText = response.text ?? '';
     
-    // Check for Function Calls (if SDK returns them separately or in parts)
-    if (response.candidates.isNotEmpty) {
+    if (fullText.isEmpty && response.candidates.isNotEmpty) {
        for (var part in response.candidates.first.content.parts) {
-          if (part is ExecutableCode) {
-             fullText += "\n\n```${part.language.toLowerCase()}\n${part.code}\n```\n";
-          } else if (part is CodeExecutionResult) {
-             fullText += "\n**Result:**\n```\n${part.output}\n```\n";
+          if (part is TextPart) {
+             fullText += part.text;
+          } else if (part is FunctionCall) {
+             fullText += "\n[System: Call ${part.name}(${part.args})]";
+          } else if (part is FunctionResponse) {
+             fullText += "\n**Function Result:** ${part.response}";
           }
        }
     }
     
+    if (fullText.isEmpty) fullText = 'No content generated.';
+
     // Check for grounding
-    if (response.candidates.isNotEmpty && response.candidates.first.groundingMetadata != null) {
-       final metadata = response.candidates.first.groundingMetadata!;
-       if (metadata.groundingChunks.isNotEmpty) {
-          final sources = metadata.groundingChunks
-              .map((c) => c.web?.uri.toString())
-              .where((uri) => uri != null)
-              .toSet() 
+    if (response.candidates.isNotEmpty) {
+       final grounding = response.candidates.first.groundingMetadata;
+       if (grounding != null && grounding.groundingChunks.isNotEmpty) {
+          final sources = grounding.groundingChunks
+              .map((chunk) => chunk.web?.uri?.toString())
+              .whereType<String>()
+              .toSet()
               .join(', ');
           if (sources.isNotEmpty) {
              fullText += "\n\n**Sources:** $sources";
@@ -270,8 +283,6 @@ class EdgeAIService {
   }) async* {
     final effectiveConfig = config ?? AIModelConfig.geminiFlash;
      
-     // Only Gemini supports our native stream refactor right now.
-     // TODO: Extend streaming support to OpenAI/Claude/Grok providers
      if (effectiveConfig.provider != AIProvider.gemini) {
         yield EdgeAIResult("Thinking...", AIProximity.simulated);
         yield await generateText(
@@ -289,36 +300,43 @@ class EdgeAIService {
 
      try {
        final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
-       final ai = FirebaseAI.instance;
-       
-       final geminiKey = apiKey ?? await _vault.getGeminiKey();
-       final useGoogleAI = (geminiKey != null && geminiKey.startsWith('AIza'));
+       final ai = FirebaseAI.vertexAI();
        
        final model = ai.generativeModel(
           model: _sanitizeModelName(effectiveConfig.modelId),
-          apiKey: useGoogleAI ? geminiKey : null,
-          backend: useGoogleAI ? Backend.googleAI : Backend.vertexAI,
           generationConfig: GenerationConfig(
             temperature: effectiveConfig.temperature,
             maxOutputTokens: effectiveConfig.maxTokens,
             responseMimeType: effectiveConfig.responseMimeType,
-          )
+          ),
+          safetySettings: [
+            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium, HarmBlockMethod.probability), 
+            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium, HarmBlockMethod.probability),
+            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.medium, HarmBlockMethod.probability),
+            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.medium, HarmBlockMethod.probability),
+          ],
        );
 
        final parts = <Part>[TextPart(effectivePrompt)];
-       if (imageBytes != null) parts.add(DataPart(imageMimeType ?? 'image/jpeg', imageBytes));
+       if (imageBytes != null) parts.add(InlineDataPart(imageMimeType ?? 'image/jpeg', imageBytes));
        
        final content = Content.multi(parts);
        final stream = model.generateContentStream([content]);
        
+       String accumulatedText = '';
+       
        await for (final chunk in stream) {
           if (chunk.text != null && chunk.text!.isNotEmpty) {
-             yield EdgeAIResult(chunk.text!, AIProximity.cloud, modelUsed: effectiveConfig.modelId);
+             accumulatedText += chunk.text!;
+             yield EdgeAIResult(accumulatedText, AIProximity.cloud, modelUsed: effectiveConfig.modelId);
+          }
+          if (chunk.candidates.isNotEmpty && chunk.candidates.first.finishReason != null) {
+            _logger.d('EdgeAI: Stream finished with reason: ${chunk.candidates.first.finishReason}');
           }
        }
 
      } catch (e) {
-        debugPrint('EdgeAI: [STREAM] Error: $e');
+        _logger.e('EdgeAI: [STREAM] Error: $e');
         yield EdgeAIResult("Stream Error: $e", AIProximity.simulated);
      }
   }
@@ -599,17 +617,5 @@ class EdgeAIService {
     return buffer.toString();
   }
 
-  static String _safeError(dynamic e) {
-    if (e == null) return "Unknown Error (null)";
-    try {
-      final dynamic err = e;
-      return err.toString();
-    } catch (_) {
-      try {
-        return "$e";
-      } catch (e2) {
-        return "Critical Error parsing exception";
-      }
-    }
-  }
+
 }

@@ -4,6 +4,7 @@ import '../models/workflow_execution_models.dart';
 import '../../adk/logic/graph_validator.dart';
 import '../../adk/logic/budget_governor.dart';
 import '../../../core/adk/models/pipeline_models.dart';
+import '../../chat/services/verification_service.dart';
 
 /// Provider for workflow execution state
 final workflowExecutionProvider =

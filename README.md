@@ -142,6 +142,14 @@ To use the full version of the app with live AI capabilities, please follow our 
 ### ☁️ Cloud Deployment
 See [DEPLOY.md](file:///Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
 
+### 🛡️ App Check & Emulators
+- **Production**: Uses ReCaptcha v3 (Site Key in `main.dart`).
+- **Local Development**:
+  - Uses `debug` App Check provider.
+  - **Firestore Emulator** is **REQUIRED** for local database access (configured in `main.dart` for `kDebugMode`).
+  - Run emulators: `npx firebase emulators:start --only functions,firestore`.
+  - **Vertex AI**: Requires the "Vertex AI API" to be enabled in Google Cloud Console.
+
 ## 📂 Project Structure
 - `lib/core`: Theming, routing, and centralized services.
 - `lib/features/auth`: Role-based login and session management.

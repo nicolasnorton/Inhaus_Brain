@@ -7,11 +7,13 @@
 // (at your option) any later version.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -35,6 +37,37 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  if (kDebugMode) {
+    try {
+      // Use 127.0.0.1 explicitly to avoid IPv6/localhost resolution issues
+      FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
+      print('🔥 Using Firestore Emulator on 127.0.0.1:8080');
+    } catch (e) {
+      print('⚠️ Failed to connect to Firestore Emulator: $e');
+    }
+  }
+  
+  // App Check Activation
+  // Site Key: 6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy
+  try {
+    await FirebaseAppCheck.instance.activate(
+      webProvider: ReCaptchaV3Provider('6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy'),
+      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: AppleProvider.appAttest,
+    );
+    
+    // Attempt to retrieve and log the token to verify the handshake
+    final tokenResult = await FirebaseAppCheck.instance.getToken(true);
+    debugPrint('✅ App Check activated successfully.');
+    debugPrint('📝 App Check token: $tokenResult');
+    // debugPrint('Token expires: ${DateTime.fromMillisecondsSinceEpoch(tokenResult?.expireTimeMillis ?? 0)}'); // API v0.3.0+ returns String?
+    debugPrint('Is debug mode: ${kDebugMode}'); // Checking if kDebugMode is actually true
+  } catch (e, stack) {
+    debugPrint('❌ App Check activation failed: $e');
+    debugPrint('Stack trace: $stack');
+    // Continue without App Check in dev if it fails, to prevent crashing
+  }
 
   runApp(const ProviderScope(child: InhausBrainApp()));
 }
