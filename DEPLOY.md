@@ -55,7 +55,18 @@ gcloud run deploy inhaus-brain \
 **Note**: You must have `VERTEX_API_KEY` and `GEMINI_API_KEY` exported in your terminal session for these commands to work.
 
 
+
+### 5. Deploy Cloud Functions (Backend)
+The AI Proxy service runs on Firebase Cloud Functions. If you made changes to `functions/`, deploy them separately:
+
+```bash
+firebase deploy --only functions
+```
+
+Note: Ensure you are logged in via `firebase login` and have the correct project selected (`firebase use inhausbrain`).
+
 ## Troubleshooting
+
 
 ### Vertex AI: 401 Unauthorized / API Key Blocked
 If you see a 401 error in the console related to Vertex AI despite having a valid key:
