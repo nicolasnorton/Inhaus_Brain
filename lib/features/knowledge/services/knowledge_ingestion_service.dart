@@ -62,7 +62,7 @@ $taskSummary
 
     try {
       // Now await with timeout
-      await ingestionFuture.timeout(const Duration(seconds: 10));
+      await ingestionFuture.timeout(const Duration(seconds: 60));
     } catch (e) {
       // Swallowed to prevent dangling future crashes after timeout
       debugPrint('Ingestion Timeout/Error (Handled): ${_safeError(e)}');

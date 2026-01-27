@@ -130,18 +130,20 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 // We rewrite it to the generic project-level operations path which handles UUIDs correctly.
                 let targetUrl = pollUrl;
 
+                // [MODIFIED] Disable rewriting. Veo operations seem to require the full publisher path.
+                // Rewriting to canonical operations path triggers "Operation ID must be a Long" error.
+                /*
                 if (operationName.includes('publishers/') && operationName.includes('/operations/')) {
-                    // Try to extract operation ID: .../operations/UUID
+                    // ... rewriting logic disabled ...
                     const parts = operationName.split('/operations/');
                     if (parts.length > 1) {
                         const opId = parts[1];
-                        // Reconstruct standard path: projects/inhausbrain/locations/us-central1/operations/UUID
-                        // We hardcode project/location here to ensure it matches the proxy's environment, avoiding 'publishers/google' prefix.
                         const canonicalName = `projects/inhausbrain/locations/us-central1/operations/${opId}`;
                         console.log(`[PROXY] Detected non-standard Operation Name. Rewriting to canonical: ${canonicalName}`);
                         targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
                     }
                 }
+                */
 
                 const response = await fetch(targetUrl, {
                     method: 'GET',
