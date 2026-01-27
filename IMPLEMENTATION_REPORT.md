@@ -35,11 +35,33 @@
   - **Visuals**: Styled with a subtle blue glassmorphic container and animated spinner.
 - **Integration**: Replaced the static tool usage row in `AgenticChatView` with this live widget.
 
-## 4. Verification
-- **App Load**: Success on `http://localhost:5001`.
-- **Chat**: Sending "Hello Brian" triggers the correct persona response.
-- **Thinking**: Intermediate tool steps (like Research or Image Gen) now show the `ThinkingIndicator` with live timing before being replaced by the final result.
+## 4. Deep Fixes (Phase 2)
+**Objective**: Resolve issues where raw JSON was shown and "Thinking Indicator" was missing or static in the Brian Overlay.
 
-## Next Steps for User
-1. **Test Web Search**: Try asking `@research latest AI trends` to see the Thinking Indicator and Search Tool in action.
-2. **Test Gen UI**: Ask for a "Strategy Board" to verify the "Gen UI First" behavior.
+**Fixes Applied**:
+- **Tool Matching Normalization**: In `AssistantService`, updated the tool name check to be more robust (handles `web_search`, `search`, etc.) and ensures the formatted "Source Summary" is always generated instead of raw JSON.
+- **Stable Timer Logic**: Updated `AiAssistantOverlay` to maintain a stable `_statusStartTime` when an agent starts working, ensuring the `ThinkingIndicator` timer counts up correctly from the start of the process.
+- **Improved Logging**: Added `DEBUG` print statements to trace status propagation from the service to the UI overlay.
+
+## 5. Deployment & Production Testing
+**Objective**: Transition from localhost testing to the "GCloud" version as requested.
+
+**Actions**:
+1. **Flutter Clean & Rebuild**: Cleared all artifacts and performed a fresh release build to ensure code coherence.
+2. **Dockerization**: Verified and optimized the `Dockerfile` for Cloud Run (multi-stage build with Nginx).
+3. **Automated Deployment**: Executed `./deploy.sh` to:
+   - Build the container via **Google Cloud Build**.
+   - Push to **Google Cloud Artifact Registry**.
+   - Deploy to **Cloud Run** (us-central1).
+4. **Environment**: Production version now uses secure `https` endpoints for AI Proxying.
+
+## 6. Verification Steps (GCloud)
+1. Navigate to: [https://brain.inhauscorp.com](https://brain.inhauscorp.com)
+2. Use the **Brian Assistant Overlay**.
+3. Query: `@research latest AI trends`.
+4. **Behavior**: You should see the animated indicator with timer, followed by a summary and horizontal **Source Cards**.
+
+## 7. Next Steps
+- Monitor Cloud Run logs for any transport errors.
+- Verify Google Sign-In on the production domain (requires Authorized Redirect URIs in console).
+- Docker image is pushed and tagged with Git SHA for rollback capability.
