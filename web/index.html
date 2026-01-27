@@ -38,7 +38,10 @@
 
 <body>
   <script>
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = "2b73b0c0-d4fb-4dae-aa3b-1784c5e0efb2";
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = "2b73b0c0-d4fb-4dae-aa3b-1784c5e0efb2";
+      console.log("🐛 App Check Debug Token Enabled for Localhost");
+    }
   </script>
   <script src="edge_ai.js" defer></script>
   <script src="flutter_bootstrap.js" async></script>
