@@ -35,7 +35,10 @@ for KEY in "${OPTIONAL_KEYS[@]}"; do
 done
 
 # Generate a dynamic tag (Git SHA or Timestamp)
-if git rev-parse --git-dir > /dev/null 2>&1; then
+# Generate a dynamic tag (Git Tag, SHA, or Timestamp)
+if git describe --tags --exact-match > /dev/null 2>&1; then
+  TAG=$(git describe --tags --exact-match)
+elif git rev-parse --git-dir > /dev/null 2>&1; then
   TAG=$(git rev-parse --short HEAD)
 else
   TAG=$(date +%Y%m%d%H%M%S)
