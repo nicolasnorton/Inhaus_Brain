@@ -20,10 +20,18 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
 - **Rich GenUI Library**: Triggers interactive Flutter widgets (`BudgetChart`, `KanbanBoard`, `StrategyBoard`) directly in the chat stream via natural language.
 
-### � Standardized Agentic Workbench (MCP)
-- **Collaborative Chat**: A unified "Workshop" interface where users can **edit and copy messages**, and collaborate with specialized agents (Researcher, Creative, Copywriter, Developer).
-- **Knowledge Module**: Inject "Ground Truth" context (URLs, PDFs, Briefs) via the **Context Board**.
-- **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
+### 🤖 Agency-Wide Specialist Workforce (New)
+The Inhaus Brain features a team of 11+ specialized agents, each with a custom markdown-driven persona:
+- **Brian (Super Admin)**: The world-class Chief of Staff who orchestrates the entire agency.
+- **Research Agent**: Deep market analysis and competitor scraping.
+- **Strategist Agent**: Data-driven campaign plans and risk assessment.
+- **Creative Agent**: Visual concepts, image prompts, and artistic direction.
+- **Copywriter Agent**: High-converting text for ads and social media.
+- **Design Agent**: Pixel-perfect UI/UX specs and wireframes.
+- **Video Production Agent**: Storyboarding and 4K production management.
+- **Customer Service Agent**: Empathetic client resolution and SLA tracking.
+- **CRM Agent**: Record management and audience segmentation.
+- **C-Suite Advisor Agent**: ROI projections and board-level strategy.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 
 ### 🦅 Blackboard 2.0 & Observability
@@ -63,8 +71,8 @@ Enterprise-grade safety integrated directly into the agentic flow:
 - **Sensitive Task Interception**: Automatically blocks or sanitizes high-stakes actions (Media Buying, Data Access) if they violate brand safety.
 - **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
 
-### 🤖 Autonomous Platform Management (Copilot)
-The Inhaus Brain features an **AI Super Admin** (Management Agent) that allows you to operate the entire platform via natural language:
+### 🤖 Brian: The AI Super Admin
+The Inhaus Brain is led by **Brian**, an AI Super Admin that allows you to operate the entire platform via natural language:
 - **Client & CRM**: Create, list, search, and update client records and project plans.
 - **Campaign Orchestration**: Full CRUD support for marketing campaigns.
 - **Brain Knowledge Management**: Autonomous injection and removal of websites, files, and documents from the system's global knowledge base.
@@ -140,7 +148,7 @@ To use the full version of the app with live AI capabilities, please follow our 
    ```
 
 ### ☁️ Cloud Deployment
-See [DEPLOY.md](file:///Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
+See [DEPLOY.md](DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
 
 ### 🛡️ App Check & Emulators
 - **Production**: Uses ReCaptcha v3 (Site Key in `main.dart`).
