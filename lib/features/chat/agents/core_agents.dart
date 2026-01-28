@@ -7,6 +7,7 @@ import '../models/chat_models.dart';
 import '../../../core/mcp/agent_tool.dart';
 import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
+import '../../../core/services/system_prompts_service.dart';
 
 class ResearchAgent extends BaseAgent {
   @override

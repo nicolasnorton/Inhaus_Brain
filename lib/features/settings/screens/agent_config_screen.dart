@@ -261,7 +261,7 @@ class _AgentConfigScreenState extends ConsumerState<AgentConfigScreen> {
       case MessageSender.visionAgent: return FontAwesomeIcons.eye;
       
       // Upgraded Agency Roles
-      case MessageSender.designAgent: return FontAwesomeIcons.vectorSquare;
+      case MessageSender.designAgent: return FontAwesomeIcons.penRuler;
       case MessageSender.videoProductionAgent: return FontAwesomeIcons.video;
       case MessageSender.customerServiceAgent: return FontAwesomeIcons.headset;
       case MessageSender.crmAgent: return FontAwesomeIcons.users;
