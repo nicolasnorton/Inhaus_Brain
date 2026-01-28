@@ -40,7 +40,7 @@ Navigate to the platform-specific directories and install the native dependencie
 **iOS**:
 1.  Open `ios/Podfile` and ensure the platform is set to at least 14.0:
     ```ruby
-    platform :ios, '14.0'
+    platform :ios, '15.0'
     ```
 2.  Run the install commands:
     ```bash

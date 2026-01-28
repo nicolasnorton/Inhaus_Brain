@@ -19,35 +19,15 @@ class WelcomeScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Top Agency Label
-              const Text(
-                "I N H A U S",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: 8.0,
-                ),
-              ),
-              const Text(
-                "ESTUDIO CREATIVO",
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white70,
-                  letterSpacing: 2.0,
-                ),
-              ),
-
               const Spacer(),
 
               // Central Brain Icon
               // Central Brain Icon
               Image.asset(
                 'assets/images/inhaus_brain_logo.png',
-                width: 180,
-                height: 180,
-                color: Colors.white, // Ensure it's white if it's a mask, or remove if it's already white-on-transparent
+                width: 300, // Increased for full logo visibility
+                fit: BoxFit.contain,
+                color: Colors.white,
               ).animate().fadeIn(duration: 800.ms).scale(begin: const Offset(0.9, 0.9)),
               
               const SizedBox(height: 32),
