@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // import 'package:share_plus/share_plus.dart'; // Future integration
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inhaus_brain/core/services/telemetry_service.dart';
+
 enum FeedbackState { none, thumbsUp, thumbsDown }
 
-class MessageActionsRow extends StatefulWidget {
+class MessageActionsRow extends ConsumerStatefulWidget {
+  final String messageId; // Added for tracking
   final String content;
   final bool isUser;
   final String? modelName;
@@ -14,6 +18,7 @@ class MessageActionsRow extends StatefulWidget {
 
   const MessageActionsRow({
     super.key,
+    required this.messageId,
     required this.content,
     required this.isUser,
     this.modelName,
@@ -22,7 +27,7 @@ class MessageActionsRow extends StatefulWidget {
   });
 
   @override
-  State<MessageActionsRow> createState() => _MessageActionsRowState();
+  ConsumerState<MessageActionsRow> createState() => _MessageActionsRowState();
 }
 
 class _MessageActionsRowState extends State<MessageActionsRow> {
@@ -37,7 +42,24 @@ class _MessageActionsRowState extends State<MessageActionsRow> {
         _feedback = state;
       }
     });
-    // TODO: Send feedback to analytics/backend
+    
+    if (state != FeedbackState.none) {
+      final isPositive = state == FeedbackState.thumbsUp;
+      ref.read(telemetryServiceProvider).logFeedback(
+        messageId: widget.messageId,
+        content: widget.content, // Telemetry service handles privacy (only logs length/hash if configured)
+        isPositive: isPositive,
+        modelName: widget.modelName,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isPositive ? 'Thanks for the feedback!' : 'Thanks! We will improve this.'),
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _handleCopy() async {

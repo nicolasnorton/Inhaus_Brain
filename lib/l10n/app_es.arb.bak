@@ -509,14 +509,7 @@
     "placeholders": {
       "count": { "type": "int" }
     }
-  },
-  "onboardingWelcome": "Bienvenido a Inhaus Brain",
-  "getStarted": "Comenzar",
-  "skipSetup": "Omitir configuración",
-  "brandNameConfig": "Configuración de Marca",
-  "networkError": "Error de red. Verifique su conexión.",
-  "timeoutError": "La IA tardó demasiado. Reintentando...",
-  "thanksForFeedback": "¡Gracias por tus comentarios!"
+  }
 }
 
 

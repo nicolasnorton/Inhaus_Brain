@@ -29,6 +29,7 @@ import '../../../core/adk/models/pipeline_models.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
 import '../services/skill_discovery_service.dart';
+import '../../../core/services/telemetry_service.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
@@ -62,6 +63,55 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       messages: [],
       updatedAt: DateTime.now(),
     );
+  }
+
+  // Helper to build compressed history
+  String _buildConversationHistory() {
+    if (state == null || state!.messages.isEmpty) return "";
+    
+    // Logic: We want the LAST 20 messages (Recent Context)
+    // messages list is [Old, ..., New]
+    int count = state!.messages.length;
+    int takeCount = 20;
+    
+    final recentMessages = (count > takeCount) 
+        ? state!.messages.sublist(count - takeCount) // Take last N
+        : state!.messages;
+        
+    final history = recentMessages
+        .where((m) => m.type == MessageType.text || m.type == MessageType.toolUsage) // Exclude large blobs
+        .map((m) => "${m.sender.name}: ${m.content}")
+        .join("\n");
+        
+    // Use Orchestrator to compress if needed
+    return ref.read(orchestratorProvider).compressContext(history);
+  }
+
+  // Helper to handle multimodal failure
+  Future<bool> _rejectIfLowQuality(String modalType, double score, String userPrompt) async {
+    final rejection = ref.read(orchestratorProvider).checkMultimodalQuality(score, modalType);
+    if (rejection != null) {
+      final msg = ChatMessage(
+        id: const Uuid().v4(),
+        content: rejection,
+        sender: MessageSender.system,
+        createdAt: DateTime.now(),
+      );
+      state = state!.copyWith(
+        messages: [...state!.messages, msg],
+        updatedAt: DateTime.now(),
+      );
+      
+      // Log Failure
+      ref.read(telemetryServiceProvider).logInteraction(
+        agentName: 'MultimodalCheck', 
+        action: 'reject_$modalType', 
+        durationMs: 0, 
+        success: false
+      );
+      return true;
+    }
+    return false;
   }
 
   Future<void> sendMessage(String text, {List<Attachment> attachments = const [], AIModelConfig? modelConfig}) async {
@@ -245,7 +295,21 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
     final videoTool = VideoGenerationTool(ref, veoKey: veoKey);
+    final stopWatch = Stopwatch()..start();
     final result = await videoTool.execute({'prompt': userPrompt});
+    stopWatch.stop();
+
+    ref.read(telemetryServiceProvider).logInteraction(
+        agentName: 'CreativeAgent',
+        action: 'generate_video',
+        durationMs: stopWatch.elapsedMilliseconds.toDouble(),
+        success: result.isSuccess
+    );
+
+    // Multimodal Check (Mock Score 0.9 if success)
+    if (result.isSuccess) {
+       if (await _rejectIfLowQuality('video', 0.90, userPrompt)) return;
+    }
     
     final videoUrl = result.isSuccess ? result.data['url'] : "assets/videos/mock_render.mp4";
     
@@ -561,7 +625,23 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
       final imageTool = ImageGenerationTool(ref, imagenKey: imagenKey, bananaKey: bananaKey);
+      final stopWatch = Stopwatch()..start();
       final result = await imageTool.execute({'prompt': userPrompt});
+      stopWatch.stop();
+
+      // Telemetry
+      ref.read(telemetryServiceProvider).logInteraction(
+        agentName: 'CreativeAgent',
+        action: 'generate_image',
+        durationMs: stopWatch.elapsedMilliseconds.toDouble(),
+        success: result.isSuccess
+      );
+      
+      // Multimodal Check (Mock Score for now, ideally derived from model or tool)
+      // Using 0.95 if success, so it passes. If we had a VQA, we'd use that.
+      if (result.isSuccess) {
+         if (await _rejectIfLowQuality('image', 0.95, userPrompt)) return;
+      }
       
       final imageUrl = result.isSuccess ? result.data['url'] : "assets/images/mock_concept.png";
       
@@ -595,8 +675,12 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
 
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getCreativePrompt();
+    
+    // Include History
+    final history = _buildConversationHistory();
+    
     final systemInstruction = masterPrompt.isNotEmpty
-        ? "You are a Creative Agent. $masterPrompt. User Context: $userPrompt"
+        ? "You are a Creative Agent. $masterPrompt. \n[HISTORY]:\n$history\n\nUser Context: $userPrompt"
         : "You are a Creative Agent. Suggest a visual direction for: $userPrompt.";
 
     final aiRes = await EdgeAIService.generateText(
@@ -696,9 +780,13 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
   Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
     final systemPrompts = ref.read(systemPromptsProvider);
     final brianPrompt = await systemPrompts.getBrianPrompt();
+    
+    // Multi-Turn Context
+    final history = _buildConversationHistory();
+    
     final combinedPrompt = brianPrompt.isNotEmpty 
-        ? "$brianPrompt\n\nUser Request: $userPrompt"
-        : "You are the Inhaus Brain assistant. User Request: $userPrompt";
+        ? "$brianPrompt\n\n[CONVERSATION HISTORY]:\n$history\n\nUser Request: $userPrompt"
+        : "You are the Inhaus Brain assistant.\n[HISTORY]:\n$history\n\nUser Request: $userPrompt";
 
     final aiRes = await EdgeAIService.generateText(
       combinedPrompt,

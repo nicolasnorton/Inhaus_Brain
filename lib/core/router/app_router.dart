@@ -4,6 +4,39 @@ import 'package:go_router/go_router.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/campaigns/campaign_list_screen.dart';
 import '../../features/campaigns/campaign_wizard_screen.dart';
+import '../../features/onboarding/screens/welcome_screen.dart';
+import '../../features/onboarding/providers/onboarding_provider.dart';
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authStateProvider).value;
+  final onboardingCompleted = ref.watch(onboardingProvider);
+
+  return GoRouter(
+    initialLocation: '/',
+    redirect: (context, state) {
+      final isLoggedIn = authState != null;
+      final isLoggingIn = state.uri.toString() == '/login';
+      final isOnboarding = state.uri.toString() == '/onboarding';
+
+      if (!isLoggedIn && !isLoggingIn) return '/login';
+      if (isLoggedIn && !onboardingCompleted && !isOnboarding) return '/onboarding';
+      if (isLoggedIn && isLoggingIn) return '/';
+      
+      // If completed but trying to go to onboarding, redirect home
+      if (isLoggedIn && onboardingCompleted && isOnboarding) return '/';
+      
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const AuthScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
+      ShellRoute(
 import '../../features/campaigns/campaign_detail_screen.dart';
 import '../../features/creative/creative_studio_screen.dart';
 import '../../features/campaigns/screens/camera_capture_screen.dart';

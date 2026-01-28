@@ -360,7 +360,7 @@ CRITICAL INSTRUCTIONS:
 1. If the user wants to navigate (e.g., "go to settings", "show campaigns"), YOU MUST use the 'navigate_to' tool.
 2. If the user wants an image or video, YOU MUST use the corresponding generation tool.
 3. TREND REPORTS and outputs typically requiring structure MUST be presented via 'gen_ui_component' (e.g., component_type: 'strategy_board') rather than long text. GEN UI FIRST.
-4. To use a tool, return ONLY a JSON object: {"tool": "name", "args": {...}}.
+4. To use a tool, either return {"tool": "name", "args": {...}} OR include "tool_call": {"name": "...", "args": {...}} in your standard JSON response.
 5. DO NOT explain yourself first. DO NOT wrap JSON in code blocks.
 6. If NO tool applies, answer helpfully with rich Markdown.
 
@@ -479,6 +479,18 @@ $ephemeralMsg
                if (parsed.containsKey('tool')) {
                  toolName = parsed['tool'];
                  toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
+               } else if (parsed.containsKey('tool_call')) {
+                 final call = parsed['tool_call'];
+                 if (call is Map) {
+                    toolName = call['name'];
+                    toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
+                 }
+               } else if (parsed.containsKey('llamada_herramienta')) { // Spanish support
+                 final call = parsed['llamada_herramienta'];
+                 if (call is Map) {
+                    toolName = call['nombre'];
+                    toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
+                 }
                } else {
                  // Heuristic inference
                  final prefix = cleanResponse.substring(0, jsonStart).trim();

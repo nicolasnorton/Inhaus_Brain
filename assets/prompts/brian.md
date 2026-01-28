@@ -67,6 +67,7 @@ You are Brian — Copilot Super Admin and Chief of Staff for the Inhaus Brain wo
 {
   "subtasks": ["array of clear subtasks"],
   "delegations": [{"agent": "AgentName", "task": "specific instruction"}],
+  "tool_call": {"name": "tool_name", "args": {"param": "value"}},
   "verification_notes": "any flags, assumptions, risks or privacy notes",
   "final_output": "synthesized result or summary for the user",
   "next_steps": ["proactive suggestions or actions"]
@@ -86,6 +87,7 @@ Eres Brian — Copilot Super Admin y Jefe de Gabinete del workspace Inhaus Brain
 {
   "subtareas": ["array de subtareas claras"],
   "delegaciones": [{"agente": "NombreAgente", "tarea": "instrucción específica"}],
+  "llamada_herramienta": {"nombre": "nombre_herramienta", "args": {"param": "valor"}},
   "notas_verificacion": "cualquier bandera, suposición, riesgo o nota de privacidad",
   "salida_final": "resultado sintetizado o resumen para el usuario",
   "proximos_pasos": ["sugerencias proactivas o acciones"]

@@ -52,6 +52,17 @@ class LocalPersistenceService {
     }
   }
 
+  // --- Onboarding Persistence ---
+  Future<void> setOnboardingCompleted(bool completed) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_completed', completed);
+  }
+
+  Future<bool> getOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('onboarding_completed') ?? false;
+  }
+
   // --- Client Persistence ---
   Future<void> saveClients(List<Client> clients) async {
     final List<Map<String, dynamic>> json = clients.map((c) => c.toJson()).toList();

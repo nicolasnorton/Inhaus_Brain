@@ -82,12 +82,28 @@ class VertexApiService {
 
     // PATH 2: Gemini Developer API (Supports API Key)
     if (apiKey != null && apiKey.isNotEmpty) {
+      // Primary Attempt: text-embedding-004
+      var result = await _callGeminiEmbeddings(texts, apiKey, _embeddingModel);
+      
+      // Fallback Attempt: embedding-001
+      if (result.isEmpty) {
+         debugPrint('VertexAI: text-embedding-004 failed (empty). Retrying with embedding-001...');
+         result = await _callGeminiEmbeddings(texts, apiKey, 'embedding-001');
+      }
+
+      return result;
+    }
+
+    throw Exception('VertexApiService: No valid API Key or Access Token provided.');
+  }
+
+  Future<List<List<double>>> _callGeminiEmbeddings(List<String> texts, String apiKey, String modelId) async {
       try {
-        final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$_embeddingModel:batchEmbedContents?key=$apiKey');
-        debugPrint('VertexAI: Calls Gemini Developer API (Embeddings)');
+        final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$modelId:batchEmbedContents?key=$apiKey');
+        debugPrint('VertexAI: Calls Gemini Developer API (Embeddings: $modelId)');
         
         final requests = texts.map((t) => {
-          'model': 'models/$_embeddingModel',
+          'model': 'models/$modelId',
           'content': {
             'parts': [{'text': t}]
           }
@@ -100,20 +116,18 @@ class VertexApiService {
         );
 
         if (response.statusCode != 200) {
-          debugPrint('VertexAI: Gemini Embedding Http Error: ${response.statusCode}');
-          throw Exception('Gemini Embedding Failed: ${response.statusCode} ${response.body}');
+          debugPrint('VertexAI: Gemini Embedding Http Error ($modelId): ${response.statusCode} - ${response.body}');
+          return [];
         }
 
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data.containsKey('error')) {
-           throw Exception('Gemini API Error: ${data['error']}');
+           debugPrint('VertexAI: Gemini API Error ($modelId): ${data['error']}');
+           return [];
         }
         
         final embeddings = data['embeddings'] as List?;
-        if (embeddings == null) {
-          debugPrint('VertexAI: Gemini Response has no embeddings field.');
-          return [];
-        }
+        if (embeddings == null) return [];
 
         return embeddings.map((e) {
           if (e is Map) {
@@ -129,13 +143,9 @@ class VertexApiService {
           return <double>[]; 
         }).toList();
       } catch (e) {
-        final errStr = _safeError(e);
-        debugPrint('VertexAI: Gemini Fallback failed: $errStr');
-        return <List<double>>[];
+        debugPrint('VertexAI: Gemini call failed for $modelId: $e');
+        return [];
       }
-    }
-
-    throw Exception('VertexApiService: No valid API Key or Access Token provided.');
   }
 
   List<List<double>> _parsePredictions(List predictions) {

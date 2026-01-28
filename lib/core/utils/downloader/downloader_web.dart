@@ -1,18 +1,15 @@
 import 'dart:convert';
-import 'package:web/web.dart' as web;
-import 'dart:js_interop';
+import 'package:universal_html/html.dart' as html;
 
 void downloadJson(String jsonString, String fileName) {
   final bytes = utf8.encode(jsonString);
-  // Convert Uint8List to JS ArrayBuffer/Uint8Array for Blob
-  // package:web way:
-  final blob = web.Blob([bytes.toJS].toJS);
-  final url = web.URL.createObjectURL(blob);
+  final blob = html.Blob([bytes]);
+  final url = html.Url.createObjectUrlFromBlob(blob);
   
-  final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+  final anchor = html.document.createElement('a') as html.AnchorElement;
   anchor.href = url;
   anchor.download = fileName;
   anchor.click();
   
-  web.URL.revokeObjectURL(url);
+  html.Url.revokeObjectUrl(url);
 }

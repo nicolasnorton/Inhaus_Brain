@@ -12,7 +12,8 @@ class AIProxyService {
   // Enable Firebase App Check in console for abuse protection
   static String get _functionUrl {
     if (kDebugMode) {
-      return 'http://127.0.0.1:5005/inhausbrain/us-central1/proxyVertexAI';
+      // Use localhost to avoid CORS issues in Chrome when accessing from localhost:5001
+      return 'http://localhost:5005/inhausbrain/us-central1/proxyVertexAI';
     }
     return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
   }  

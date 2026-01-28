@@ -524,14 +524,11 @@ class EdgeAIService {
        }
     } 
     
-    // 2. POLLINATIONS.AI FALLBACK
-    debugPrint('EdgeAI: Using Pollinations Fallback for Image Generation');
-    final seed = DateTime.now().millisecondsSinceEpoch;
-    String safePrompt = prompt.replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (safePrompt.isEmpty) safePrompt = "abstract art";
-    if (safePrompt.length > 80) safePrompt = safePrompt.substring(0, 80); 
-    final encodedPrompt = Uri.encodeComponent(safePrompt);
-    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&seed=$seed";
+    
+    // 2. FALLBACK: Return failure instead of deprecated Pollinations
+    // The "WE HAVE MOVED" image from Pollinations is not acceptable for production/demo.
+    debugPrint('EdgeAI: Image Generation failed or not available.');
+    throw Exception('Image Generation Failed: Please verify Vertex AI credentials or connectivity.');
   }
 
   static Future<String> generateVideo(String prompt, {String? veoKey, String? vertexKey, String? runwayKey, Ref? ref}) async {

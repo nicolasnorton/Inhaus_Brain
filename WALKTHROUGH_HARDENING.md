@@ -1,74 +1,105 @@
-# Production Hardening Walkthrough (v0.9.0)
+
+# Production Hardening Walkthrough (v1.0.0)
 
 This document provides a guided tour of the security, performance, and reliability enhancements implemented in the `refactor/gemini-to-firebase-ai-secure-2026` branch.
 
+**Status**: 🚀 v1.0.0 Production Ready
+
 ---
 
-## 🛡️ Security Hardening
+## 🛡️ Security & Quality Hardening
 
-### 1. The Orchestrator Guard
+### 1. The Orchestrator Guard (Updated)
 **File**: `lib/core/services/orchestrator_service.dart`
 
 We introduced a dedicated service to sanitize all inputs and outputs.
 *   **PII Redaction**: Automatically detects and replaces emails (`[EMAIL_REDACTED]`) and phone numbers using Regex.
 *   **Cultural Safety**: Filters specific LatAm/Ecuadorian regionalisms (e.g., classist terms like "pelucon") to ensure professional tone.
 *   **Prompt Injection**: Scans user input for adversarial patterns (e.g., "Ignore all instructions") and blocks them.
-*   **Audit Logging**: Warnings are now logged to Google Cloud Logging via the `logger` package when an intervention occurs.
+*   **Context Compression**: Automatically compresses long conversation histories (>4k chars) while preserving system instructions and recent turns (`test/long_context_test.dart`).
 
-### 2. Prompt Engineering Compliance
-**Files**: `assets/prompts/*.md`
+### 2. Multimodal Calibration & Rejection
+**File**: `lib/core/services/multimodal_scorer.dart`
 
-All agent personas (Brian, Creative, Strategist, etc.) were updated with explicit security constraints:
-*   **Privacy**: "Redact all PII."
-*   **Tone**: "Adhere to LatAm/Ecuadorian cultural norms."
-*   **Accuracy**: "Cite verified tool outputs only."
+New strict quality gates for generative assets:
+*   **Thresholds**: Images >0.90, UI code >0.92 precision.
+*   **Behavior**: If an asset scores below the threshold, the system politely rejects it ("I'm not confident this image meets our quality bar...") logs the failure, and offers refinement.
+*   **Validation**: Verified via `test/long_context_test.dart`.
+
+### 3. Adversarial Stress Testing
+**File**: `adversarial_test_cases.md`
+
+A suite of 20+ stress tests designed to break the system:
+*   Ambiguity ("Make it better")
+*   Contradictions ("Bold but subtle")
+*   Regional Slang (Ecuadorian dialect checks)
+*   **Result**: All agents hardened against these patterns via updated system prompts.
 
 ---
 
-## ⚡ Performance Optimization
+## ⚡ Performance & Telemetry
 
-### 3. Persistent Semantic Cache
+### 4. User Feedback Loop
+**File**: `lib/features/chat/widgets/message_actions_row.dart`
+
+*   **UI**: Added Thumbs Up / Thumbs Down buttons to every agent response.
+*   **Telemetry**: Usage and feedback is logged to **Firebase Analytics** (via `TelemetryService`).
+*   **Privacy**: No PII is logged; only message length, model name, and rating.
+
+### 5. Persistent Semantic Cache
 **File**: `lib/core/services/semantic_cache_service.dart`
 
-Previously, the semantic cache was in-memory only. We upgraded it to use `SharedPreferences`.
 *   **Impact**: Repeated queries (e.g., "Create a campaign for X") now return in **<100ms** (vs. 1-2s CLOUD API call).
 *   **Logic**: Hashes the (Intent + Prompt) key and stores the verified response JSON.
 
-### 4. Confidence-Based Arbitration
-**Files**: `lib/features/assistant/services/assistant_service.dart` & `lib/core/services/edge_ai_service.dart`
+---
 
-We added a "Confidence" metric to AI responses.
-*   **Logic**: If `finishReason` is not `STOP` or the output is suspiciously short, confidence is downgraded.
-*   **Trigger**: If confidence < 0.7, `AssistantService` throws a `LowConfidenceException`.
-*   **Arbiter**: This triggers the existing "User Arbitration" UI, asking the human to review/refine the request.
+## 🏗️ UX & Error Resilience (New in v1.0.0)
+
+### 6. Onboarding & Brand Guide
+**Files**: `lib/features/onboarding/`
+
+A smooth 5-minute setup flow for new users:
+*   **Welcome Screen**: Vibrant, brand-aligned entry.
+*   **Campaign Wizard**: Collects Industry, Tone (Professional, Witty, etc.), and Regional Context (Guayaquil vs Quito).
+*   **Persistence**: Saves onboarding state locally so it doesn't repeat.
+
+### 7. Graceful Error Recovery
+**File**: `lib/core/services/error_recovery_service.dart`
+
+*   **Retry Logic**: Exponential backoff for network/AI timeouts.
+*   **Friendly Messages**: Translates `500` or `timeout` errors into helpful text ("The AI is thinking hard...").
+*   **Fallback**: Safely degrades to cached or offline modes where possible.
+
+### 8. Localization (Ecuador/LatAm)
+**File**: `lib/l10n/app_es.arb`
+
+*   **Regional Nuance**: Updated translations to reflect Andean/Coastal business Spanish.
+*   **Completeness**: Added keys for Onboarding, Error States, and Feedback.
 
 ---
 
-## 🧪 Verification & Testing
+## 🧪 Verification & Release
 
-### 5. Automated Security Tests
-**File**: `test/orchestrator_service_test.dart`
+### 9. Automated Test Suite
+**Files**: `test/`
 
-New unit tests verify the security guards:
-*   `flutter test test/orchestrator_service_test.dart`
-*   Verifies: PII Redaction, Brand Protection, and Sensitivity Filters.
+*   `long_context_test.dart`: Verifies multi-turn context compression and quality gates.
+*   `orchestrator_service_test.dart`: Verifies security redaction.
+*   `tool_calling_test.dart`: Verifies JSON schema validity for tool calls.
+*   `history_logic_test.dart`: Verifies correct chat history slicing.
 
-### 6. Observability
-**File**: `pubspec.yaml`
+**Run All Tests**:
+```bash
+flutter test
+```
 
-Added production monitoring stack:
-*   `sentry_flutter`: For real-time crash reporting.
-*   `firebase_crashlytics`: For native error tracking.
-*   `logger`: For structured logging.
+### 10. Deployment
+**Script**: `scripts/release_v1.sh`
 
----
-
-## 🚀 Deployment
-
-The app is deployed to **Google Cloud Run** using the `deploy.sh` script, which builds the Flutter Web container and pushes it to Artifact Registry.
-*   **URL**: [https://brain.inhauscorp.com](https://brain.inhauscorp.com)
-*   **Version**: v0.9.0 (Verified in `pubspec.yaml`)
-
----
+Automates the rigorous release checks:
+1.  Runs all tests.
+2.  (Optional) Builds Web artifacts.
+3.  Tags the commit as `v1.0.0`.
 
 *Generated by Antigravity Agent - 2026-01-28*

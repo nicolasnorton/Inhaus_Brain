@@ -1,13 +1,17 @@
 import '../agent_tool.dart';
 
 class GmailTool extends AgentTool {
-  @override
-  String get name => "gmail_tool";
-
-  @override
-  String get description => "searchEmails: Searches recent emails for client communications.";
-
-  @override
+  GmailTool()
+      : super(
+          name: "gmail_tool",
+          description: "searchEmails: Searches recent emails for client communications.",
+          inputSchema: {
+            "query": {
+              "type": "string",
+              "description": "The search query to find emails.",
+            },
+          },
+        );
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final query = parameters['query'] as String?;
     if (query == null) return ToolResult.failure("Missing query parameter");

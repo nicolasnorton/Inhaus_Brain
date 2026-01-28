@@ -1,11 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inhaus_brain/core/services/orchestrator_service.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:mocktail/mocktail.dart';
+import 'package:inhaus_brain/core/services/output_polish_service.dart';
+
+// Mock Classes
+class MockRef extends Mock implements Ref {}
+class MockOutputPolishService extends Mock implements OutputPolishService {}
+
 void main() {
   late OrchestratorService service;
+  late MockRef mockRef;
+  late MockOutputPolishService mockPolisher;
 
   setUp(() {
-    service = OrchestratorService();
+    mockRef = MockRef();
+    mockPolisher = MockOutputPolishService();
+
+    // Stub the Provider read
+    when(() => mockRef.read(outputPolishServiceProvider)).thenReturn(mockPolisher);
+    
+    // Stub the polishText method to just return the input (passthrough)
+    when(() => mockPolisher.polishText(any())).thenAnswer((invocation) async {
+      return invocation.positionalArguments.first as String;
+    });
+
+    service = OrchestratorService(mockRef);
   });
 
   group('OrchestratorService Security Tests', () {

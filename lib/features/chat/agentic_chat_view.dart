@@ -267,6 +267,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                 ),
                 if (!isUser)
                   MessageActionsRow(
+                    messageId: message.id, // Pass ID
                     content: message.content,
                     isUser: false,
                     modelName: _selectedModelConfig.displayName, 

@@ -1,13 +1,17 @@
 import '../agent_tool.dart';
 
 class BigQueryTool extends AgentTool {
-  @override
-  String get name => "bigquery_tool";
-
-  @override
-  String get description => "executeQuery: Executes a SQL query against BigQuery datasets (e.g., client performance stats).";
-
-  @override
+  BigQueryTool()
+      : super(
+          name: "bigquery_tool",
+          description: "executeQuery: Executes a SQL query against BigQuery datasets (e.g., client performance stats).",
+          inputSchema: {
+            "query": {
+              "type": "string",
+              "description": "SQL query to execute.",
+            },
+          },
+        );
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final query = parameters['query'] as String?;
     if (query == null) return ToolResult.failure("Missing query parameter");

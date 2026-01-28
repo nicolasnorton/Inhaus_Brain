@@ -1,8 +1,55 @@
 import 'package:logger/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:inhaus_brain/core/services/output_polish_service.dart';
+import 'package:inhaus_brain/core/services/multimodal_scorer.dart';
+
 class OrchestratorService {
   final _logger = Logger();
+  final Ref _ref;
+
+  OrchestratorService(this._ref);
+
+  /// Quality Gate: Confidence Threshold
+  /// Returns NULL if passable, or a Warning String if below threshold.
+  String? checkConfidence(double confidence, {double threshold = 0.7}) {
+    if (confidence < threshold) {
+      _logger.w('[Quality Gate] Low Confidence detected: $confidence (Threshold: $threshold)');
+      // In a real system, we might auto-retry here.
+      return "[FLAGGED: Low Confidence ($confidence)]";
+    }
+    return null;
+  }
+
+  /// Multimodal Quality Check
+  /// Checks if the generated asset meets the strict quality thresholds.
+  String? checkMultimodalQuality(double score, String modality) {
+    final rejectionMsg = MultimodalScorer.getRejectionMessage(score, modality);
+    if (rejectionMsg != null) {
+      _logger.w('[Quality Gate] Multimodal rejection for $modality (Score: $score)');
+      return rejectionMsg;
+    }
+    return null;
+  }
+
+  /// Context Compression (Lightweight)
+  /// Used before delegating long histories to specialist agents.
+  String compressContext(String fullContext) {
+    // If context is manageable, return as is.
+    if (fullContext.length < 4000) return fullContext;
+
+    _logger.i('[Orchestrator] Compressing context (Original: ${fullContext.length} chars)');
+    
+    // Strategy: Keep strict System Prompt (start) and recent turns (end).
+    // Collapse the middle.
+    final int retrainChars = 1500;
+    if (fullContext.length <= retrainChars * 2) return fullContext;
+
+    final start = fullContext.substring(0, retrainChars);
+    final end = fullContext.substring(fullContext.length - retrainChars);
+    
+    return "$start\n\n[...Orchestrator Note: Middle context compressed to save tokens...]\n\n$end";
+  }
 
   /// PII Redaction: Regex for emails and phone numbers
   String _redactPII(String text) {
@@ -54,7 +101,18 @@ class OrchestratorService {
   }
 
   /// Audits the response or input.
-  Future<String> auditResponse(String originalResponse, String senderName) async {
+  /// [confidence] - Optional score (0.0 - 1.0) from the LLM.
+  Future<String> auditResponse(String originalResponse, String senderName, {double? confidence}) async {
+    // 0. Quality Gate (Confidence Check)
+    if (confidence != null) {
+      final flag = checkConfidence(confidence);
+      if (flag != null) {
+        // We append the flag so the UI/User knows.
+        // Ideally, we'd retry, but for now we tag it.
+        return "$flag $originalResponse";
+      }
+    }
+
     // 1. Check for Prompt Injection if it's from User
     if (senderName == 'User' && _isPotentialInjection(originalResponse)) {
       _logger.w('[Allocated Security] PROMPT INJECTION BLOCKED from User');
@@ -80,8 +138,24 @@ class OrchestratorService {
       processed = processed.replaceAll(RegExp('competitor_brand_x', caseSensitive: false), '[BRAND_REDACTED]');
     }
 
+    // 5. Automated Polish (Text & Reasoning Agent)
+    // Only polish Agent outputs that are client-facing
+    if (senderName.contains('Agent') && !originalResponse.contains('```json')) {
+       // Heuristic: Don't polish raw JSON or tool calls
+       // Polish only if text is substantial
+       if (processed.length > 50) {
+          try {
+             _logger.i('[Orchestrator] Polishing output from $senderName...');
+             final polished = await _ref.read(outputPolishServiceProvider).polishText(processed);
+             processed = polished; // Accept polish
+          } catch (e) {
+             _logger.w('Polish failed, keeping original: $e');
+          }
+       }
+    }
+
     return processed;
   }
 }
 
-final orchestratorProvider = Provider<OrchestratorService>((ref) => OrchestratorService());
+final orchestratorProvider = Provider<OrchestratorService>((ref) => OrchestratorService(ref));

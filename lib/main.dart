@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
@@ -42,11 +43,13 @@ void main() async {
 
   if (kDebugMode) {
     try {
-      // Use 127.0.0.1 explicitly to avoid IPv6/localhost resolution issues
-      FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
-      print('🔥 Using Firestore Emulator on 127.0.0.1:8080');
+      // Use localhost to align with browser origin
+      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
+      FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5005);
+      print('🔥 Using Firestore Emulator on localhost:8080');
+      print('🔥 Using Functions Emulator on localhost:5005');
     } catch (e) {
-      print('⚠️ Failed to connect to Firestore Emulator: $e');
+      print('⚠️ Failed to connect to Firebase Emulators: $e');
     }
   }
   
