@@ -12,100 +12,106 @@ class WelcomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: Colors.black, // Sleek dark mode
-      body: Stack(
-        children: [
-          // Background Gradient (Ecuadorian-inspired but subtle)
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Top Agency Label
+              const Text(
+                "I N H A U S",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 8.0,
+                ),
               ),
-            ),
-          ),
-          
-          // Foreground Content
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo / Icon
-                  const CircleAvatar(
-                    radius: 48,
-                    backgroundColor: Colors.blueAccent,
-                    child: FaIcon(FontAwesomeIcons.brain, size: 48, color: Colors.white),
+              const Text(
+                "ESTUDIO CREATIVO",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white70,
+                  letterSpacing: 2.0,
+                ),
+              ),
+
+              const Spacer(),
+
+              // Central Brain Icon
+              const FaIcon(
+                FontAwesomeIcons.brain, 
+                size: 100, 
+                color: Colors.white
+              ).animate().fadeIn(duration: 800.ms).scale(begin: const Offset(0.9, 0.9)),
+              
+              const SizedBox(height: 32),
+              
+              // App Name
+               const Text(
+                "INHAUS BRAIN",
+                style: TextStyle(
+                  fontSize: 42,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, 
+                  letterSpacing: 2.0,
+                ),
+              ).animate().fadeIn(duration: 800.ms, delay: 200.ms).slideY(begin: 0.1, end: 0),
+              
+              const SizedBox(height: 12),
+              
+              const Text(
+                "v1.0.1",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white24,
+                  letterSpacing: 1.0,
+                ),
+              ),
+
+              const Spacer(),
+              
+              // Get Started Button - Minimalist White
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: () {
+                     Navigator.of(context).push(
+                       MaterialPageRoute(builder: (_) => const CampaignWizardScreen()),
+                     );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                    foregroundColor: Colors.white,
                   ),
-                  const SizedBox(height: 32),
-                  
-                  // Welcome Text
-                  const Text(
-                    "Welcome to Inhaus Brain",
+                  child: const Text(
+                    "INITIALIZE SYSTEMS", 
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 14, 
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0),
-                  const SizedBox(height: 16),
-                  
-                  const Text(
-                    "Your AI-Powered Chief of Staff for\nHigh-Performance Marketing.",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
+                      letterSpacing: 2.0,
+                    )
                   ),
-                  const SizedBox(height: 48),
-                  
-                  // Get Started Button
-                  SizedBox(
-                    width: 200,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                         Navigator.of(context).push(
-                           MaterialPageRoute(builder: (_) => const CampaignWizardScreen()),
-                         );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                        elevation: 4,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("Get Started", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward, size: 20),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Skip for existing users (Dev only mostly)
-                  TextButton(
-                    onPressed: () {
-                      ref.read(onboardingProvider.notifier).completeOnboarding();
-                    },
-                    child: const Text("Skip setup", style: TextStyle(color: Colors.white24)),
-                  ),
-                ],
+                ),
               ),
-            ),
+              
+              const SizedBox(height: 24),
+              
+              // Skip
+              TextButton(
+                onPressed: () {
+                  ref.read(onboardingProvider.notifier).completeOnboarding();
+                },
+                child: const Text("SKIP SETUP", style: TextStyle(color: Colors.white24, fontSize: 10, letterSpacing: 1.0)),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
