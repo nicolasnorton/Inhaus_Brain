@@ -350,7 +350,7 @@ AVAILABLE TOOLS:
 $toolDefinitions
 
 VISION/MULTIMODAL:
-- I can see attached images (Gemini 1.5 Flash).
+- I can see attached images (Gemini 2.0 Flash).
 - I generate images via 'image_generation'.
 - I generate videos via 'video_generation'.
 
@@ -576,7 +576,7 @@ $ephemeralMsg
     // Config: Force JSON
     final config = AIModelConfig(
       provider: AIProvider.gemini, 
-      modelId: 'gemini-1.5-flash',
+      modelId: 'gemini-2.0-flash',
       responseMimeType: 'application/json',
       temperature: 0.2 // Lower temp for logic
     );
