@@ -49,9 +49,12 @@ class ResearchAgent extends BaseAgent {
       researchSummary = "Search failed: ${result.errorMessage}";
     }
     
-    // Use dynamic prompt if provided, otherwise default
-    final promptTemplate = systemPrompt ?? "You are a Research Agent. User Request: '{{userPrompt}}'. Research Findings: {{researchSummary}}. Synthesize these findings into a clear, strategic answer.";
-    final systemInstruction = promptTemplate
+    // Fetch system prompt from service
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getResearchPrompt();
+    
+    final systemInstruction = basePrompt
+        .replaceAll('[TASK]', userPrompt)
         .replaceAll('{{userPrompt}}', userPrompt)
         .replaceAll('{{researchSummary}}', researchSummary);
 
@@ -95,7 +98,10 @@ class CreativeAgent extends BaseAgent {
     Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    final systemInstruction = systemPrompt ?? "You are a Creative Agent. Suggest a visual direction or concept for: $userPrompt.";
+    
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getCreativePrompt();
+    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
 
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
@@ -105,6 +111,191 @@ class CreativeAgent extends BaseAgent {
       ref: ref,
     );
 
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return aiRes.text;
+  }
+}
+
+class DesignAgent extends BaseAgent {
+  @override
+  String get name => "Design Agent";
+  @override
+  MessageSender get type => MessageSender.designAgent;
+  @override
+  String get systemPromptKey => "design_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getDesignPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[CONCEPT]', userPrompt);
+    
+    final aiRes = await EdgeAIService.generateText(
+      prompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return aiRes.text;
+  }
+}
+
+class VideoProductionAgent extends BaseAgent {
+  @override
+  String get name => "Video Production Agent";
+  @override
+  MessageSender get type => MessageSender.videoProductionAgent;
+  @override
+  String get systemPromptKey => "video_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getVideoPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[SCRIPT]', userPrompt);
+    
+    final aiRes = await EdgeAIService.generateText(
+      prompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return aiRes.text;
+  }
+}
+
+class CustomerServiceAgent extends BaseAgent {
+  @override
+  String get name => "Customer Service Agent";
+  @override
+  MessageSender get type => MessageSender.customerServiceAgent;
+  @override
+  String get systemPromptKey => "service_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getServicePrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[ISSUE]', userPrompt);
+    
+    final aiRes = await EdgeAIService.generateText(
+      prompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return aiRes.text;
+  }
+}
+
+class CRMAgent extends BaseAgent {
+  @override
+  String get name => "CRM Agent";
+  @override
+  MessageSender get type => MessageSender.crmAgent;
+  @override
+  String get systemPromptKey => "crm_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getCRMPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[CLIENT_DATA]', userPrompt);
+    
+    final aiRes = await EdgeAIService.generateText(
+      prompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return aiRes.text;
+  }
+}
+
+class CSuiteAdvisorAgent extends BaseAgent {
+  @override
+  String get name => "C-Suite Advisor Agent";
+  @override
+  MessageSender get type => MessageSender.cSuiteAdvisorAgent;
+  @override
+  String get systemPromptKey => "csuite_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getCSuitePrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[REPORT]', userPrompt);
+    
+    final aiRes = await EdgeAIService.generateText(
+      prompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
   }
@@ -131,7 +322,10 @@ class CopywriterAgent extends BaseAgent {
     Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    final systemInstruction = systemPrompt ?? "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.";
+    
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getCopywriterPrompt();
+    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
 
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
@@ -167,7 +361,10 @@ class DeveloperAgent extends BaseAgent {
     Ref? ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    final systemInstruction = systemPrompt ?? "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.";
+    
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getDeveloperPrompt();
+    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
 
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,

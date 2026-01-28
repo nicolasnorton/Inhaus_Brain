@@ -30,6 +30,13 @@ enum MessageSender {
   managementAgent, // Phase 4: Client Management
   reportsAgent,    // Phase 6: Reports Module
 
+  // Upgraded Agency Roles
+  designAgent,
+  videoProductionAgent,
+  customerServiceAgent,
+  crmAgent,
+  cSuiteAdvisorAgent,
+
   humanAgent,
   system
 }

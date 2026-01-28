@@ -195,11 +195,16 @@ class StrategistAgent extends BaseAgent {
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
     Ref? ref,
-  }) {
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getStrategistPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT_DATA]', userPrompt);
+
     return _simpleExecute(
       agentName: name,
       systemPromptKey: systemPromptKey,
-      systemPrompt: systemPrompt,
+      systemPrompt: prompt,
       userPrompt: userPrompt,
       context: context,
       apiKey: apiKey,

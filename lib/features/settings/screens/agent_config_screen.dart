@@ -41,6 +41,13 @@ class _AgentConfigScreenState extends ConsumerState<AgentConfigScreen> {
       MessageSender.orchestratorAgent,
       MessageSender.securityAgent,
       MessageSender.dataEngineerAgent,
+    ],
+    'Business & Support': [
+      MessageSender.cSuiteAdvisorAgent,
+      MessageSender.crmAgent,
+      MessageSender.customerServiceAgent,
+      MessageSender.designAgent,
+      MessageSender.videoProductionAgent,
     ]
   };
 
@@ -252,6 +259,13 @@ class _AgentConfigScreenState extends ConsumerState<AgentConfigScreen> {
       case MessageSender.mediaBuyerAgent: return FontAwesomeIcons.rectangleAd;
       case MessageSender.performanceAnalystAgent: return FontAwesomeIcons.chartLine;
       case MessageSender.visionAgent: return FontAwesomeIcons.eye;
+      
+      // Upgraded Agency Roles
+      case MessageSender.designAgent: return FontAwesomeIcons.vectorSquare;
+      case MessageSender.videoProductionAgent: return FontAwesomeIcons.video;
+      case MessageSender.customerServiceAgent: return FontAwesomeIcons.headset;
+      case MessageSender.crmAgent: return FontAwesomeIcons.users;
+      case MessageSender.cSuiteAdvisorAgent: return FontAwesomeIcons.briefcase;
 
       default: return FontAwesomeIcons.robot;
     }

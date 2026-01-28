@@ -32,13 +32,13 @@ class RouterResult {
 
 class RouterAgent extends BaseAgent {
   @override
-  String get name => "Root Router";
+  String get name => "Brian";
   
   @override
   MessageSender get type => MessageSender.system; // Acts on behalf of system
 
   @override
-  String get systemPromptKey => "router_prompt";
+  String get systemPromptKey => "brian_prompt";
 
   @override
   Future<String> execute({
