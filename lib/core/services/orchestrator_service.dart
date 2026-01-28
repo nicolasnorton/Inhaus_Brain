@@ -1,7 +1,9 @@
+import 'package:logger/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 
 class OrchestratorService {
+  final _logger = Logger();
+
   /// PII Redaction: Regex for emails and phone numbers
   String _redactPII(String text) {
     String redacted = text;
@@ -55,17 +57,26 @@ class OrchestratorService {
   Future<String> auditResponse(String originalResponse, String senderName) async {
     // 1. Check for Prompt Injection if it's from User
     if (senderName == 'User' && _isPotentialInjection(originalResponse)) {
+      _logger.w('[Allocated Security] PROMPT INJECTION BLOCKED from User');
       return "[SECURITY INTERVENTION]: Potential prompt injection detected. Request blocked.";
     }
 
     // 2. Apply PII Redaction
     String processed = _redactPII(originalResponse);
+    if (processed != originalResponse) {
+      _logger.i('[Orchestrator] PII Redacted from $senderName');
+    }
 
     // 3. Apply Cultural Sensitivity Filters
-    processed = _applyCulturalFilters(processed);
+    String culturallyFiltered = _applyCulturalFilters(processed);
+    if (culturallyFiltered != processed) {
+      _logger.w('[Orchestrator] Cultural Sensitivity Filter Triggered');
+    }
+    processed = culturallyFiltered;
 
     // 4. Specific Forbidden Terms (Client/Brand)
     if (processed.toLowerCase().contains('competitor_brand_x')) {
+      _logger.w('[Orchestrator] Competitor Brand Redacted');
       processed = processed.replaceAll(RegExp('competitor_brand_x', caseSensitive: false), '[BRAND_REDACTED]');
     }
 

@@ -589,6 +589,11 @@ $ephemeralMsg
          modelConfig: config,
          ref: _ref
        );
+
+       // Confidence Check
+       if (result.confidence < 0.7) {
+          throw Exception('Low Confidence Generation (${result.confidence}). Requesting retry.');
+       }
        
        final json = jsonDecode(result.text);
        final output = factory(json); // Verify it parses

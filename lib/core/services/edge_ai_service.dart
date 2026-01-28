@@ -44,8 +44,9 @@ class EdgeAIResult {
   final String text;
   final AIProximity proximity;
   final String? modelUsed;
+  final double confidence;
 
-  EdgeAIResult(this.text, this.proximity, {this.modelUsed});
+  EdgeAIResult(this.text, this.proximity, {this.modelUsed, this.confidence = 1.0});
 }
 
 class EdgeAIService {
@@ -246,6 +247,7 @@ class EdgeAIService {
     if (fullText.isEmpty) fullText = 'No content generated.';
 
     // Check for grounding
+    // Check for grounding
     if (response.candidates.isNotEmpty) {
        final grounding = response.candidates.first.groundingMetadata;
        if (grounding != null && grounding.groundingChunks.isNotEmpty) {
@@ -260,7 +262,22 @@ class EdgeAIService {
        }
     }
 
-    return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId);
+    // Confidence Calculation
+    double confidence = 1.0;
+    if (response.candidates.isNotEmpty) {
+      final candidate = response.candidates.first;
+      if (candidate.finishReason != FinishReason.stop) {
+        confidence = 0.5;
+        if (candidate.finishReason == FinishReason.safety || candidate.finishReason == FinishReason.recitation) {
+          confidence = 0.0;
+        }
+      }
+      if (prompt.length > 50 && fullText.length < 5) {
+        confidence = 0.1;
+      }
+    }
+
+    return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId, confidence: confidence);
   }
 
   static String _sanitizeModelName(String modelId) {
