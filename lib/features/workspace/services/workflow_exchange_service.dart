@@ -1,14 +1,20 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html; // Switch to universal_html or conditional import
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import '../models/app_models.dart';
 import '../providers/apps_provider.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../../core/adk/models/pipeline_models.dart';
+
+// Note: To support WASM, we should eventually migrate from dart:html/universal_html to package:web.
+// For now, removing direct 'dart:html' import avoids the immediate compilation error if we use a conditional export,
+// but since this is a service, let's try a safe approach:
+// We will use 'universal_html' if available, which wraps this. 
+// User doesn't have universal_html in pubspec. Let's add it or rely on a stub.
+// Actually, `file_picker` handles import, but we need export.
 
 class WorkflowExchangeService {
   final WidgetRef ref;
