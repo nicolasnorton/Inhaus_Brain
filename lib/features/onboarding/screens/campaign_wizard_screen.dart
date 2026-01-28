@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/features/onboarding/providers/onboarding_provider.dart';
-import 'package:inhaus_brain/features/onboarding/widgets/brand_setup_form.dart';
+
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CampaignWizardScreen extends ConsumerStatefulWidget {
@@ -174,7 +174,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
             mainAxisSpacing: 16,
             childAspectRatio: 1.5,
             children: [
-              _buildToneCard('Professional', FontAwesomeIcons.tie),
+              _buildToneCard('Professional', FontAwesomeIcons.userTie),
               _buildToneCard('Friendly', FontAwesomeIcons.faceSmile),
               _buildToneCard('Bold', FontAwesomeIcons.bullhorn),
               _buildToneCard('Luxurious', FontAwesomeIcons.gem),

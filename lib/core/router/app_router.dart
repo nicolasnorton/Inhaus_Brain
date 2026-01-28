@@ -2,10 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/dashboard/dashboard_home.dart';
 import '../../features/campaigns/campaign_list_screen.dart';
 import '../../features/campaigns/campaign_wizard_screen.dart';
+import '../../features/campaigns/campaign_detail_screen.dart'; // Added
 import '../../features/onboarding/screens/welcome_screen.dart';
 import '../../features/onboarding/providers/onboarding_provider.dart';
+import '../../features/auth/auth_screen.dart';
+import '../../features/creative/creative_studio_screen.dart';
+import '../../features/clients/client_management_screen.dart';
+import '../../features/clients/screens/client_create_screen.dart';
+import '../../features/clients/screens/client_detail_screen.dart';
+import '../../features/clients/screens/client_edit_screen.dart';
+import '../../features/analytics/screens/analytics_monitor_screen.dart'; // Ensure this exists
+import '../../features/adk/screens/pipeline_builder_screen.dart';
+import '../../features/adk/screens/workflow_start_screen.dart';
+import '../../features/adk/screens/workflow_canvas_screen.dart';
+import '../../features/adk/screens/app_editor_dispatcher_screen.dart';
+import '../../features/adk/screens/run_history_screen.dart';
+import '../../features/monitor/screens/logs_screen.dart';
+import '../../features/workspace/screens/publish_dashboard_screen.dart';
+import '../../features/adk/screens/debug_tools_screen.dart';
+import '../../features/knowledge/knowledge_management_screen.dart';
+import '../../features/reports/screens/reports_main_screen.dart';
+import '../../features/reports/screens/report_detail_screen.dart';
+import '../../features/campaigns/screens/camera_capture_screen.dart';
+import '../../features/settings/screens/personal_settings_screen.dart';
+import '../../features/settings/screens/user_secrets_screen.dart';
+import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/system_secrets_screen.dart';
+import '../../features/admin/screens/system_logs_screen.dart';
+import '../../features/admin/screens/system_analytics_screen.dart';
+import '../../features/admin/screens/super_copilot_screen.dart';
+import '../../features/admin/screens/user_management_screen.dart';
+import '../../features/admin/screens/audit_logs_screen.dart';
+import '../../features/workspace/screens/model_providers_screen.dart';
+import '../../features/workspace/screens/plugins_screen.dart';
+import '../../features/workspace/screens/manage_apps_screen.dart';
+import '../../features/copilot/presentation/copilot_view.dart';
+import '../../core/auth/auth_service.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider).value;
@@ -35,61 +70,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const WelcomeScreen(),
-      ),
-      ShellRoute(
-import '../../features/campaigns/campaign_detail_screen.dart';
-import '../../features/creative/creative_studio_screen.dart';
-import '../../features/campaigns/screens/camera_capture_screen.dart';
-import '../../features/auth/auth_screen.dart';
-import '../../features/settings/screens/personal_settings_screen.dart';
-import '../../features/adk/screens/workflow_canvas_screen.dart';
-import '../../features/adk/screens/workflow_start_screen.dart';
-import '../../features/clients/client_management_screen.dart';
-import '../../features/clients/screens/client_detail_screen.dart';
-import '../../features/clients/screens/client_create_screen.dart';
-import '../../features/clients/screens/client_edit_screen.dart';
-import '../../features/knowledge/knowledge_management_screen.dart';
-import '../../features/workspace/screens/model_providers_screen.dart';
-import '../../features/workspace/screens/plugins_screen.dart';
-import '../../features/workspace/screens/manage_apps_screen.dart';
-import '../../features/workspace/screens/publish_dashboard_screen.dart';
-import '../../features/adk/screens/debug_tools_screen.dart';
-import '../../features/monitor/screens/logs_screen.dart';
-import '../../features/adk/screens/app_editor_dispatcher_screen.dart';
-import '../../features/adk/screens/run_history_screen.dart';
-import '../../features/analytics/screens/analytics_monitor_screen.dart';
-import '../../features/adk/screens/pipeline_builder_screen.dart';
-import '../../features/admin/screens/admin_dashboard_screen.dart';
-import '../../features/admin/screens/system_secrets_screen.dart';
-import '../../features/settings/screens/user_secrets_screen.dart';
-import '../../features/admin/screens/system_logs_screen.dart';
-import '../../features/admin/screens/super_copilot_screen.dart';
-import '../../features/admin/screens/user_management_screen.dart';
-import '../../features/admin/screens/audit_logs_screen.dart';
-import '../../features/admin/screens/system_analytics_screen.dart';
-import '../../features/reports/screens/reports_dashboard_screen.dart';
-import '../../features/reports/screens/reports_main_screen.dart';
-import '../../features/reports/screens/report_detail_screen.dart';
-import '../../features/copilot/presentation/copilot_view.dart';
-import '../../core/auth/auth_service.dart';
-
-final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider).value;
-
-  return GoRouter(
-    initialLocation: '/',
-    redirect: (context, state) {
-      final isLoggedIn = authState != null;
-      final isLoggingIn = state.uri.toString() == '/login';
-
-      if (!isLoggedIn && !isLoggingIn) return '/login';
-      if (isLoggedIn && isLoggingIn) return '/';
-      return null;
-    },
-    routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const AuthScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {
@@ -162,7 +142,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/workflow-canvas',
             builder: (context, state) => WorkflowCanvasScreen(pipelineId: state.uri.queryParameters['id']),
           ),
-          GoRoute(
+           GoRoute(
             path: '/app-editor',
             builder: (context, state) => AppEditorDispatcherScreen(appId: state.uri.queryParameters['id']!),
           ),

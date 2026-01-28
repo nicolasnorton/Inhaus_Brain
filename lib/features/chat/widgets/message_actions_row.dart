@@ -30,7 +30,7 @@ class MessageActionsRow extends ConsumerStatefulWidget {
   ConsumerState<MessageActionsRow> createState() => _MessageActionsRowState();
 }
 
-class _MessageActionsRowState extends State<MessageActionsRow> {
+class _MessageActionsRowState extends ConsumerState<MessageActionsRow> {
   FeedbackState _feedback = FeedbackState.none;
   bool _isCopied = false;
 
