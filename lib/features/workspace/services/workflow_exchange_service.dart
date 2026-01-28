@@ -1,20 +1,13 @@
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:universal_html/html.dart' as html; // Switch to universal_html or conditional import
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import '../../../core/utils/downloader/downloader.dart';
 
 import '../models/app_models.dart';
 import '../providers/apps_provider.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../../core/adk/models/pipeline_models.dart';
-
-// Note: To support WASM, we should eventually migrate from dart:html/universal_html to package:web.
-// For now, removing direct 'dart:html' import avoids the immediate compilation error if we use a conditional export,
-// but since this is a service, let's try a safe approach:
-// We will use 'universal_html' if available, which wraps this. 
-// User doesn't have universal_html in pubspec. Let's add it or rely on a stub.
-// Actually, `file_picker` handles import, but we need export.
 
 class WorkflowExchangeService {
   final WidgetRef ref;
@@ -51,17 +44,7 @@ class WorkflowExchangeService {
   }
 
   Future<void> _downloadJson(String jsonString, String fileName) async {
-    if (kIsWeb) {
-      final bytes = utf8.encode(jsonString);
-      final blob = html.Blob([bytes]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", fileName)
-        ..click();
-      html.Url.revokeObjectUrl(url);
-    } else {
-      debugPrint("Exported JSON ($fileName): $jsonString");
-    }
+    downloadJson(jsonString, fileName);
   }
 
   Future<bool> importApp() async {
