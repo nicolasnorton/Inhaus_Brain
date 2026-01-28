@@ -64,4 +64,23 @@
 ## 7. Next Steps
 - Monitor Cloud Run logs for any transport errors.
 - Verify Google Sign-In on the production domain (requires Authorized Redirect URIs in console).
-- Docker image is pushed and tagged with Git SHA for rollback capability.
+## 8. Agency-Wide Agent Upgrades (Phase 3)
+**Objective**: Transform the workspace into a multi-agent powerhouse with specialized roles and a definitive Brian persona.
+
+**Upgrades Applied**:
+1. **Brian Persona 2.0**:
+   - Upgraded to "Copilot Super Admin & Chief of Staff".
+   - Defined core pillars: Truth-seeking, Maximum Helpfulness, and Dry Professional Humor.
+   - Enforced specific behavioral rules (respectful, inclusive, brand guardian).
+2. **New Agent Roles**:
+   - **Design Agent**: Pixel-perfect visuals and UI/UX specs.
+   - **Video Production Agent**: Storyboarding and 4K export parameters.
+   - **Customer Service Agent**: Empathetic client resolution and SLA tracking.
+   - **CRM Agent**: Record management and audience segmentation.
+   - **C-Suite Advisor Agent**: ROI projections and board-level risk assessment.
+3. **Core Agent Refinement**:
+   - **Research & Strategy**: Refined prompts for better competitive tagging and data-driven tactics.
+   - **Creative**: Focused on variant generation and brand compliance.
+4. **Prompt Orchestration**:
+   - All prompts are now decentralized into `assets/prompts/*.md` for easier management.
+   - `SystemPromptsService` now dynamically injects these personas into the agents, ensuring binary size stays low while flexibility remains high.
