@@ -18,6 +18,7 @@ import '../../copilot/data/copilot_repository.dart';
 import '../../copilot/presentation/copilot_view.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../../core/architecture/blackboard.dart';
+import '../../../core/services/system_prompts_service.dart';
 import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
 

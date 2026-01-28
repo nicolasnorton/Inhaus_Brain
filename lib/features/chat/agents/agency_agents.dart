@@ -6,6 +6,7 @@ import '../../../core/services/edge_ai_service.dart';
 import '../../../features/knowledge/models/knowledge_source.dart';
 import '../models/chat_models.dart';
 import 'base_agent.dart';
+import '../../../core/services/system_prompts_service.dart';
 
 /// Helper to reduce boilerplate
 import 'package:inhaus_brain/features/copilot/data/copilot_repository.dart';
