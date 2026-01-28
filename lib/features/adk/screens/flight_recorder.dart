@@ -153,6 +153,7 @@ class _TimelineItem extends StatelessWidget {
       case WorkflowEventType.humanFeedbackNeeded: return Colors.orangeAccent;
       case WorkflowEventType.phaseTransition: return Colors.purpleAccent;
       case WorkflowEventType.agentStatusChange: return Colors.tealAccent;
+      case WorkflowEventType.agentAction: return Colors.limeAccent;
     }
   }
 
