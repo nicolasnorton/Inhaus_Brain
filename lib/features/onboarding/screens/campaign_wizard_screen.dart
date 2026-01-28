@@ -29,50 +29,73 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: Colors.black, // Pure Black
       appBar: AppBar(
-        title: const Text('Setup Assistant'),
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          'SETUP ASSISTANT', 
+          style: TextStyle(
+            color: Colors.white, 
+            letterSpacing: 2.0, 
+            fontSize: 14, 
+            fontWeight: FontWeight.bold
+          )
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.black,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Progress Indicator
+            // Minimalist Progress Indicator
             LinearProgressIndicator(
               value: (_step + 1) / 3,
-              backgroundColor: Colors.white10,
-              color: Colors.blueAccent,
+              backgroundColor: Colors.white12,
+              color: Colors.white, // White progress
+              minHeight: 2,
             ),
             
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
                 child: _buildCurrentStep(),
               ),
             ),
             
-            // Navigation
-            Padding(
-              padding: const EdgeInsets.all(24.0),
+            // Navigation with Sharp Buttons
+            Container(
+              padding: const EdgeInsets.all(32.0),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.white12, width: 1))
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (_step > 0)
                     TextButton(
                       onPressed: () => setState(() => _step--),
-                      child: const Text('Back', style: TextStyle(color: Colors.white54)),
+                      style: TextButton.styleFrom(foregroundColor: Colors.white70),
+                      child: const Text('BACK', style: TextStyle(letterSpacing: 1.5, fontSize: 12)),
                     )
                   else
                     const SizedBox.shrink(),
                     
-                  ElevatedButton(
-                    onPressed: _handleNext,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      backgroundColor: Colors.blueAccent,
+                  SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: _handleNext,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                      ),
+                      child: Text(
+                        _step == 2 ? 'INITIALIZE' : 'NEXT', 
+                        style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)
+                      ),
                     ),
-                    child: Text(_step == 2 ? 'Launch Brain' : 'Next'),
                   ),
                 ],
               ),
@@ -101,51 +124,60 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Let's start with your Brand.",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          "BRAND IDENTITY",
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 2.0),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         const Text(
-          "Brian needs to know who he is working for.",
-          style: TextStyle(fontSize: 16, color: Colors.white54),
+          "Who is the Client?",
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w300, color: Colors.white),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 12),
+        const Text(
+          "Enter brand details to calibrate the AI model.",
+          style: TextStyle(fontSize: 14, color: Colors.white38),
+        ),
+        const SizedBox(height: 48),
         
         TextField(
           controller: _brandController,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontFamily: 'Courier', fontSize: 16),
+          cursorColor: Colors.white,
           decoration: InputDecoration(
-            labelText: 'Brand Name',
-            labelStyle: const TextStyle(color: Colors.white54),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.05),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            labelText: 'BRAND NAME',
+            labelStyle: const TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 1.5),
+            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white, width: 2)),
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 48),
         
-        const Text("Industry", style: TextStyle(color: Colors.white70)),
-        const SizedBox(height: 8),
+        const Text("INDUSTRY SECTOR", style: TextStyle(color: Colors.white54, fontSize: 10, letterSpacing: 2.0, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
         Wrap(
           spacing: 12,
           runSpacing: 12,
           children: ['Technology', 'Retail', 'Finance', 'Healthcare', 'Food & Bev'].map((ind) {
             final isSelected = _industry == ind;
             return ChoiceChip(
-              label: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Text(ind),
-              ),
+              label: Text(ind.toUpperCase()),
               selected: isSelected,
               onSelected: (val) => setState(() => _industry = ind),
-              selectedColor: Colors.blueAccent,
-              backgroundColor: Colors.white10,
+              selectedColor: Colors.white,
+              backgroundColor: Colors.transparent,
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.white70,
-                fontSize: 16,
+                color: isSelected ? Colors.black : Colors.white54,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
               ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            ).animate().fadeIn().scale();
+              shape: isSelected 
+                ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)) // Sharp
+                : RoundedRectangleBorder(side: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(0)),
+              checkmarkColor: Colors.black,
+            );
           }).toList(),
         ),
       ],
@@ -157,13 +189,13 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Define your Voice.",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          "TONE PARAMETERS",
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 2.0),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         const Text(
-          "How should Brian sound when generating content?",
-          style: TextStyle(fontSize: 16, color: Colors.white54),
+          "Select Voice Profile",
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w300, color: Colors.white),
         ),
         const SizedBox(height: 32),
         
@@ -172,7 +204,7 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
             crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
+            childAspectRatio: 1.4,
             children: [
               _buildToneCard('Professional', FontAwesomeIcons.userTie),
               _buildToneCard('Friendly', FontAwesomeIcons.faceSmile),
@@ -191,19 +223,27 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
     final isSelected = _tone == tone;
     return InkWell(
       onTap: () => setState(() => _tone = tone),
-      borderRadius: BorderRadius.circular(16),
+      splashColor: Colors.white24,
       child: Container(
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blueAccent.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-          border: Border.all(color: isSelected ? Colors.blueAccent : Colors.transparent, width: 2),
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? Colors.white : Colors.transparent,
+          border: Border.all(color: isSelected ? Colors.transparent : Colors.white24, width: 1),
+          borderRadius: BorderRadius.zero, // Sharp corners
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            FaIcon(icon, color: isSelected ? Colors.blueAccent : Colors.white54, size: 28),
+            FaIcon(icon, color: isSelected ? Colors.black : Colors.white, size: 24),
             const SizedBox(height: 12),
-            Text(tone, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: FontWeight.bold)),
+            Text(
+              tone.toUpperCase(), 
+              style: TextStyle(
+                color: isSelected ? Colors.black : Colors.white, 
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+                letterSpacing: 1.5,
+              )
+            ),
           ],
         ),
       ),
@@ -215,46 +255,52 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Regional Context.",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          "MARKET CONTEXT",
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 2.0),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         const Text(
-          "We tune the AI for local market nuances (slang, holidays, trends).",
-          style: TextStyle(fontSize: 16, color: Colors.white54),
+          "Regional Calibration",
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w300, color: Colors.white),
         ),
         const SizedBox(height: 32),
         
-        ListTile(
-          title: const Text('Guayaquil, Ecuador', style: TextStyle(color: Colors.white)),
-          subtitle: const Text('focus: Coastal, dynamic, commerce-driven', style: TextStyle(color: Colors.white54)),
-          leading: const Icon(Icons.location_on, color: Colors.redAccent),
-          tileColor: _region == 'Guayaquil, Ecuador' ? Colors.white10 : null,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onTap: () => setState(() => _region = 'Guayaquil, Ecuador'),
-          trailing: _region == 'Guayaquil, Ecuador' ? const Icon(Icons.check, color: Colors.blueAccent) : null,
-        ),
-        const SizedBox(height: 8),
-        ListTile(
-          title: const Text('Quito, Ecuador', style: TextStyle(color: Colors.white)),
-          subtitle: const Text('focus: Andean, formal, unexpected weather', style: TextStyle(color: Colors.white54)),
-          leading: const Icon(Icons.location_on, color: Colors.blueAccent),
-          tileColor: _region == 'Quito, Ecuador' ? Colors.white10 : null,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onTap: () => setState(() => _region = 'Quito, Ecuador'),
-          trailing: _region == 'Quito, Ecuador' ? const Icon(Icons.check, color: Colors.blueAccent) : null,
-        ),
-         const SizedBox(height: 8),
-        ListTile(
-          title: const Text('LatAm General', style: TextStyle(color: Colors.white)),
-          subtitle: const Text('focus: Neutral Spanish, broad appeal', style: TextStyle(color: Colors.white54)),
-          leading: const Icon(Icons.public, color: Colors.greenAccent),
-          tileColor: _region == 'LatAm General' ? Colors.white10 : null,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          onTap: () => setState(() => _region = 'LatAm General'),
-          trailing: _region == 'LatAm General' ? const Icon(Icons.check, color: Colors.blueAccent) : null,
-        ),
+        _buildRegionTile('Guayaquil, Ecuador', 'Coastal, dynamic, commerce-driven'),
+        const SizedBox(height: 16),
+        _buildRegionTile('Quito, Ecuador', 'Andean, formal, unexpected weather'),
+        const SizedBox(height: 16),
+        _buildRegionTile('LatAm General', 'Neutral Spanish, broad appeal'),
       ],
+    );
+  }
+
+  Widget _buildRegionTile(String title, String subtitle) {
+    final isSelected = _region == title;
+    return InkWell(
+      onTap: () => setState(() => _region = title),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: TextStyle(color: isSelected ? Colors.black54 : Colors.white38, fontSize: 12)),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check, color: Colors.black),
+          ],
+        ),
+      ),
     );
   }
 
@@ -262,14 +308,9 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
     if (_step < 2) {
       setState(() => _step++);
     } else {
-      // Create Campaign via Provider? Or just complete onboarding.
-      // For this wizard, we just simulating setting up the "System Prompt" context.
-      // In a real app we'd save this to `BrandProfileService`.
-      
-      // Complete Onboarding
       await ref.read(onboardingProvider.notifier).completeOnboarding();
       if (mounted) {
-         Navigator.of(context).pop(); // Go to Main App (since main listener will rebuild)
+         Navigator.of(context).pop(); 
       }
     }
   }
