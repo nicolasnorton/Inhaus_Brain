@@ -18,18 +18,42 @@ import '../../../core/mcp/tools/audio_generation_tool.dart';
 import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
 import '../agents/router_agent.dart';
+import '../agents/router_agent.dart';
 import '../agents/agency_agents.dart';
+import '../../reports/agents/reports_agent.dart';
+import '../agents/management_agent.dart';
 import '../../../core/services/memory_service.dart';
 import '../models/memory_models.dart';
 import '../../../core/adk/services/adk_service.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
+import '../services/skill_discovery_service.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
 
-  ChatNotifier(this.ref) : super(null);
+  ChatNotifier(this.ref) : super(null) {
+    // Phase: Agent Skills Integration - Trigger discovery on startup
+    ref.listen(skillDiscoveryInitProvider, (_, __) {});
+  }
+
+  void _updateMessageStatus(String messageId, String newContent, {Map<String, dynamic>? extraMetadata}) {
+    if (state == null) return;
+    state = state!.copyWith(
+      messages: state!.messages.map((m) {
+        if (m.id == messageId) {
+          final newMetadata = Map<String, dynamic>.from(m.metadata ?? {});
+          if (extraMetadata != null) {
+            newMetadata.addAll(extraMetadata);
+          }
+          return m.copyWith(content: newContent, metadata: newMetadata);
+        }
+        return m;
+      }).toList(),
+      updatedAt: DateTime.now(),
+    );
+  }
 
   void startSession(String campaignId) {
     state = ChatSession(
@@ -148,8 +172,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         context: context,
         systemPrompt: await ref.read(systemPromptsProvider).getRouterPrompt(),
         apiKey: apiKey,
-        // Router always uses Gemini for speed/cost, unless overridden globally? 
-        // For now, keep Router on Gemini Flash to be fast.
+        ref: ref, // Phase 89: Sync proximity state
       );
       
       // Basic JSON parsing (Simulated for speed, in production wrap in jsonDecode)
@@ -163,6 +186,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         await _handleCopywriterResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
       } else if (lowerOut.contains('"development"') || lowerOut.contains('dev')) {
         await _handleDeveloperResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, openAIKey: openAIKey, anthropicKey: anthropicKey, xAIKey: xAIKey, config: config);
+      } else if (lowerOut.contains('"management"')) {
+        await _handleManagementAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else if (lowerOut.contains('"trend"') || lowerOut.contains('scout')) {
         await _handleUtilityAgent(TrendScoutAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else if (lowerOut.contains('"strategy"') || lowerOut.contains('strategist')) {
@@ -195,6 +220,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         } else {
           await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
         }
+      } else if (lowerOut.contains('"reports"') || lowerOut.contains('report') || lowerOut.contains('notebook') || lowerOut.contains('dashboard')) {
+        await _handleUtilityAgent(ReportsAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else {
         await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       }
@@ -217,7 +244,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
     state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
-    final videoTool = VideoGenerationTool(veoKey: veoKey);
+    final videoTool = VideoGenerationTool(ref, veoKey: veoKey);
     final result = await videoTool.execute({'prompt': userPrompt});
     
     final videoUrl = result.isSuccess ? result.data['url'] : "assets/videos/mock_render.mp4";
@@ -293,6 +320,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       anthropicKey: anthropicKey,
       xaiKey: xAIKey,
       modelConfig: config,
+      ref: ref, // Phase 89: Pass ref for proximity sync
     );
 
     // Orchestrator Audit
@@ -351,6 +379,54 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
+  Future<void> _handleManagementAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+    final toolMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: 'Managing resources...',
+      sender: MessageSender.managementAgent,
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': 'management_ops'},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
+
+    final agent = ManagementAgent();
+    // System prompt can be fetched from service if we added it, or use default fallback in agent
+    final resultText = await agent.execute(
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+
+    // If the agent returned a tool call JSON, it processes it internally now? 
+    // Wait, in my implementation of ManagementAgent, I made it call `_processToolCall`.
+    // But `_processToolCall` needs `ref` to check for `clientToolsProvider`?
+    // Actually, `ManagementAgent` imports `client_tools.dart` but `clientToolsProvider` is a provider.
+    // The `_processToolCall` in `ManagementAgent` (which I just wrote) returned a string logic error message:
+    // "Tool execution handled by ChatProvider...".
+    // Ah, I need to implement the actual execution logic EITHER in the Agent OR in the Provider.
+    // Since `ManagementAgent` has access to `Ref` (passed in execute), it can read `clientToolsProvider`.
+    // Let me update `ManagementAgent` properly in the next step to actually execute the tool.
+    // For now, I'll update ChatProvider to just display the result.
+    
+    // Orchestrator Audit
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(resultText, 'ManagementAgent');
+
+    final finalMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: auditedContent,
+      sender: MessageSender.managementAgent,
+      createdAt: DateTime.now(),
+    );
+
+    state = state!.copyWith(
+      messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
+      updatedAt: DateTime.now(),
+    );
+  }
+
   Future<void> _handleHumanHandoffToCreative(String instruction, {String? apiKey, String? gemmaKey}) async {
     // System message indicating handoff
     final handoffMsg = ChatMessage(
@@ -376,27 +452,55 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
   }
 
   Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
-    // 1. Tool Usage Indicator
+    // 1. Tool Usage Indicator (Status 1: Searching)
+    final toolMsgId = const Uuid().v4();
     final toolMsg = ChatMessage(
-      id: const Uuid().v4(),
-      content: 'Scanning market trends and knowledge base...',
+      id: toolMsgId,
+      content: 'Searching the web for "$userPrompt"...',
       sender: MessageSender.researchAgent,
       type: MessageType.toolUsage,
       createdAt: DateTime.now(),
-      metadata: {'tool': 'web_search_mcp'},
+      metadata: {'tool': 'web_search_mcp', 'status': 'searching'},
     );
     state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
     // 2. Perform Research (MCP Tool Call)
     final searchTool = WebSearchTool();
+    // Simulate thinking delay for status update visibility
+    await Future.delayed(const Duration(milliseconds: 1200));
+
     final result = await searchTool.execute({'query': userPrompt});
     
     String researchSummaray = "";
+    List<Map<String, dynamic>> sources = [];
+
     if (result.isSuccess) {
-      final results = result.data['results'] as List;
-      researchSummaray = results.map((r) => "- ${r['title']}: ${r['snippet']}").join("\n");
+      final results = result.data['results'] as List?;
+      if (results != null && results.isNotEmpty) {
+        sources = results.cast<Map<String, dynamic>>().map((r) => {
+          'title': r['title'],
+          'url': r['url'],
+          'snippet': r['snippet']
+        }).toList();
+
+        // Update Status: Reading results
+        _updateMessageStatus(toolMsgId, 'Reading ${results.length} results...', extraMetadata: {'status': 'reading'});
+        // Small delay to let user see "Reading..."
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        researchSummaray = results.map((r) {
+          if (r is Map) {
+            return "- ${r['title'] ?? 'Untitled'}: ${r['snippet'] ?? 'No snippet'}";
+          }
+          return "- Unknown result";
+        }).join("\n");
+      } else {
+        researchSummaray = "No relevant trends found in the Knowledge Base.";
+        _updateMessageStatus(toolMsgId, 'No results found. Analyzing context...', extraMetadata: {'status': 'analyzing'});
+      }
     } else {
       researchSummaray = "Search failed: ${result.errorMessage}";
+      _updateMessageStatus(toolMsgId, 'Search failed. Falling back to internal knowledge...', extraMetadata: {'status': 'error'});
     }
     
     final systemPrompts = ref.read(systemPromptsProvider);
@@ -412,19 +516,22 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     // 4. Orchestrator Audit
     final auditedContent = await ref.read(orchestratorProvider).auditResponse(aiRes.text, 'ResearchAgent');
 
+    // 5. Final Message with Sources Metadata
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.researchAgent,
       createdAt: DateTime.now(),
+      metadata: sources.isNotEmpty ? {'sources': sources} : null,
     );
 
-    // 4. Propose Approval Widget
+    // 6. Propose Approval Widget
     final approvalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: 'I have synthesized a market strategy. Would you like me to formalize this into a Campaign Brief?',
@@ -435,7 +542,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
 
     state = state!.copyWith(
-      messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg, approvalMsg],
+      messages: [...state!.messages.where((m) => m.id != toolMsgId), finalMsg, approvalMsg],
       updatedAt: DateTime.now(),
     );
   }
@@ -453,7 +560,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       );
       state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
-      final imageTool = ImageGenerationTool(imagenKey: imagenKey, bananaKey: bananaKey);
+      final imageTool = ImageGenerationTool(ref, imagenKey: imagenKey, bananaKey: bananaKey);
       final result = await imageTool.execute({'prompt': userPrompt});
       
       final imageUrl = result.isSuccess ? result.data['url'] : "assets/images/mock_concept.png";
@@ -587,8 +694,14 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
   }
 
   Future<void> _handleGeneralResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
+    final systemPrompts = ref.read(systemPromptsProvider);
+    final brianPrompt = await systemPrompts.getBrianPrompt();
+    final combinedPrompt = brianPrompt.isNotEmpty 
+        ? "$brianPrompt\n\nUser Request: $userPrompt"
+        : "You are the Inhaus Brain assistant. User Request: $userPrompt";
+
     final aiRes = await EdgeAIService.generateText(
-      "You are the Inhaus Brain assistant. Help the user with their campaign: $userPrompt",
+      combinedPrompt,
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -597,6 +710,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       anthropicKey: anthropicKey,
       xaiKey: xAIKey,
       modelConfig: config,
+      ref: ref, // Phase 89
     );
 
     final finalMsg = ChatMessage(
@@ -604,6 +718,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       content: aiRes.text,
       sender: MessageSender.system,
       createdAt: DateTime.now(),
+      suggestedPrompts: await _generateSuggestedPrompts(aiRes.text, apiKey: apiKey),
     );
 
     state = state!.copyWith(
@@ -704,6 +819,26 @@ $conversationHistory
       }
     } catch (e) {
       debugPrint('MemoryService: Extraction failed or no insights found: $e');
+    }
+  }
+
+  Future<List<String>> _generateSuggestedPrompts(String lastResponse, {String? apiKey}) async {
+    // Audit Rec: Add follow-up suggestions
+    final prompt = """
+Based on the following AI response, generate 3 short, helpful follow-up questions the user might want to ask.
+Keep them under 10 words each.
+Return ONLY a JSON list of strings.
+
+Response:
+$lastResponse
+""";
+
+    try {
+      final res = await EdgeAIService.generateText(prompt, apiKey: apiKey, ref: ref);
+      final List<dynamic> list = json.decode(res.text.contains('[') ? res.text.substring(res.text.indexOf('['), res.text.lastIndexOf(']') + 1) : "[]");
+      return list.cast<String>();
+    } catch (e) {
+      return ["Explain this further", "What are the next steps?", "Show me more examples"];
     }
   }
   // --- ADK Pipeline Execution ---

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 import '../models/monitor_models.dart';
 import '../providers/monitor_provider.dart';
 
@@ -24,14 +26,14 @@ class MonitorDashboardScreen extends ConsumerWidget {
               children: [
                 const Icon(FontAwesomeIcons.gaugeHigh, color: Colors.blueAccent, size: 24),
                 const SizedBox(width: 12),
-                const Text(
-                  'Monitor Dashboard',
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                Text(
+                  AppLocalizations.of(context)!.monitorDashboard,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 24),
                 _buildTracingButton(context),
                 const Spacer(),
-                _buildTimeRangeSelector(),
+                _buildTimeRangeSelector(context),
               ],
             ),
             const SizedBox(height: 32),
@@ -43,9 +45,9 @@ class MonitorDashboardScreen extends ConsumerWidget {
             ),
             
             const SizedBox(height: 48),
-            const Text(
-              'Statistics',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context)!.statStatistics,
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildChartsGrid(context),
@@ -53,16 +55,16 @@ class MonitorDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 48),
             Row(
               children: [
-                const Text(
-                  'Quick Logs',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  AppLocalizations.of(context)!.quickLogs,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 TextButton(
                   onPressed: () {
-                    // TODO: Navigate to full logs
+                    context.go('/monitor/logs?appId=$appId');
                   },
-                  child: const Text('View All Logs'),
+                  child: Text(AppLocalizations.of(context)!.viewAllLogs),
                 ),
               ],
             ),
@@ -74,7 +76,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTimeRangeSelector() {
+  Widget _buildTimeRangeSelector(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -82,11 +84,11 @@ class MonitorDashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white10),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Text('Last 7 Days', style: TextStyle(color: Colors.white70, fontSize: 13)),
-          SizedBox(width: 8),
-          Icon(Icons.expand_more, color: Colors.white38, size: 16),
+          Text(AppLocalizations.of(context)!.last7Days, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          const SizedBox(width: 8),
+          const Icon(Icons.expand_more, color: Colors.white38, size: 16),
         ],
       ),
     );
@@ -105,30 +107,30 @@ class MonitorDashboardScreen extends ConsumerWidget {
           childAspectRatio: 2.0,
           children: [
             _buildMetricCard(
-              'Total Messages',
+              AppLocalizations.of(context)!.totalMessages,
               metrics.totalMessages.toString(),
-              'Conversation volume',
+              AppLocalizations.of(context)!.statConvVolume,
               Icons.forum_outlined,
               Colors.blueAccent,
             ),
             _buildMetricCard(
-              'Active Users',
+              AppLocalizations.of(context)!.activeUsers,
               metrics.activeUsers.toString(),
-              '>1 meaningful exchange',
+              AppLocalizations.of(context)!.statMeaningfulExchange,
               Icons.people_outline,
               Colors.greenAccent,
             ),
             _buildMetricCard(
-              'Avg. Interactions',
-              '${metrics.avgInteractions.toStringAsFixed(1)}',
-              'Engagement depth',
+              AppLocalizations.of(context)!.avgInteractions,
+              metrics.avgInteractions.toStringAsFixed(1),
+              AppLocalizations.of(context)!.statEngagementDepth,
               Icons.insights_outlined,
               Colors.orangeAccent,
             ),
             _buildMetricCard(
-              'Token Usage',
+              AppLocalizations.of(context)!.tokenUsage,
               '${(metrics.totalTokens / 1000).toStringAsFixed(1)}K',
-              'Resource consumption',
+              AppLocalizations.of(context)!.statResourceConsumption,
               Icons.token_outlined,
               Colors.purpleAccent,
             ),
@@ -141,15 +143,61 @@ class MonitorDashboardScreen extends ConsumerWidget {
   Widget _buildTracingButton(BuildContext context) {
     return TextButton.icon(
       onPressed: () {
-        // TODO: External Tracing Integration
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1C2128),
+            title: Text(AppLocalizations.of(context)!.tracingIntegration, style: const TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                 Text(AppLocalizations.of(context)!.connectExternalTracingMsg, style: const TextStyle(color: Colors.white70)),
+                 const SizedBox(height: 16),
+                 _buildProviderButton(context, 'LangSmith', Icons.hub),
+                 const SizedBox(height: 8),
+                 _buildProviderButton(context, 'Langfuse', Icons.auto_graph),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
+            ],
+          ),
+        );
       },
       icon: const Icon(Icons.analytics_outlined, size: 16),
-      label: const Text('Tracing app performance'),
+      label: Text(AppLocalizations.of(context)!.tracingAppPerformance),
       style: TextButton.styleFrom(
         foregroundColor: Colors.blueAccent,
         backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  Widget _buildProviderButton(BuildContext context, String name, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.blueAccent),
+          const SizedBox(width: 12),
+          Text(name, style: const TextStyle(color: Colors.white)),
+          const Spacer(),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.connectedToMsg(name))));
+            }, 
+            child: Text(AppLocalizations.of(context)!.connect),
+          ),
+        ],
       ),
     );
   }
@@ -198,7 +246,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
           children: [
             Expanded(
               child: _buildChartCard(
-                'Total Messages',
+                AppLocalizations.of(context)!.totalMessages,
                 const [0.2, 0.4, 0.3, 0.6, 0.5, 0.8, 0.7, 0.9],
                 Colors.blueAccent,
               ),
@@ -206,7 +254,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
             const SizedBox(width: 16),
             Expanded(
               child: _buildChartCard(
-                'Active Users',
+                AppLocalizations.of(context)!.activeUsers,
                 const [0.1, 0.2, 0.5, 0.4, 0.7, 0.6, 0.8, 0.85],
                 Colors.greenAccent,
               ),
@@ -218,7 +266,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
           children: [
             Expanded(
               child: _buildChartCard(
-                'Avg. User Interactions',
+                AppLocalizations.of(context)!.avgInteractions,
                 const [0.8, 0.7, 0.9, 0.5, 0.6, 0.4, 0.5, 0.3],
                 Colors.orangeAccent,
               ),
@@ -226,7 +274,7 @@ class MonitorDashboardScreen extends ConsumerWidget {
             const SizedBox(width: 16),
             Expanded(
               child: _buildChartCard(
-                'Token Usage',
+                AppLocalizations.of(context)!.tokenUsage,
                 const [0.3, 0.5, 0.4, 0.7, 0.6, 0.8, 0.7, 0.95],
                 Colors.purpleAccent,
               ),

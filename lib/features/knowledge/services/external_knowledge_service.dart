@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+// import 'dart:io'; // Removed for web compatibility
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../models/external_knowledge_models.dart';
@@ -30,19 +30,52 @@ class ExternalKnowledgeService {
     }
   }
 
-  /// Query external knowledge base
+  /// Query external knowledge base with optional Intent-based filtering (JIT Context)
   Future<ExternalKnowledgeResponse> queryKnowledge({
     required ExternalKnowledgeRequest request,
     required String endpoint,
     String? apiKey,
+    String? intent, // RouterIntent name (e.g., 'research', 'creative')
   }) async {
+    // Just-in-Time Context Injection
+    ExternalKnowledgeRequest finalRequest = request;
+    
+    if (intent != null) {
+      // Map Intent to Metadata Filters
+      final conditionName = intent.toLowerCase() == 'research' ? 'category' : 
+                            intent.toLowerCase() == 'creative' ? 'type' : null;
+      final conditionValue = intent.toLowerCase() == 'research' ? 'pdf' : 
+                             intent.toLowerCase() == 'creative' ? 'image' : null;
+
+      if (conditionName != null && conditionValue != null) {
+         final filter = MetadataCondition(
+           logicalOperator: 'and',
+           conditions: [
+             Condition(
+               name: [conditionName], 
+               comparisonOperator: '==', 
+               value: conditionValue
+             )
+           ]
+         );
+         
+         // Create a new request with the filter injected
+         finalRequest = ExternalKnowledgeRequest(
+           knowledgeId: request.knowledgeId,
+           query: request.query,
+           retrievalSetting: request.retrievalSetting,
+           metadataCondition: filter // Override or merge could be better, but override for safety here
+         );
+      }
+    }
+
     int retries = 0;
 
     while (retries < _maxRetries) {
       try {
         final uri = _buildUri(endpoint);
         final headers = _buildHeaders(apiKey, includeJson: true);
-        final body = jsonEncode(request.toJson());
+        final body = jsonEncode(finalRequest.toJson());
 
         final response = await _client
             .post(uri, headers: headers, body: body)
@@ -85,37 +118,39 @@ class ExternalKnowledgeService {
             );
           }
         }
-      } on SocketException {
-        retries++;
-        if (retries >= _maxRetries) {
-          throw ExternalKnowledgeException(
-            ExternalKnowledgeError(
-              errorCode: 0,
-              errorMsg: 'Network connection failed after $retries attempts',
-            ),
-          );
-        }
-        await Future.delayed(Duration(milliseconds: 500 * retries));
-      } on TimeoutException {
-        retries++;
-        if (retries >= _maxRetries) {
-          throw ExternalKnowledgeException(
-            ExternalKnowledgeError(
-              errorCode: 0,
-              errorMsg: 'Request timeout after $retries attempts',
-            ),
-          );
-        }
-        await Future.delayed(Duration(milliseconds: 500 * retries));
-      } on ExternalKnowledgeException {
-        rethrow;
       } catch (e) {
-        throw ExternalKnowledgeException(
-          ExternalKnowledgeError(
-            errorCode: 0,
-            errorMsg: 'Unexpected error: $e',
-          ),
-        );
+        if (e.toString().contains('SocketException') || e.toString().contains('Connection failed')) {
+          retries++;
+          if (retries >= _maxRetries) {
+            throw ExternalKnowledgeException(
+              ExternalKnowledgeError(
+                errorCode: 0,
+                errorMsg: 'Network connection failed after $retries attempts',
+              ),
+            );
+          }
+          await Future.delayed(Duration(milliseconds: 500 * retries));
+        } else if (e is TimeoutException) {
+          retries++;
+          if (retries >= _maxRetries) {
+            throw ExternalKnowledgeException(
+              ExternalKnowledgeError(
+                errorCode: 0,
+                errorMsg: 'Request timeout after $retries attempts',
+              ),
+            );
+          }
+          await Future.delayed(Duration(milliseconds: 500 * retries));
+        } else if (e is ExternalKnowledgeException) {
+          rethrow;
+        } else {
+           throw ExternalKnowledgeException(
+            ExternalKnowledgeError(
+              errorCode: 0,
+              errorMsg: 'Unexpected error: $e',
+            ),
+          );
+        }
       }
     }
 

@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/user_models.dart';
 import '../providers/user_provider.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
+import 'package:inhaus_brain/core/services/edge_ai_service.dart';
+import 'package:go_router/go_router.dart';
 
 /// Personal settings screen with tabs
 class PersonalSettingsScreen extends ConsumerStatefulWidget {
@@ -19,11 +22,12 @@ class _PersonalSettingsScreenState
   late TabController _tabController;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -87,16 +91,16 @@ class _PersonalSettingsScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Personal Settings',
+                            AppLocalizations.of(context)!.settingsTitle,
                             style: theme.textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Manage your profile and preferences across all workspaces',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white70,
+                            AppLocalizations.of(context)!.settingsSubtitle,
+                            style: TextStyle(
+                              color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -109,12 +113,13 @@ class _PersonalSettingsScreenState
                 TabBar(
                   controller: _tabController,
                   labelColor: theme.primaryColor,
-                  unselectedLabelColor: Colors.white60,
+                  unselectedLabelColor: theme.brightness == Brightness.light ? Colors.black54 : Colors.white60,
                   indicatorColor: theme.primaryColor,
-                  tabs: const [
-                    Tab(text: 'Profile'),
-                    Tab(text: 'Preferences'),
-                    Tab(text: 'Security'),
+                  tabs: [
+                    Tab(text: AppLocalizations.of(context)!.tabProfile),
+                    Tab(text: AppLocalizations.of(context)!.tabPreferences),
+                    Tab(text: AppLocalizations.of(context)!.tabSecurity),
+                    Tab(text: AppLocalizations.of(context)!.navWorkflows), // Or a specific 'Workspace' key if needed
                   ],
                 ),
               ],
@@ -125,12 +130,13 @@ class _PersonalSettingsScreenState
             child: TabBarView(
               controller: _tabController,
               children: [
-                // Profile Tab
                 _buildProfileTab(user),
                 // Preferences Tab
                 _buildPreferencesTab(preferences),
                 // Security Tab
                 _buildSecurityTab(user),
+                // Workspace Tab
+                _buildWorkspaceTab(),
               ],
             ),
           ),
@@ -149,7 +155,7 @@ class _PersonalSettingsScreenState
         children: [
           // Avatar Section
           Text(
-            'Profile Picture',
+            AppLocalizations.of(context)!.profilePicture,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -158,38 +164,41 @@ class _PersonalSettingsScreenState
           Row(
             children: [
               // Avatar
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.primaryColor,
-                ),
-                child: Center(
-                  child: user.avatarUrl != null
-                      ? ClipOval(
-                          child: Image.network(
-                            user.avatarUrl!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
+              Semantics(
+                label: 'Profile picture for ${user.name}',
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.primaryColor,
+                  ),
+                  child: Center(
+                    child: user.avatarUrl != null
+                        ? ClipOval(
+                            child: Image.network(
+                              user.avatarUrl!,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Text(
+                            user.initials,
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        )
-                      : Text(
-                          user.initials,
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                  ),
                 ),
               ),
               const SizedBox(width: 24),
               ElevatedButton.icon(
-                onPressed: () => _showSnackBar('Avatar upload coming soon'),
+                onPressed: () => _showSnackBar(AppLocalizations.of(context)!.uploadComingSoon),
                 icon: const Icon(FontAwesomeIcons.upload),
-                label: const Text('Upload New Picture'),
+                label: Text(AppLocalizations.of(context)!.uploadNewPicture),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.primaryColor,
                   foregroundColor: Colors.white,
@@ -198,39 +207,48 @@ class _PersonalSettingsScreenState
             ],
           ),
           const SizedBox(height: 32),
-          // Name
-          Text(
-            'Display Name',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              hintText: 'Enter your name',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Email
-          Text(
-            'Email Address',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _emailController,
-            decoration: InputDecoration(
-              hintText: 'Enter your email',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context)!.nameHint,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return AppLocalizations.of(context)!.nameEmptyError;
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Email
+                Text(
+                  AppLocalizations.of(context)!.emailLabel,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context)!.emailHint,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || !value.contains('@')) return AppLocalizations.of(context)!.emailInvalidError;
+                    return null;
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -248,7 +266,7 @@ class _PersonalSettingsScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Changing your email affects all workspaces',
+                    AppLocalizations.of(context)!.emailChangeWarning,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.orange,
                     ),
@@ -263,16 +281,18 @@ class _PersonalSettingsScreenState
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                ref.read(currentUserProvider.notifier).updateName(_nameController.text);
-                ref.read(currentUserProvider.notifier).updateEmail(_emailController.text);
-                _showSnackBar('Profile updated successfully');
+                if (_formKey.currentState!.validate()) {
+                  ref.read(currentUserProvider.notifier).updateName(_nameController.text);
+                  ref.read(currentUserProvider.notifier).updateEmail(_emailController.text);
+                  _showSnackBar(AppLocalizations.of(context)!.profileUpdated);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Save Changes'),
+              child: Text(AppLocalizations.of(context)!.saveChanges),
             ),
           ),
         ],
@@ -290,14 +310,14 @@ class _PersonalSettingsScreenState
         children: [
           // Language
           Text(
-            'Display Language',
+            AppLocalizations.of(context)!.displayLanguage,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<Language>(
-            value: preferences.language,
+            initialValue: preferences.language,
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -312,18 +332,58 @@ class _PersonalSettingsScreenState
             onChanged: (value) {
               if (value != null) {
                 ref.read(userPreferencesProvider.notifier).updateLanguage(value);
-                _showSnackBar('Language updated to ${value.displayName}');
+                _showSnackBar(AppLocalizations.of(context)!.languageUpdated(value.displayName));
               }
             },
           ),
           const SizedBox(height: 24),
           // Email Notifications
           SwitchListTile(
-            title: const Text('Email Notifications'),
-            subtitle: const Text('Receive updates and alerts via email'),
+            title: Text(AppLocalizations.of(context)!.emailNotifications),
+            subtitle: Text(AppLocalizations.of(context)!.emailNotificationsSubtitle),
             value: preferences.emailNotifications,
             onChanged: (value) {
               ref.read(userPreferencesProvider.notifier).toggleEmailNotifications();
+            },
+          ),
+          const SizedBox(height: 12),
+          // Dark Mode Toggle
+          SwitchListTile(
+            title: Text(AppLocalizations.of(context)!.darkMode),
+            subtitle: Text(AppLocalizations.of(context)!.darkModeSubtitle),
+            secondary: Icon(
+              preferences.darkMode ? Icons.dark_mode : Icons.light_mode,
+              color: theme.primaryColor,
+            ),
+            value: preferences.darkMode,
+            onChanged: (value) {
+              ref.read(userPreferencesProvider.notifier).toggleDarkMode();
+            },
+          ),
+          const Divider(height: 48),
+          // Developer Settings
+          Text(
+            AppLocalizations.of(context)!.developerSettings,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: Text(AppLocalizations.of(context)!.mockAIModels),
+            subtitle: Text(AppLocalizations.of(context)!.mockAIModelsSubtitle),
+            secondary: Icon(
+              Icons.bug_report,
+              color: theme.primaryColor,
+            ),
+            value: EdgeAIService.forceMock,
+            onChanged: (value) {
+              setState(() {
+                EdgeAIService.forceMock = value;
+              });
+              
+              final status = value ? 'ON' : 'OFF';
+              _showSnackBar(AppLocalizations.of(context)!.aiMockMode(status));
             },
           ),
         ],
@@ -341,7 +401,7 @@ class _PersonalSettingsScreenState
         children: [
           // Connected Accounts
           Text(
-            'Connected Accounts',
+            AppLocalizations.of(context)!.connectedAccounts,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -366,6 +426,24 @@ class _PersonalSettingsScreenState
             theme,
             LoginMethod.email,
             user.linkedAccounts.contains(LoginMethod.email),
+          ),
+          
+          const Divider(height: 48),
+          
+          // Secrets Management
+          Text(
+            'Secrets & API Keys',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.key,
+            title: 'My Secrets (secrets.md)',
+            subtitle: 'Manage your API keys and environment variables securely',
+            onTap: () => context.push('/settings/secrets'),
           ),
         ],
       ),
@@ -412,9 +490,9 @@ class _PersonalSettingsScreenState
                   ),
                 ),
                 Text(
-                  isLinked ? 'Connected' : 'Not connected',
+                  isLinked ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: isLinked ? Colors.green : Colors.white60,
+                    color: isLinked ? Colors.green : (theme.brightness == Brightness.light ? Colors.black54 : Colors.white60),
                   ),
                 ),
               ],
@@ -424,23 +502,83 @@ class _PersonalSettingsScreenState
             TextButton(
               onPressed: () {
                 ref.read(currentUserProvider.notifier).unlinkAccount(method);
-                _showSnackBar('${method.displayName} disconnected');
+                _showSnackBar(AppLocalizations.of(context)!.accountDisconnected(method.displayName));
               },
-              child: const Text('Disconnect'),
+              child: Text(AppLocalizations.of(context)!.disconnect),
             )
           else
             ElevatedButton(
               onPressed: () {
                 ref.read(currentUserProvider.notifier).linkAccount(method);
-                _showSnackBar('${method.displayName} connected');
+                _showSnackBar(AppLocalizations.of(context)!.accountConnected(method.displayName));
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primaryColor,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Connect'),
+              child: Text(AppLocalizations.of(context)!.connect),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceTab() {
+    final theme = Theme.of(context);
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.workspaceInfrastructure,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.microchip,
+            title: AppLocalizations.of(context)!.modelProviders,
+            subtitle: AppLocalizations.of(context)!.modelProvidersSub,
+            onTap: () => context.go('/workspace/model-providers'),
+          ),
+          const SizedBox(height: 12),
+          _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.plug,
+            title: AppLocalizations.of(context)!.pluginsTools,
+            subtitle: AppLocalizations.of(context)!.pluginsToolsSub,
+            onTap: () => context.go('/workspace/plugins'),
+          ),
+          const SizedBox(height: 12),
+           _buildWorkspaceItem(
+            theme,
+            icon: FontAwesomeIcons.layerGroup,
+            title: AppLocalizations.of(context)!.manageApps,
+            subtitle: AppLocalizations.of(context)!.manageAppsSub,
+            onTap: () => context.go('/workspace/apps'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkspaceItem(ThemeData theme, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+        color: theme.cardColor.withValues(alpha: 0.1),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: theme.primaryColor, size: 20),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: theme.brightness == Brightness.light ? Colors.black54 : Colors.white54)),
+        trailing: const Icon(Icons.chevron_right, size: 20),
+        onTap: onTap,
       ),
     );
   }

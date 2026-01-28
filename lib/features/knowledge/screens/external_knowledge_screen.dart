@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../models/external_knowledge_models.dart';
 import '../providers/external_knowledge_provider.dart';
 
@@ -42,14 +43,14 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Connect to External Knowledge Base',
-            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.externalKnowledgeTitle,
+            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Integrate with external knowledge bases through API services or official plugins.',
-            style: TextStyle(color: Colors.white54, fontSize: 14),
+          Text(
+            AppLocalizations.of(context)!.externalKnowledgeSub,
+            style: const TextStyle(color: Colors.white54, fontSize: 14),
           ),
           const SizedBox(height: 32),
           
@@ -64,9 +65,9 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white38,
               labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              tabs: const [
-                Tab(text: 'API Connections'),
-                Tab(text: 'Plugin Marketplace'),
+              tabs: [
+                Tab(text: AppLocalizations.of(context)!.apiConnections),
+                Tab(text: AppLocalizations.of(context)!.pluginMarketplace),
               ],
             ),
           ),
@@ -94,17 +95,17 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
         const SizedBox(height: 24),
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Configure custom API endpoints to connect to your self-hosted or third-party knowledge bases.',
-                style: TextStyle(color: Colors.white38, fontSize: 13),
+                AppLocalizations.of(context)!.apiConnectionsSub,
+                style: const TextStyle(color: Colors.white38, fontSize: 13),
               ),
             ),
             const SizedBox(width: 24),
             ElevatedButton.icon(
               onPressed: _showAddAPIDialog,
               icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add API Connection'),
+              label: Text(AppLocalizations.of(context)!.addApiConnection),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueAccent,
                 foregroundColor: Colors.white,
@@ -116,22 +117,24 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
         const SizedBox(height: 32),
         
         Expanded(
-          child: ListView(
-            children: [
-              if (connections.isEmpty)
-                _buildEmptyConnectionsState()
-              else
-                ...connections.map((conn) => Column(
-                  children: [
-                    _buildAPIConnectionItem(conn),
-                    const SizedBox(height: 16),
-                  ],
-                )),
-              
-              const SizedBox(height: 24),
-              if (connections.isNotEmpty) _buildRetrievalSandbox(),
-            ],
-          ),
+          child: connections.isEmpty
+              ? _buildEmptyConnectionsState()
+              : ListView.builder(
+                  itemCount: connections.length + (connections.isNotEmpty ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index < connections.length) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildAPIConnectionItem(connections[index]),
+                      );
+                    } else {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 24),
+                        child: _buildRetrievalSandbox(),
+                      );
+                    }
+                  },
+                ),
         ),
       ],
     );
@@ -152,14 +155,14 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Retrieval Sandbox',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            AppLocalizations.of(context)!.retrievalSandbox,
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Test your retrieval settings and view raw chunks returned by the API.',
-            style: TextStyle(color: Colors.white38, fontSize: 13),
+          Text(
+            AppLocalizations.of(context)!.retrievalSandboxSub,
+            style: const TextStyle(color: Colors.white38, fontSize: 13),
           ),
           const SizedBox(height: 24),
           
@@ -170,7 +173,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Select Connection', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(AppLocalizations.of(context)!.selectConnection, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -182,7 +185,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: selectedConnId,
-                          hint: const Text('Choose a connection', style: TextStyle(color: Colors.white24, fontSize: 14)),
+                          hint: Text(AppLocalizations.of(context)!.chooseConnectionHint, style: const TextStyle(color: Colors.white24, fontSize: 14)),
                           dropdownColor: const Color(0xFF1C2128),
                           isExpanded: true,
                           items: connections.map((conn) => DropdownMenuItem(
@@ -202,12 +205,12 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Query', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(AppLocalizations.of(context)!.queryLabel, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _queryController,
                       decoration: InputDecoration(
-                        hintText: 'Enter search query...',
+                        hintText: AppLocalizations.of(context)!.searchQueryHint,
                         hintStyle: const TextStyle(color: Colors.white24, fontSize: 14),
                         filled: true,
                         fillColor: Colors.white.withValues(alpha: 0.03),
@@ -234,7 +237,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                   ),
-                  child: const Text('Search'),
+                  child: Text(AppLocalizations.of(context)!.searchLabel),
                 ),
               ),
             ],
@@ -242,9 +245,9 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
           
           if (results != null) ...[
             const SizedBox(height: 32),
-            const Text(
-              'Retrieval Results',
-              style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+            Text(
+              AppLocalizations.of(context)!.retrievalResults,
+              style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             ...results.records.map((record) => Container(
@@ -272,7 +275,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          'Score: ${record.score.toStringAsFixed(3)}',
+                          AppLocalizations.of(context)!.scoreLabel(record.score.toStringAsFixed(3)),
                           style: const TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -316,14 +319,14 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
         children: [
           Icon(Icons.api_outlined, size: 64, color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 16),
-          const Text(
-            'No connections configured',
-            style: TextStyle(color: Colors.white38, fontSize: 16),
+          Text(
+            AppLocalizations.of(context)!.noConnectionsConfigured,
+            style: const TextStyle(color: Colors.white38, fontSize: 16),
           ),
           const SizedBox(height: 8),
           TextButton(
             onPressed: _showAddAPIDialog,
-            child: const Text('Add your first connection'),
+            child: Text(AppLocalizations.of(context)!.addFirstConnection),
           ),
         ],
       ),
@@ -335,9 +338,9 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 24),
-        const Text(
-          'Official plugins provide seamless integration with popular knowledge base services.',
-          style: TextStyle(color: Colors.white38, fontSize: 13),
+        Text(
+          AppLocalizations.of(context)!.externalKnowledgeSub, // Reusing key for marketplace sub
+          style: const TextStyle(color: Colors.white38, fontSize: 13),
         ),
         const SizedBox(height: 32),
         
@@ -411,7 +414,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                 Text(connection.endpoint, style: const TextStyle(color: Colors.white38, fontSize: 12)),
                 if (lastSyncText != null) ...[
                   const SizedBox(height: 4),
-                  Text('Last sync: $lastSyncText', style: const TextStyle(color: Colors.white24, fontSize: 11)),
+                  Text(AppLocalizations.of(context)!.lastSyncLabel(lastSyncText), style: const TextStyle(color: Colors.white24, fontSize: 11)),
                 ],
               ],
             ),
@@ -438,17 +441,17 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
           IconButton(
             onPressed: () => _testConnection(connection.id),
             icon: const Icon(Icons.refresh, color: Colors.white38, size: 18),
-            tooltip: 'Test Connection',
+            tooltip: AppLocalizations.of(context)!.testingStatus.replaceAll('...', ''),
           ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.settings_outlined, color: Colors.white38, size: 18),
-            tooltip: 'Configure',
+            tooltip: AppLocalizations.of(context)!.configureLabel,
           ),
           IconButton(
             onPressed: () => ref.read(externalConnectionsProvider.notifier).removeConnection(connection.id),
             icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-            tooltip: 'Remove',
+            tooltip: AppLocalizations.of(context)!.deleteLabel,
           ),
         ],
       ),
@@ -471,23 +474,23 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
   String _getStatusText(ConnectionStatus status) {
     switch (status) {
       case ConnectionStatus.active:
-        return 'Active';
+        return AppLocalizations.of(context)!.statusActive;
       case ConnectionStatus.error:
-        return 'Error';
+        return AppLocalizations.of(context)!.statusError;
       case ConnectionStatus.pending:
-        return 'Testing...';
+        return AppLocalizations.of(context)!.testingStatus;
       default:
-        return 'Disconnected';
+        return AppLocalizations.of(context)!.disconnectedStatus;
     }
   }
 
   String? _formatLastSync(DateTime? lastSync) {
     if (lastSync == null) return null;
     final diff = DateTime.now().difference(lastSync);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return AppLocalizations.of(context)!.justNow;
+    if (diff.inMinutes < 60) return AppLocalizations.of(context)!.minutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return AppLocalizations.of(context)!.hoursAgo(diff.inHours);
+    return AppLocalizations.of(context)!.daysAgo(diff.inDays);
   }
 
   Future<void> _testConnection(String id) async {
@@ -496,7 +499,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Connection successful!' : 'Connection failed. Check your settings.'),
+        content: Text(success ? AppLocalizations.of(context)!.connectionSuccessful : AppLocalizations.of(context)!.connectionFailed),
         backgroundColor: success ? Colors.green : Colors.red,
       ),
     );
@@ -532,7 +535,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                     color: Colors.greenAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('INSTALLED', style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
+                  child: Text(AppLocalizations.of(context)!.installedLabel, style: const TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
             ],
           ),
@@ -551,7 +554,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              child: Text(isInstalled ? 'Configure' : 'Install', style: const TextStyle(fontSize: 12)),
+              child: Text(isInstalled ? AppLocalizations.of(context)!.configureLabel : AppLocalizations.of(context)!.installLabel, style: const TextStyle(fontSize: 12)),
             ),
           ),
         ],
@@ -577,15 +580,15 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Add API Connection', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(AppLocalizations.of(context)!.addApiConnection, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              _buildDialogField('Connection Name', 'e.g., My Knowledge Base', controller: _nameController),
+              _buildDialogField(AppLocalizations.of(context)!.connectionNameLabel, AppLocalizations.of(context)!.connectionNameHint, controller: _nameController),
               const SizedBox(height: 16),
-              _buildDialogField('API Endpoint', 'https://api.example.com/v1/retrieve', controller: _endpointController),
+              _buildDialogField(AppLocalizations.of(context)!.apiEndpointLabel, 'https://api.example.com/v1/retrieve', controller: _endpointController),
               const SizedBox(height: 16),
-              _buildDialogField('Knowledge ID (Optional)', 'Internal reference ID', controller: _knowledgeIdController),
+              _buildDialogField(AppLocalizations.of(context)!.knowledgeIdOptional, AppLocalizations.of(context)!.internalRefId, controller: _knowledgeIdController),
               const SizedBox(height: 16),
-              _buildDialogField('API Key', 'sk-...', isPassword: true, controller: _apiKeyController),
+              _buildDialogField(AppLocalizations.of(context)!.apiKeyLabel, 'sk-...', isPassword: true, controller: _apiKeyController),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -594,20 +597,20 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2)),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.blueAccent, size: 16),
-                        SizedBox(width: 8),
-                        Text('API Requirements', style: TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                        const Icon(Icons.info_outline, color: Colors.blueAccent, size: 16),
+                        const SizedBox(width: 8),
+                        Text(AppLocalizations.of(context)!.apiRequirements, style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      'Your API must accept POST requests with a query parameter and return results in JSON format with text content.',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                      AppLocalizations.of(context)!.apiRequirementsSub,
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ],
                 ),
@@ -643,7 +646,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
-                    child: const Text('Test & Save'),
+                    child: Text(AppLocalizations.of(context)!.testSave),
                   ),
                 ],
               ),
@@ -667,17 +670,17 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.extension, color: Colors.blueAccent, size: 24),
-                  SizedBox(width: 12),
-                  Text('Configure LlamaCloud', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Icon(Icons.extension, color: Colors.blueAccent, size: 24),
+                  const SizedBox(width: 12),
+                  Text(AppLocalizations.of(context)!.configurePlugin('LlamaCloud'), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 24),
-              _buildDialogField('LlamaCloud API Key', 'llx-...', isPassword: true),
+              _buildDialogField(AppLocalizations.of(context)!.apiKeyLabel, 'llx-...', isPassword: true),
               const SizedBox(height: 16),
-              _buildDialogField('Pipeline ID', 'Optional: Specify a pipeline ID'),
+              _buildDialogField('Pipeline ID', AppLocalizations.of(context)!.apiKeyOptionalHint('pipeline ID')),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -694,13 +697,13 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Need an API key?', style: TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                          Text(AppLocalizations.of(context)!.needApiKey, style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
                           GestureDetector(
                             onTap: () {},
-                            child: const Text(
-                              'Visit cloud.llamaindex.ai to create one',
-                              style: TextStyle(color: Colors.blueAccent, fontSize: 11, decoration: TextDecoration.underline),
+                            child: Text(
+                              AppLocalizations.of(context)!.visitPluginHub('cloud.llamaindex.ai'),
+                              style: const TextStyle(color: Colors.blueAccent, fontSize: 11, decoration: TextDecoration.underline),
                             ),
                           ),
                         ],
@@ -725,7 +728,7 @@ class _ExternalKnowledgeScreenState extends ConsumerState<ExternalKnowledgeScree
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
-                    child: const Text('Save Configuration'),
+                    child: Text(AppLocalizations.of(context)!.saveConfiguration),
                   ),
                 ],
               ),

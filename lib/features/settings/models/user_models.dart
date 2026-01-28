@@ -1,4 +1,5 @@
 /// Models for user settings and profile
+library;
 
 /// Login method
 enum LoginMethod {
@@ -21,17 +22,14 @@ enum LoginMethod {
 /// Display language
 enum Language {
   english,
-  simplifiedChinese,
-  traditionalChinese;
+  spanish;
 
   String get displayName {
     switch (this) {
       case Language.english:
         return 'English';
-      case Language.simplifiedChinese:
-        return '简体中文';
-      case Language.traditionalChinese:
-        return '繁體中文';
+      case Language.spanish:
+        return 'Español';
     }
   }
 
@@ -39,10 +37,8 @@ enum Language {
     switch (this) {
       case Language.english:
         return 'en';
-      case Language.simplifiedChinese:
-        return 'zh-CN';
-      case Language.traditionalChinese:
-        return 'zh-TW';
+      case Language.spanish:
+        return 'es';
     }
   }
 }
@@ -172,22 +168,32 @@ class UserProfile {
 /// User preferences
 class UserPreferences {
   final Language language;
+  final String? voiceLanguage; // 'en-US', 'es-EC', etc.
   final bool darkMode;
   final bool emailNotifications;
 
   const UserPreferences({
     this.language = Language.english,
+    this.voiceLanguage,
     this.darkMode = true,
     this.emailNotifications = true,
   });
 
+  /// Get effective voice language, defaulting to display language if not set
+  String get effectiveVoiceLanguage {
+    if (voiceLanguage != null) return voiceLanguage!;
+    return language == Language.spanish ? 'es-EC' : 'en-US';
+  }
+
   UserPreferences copyWith({
     Language? language,
+    String? voiceLanguage,
     bool? darkMode,
     bool? emailNotifications,
   }) {
     return UserPreferences(
       language: language ?? this.language,
+      voiceLanguage: voiceLanguage ?? this.voiceLanguage,
       darkMode: darkMode ?? this.darkMode,
       emailNotifications: emailNotifications ?? this.emailNotifications,
     );
@@ -195,6 +201,7 @@ class UserPreferences {
 
   Map<String, dynamic> toJson() => {
         'language': language.name,
+        if (voiceLanguage != null) 'voice_language': voiceLanguage,
         'dark_mode': darkMode,
         'email_notifications': emailNotifications,
       };
@@ -202,6 +209,7 @@ class UserPreferences {
   factory UserPreferences.fromJson(Map<String, dynamic> json) {
     return UserPreferences(
       language: Language.values.byName(json['language'] as String),
+      voiceLanguage: json['voice_language'] as String?,
       darkMode: json['dark_mode'] as bool? ?? true,
       emailNotifications: json['email_notifications'] as bool? ?? true,
     );

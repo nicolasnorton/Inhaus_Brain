@@ -1,4 +1,5 @@
 /// Models for Index Method and Retrieval Settings
+library;
 
 /// Index method enum
 enum IndexMethod {

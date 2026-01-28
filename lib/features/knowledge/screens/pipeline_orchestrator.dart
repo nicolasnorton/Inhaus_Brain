@@ -10,7 +10,7 @@ class KnowledgePipelineOrchestrator extends ConsumerStatefulWidget {
 }
 
 class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelineOrchestrator> {
-  double _zoomLevel = 1.0;
+  final double _zoomLevel = 1.0;
   final bool _isPublished = false;
   String? _selectedNode;
 
@@ -85,7 +85,12 @@ class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelin
           const SizedBox(width: 8),
           _buildTopBarIcon(Icons.history_outlined),
           const SizedBox(width: 12),
-          _buildTopBarButton('Test Run', Icons.play_arrow_outlined, color: Colors.blueAccent),
+          _buildTopBarButton(
+            'Test Run', 
+            Icons.play_arrow_outlined, 
+            color: Colors.blueAccent,
+            onTap: _runPipeline,
+          ),
           const SizedBox(width: 8),
           _buildTopBarIcon(Icons.checklist_outlined),
           const SizedBox(width: 8),
@@ -106,20 +111,24 @@ class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelin
     );
   }
 
-  Widget _buildTopBarButton(String label, IconData icon, {Color? color}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          if (color != null) Icon(icon, size: 16, color: color) else Icon(icon, size: 16, color: Colors.white60),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
+  Widget _buildTopBarButton(String label, IconData icon, {Color? color, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: [
+            if (color != null) Icon(icon, size: 16, color: color) else Icon(icon, size: 16, color: Colors.white60),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }
@@ -618,8 +627,8 @@ class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelin
                     left: 980,
                     top: 420,
                     child: InkWell(
-                      onTap: () => setState(() => _selectedNode = 'DIFY EXTRACTOR'),
-                      child: _buildProcessNode('DIFY EXTRACTOR', Colors.greenAccent),
+                      onTap: () => setState(() => _selectedNode = 'INHAUS EXTRACTOR'),
+                      child: _buildProcessNode('INHAUS EXTRACTOR', Colors.greenAccent),
                     ),
                   ),
                   Positioned(
@@ -887,6 +896,97 @@ class _KnowledgePipelineOrchestratorState extends ConsumerState<KnowledgePipelin
       ],
     );
   }
+  void _runPipeline() {
+    // Show progress
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF1C2128),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Colors.blueAccent),
+              const SizedBox(height: 24),
+              const Text('Running Pipeline...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('Processing nodes...', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Simulate execution
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.pop(context); // Close progress
+        
+        // Show result
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            backgroundColor: const Color(0xFF1C2128),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              width: 500,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Execution Result', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
+                        SizedBox(width: 12),
+                        Text('Pipeline executed successfully', style: TextStyle(color: Colors.greenAccent)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Output', style: TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      '{\n  "status": "success",\n  "documents_processed": 1,\n  "chunks_created": 12,\n  "knowledge_base_updated": true\n}',
+                      style: TextStyle(color: Colors.white70, fontFamily: 'monospace', fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    });
+  }
 }
 
 class GridPainter extends CustomPainter {
@@ -921,7 +1021,7 @@ class ConnectorPainter extends CustomPainter {
     
     // Example connections based on the layout
     _drawCurvedLine(path, const Offset(680, 520), const Offset(720, 550)); // DS -> IF/ELSE
-    _drawCurvedLine(path, const Offset(940, 520), const Offset(980, 480)); // IF/ELSE -> Dify Ext
+    _drawCurvedLine(path, const Offset(940, 520), const Offset(980, 480)); // IF/ELSE -> Inhaus Ext
     _drawCurvedLine(path, const Offset(940, 580), const Offset(980, 580)); // IF/ELSE -> Doc Ext
 
     canvas.drawPath(path, paint);

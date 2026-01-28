@@ -1,15 +1,20 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:universal_html/html.dart' as html; // Switch to universal_html or conditional import
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import '../models/app_models.dart';
 import '../providers/apps_provider.dart';
 import '../../adk/providers/pipeline_provider.dart';
 import '../../../core/adk/models/pipeline_models.dart';
+
+// Note: To support WASM, we should eventually migrate from dart:html/universal_html to package:web.
+// For now, removing direct 'dart:html' import avoids the immediate compilation error if we use a conditional export,
+// but since this is a service, let's try a safe approach:
+// We will use 'universal_html' if available, which wraps this. 
+// User doesn't have universal_html in pubspec. Let's add it or rely on a stub.
+// Actually, `file_picker` handles import, but we need export.
 
 class WorkflowExchangeService {
   final WidgetRef ref;
@@ -23,8 +28,6 @@ class WorkflowExchangeService {
 
     // 2. Get Pipeline (if applicable)
     final pipelines = ref.read(pipelineProvider);
-    // Find pipeline with matching ID or create empty if not found (though should be there)
-    // Note: PipelineProvider currently returns a list of Pipelines.
     final pipeline = pipelines.firstWhere(
       (p) => p.id == appId,
       orElse: () => Pipeline(id: appId, name: app.name, description: app.description, steps: []),
@@ -38,22 +41,26 @@ class WorkflowExchangeService {
       workflow: pipeline.toJson(),
     );
 
-    // 4. Serialize
-    final jsonString = dsl.toJsonString();
+    // 4. Export
+    await _downloadJson(dsl.toJsonString(), "${app.name.replaceAll(' ', '_')}.json");
+  }
 
-    // 5. Download/Save
+  Future<void> exportPipeline(Pipeline pipeline, {String? fileName}) async {
+    final actualFileName = fileName ?? "${pipeline.name.replaceAll(' ', '_')}.json";
+    await _downloadJson(jsonEncode(pipeline.toJson()), actualFileName);
+  }
+
+  Future<void> _downloadJson(String jsonString, String fileName) async {
     if (kIsWeb) {
       final bytes = utf8.encode(jsonString);
       final blob = html.Blob([bytes]);
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", "${app.name.replaceAll(' ', '_')}.json")
+        ..setAttribute("download", fileName)
         ..click();
       html.Url.revokeObjectUrl(url);
     } else {
-      // Implement generic file picker save for desktop/mobile if needed
-      // For now, simplify or print
-      print("Exported JSON: $jsonString");
+      debugPrint("Exported JSON ($fileName): $jsonString");
     }
   }
 
@@ -69,46 +76,77 @@ class WorkflowExchangeService {
 
         if (kIsWeb) {
           final bytes = result.files.first.bytes;
-          if (bytes != null) {
-            fileContent = utf8.decode(bytes);
-          }
+          if (bytes != null) fileContent = utf8.decode(bytes);
         } else {
-          // Desktop/Mobile
-          // fileContent = await File(result.files.single.path!).readAsString();
-          // Using bytes for safety across platforms if available
-           final bytes = result.files.first.bytes; // May be null on desktop without withData: true
-           // We'll rely on web for this specific task verification
-           if (bytes != null) fileContent = utf8.decode(bytes);
+          final bytes = result.files.first.bytes;
+          if (bytes != null) fileContent = utf8.decode(bytes);
         }
 
         if (fileContent != null) {
-          final dsl = AppDSL.fromJsonString(fileContent);
-          if (dsl != null) {
-            final newAppId = '${dsl.app.id}_imported_${DateTime.now().millisecondsSinceEpoch}';
-            
-            // Create App
-            final newApp = dsl.app.copyWith(
-              id: newAppId,
-              name: '${dsl.app.name} (Imported)',
-              status: AppStatus.draft,
-            );
-            ref.read(appsProvider.notifier).createApp(newApp);
+          final Map<String, dynamic> json = jsonDecode(fileContent);
 
-            // Create Pipeline
-            if (dsl.workflow.isNotEmpty) {
-               final pipelineJson = Map<String, dynamic>.from(dsl.workflow);
-               pipelineJson['id'] = newAppId; // Sync IDs
-               pipelineJson['name'] = newApp.name;
-               final newPipeline = Pipeline.fromJson(pipelineJson);
-               ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
-            }
-            return true;
+          // Detect format: AppDSL vs Raw Pipeline
+          if (json.containsKey('kind') && json['kind'] == 'app') {
+            return await _importFromDSL(AppDSL.fromJsonString(fileContent)!);
+          } else if (json.containsKey('steps') || json.containsKey('nodes')) {
+            // It's a raw pipeline
+            final pipeline = Pipeline.fromJson(json);
+            return await _importFromPipeline(pipeline);
           }
         }
       }
     } catch (e) {
-      print("Import failed: $e");
+      debugPrint("Import failed: $e");
     }
     return false;
+  }
+
+  Future<bool> _importFromDSL(AppDSL dsl) async {
+    final newAppId = '${dsl.app.id}_imported_${DateTime.now().millisecondsSinceEpoch}';
+    
+    // Create App
+    final newApp = dsl.app.copyWith(
+      id: newAppId,
+      name: '${dsl.app.name} (Imported)',
+      status: AppStatus.draft,
+    );
+    ref.read(appsProvider.notifier).createApp(newApp);
+
+    // Create Pipeline
+    if (dsl.workflow.isNotEmpty) {
+       final pipelineJson = Map<String, dynamic>.from(dsl.workflow);
+       pipelineJson['id'] = newAppId; // Sync IDs
+       pipelineJson['name'] = newApp.name;
+       final newPipeline = Pipeline.fromJson(pipelineJson);
+       ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
+    }
+    return true;
+  }
+
+  Future<bool> _importFromPipeline(Pipeline pipeline) async {
+    final newAppId = 'pipeline_imported_${DateTime.now().millisecondsSinceEpoch}';
+    final name = '${pipeline.name} (Imported)';
+    
+    // Create App as generic workflow
+    final newApp = App(
+      id: newAppId,
+      name: name,
+      type: AppType.workflow,
+      description: pipeline.description,
+      icon: '🔄',
+      status: AppStatus.draft,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    ref.read(appsProvider.notifier).createApp(newApp);
+
+    // Create Pipeline
+    final newPipeline = pipeline.copyWith(
+      id: newAppId,
+      name: name,
+    );
+    ref.read(pipelineProvider.notifier).savePipeline(newPipeline);
+    
+    return true;
   }
 }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/adk/models/pipeline_models.dart';
 import '../../chat/models/chat_models.dart';
+import '../../../../core/models/mcp_models.dart';
 
-class NodeConfigurationSheet extends StatefulWidget {
+class NodeConfigurationSheet extends ConsumerStatefulWidget {
   final PipelineStep step;
   final List<PipelineStep> allSteps; // Required for resolving dependency names
   final VoidCallback onClose;
@@ -18,10 +20,10 @@ class NodeConfigurationSheet extends StatefulWidget {
   });
 
   @override
-  State<NodeConfigurationSheet> createState() => _NodeConfigurationSheetState();
+  ConsumerState<NodeConfigurationSheet> createState() => _NodeConfigurationSheetState();
 }
 
-class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
+class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet> {
   late PipelineStep step;
 
   @override
@@ -100,6 +102,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
 
   IconData _getNodeIcon(WorkflowNodeType type) {
     switch (type) {
+      case WorkflowNodeType.start: return FontAwesomeIcons.play;
       case WorkflowNodeType.userInput: return FontAwesomeIcons.keyboard;
       case WorkflowNodeType.llm: return FontAwesomeIcons.brain;
       case WorkflowNodeType.knowledgeRetrieval: return FontAwesomeIcons.bookOpen;
@@ -114,6 +117,7 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
       case WorkflowNodeType.documentExtractor: return FontAwesomeIcons.filePdf;
       case WorkflowNodeType.variableAssigner: return FontAwesomeIcons.penToSquare;
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
+      case WorkflowNodeType.note: return FontAwesomeIcons.stickyNote;
       default: return FontAwesomeIcons.circle;
     }
   }
@@ -152,6 +156,8 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
 
   Widget _buildConfigForm(PipelineStep step) {
     switch (step.nodeType) {
+      case WorkflowNodeType.start:
+        return _buildStartConfig(step);
       case WorkflowNodeType.llm:
         return _buildLLMConfig(step);
       case WorkflowNodeType.knowledgeRetrieval:
@@ -192,6 +198,8 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
         return _buildToolConfig(step);
       case WorkflowNodeType.questionClassifier:
         return _buildQuestionClassifierConfig(step);
+      case WorkflowNodeType.note:
+        return _buildNoteConfig(step);
     }
   }
 
@@ -203,36 +211,18 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
   );
 
   Widget _buildTextField(String initialValue, Function(String) onChanged, [String? hintText]) {
-    return TextField(
-      controller: TextEditingController(text: initialValue)..selection = TextSelection.collapsed(offset: initialValue.length),
-      style: const TextStyle(color: Colors.white, fontSize: 12),
+    return _ManagedTextField(
+      initialValue: initialValue,
       onChanged: onChanged,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.black,
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-      ),
+      hintText: hintText,
     );
   }
 
   Widget _buildTextArea(String initialValue, Function(String) onChanged, [String? hintText]) {
-    return TextField(
-      controller: TextEditingController(text: initialValue)..selection = TextSelection.collapsed(offset: initialValue.length),
-      style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
-      maxLines: null,
-      expands: false,
-      minLines: 3,
+    return _ManagedTextArea(
+      initialValue: initialValue,
       onChanged: onChanged,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.black,
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.white24, fontSize: 10),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-      ),
+      hintText: hintText,
     );
   }
 
@@ -2386,16 +2376,45 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
     );
   }
 
+  Widget _buildStartConfig(PipelineStep step) {
+    return _buildUserInputConfig(step); // Reusing User Input UI for now as Start node usually handles inputs
+  }
+
+  Widget _buildNoteConfig(PipelineStep step) {
+    final text = step.config['text'] ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("Note Text"),
+        _buildTextArea(text, (val) {
+          _updateStep(step.id, config: {...step.config, 'text': val});
+        }, "Enter your notes here..."),
+      ],
+    );
+  }
+
   Widget _buildToolConfig(PipelineStep step) {
-     final toolId = step.config['tool_id'] ?? 'google_search';
+     final availableTools = ref.watch(availableToolsProvider);
+     final toolId = step.config['tool_id'] ?? (availableTools.isNotEmpty ? availableTools.first.id : 'google_search');
      final retries = step.config['retries'] ?? 3;
      final customParams = List<Map<String, dynamic>>.from(step.config['params'] ?? []);
      
+     final toolNames = availableTools.map((t) => t.id).toList();
+     if (!toolNames.contains(toolId)) toolNames.add(toolId);
+
      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
            _buildSubtitle("Select Tool"),
-           _buildDropdown(["google_search", "web_scraper", "slack_notify", "gmail_send", "custom_webhook"], toolId, (val) => _updateStep(step.id, config: {...step.config, 'tool_id': val})),
+           _buildDropdown(toolNames, toolId, (val) => _updateStep(step.id, config: {...step.config, 'tool_id': val!})),
+           if (availableTools.any((t) => t.id == toolId)) 
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  availableTools.firstWhere((t) => t.id == toolId).description,
+                  style: const TextStyle(color: Colors.white24, fontSize: 10, fontStyle: FontStyle.italic),
+                ),
+              ),
            const SizedBox(height: 16),
            _buildSubtitle("Tool Parameters"),
            _buildKeyValueList(step, customParams, 'params'),
@@ -2522,4 +2541,126 @@ class _NodeConfigurationSheetState extends State<NodeConfigurationSheet> {
         ],
      );
   }
+
 }
+
+class _ManagedTextField extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final String? hintText;
+
+  const _ManagedTextField({
+    required this.initialValue,
+    required this.onChanged,
+    this.hintText,
+  });
+
+  @override
+  State<_ManagedTextField> createState() => _ManagedTextFieldState();
+}
+
+class _ManagedTextFieldState extends State<_ManagedTextField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_ManagedTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+      if (widget.initialValue.isNotEmpty) {
+         _controller.selection = TextSelection.collapsed(offset: widget.initialValue.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      style: const TextStyle(color: Colors.white, fontSize: 12),
+      onChanged: widget.onChanged,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.black,
+        hintText: widget.hintText,
+        hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+      ),
+    );
+  }
+}
+
+class _ManagedTextArea extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final String? hintText;
+
+  const _ManagedTextArea({
+    required this.initialValue,
+    required this.onChanged,
+    this.hintText,
+  });
+
+  @override
+  State<_ManagedTextArea> createState() => _ManagedTextAreaState();
+}
+
+class _ManagedTextAreaState extends State<_ManagedTextArea> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_ManagedTextArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != _controller.text) {
+      _controller.text = widget.initialValue;
+       if (widget.initialValue.isNotEmpty) {
+         _controller.selection = TextSelection.collapsed(offset: widget.initialValue.length);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
+      maxLines: null,
+      expands: false,
+      minLines: 3,
+      onChanged: widget.onChanged,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.black,
+        hintText: widget.hintText,
+        hintStyle: const TextStyle(color: Colors.white24, fontSize: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+      ),
+    );
+  }
+}
+

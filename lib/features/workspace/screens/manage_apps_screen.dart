@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/app_models.dart';
@@ -388,6 +389,7 @@ class _ManageAppsScreenState extends ConsumerState<ManageAppsScreen> {
                           return AppCard(
                             app: app,
                             isGridView: true,
+                            onTap: () => context.go('/app-editor?id=${app.id}'),
                             onEdit: () => _showEditDialog(app),
                             onDuplicate: () => _showDuplicateDialog(app),
                             onExport: () => _showExportDialog(app),
@@ -403,6 +405,7 @@ class _ManageAppsScreenState extends ConsumerState<ManageAppsScreen> {
                           return AppCard(
                             app: app,
                             isGridView: false,
+                            onTap: () => context.go('/app-editor?id=${app.id}'),
                             onEdit: () => _showEditDialog(app),
                             onDuplicate: () => _showDuplicateDialog(app),
                             onExport: () => _showExportDialog(app),

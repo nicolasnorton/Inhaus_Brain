@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/knowledge_source.dart';
 import '../models/knowledge_api_models.dart';
 import '../services/knowledge_api_service.dart';
+import '../../../core/auth/auth_service.dart';
+import '../../../core/services/vertex_ai_service.dart';
+import '../../../core/auth/secret_vault_service.dart';
 
 // --- Legacy Source Management ---
 
@@ -32,24 +35,45 @@ final knowledgeProvider = StateNotifierProvider<KnowledgeNotifier, List<Knowledg
   return KnowledgeNotifier();
 });
 
-// --- Dify-style Dataset & Document Management ---
+// --- INHAUS BRAIN-style Dataset & Document Management ---
+
+final vertexApiServiceProvider = Provider<VertexApiService>((ref) => VertexApiService());
 
 final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
-  // In a real app, these would come from a secure vault or settings
+  final authService = ref.watch(authServiceProvider);
+  final vault = ref.watch(secretVaultProvider);
+  final vertex = ref.watch(vertexApiServiceProvider);
+  
   return KnowledgeApiService(
-    baseUrl: 'https://api.dify.ai',
-    apiKey: '', // Placeholder, should be injected
+    vertexService: vertex,
+    vault: vault,
+    tokenProvider: () async {
+      // 1. Try Vertex Access Token (Saved from Google Sign-In)
+      final vertexKey = await vault.getVertexKey();
+      if (vertexKey != null && vertexKey.isNotEmpty) return vertexKey;
+
+      // 2. Try Dify Key (serving as generic key slot)
+      final difyKey = await vault.getDifyKey();
+      if (difyKey != null && difyKey.isNotEmpty) return difyKey;
+
+      // 3. Fallback to Gemini Key
+      final geminiKey = await vault.getGeminiKey();
+      if (geminiKey != null && geminiKey.isNotEmpty) return geminiKey;
+      
+      // 4. Final fallback to user ID token (Firebase)
+      return (await authService.currentUser)?.getIdToken();
+    },
   );
 });
 
 final selectedDatasetIdProvider = StateProvider<String?>((ref) => null);
 
-final knowledgeBasesProvider = FutureProvider<List<KnowledgeBase>>((ref) async {
+final knowledgeBasesProvider = FutureProvider.autoDispose<List<KnowledgeBase>>((ref) async {
   final service = ref.watch(knowledgeApiServiceProvider);
   return service.listKnowledgeBases();
 });
 
-final documentsProvider = FutureProvider.family<List<KnowledgeDocument>, String>((ref, datasetId) async {
+final documentsProvider = FutureProvider.autoDispose.family<List<KnowledgeDocument>, String>((ref, datasetId) async {
   final service = ref.watch(knowledgeApiServiceProvider);
   return service.listDocuments(datasetId: datasetId);
 });

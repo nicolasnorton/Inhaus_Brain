@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'providers/creative_provider.dart';
 import 'models/design_concept.dart';
 import '../chat/agentic_chat_view.dart';
+import '../../core/widgets/app_video_player.dart';
+import '../../core/widgets/app_audio_player.dart';
 
 class CreativeStudioScreen extends ConsumerWidget {
   const CreativeStudioScreen({super.key});
@@ -15,6 +19,7 @@ class CreativeStudioScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Main Content: Creative Concepts
           Expanded(
@@ -23,7 +28,7 @@ class CreativeStudioScreen extends ConsumerWidget {
               slivers: [
                 SliverAppBar(
                   floating: true,
-                  title: const Text('Creative Studio', overflow: TextOverflow.ellipsis),
+                  title: Text(AppLocalizations.of(context)!.creativeStudio, overflow: TextOverflow.ellipsis),
                   backgroundColor: Colors.transparent,
                   actions: [
                     IconButton(
@@ -31,12 +36,12 @@ class CreativeStudioScreen extends ConsumerWidget {
                       onPressed: () {
                         // TODO: Trigger manual generation
                       },
-                      tooltip: 'Propose New Concept',
+                      tooltip: AppLocalizations.of(context)!.proposeNewConcept,
                     ),
                   ],
                 ),
                 if (concepts.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -45,13 +50,13 @@ class CreativeStudioScreen extends ConsumerWidget {
                           Icon(FontAwesomeIcons.palette, size: 64, color: Colors.white12),
                           SizedBox(height: 16),
                           Text(
-                            'No creative concepts yet.',
-                            style: TextStyle(color: Colors.white54, fontSize: 18),
+                            AppLocalizations.of(context)!.noCreativeConceptsYet,
+                            style: const TextStyle(color: Colors.white54, fontSize: 18),
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Complete a campaign research approval to trigger the Design Agent.',
-                            style: TextStyle(color: Colors.white30),
+                            AppLocalizations.of(context)!.completeResearchApprovalMsg,
+                            style: const TextStyle(color: Colors.white30),
                           ),
                         ],
                       ),
@@ -71,46 +76,41 @@ class CreativeStudioScreen extends ConsumerWidget {
             ),
           ),
           
-          // Side Panel: Agentic Chat (Flexible width for smaller screens)
-          Flexible(
+          // Side Panel: Agentic Chat (Expanded to fill vertical space)
+          Expanded(
             flex: 2,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Container(
-                  constraints: const BoxConstraints(minWidth: 280, maxWidth: 500),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
-                  ),
-                  child: Column(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            FaIcon(FontAwesomeIcons.commentDots, size: 16, color: Colors.blueAccent),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'DESIGN FEEDBACK',
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
-                                  color: Colors.white54,
-                                ),
-                              ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border(left: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        FaIcon(FontAwesomeIcons.commentDots, size: 16, color: Colors.blueAccent),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            AppLocalizations.of(context)!.designFeedback,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                              color: Colors.white54,
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                      const Divider(height: 1),
-                      const Expanded(child: AgenticChatView()),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              }
+                  const Divider(height: 1),
+                  const Expanded(child: AgenticChatView()),
+                ],
+              ),
             ),
           ),
         ],
@@ -120,14 +120,14 @@ class CreativeStudioScreen extends ConsumerWidget {
 
   Widget _buildConceptItem(BuildContext context, WidgetRef ref, DesignConcept concept) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 32),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: const Color(0xFF1E2329), // Darker, rich card color
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -137,7 +137,7 @@ class CreativeStudioScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -145,76 +145,126 @@ class CreativeStudioScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.purpleAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.designConcept,
+                          style: const TextStyle(color: Colors.purpleAccent, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Text(
                         concept.title,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Campaign ID: ${concept.campaignId.substring(0, 8)}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        AppLocalizations.of(context)!.campaignIdLabel(
+                          (concept.campaignId.isNotEmpty) 
+                            ? (concept.campaignId.length > 8 ? concept.campaignId.substring(0, 8) : concept.campaignId)
+                            : 'N/A'
+                        ),
+                        style: const TextStyle(color: Colors.white38, fontSize: 13, fontFamily: 'monospace'),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 16),
-                if (concept.isApproved)
-                  const Icon(Icons.check_circle, color: Colors.green, size: 32)
+                 if (concept.isApproved)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check, color: Colors.green, size: 16),
+                        const SizedBox(width: 8),
+                        Text('APPROVED', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      ],
+                    ),
+                  )
                 else
-                  ElevatedButton(
+                   OutlinedButton.icon(
                     onPressed: () {
                       ref.read(creativeProvider.notifier).updateConcept(
                         concept.copyWith(isApproved: true),
                       );
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                    icon: const Icon(Icons.thumb_up),
+                    label: Text(AppLocalizations.of(context)!.approve.toUpperCase()),
+                    style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      side: const BorderSide(color: Colors.blueAccent),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     ),
-                    child: const Text('Approve'),
                   ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: Colors.white10),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Copy Proposition',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  concept.copy,
-                  style: const TextStyle(fontSize: 16, height: 1.5),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Visual Strategy Prompt',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
+                Row(children: [
+                  const Icon(Icons.edit_note, color: Colors.white70),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppLocalizations.of(context)!.copyProposition,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
                   ),
-                  child: Text(
+                ]),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: MarkdownBody(
+                    data: concept.copy,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(fontSize: 16, height: 1.6, color: Colors.white),
+                      strong: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                      h1: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                 Row(children: [
+                  const Icon(Icons.image_search, color: Colors.white70),
+                  const SizedBox(width: 12),
+                  Text(
+                    AppLocalizations.of(context)!.visualStrategyPrompt,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+                  ),
+                ]),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F1115), // Terminal-like background
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: SelectableText(
                     concept.visualPrompt,
-                    style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.blueGrey),
+                    style: const TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, height: 1.5, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -226,9 +276,9 @@ class CreativeStudioScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Final Production Assets',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.finalProductionAssets,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.blueAccent,
@@ -238,7 +288,7 @@ class CreativeStudioScreen extends ConsumerWidget {
                         ElevatedButton.icon(
                           onPressed: () => ref.read(creativeProvider.notifier).generateHighTierAssets(concept),
                           icon: const Icon(Icons.auto_awesome, size: 16),
-                          label: const Text('Generate High-Tier Assets'),
+                          label: Text(AppLocalizations.of(context)!.generateHighTierAssets),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueAccent,
                             foregroundColor: Colors.white,
@@ -258,13 +308,13 @@ class CreativeStudioScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(Icons.verified, color: Colors.blueAccent, size: 16),
                               SizedBox(width: 8),
                               Text(
-                                'Final High-Fidelity Copy (Vertex AI)',
-                                style: TextStyle(
+                                AppLocalizations.of(context)!.finalHighFidelityCopy,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blueAccent,
                                   fontSize: 12,
@@ -303,22 +353,37 @@ class CreativeStudioScreen extends ConsumerWidget {
                                 colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                               ),
                             ),
-                            child: const Chip(
-                              label: Text('Final Visual Mock (Imagen-3)', style: TextStyle(fontSize: 10)),
+                            child: Chip(
+                              label: Text(AppLocalizations.of(context)!.finalVisualMock, style: const TextStyle(fontSize: 10)),
                               backgroundColor: Colors.blueAccent,
                             ),
                           ),
                         ),
                       ),
+                    if (concept.finalVideoURL != null) ...[
+                      const SizedBox(height: 16),
+                       ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: AspectRatio(
+                           aspectRatio: 16/9,
+                           child: AppVideoPlayer(videoUrl: concept.finalVideoURL!),
+                        ),
+                      ),
+                    ],
+
+                    if (concept.finalAudioURL != null) ...[
+                      const SizedBox(height: 16),
+                      AppAudioPlayer(audioUrl: concept.finalAudioURL!),
+                    ],
                   ] else if (concept.isApproved && !concept.isFinalReady)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Center(
                         child: Column(
                           children: [
                             Text(
-                              'Concept approved. Ready for high-fidelity production.',
-                              style: TextStyle(color: Colors.white38),
+                              AppLocalizations.of(context)!.conceptApprovedReadyProduction,
+                              style: const TextStyle(color: Colors.white38),
                             ),
                           ],
                         ),
@@ -340,19 +405,19 @@ class CreativeStudioScreen extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Style Boards',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
+            Text(
+              AppLocalizations.of(context)!.styleBoards,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70),
             ),
             Text(
-              '${moodboards.length} Suggested',
+              AppLocalizations.of(context)!.suggestedCount(moodboards.length),
               style: const TextStyle(color: Colors.white30, fontSize: 12),
             ),
           ],
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 120,
+          height: 180,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: moodboards.length,
@@ -370,6 +435,19 @@ class CreativeStudioScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (mb.imageUrls.isNotEmpty)
+                      Container(
+                        height: 80,
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(mb.imageUrls.isNotEmpty ? mb.imageUrls.first : 'https://placehold.co/600x400/1E2329/blueaccent?text=Idea'),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
                     Text(mb.title, style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../workspace/models/app_models.dart' show AppType;
 import '../models/app_type_models.dart';
 
 /// Widget for selecting app type during app creation

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:inhaus_brain/features/campaigns/providers/campaign_provider.dart';
 import 'package:inhaus_brain/features/campaigns/models/campaign.dart';
 
@@ -14,12 +15,17 @@ class CampaignListScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent, // Let background shine through
       appBar: AppBar(
-        title: const Text('Campaigns'),
+        title: Text(AppLocalizations.of(context)!.campaignsTitle),
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: AppLocalizations.of(context)!.creativeStudio,
+            onPressed: () => context.go('/creative'),
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'New Campaign',
+            tooltip: AppLocalizations.of(context)!.newCampaign,
             onPressed: () => context.go('/campaigns/create'),
           ),
         ],
@@ -31,11 +37,11 @@ class CampaignListScreen extends ConsumerWidget {
                 children: [
                   Icon(Icons.rocket_launch, size: 64, color: Theme.of(context).primaryColor.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
-                  const Text('No Active Campaigns'),
+                  Text(AppLocalizations.of(context)!.noActiveCampaigns),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () => context.go('/campaigns/create'),
-                    child: const Text('Create New Campaign'),
+                    child: Text(AppLocalizations.of(context)!.createNewCampaign),
                   ),
                 ],
               ),
@@ -56,14 +62,14 @@ class CampaignListScreen extends ConsumerWidget {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(campaign.clientName ?? 'No Client'),
+                        Text(campaign.clientName ?? AppLocalizations.of(context)!.noClient),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            _buildStatusBadge(campaign.status),
+                            _buildStatusBadge(context, campaign.status),
                             const Spacer(),
                             Text(
-                              'Created: ${campaign.createdAt.toString().split(' ')[0]}',
+                              AppLocalizations.of(context)!.createdOn(campaign.createdAt.toString().split(' ')[0]),
                               style: const TextStyle(fontSize: 12, color: Colors.white54),
                             ),
                           ],
@@ -79,23 +85,29 @@ class CampaignListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusBadge(CampaignStatus status) {
+  Widget _buildStatusBadge(BuildContext context, CampaignStatus status) {
     Color color;
+    String label;
     switch (status) {
       case CampaignStatus.researching:
         color = Colors.blue;
+        label = AppLocalizations.of(context)!.statusResearching;
         break;
       case CampaignStatus.designing:
         color = Colors.purple;
+        label = AppLocalizations.of(context)!.statusDesigning;
         break;
       case CampaignStatus.inProduction:
         color = Colors.orange;
+        label = AppLocalizations.of(context)!.statusInProduction;
         break;
       case CampaignStatus.published:
         color = Colors.green;
+        label = AppLocalizations.of(context)!.statusPublished;
         break;
       default:
         color = Colors.grey;
+        label = status.name;
     }
 
     return Container(
@@ -106,7 +118,7 @@ class CampaignListScreen extends ConsumerWidget {
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
-        status.name.toUpperCase(),
+        label.toUpperCase(),
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );

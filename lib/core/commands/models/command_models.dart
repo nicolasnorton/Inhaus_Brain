@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// Command category
 enum CommandCategory {
   navigation,

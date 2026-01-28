@@ -1,9 +1,50 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../router/app_router.dart';
+import '../../../features/workspace/providers/apps_provider.dart';
 import '../models/command_models.dart';
 
 /// Provider for all commands
-final commandsProvider = StateProvider<List<Command>>((ref) {
-  return [];
+final commandsProvider = Provider<List<Command>>((ref) {
+  final apps = ref.watch(appsProvider);
+  
+  final commands = <Command>[
+    Command(
+      id: 'go-home',
+      name: 'Go to Dashboard',
+      description: 'Navigate to the main workspace dashboard',
+      category: CommandCategory.navigation,
+      icon: '🏠',
+      action: () => ref.read(routerProvider).go('/'),
+    ),
+    Command(
+      id: 'new-app',
+      name: 'Create New App',
+      description: 'Open the dialog to create a new application',
+      category: CommandCategory.actions,
+      icon: '➕',
+      action: () {
+        // This will need access to a BuildContext or a global navigation service.
+        // For now, we'll assume the command palette handler handles navigation.
+      },
+    ),
+  ];
+
+  // Dynamic commands for apps
+  for (final app in apps) {
+    commands.add(
+      Command(
+        id: 'open-app-${app.id}',
+        name: 'Open ${app.name}',
+        description: 'Navigate to ${app.name} editor',
+        category: CommandCategory.navigation,
+        icon: app.type.icon,
+        action: () => ref.read(routerProvider).go('/app-editor?id=${app.id}'),
+        keywords: [app.name, app.type.name, 'open', 'edit'],
+      ),
+    );
+  }
+
+  return commands;
 });
 
 /// Provider for command history

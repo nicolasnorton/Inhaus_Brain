@@ -1,5 +1,6 @@
 enum AIProvider {
   gemini,
+  vertex, // Added for Vertex AI Proxy
   openai,
   claude,
   grok,
@@ -14,6 +15,7 @@ class AIModelConfig {
   final double temperature;
   final int? maxTokens;
   final String? overrideBaseUrl; // For local proxies or enterprise endpoints
+  final String? responseMimeType; // e.g. 'application/json'
 
   const AIModelConfig({
     required this.provider,
@@ -21,11 +23,13 @@ class AIModelConfig {
     this.temperature = 0.7,
     this.maxTokens,
     this.overrideBaseUrl,
+    this.responseMimeType,
   });
 
   String get displayName {
     switch (provider) {
       case AIProvider.gemini: return 'Google Gemini ($modelId)';
+      case AIProvider.vertex: return 'Google Vertex AI ($modelId)';
       case AIProvider.openai: return 'OpenAI ($modelId)';
       case AIProvider.claude: return 'Anthropic Claude ($modelId)';
       case AIProvider.grok: return 'xAI Grok ($modelId)';
@@ -36,8 +40,8 @@ class AIModelConfig {
   }
 
   // Factory for known heavy hitters
-  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
-  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash');
+  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro-latest');
+  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash');
   
   static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4o');
   static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4-turbo');
@@ -55,6 +59,7 @@ class AIModelConfig {
     'temperature': temperature,
     'maxTokens': maxTokens,
     'overrideBaseUrl': overrideBaseUrl,
+    'responseMimeType': responseMimeType,
   };
 
   factory AIModelConfig.fromJson(Map<String, dynamic> json) {
@@ -64,6 +69,7 @@ class AIModelConfig {
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.7,
       maxTokens: json['maxTokens'] as int?,
       overrideBaseUrl: json['overrideBaseUrl'] as String?,
+      responseMimeType: json['responseMimeType'] as String?,
     );
   }
 }

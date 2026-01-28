@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SecretVaultService {
   final _storage = const FlutterSecureStorage();
@@ -18,12 +19,38 @@ class SecretVaultService {
   static const String _midjourneyKey = 'midjourney_api_key';
   static const String _runwayKey = 'runway_api_key';
   static const String _elevenLabsKey = 'eleven_labs_api_key';
+  static const String _vertexKey = 'vertex_api_key';
+  static const String _difyKey = 'dify_api_key';
 
   Future<void> saveGeminiKey(String key) async => await _storage.write(key: _geminiKey, value: key);
-  Future<String?> getGeminiKey() async => await _storage.read(key: _geminiKey);
+  
+  Future<String?> getGeminiKey() async {
+    // Priority 1: Environment Variable (Production/CI)
+    final envKey = dotenv.maybeGet('GEMINI_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+
+    // Priority 1.5: Build-time Constants (--dart-define)
+    const buildKey = String.fromEnvironment('GEMINI_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
+
+    // Priority 2: Secure Storage (User BYOK)
+    return await _storage.read(key: _geminiKey);
+  }
 
   Future<void> saveVeoKey(String key) async => await _storage.write(key: _veoKey, value: key);
-  Future<String?> getVeoKey() async => await _storage.read(key: _veoKey);
+  
+  Future<String?> getVeoKey() async {
+    // Priority 1: Environment Variable
+    final envKey = dotenv.maybeGet('VEO_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+
+    // Priority 1.5: Build-time Constant
+    const buildKey = String.fromEnvironment('VEO_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
+
+    // Priority 2: Secure Storage
+    return await _storage.read(key: _veoKey);
+  }
 
   Future<void> saveBananaKey(String key) async => await _storage.write(key: _bananaKey, value: key);
   Future<String?> getBananaKey() async => await _storage.read(key: _bananaKey);
@@ -39,10 +66,20 @@ class SecretVaultService {
 
   // New Providers
   Future<void> saveOpenAIKey(String key) async => await _storage.write(key: _openaiKey, value: key);
-  Future<String?> getOpenAIKey() async => await _storage.read(key: _openaiKey);
+  
+  Future<String?> getOpenAIKey() async {
+    final envKey = dotenv.maybeGet('OPENAI_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    return await _storage.read(key: _openaiKey);
+  }
 
   Future<void> saveAnthropicKey(String key) async => await _storage.write(key: _anthropicKey, value: key);
-  Future<String?> getAnthropicKey() async => await _storage.read(key: _anthropicKey);
+  
+  Future<String?> getAnthropicKey() async {
+    final envKey = dotenv.maybeGet('ANTHROPIC_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    return await _storage.read(key: _anthropicKey);
+  }
 
   Future<void> saveXAIKey(String key) async => await _storage.write(key: _xaiKey, value: key);
   Future<String?> getXAIKey() async => await _storage.read(key: _xaiKey);
@@ -55,6 +92,30 @@ class SecretVaultService {
 
   Future<void> saveElevenLabsKey(String key) async => await _storage.write(key: _elevenLabsKey, value: key);
   Future<String?> getElevenLabsKey() async => await _storage.read(key: _elevenLabsKey);
+
+  Future<void> saveVertexKey(String key) async => await _storage.write(key: _vertexKey, value: key);
+  Future<String?> getVertexKey() async {
+    final envKey = dotenv.maybeGet('VERTEX_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    
+    // Priority 1.5: Build-time Constant (--dart-define)
+    // WARNING: Do not use --dart-define for keys in production builds, as they can be extracted from the binary.
+    const buildKey = String.fromEnvironment('VERTEX_API_KEY');
+    // Prefer Firebase Auth / App Check for Vertex in prod
+    if (buildKey.isNotEmpty) return buildKey;
+    return await _storage.read(key: _vertexKey);
+  }
+
+  Future<void> saveDifyKey(String key) async => await _storage.write(key: _difyKey, value: key);
+  
+  Future<String?> getDifyKey() async {
+    final envKey = dotenv.maybeGet('DIFY_API_KEY');
+    if (envKey != null && envKey.isNotEmpty) return envKey;
+    
+    const buildKey = String.fromEnvironment('DIFY_API_KEY');
+    if (buildKey.isNotEmpty) return buildKey;
+    return await _storage.read(key: _difyKey);
+  }
 
   Future<void> clearAllKeys() async {
     await _storage.delete(key: _geminiKey);
@@ -69,7 +130,57 @@ class SecretVaultService {
     await _storage.delete(key: _midjourneyKey);
     await _storage.delete(key: _runwayKey);
     await _storage.delete(key: _elevenLabsKey);
+    await _storage.delete(key: _vertexKey);
+    await _storage.delete(key: _difyKey);
   }
 }
+
+class AIKeys {
+  final String? gemini;
+  final String? veo;
+  final String? imagen;
+  final String? lyria;
+  final String? banana;
+  final String? openai;
+  final String? anthropic;
+  final String? xai;
+  final String? midjourney;
+  final String? runway;
+  final String? vertex;
+  final String? dify;
+
+  AIKeys({
+    this.gemini,
+    this.veo,
+    this.imagen,
+    this.lyria,
+    this.banana,
+    this.openai,
+    this.anthropic,
+    this.xai,
+    this.midjourney,
+    this.runway,
+    this.vertex,
+    this.dify,
+  });
+}
+
+final aiKeysProvider = FutureProvider<AIKeys>((ref) async {
+  final vault = ref.read(secretVaultProvider);
+  return AIKeys(
+    gemini: await vault.getGeminiKey(),
+    veo: await vault.getVeoKey(),
+    imagen: await vault.getImagenKey(),
+    lyria: await vault.getLyriaKey(),
+    banana: await vault.getBananaKey(),
+    openai: await vault.getOpenAIKey(),
+    anthropic: await vault.getAnthropicKey(),
+    xai: await vault.getXAIKey(),
+    midjourney: await vault.getMidjourneyKey(),
+    runway: await vault.getRunwayKey(),
+    vertex: await vault.getVertexKey(),
+    dify: await vault.getDifyKey(),
+  );
+});
 
 final secretVaultProvider = Provider<SecretVaultService>((ref) => SecretVaultService());

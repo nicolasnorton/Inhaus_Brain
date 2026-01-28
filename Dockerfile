@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Clone Flutter SDK
-RUN git clone https://github.com/flutter/flutter.git /usr/local/flutter
+RUN git clone https://github.com/flutter/flutter.git -b stable --depth 1 /usr/local/flutter
 ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
 
 # Run flutter doctor to download binaries
@@ -19,10 +19,48 @@ RUN flutter doctor
 WORKDIR /app
 COPY . .
 
+# Build-time environment variables
+ARG VERTEX_API_KEY
+ARG GEMINI_API_KEY
+ARG OPENAI_API_KEY
+ARG ANTHROPIC_API_KEY
+ARG VEO_API_KEY
+ARG FIREBASE_API_KEY
+ARG FIREBASE_PROJECT_ID
+ARG FIREBASE_MESSAGING_SENDER_ID
+ARG FIREBASE_APP_ID
+ARG APP_ENCRYPTION_KEY
+ARG DIFY_API_KEY
+ARG ELEVEN_LABS_API_KEY
+ARG IMAGEN_API_KEY
+ARG LYRIA_API_KEY
+ARG XAI_API_KEY
+ARG RUNWAY_API_KEY
+ARG MIDJOURNEY_API_KEY
+
 # Build the web application
-RUN flutter clean
-RUN flutter pub get
-RUN flutter build web --release
+# Note: Cleaning before build ensures no stale artifacts are included
+# Vertex AI Transport: Optimized for :generateContent and modern schema
+RUN flutter clean && \
+    flutter pub get && \
+    flutter build web --release --no-tree-shake-icons \
+    --dart-define=VERTEX_API_KEY=$VERTEX_API_KEY \
+    --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY \
+    --dart-define=OPENAI_API_KEY=$OPENAI_API_KEY \
+    --dart-define=ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+    --dart-define=VEO_API_KEY=$VEO_API_KEY \
+    --dart-define=FIREBASE_API_KEY=$FIREBASE_API_KEY \
+    --dart-define=FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID \
+    --dart-define=FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID \
+    --dart-define=FIREBASE_APP_ID=$FIREBASE_APP_ID \
+    --dart-define=APP_ENCRYPTION_KEY=$APP_ENCRYPTION_KEY \
+    --dart-define=DIFY_API_KEY=$DIFY_API_KEY \
+    --dart-define=ELEVEN_LABS_API_KEY=$ELEVEN_LABS_API_KEY \
+    --dart-define=IMAGEN_API_KEY=$IMAGEN_API_KEY \
+    --dart-define=LYRIA_API_KEY=$LYRIA_API_KEY \
+    --dart-define=XAI_API_KEY=$XAI_API_KEY \
+    --dart-define=RUNWAY_API_KEY=$RUNWAY_API_KEY \
+    --dart-define=MIDJOURNEY_API_KEY=$MIDJOURNEY_API_KEY
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine

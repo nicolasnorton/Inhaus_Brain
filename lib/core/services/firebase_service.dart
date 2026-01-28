@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../../features/campaigns/models/campaign.dart';
@@ -11,6 +12,7 @@ abstract class FirebaseService {
   Stream<List<Campaign>> watchCampaigns();
   Future<void> saveCampaign(Campaign campaign);
   Future<void> updateCampaign(Campaign campaign);
+  Future<void> deleteCampaign(String campaignId);
   Future<String> triggerAiResearch(String campaignId, String prompt);
   
   // High-Tier generation for final assets
@@ -53,6 +55,11 @@ class ProdFirebaseService implements FirebaseService {
   }
 
   @override
+  Future<void> deleteCampaign(String campaignId) async {
+    await _firestore.collection('campaigns').doc(campaignId).delete();
+  }
+
+  @override
   Future<String> triggerAiResearch(String campaignId, String prompt) async {
     try {
       final HttpsCallable callable = _functions.httpsCallable('generateResearch');
@@ -92,8 +99,9 @@ class MockFirebaseService implements FirebaseService {
   final _campaignsController = StreamController<List<Campaign>>.broadcast();
   List<Campaign> _mockCampaigns = [];
   static const _storageKey = 'inhaus_campaigns';
+  final Ref? _ref;
 
-  MockFirebaseService() {
+  MockFirebaseService([this._ref]) {
     _loadFromStorage();
   }
 
@@ -174,8 +182,16 @@ class MockFirebaseService implements FirebaseService {
   }
 
   @override
+  Future<void> deleteCampaign(String campaignId) async {
+    _mockCampaigns.removeWhere((c) => c.id == campaignId);
+    _campaignsController.add(List.from(_mockCampaigns));
+    await _saveToStorage();
+  }
+
+  @override
   Future<String> triggerAiResearch(String campaignId, String prompt) async {
-    final result = await EdgeAIService.generateText(prompt);
+    // Audit Rec: Ensure Real AI even in mock service if keys available
+    final result = await EdgeAIService.generateText(prompt, ref: _ref);
     return result.text;
   }
 
@@ -185,12 +201,22 @@ class MockFirebaseService implements FirebaseService {
     required String creativeBrief,
     required String visualPrompt,
   }) async {
-    await Future.delayed(const Duration(seconds: 3)); // Simulating Cloud Generation
+    // Phase 89: Use Real AI for High-Tier Mock
+    final prompt = """
+Generate a high-conversion ad copy based on this brief:
+Brief: $creativeBrief
+Visual Context: $visualPrompt
+
+Return ONLY the copy text.
+""";
+    
+    final result = await EdgeAIService.generateText(prompt, ref: _ref);
+    
     return {
       'status': 'success',
-      'finalCopy': 'PRO MOCK: Experience true sustainability with our recycled ocean plastic range. Durable, stylish, and ethical.',
+      'finalCopy': result.text,
       'finalImageURL': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop',
-      'source': 'Mock Vertex AI'
+      'source': 'Gemini 1.5 (Mock Firebase Wrapper)'
     };
   }
 }

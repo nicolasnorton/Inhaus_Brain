@@ -1,4 +1,5 @@
 /// Models for plugin management
+library;
 
 /// Plugin installation source
 enum PluginSource {
@@ -52,13 +53,13 @@ enum PluginType {
   String get description {
     switch (this) {
       case PluginType.modelProvider:
-        return 'Every LLM in Dify (OpenAI, Anthropic, etc.) is actually a plugin';
+        return 'Every LLM in INHAUS BRAIN (OpenAI, Anthropic, etc.) is actually a plugin';
       case PluginType.tool:
         return 'API calls, data processing, calculations—all plugin-based';
       case PluginType.customEndpoint:
-        return 'Expose your Dify apps as APIs that external systems can call';
+        return 'Expose your INHAUS BRAIN apps as APIs that external systems can call';
       case PluginType.reverseInvocation:
-        return 'Plugins can call back into Dify to use models, tools, or workflows';
+        return 'Plugins can call back into INHAUS BRAIN to use models, tools, or workflows';
     }
   }
 }

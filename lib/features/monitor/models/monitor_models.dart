@@ -29,10 +29,17 @@ enum LogLevel {
   }
 }
 
+enum LogScope {
+  user,
+  system
+}
+
 /// A single execution log entry
 class LogEntry {
   final String id;
-  final String appId;
+  final String appId; // If tied to an app
+  final String? userId; // For user logs
+  final LogScope scope; // System or User
   final DateTime timestamp;
   final LogLevel level;
   final String message;
@@ -43,6 +50,8 @@ class LogEntry {
   const LogEntry({
     required this.id,
     required this.appId,
+    this.userId,
+    this.scope = LogScope.user,
     required this.timestamp,
     required this.level,
     required this.message,
@@ -55,6 +64,10 @@ class LogEntry {
     return LogEntry(
       id: json['id'] as String,
       appId: json['app_id'] as String,
+      userId: json['user_id'] as String?,
+      scope: json['scope'] != null 
+          ? LogScope.values.firstWhere((e) => e.name == json['scope']) 
+          : LogScope.user,
       timestamp: DateTime.parse(json['timestamp'] as String),
       level: LogLevel.values.byName(json['level'] as String),
       message: json['message'] as String,
@@ -69,6 +82,8 @@ class LogEntry {
   Map<String, dynamic> toJson() => {
     'id': id,
     'app_id': appId,
+    'user_id': userId,
+    'scope': scope.name,
     'timestamp': timestamp.toIso8601String(),
     'level': level.name,
     'message': message,
@@ -117,7 +132,7 @@ class Annotation {
   };
 }
 
-/// Summary metrics for an app (Dify-style)
+/// Summary metrics for an app (INHAUS BRAIN-style)
 class MetricSummary {
   final int totalMessages;
   final int activeUsers;

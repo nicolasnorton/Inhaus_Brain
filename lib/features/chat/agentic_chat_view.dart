@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:inhaus_brain/core/widgets/app_video_player.dart';
+import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
+import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
 import '../../core/services/voice_service.dart';
 import 'providers/chat_provider.dart';
 import 'models/chat_models.dart';
@@ -11,7 +15,13 @@ import '../settings/profile_settings_screen.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/tokens/llm_provider.dart';
 import '../../core/services/voice_command_processor.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'widgets/voice_visualizer.dart';
+import 'widgets/watermarked_image.dart';
+import 'widgets/thinking_indicator.dart';
+import 'widgets/sources_carousel.dart';
+import 'widgets/message_actions_row.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
@@ -23,6 +33,7 @@ class AgenticChatView extends ConsumerStatefulWidget {
 class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final FocusNode _chatFocusNode = FocusNode();
   List<Attachment> _pendingAttachments = [];
   AIModelConfig _selectedModelConfig = AIModelConfig.geminiFlash;
   bool _isAutoReadEnabled = false;
@@ -36,10 +47,15 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   @override
   void dispose() {
     // Silence any active voice/listening on exit
-    ref.read(voiceServiceProvider).stopSpeaking();
-    ref.read(voiceServiceProvider).stopListening();
+    try {
+      ref.read(voiceServiceProvider).stopSpeaking();
+      ref.read(voiceServiceProvider).stopListening();
+    } catch (_) {
+      // ref might be disposed
+    }
     _textController.dispose();
     _scrollController.dispose();
+    _chatFocusNode.dispose();
     super.dispose();
   }
 
@@ -86,7 +102,10 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     if (_isAutoReadEnabled && index == session.messages.length - 1 && message.sender != MessageSender.user) {
                        ref.read(voiceServiceProvider).speak(message.content);
                     }
-                    return _buildMessageBubble(message);
+                    return KeyedSubtree(
+                      key: ValueKey(message.id),
+                      child: _buildMessageBubble(message),
+                    );
                   },
                 ),
         ),
@@ -139,19 +158,63 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
             child: Column(
               crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
+                  Material(
                     color: isUser ? Colors.blueAccent : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20).copyWith(
                       bottomRight: isUser ? const Radius.circular(4) : null,
                       bottomLeft: !isUser ? const Radius.circular(4) : null,
                     ),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                  ),
+                    elevation: 1,
+                    clipBehavior: Clip.antiAlias,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                         borderRadius: BorderRadius.circular(20).copyWith(
+                            bottomRight: isUser ? const Radius.circular(4) : null,
+                            bottomLeft: !isUser ? const Radius.circular(4) : null,
+                         ),
+                      ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (isUser)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: message.content));
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
+                                    );
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(12.0), // Generous padding for touch target
+                                  child: Icon(Icons.copy, size: 18, color: Colors.white70),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () {
+                                  _textController.text = message.content;
+                                  // Requests focus to ensure keyboard opens
+                                  _chatFocusNode.requestFocus();
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(12.0), // Generous padding for touch target
+                                  child: Icon(Icons.edit, size: 18, color: Colors.white70),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       if (!isUser) ...[
                         Text(
                           _getAgentName(message.sender),
@@ -164,21 +227,62 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                         ),
                         const SizedBox(height: 4),
                       ],
-                      Text(
-                        message.content,
-                        style: TextStyle(
-                          color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14,
-                          height: 1.4,
+                      MarkdownBody(
+                        data: message.content,
+                        styleSheet: MarkdownStyleSheet(
+                          p: TextStyle(
+                            color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          code: TextStyle(
+                            backgroundColor: Colors.black.withValues(alpha: 0.2),
+                            color: isUser ? Colors.white : Colors.cyanAccent,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          tableBody: const TextStyle(color: Colors.white70, fontSize: 12),
+                          tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          tableBorder: TableBorder.all(color: Colors.white10),
                         ),
+                        imageBuilder: (uri, title, alt) {
+                          return WatermarkedImage(imageUrl: uri.toString(), fit: BoxFit.contain);
+                        },
                       ),
+                      if (message.metadata != null && message.metadata!.containsKey('sources'))
+                         SourcesCarousel(sources: (message.metadata!['sources'] as List).cast<Map<String, dynamic>>()),
                       if (message.attachments.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _buildAttachmentsList(message.attachments),
                       ],
                     ],
                   ),
+                  ),
                 ),
+                if (!isUser)
+                  MessageActionsRow(
+                    content: message.content,
+                    isUser: false,
+                    modelName: _selectedModelConfig.displayName, 
+                    onDownload: () {
+                      // Handle download of message content as text file if needed
+                      // or if message has attachments, maybe download first one?
+                      if (message.attachments.isNotEmpty) {
+                        launchUrl(Uri.parse(message.attachments.first.url), mode: LaunchMode.externalApplication);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No media to download')));
+                      }
+                    },
+                    onReport: () {
+                         // Logic to report
+                    },
+                  ),
                 Padding(
                   padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
                   child: Text(
@@ -187,6 +291,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                   ),
                 ),
               ],
+
             ),
           ),
           const SizedBox(width: 12),
@@ -349,53 +454,55 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   }
 
   Widget _buildToolUsageIndicator(ChatMessage message) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.blueAccent.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            message.content,
-            style: const TextStyle(fontSize: 11, color: Colors.blueAccent, fontStyle: FontStyle.italic),
-          ),
-        ],
-      ),
-    );
+    return ThinkingIndicator(message: message);
   }
 
   Widget _buildAttachmentsList(List<Attachment> attachments) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: attachments.map((a) => Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.attach_file, size: 12, color: Colors.white38),
-            const SizedBox(width: 4),
-            Text(a.name, style: const TextStyle(fontSize: 10, color: Colors.white54)),
-          ],
-        ),
-      )).toList(),
+      children: attachments.map((attachment) {
+        // Handle Video
+        if (attachment.type == AttachmentType.video || 
+            attachment.url.toLowerCase().endsWith('.mp4') ||
+            attachment.url.toLowerCase().endsWith('.mov')) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 300, 
+              // Using a restricted width for chat bubbles, player handles aspect ratio
+              child: AppVideoPlayer(videoUrl: attachment.url),
+            ),
+          );
+        }
+
+        // Handle Audio
+        if (attachment.type == AttachmentType.voice || 
+            attachment.url.toLowerCase().endsWith('.mp3') ||
+            attachment.url.toLowerCase().endsWith('.wav')) {
+          return SizedBox(
+            width: 300,
+            child: AppAudioPlayer(audioUrl: attachment.url),
+          );
+        }
+        
+        // Handle Images (Default)
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            height: 200,
+            width: 300, // Fixed constraint for consistency
+            child: WatermarkedImage(
+              imageUrl: attachment.url,
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
+
+
 
   Widget _buildInputArea() {
     return Container(
@@ -474,6 +581,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                 Expanded(
                   child: TextField(
                     controller: _textController,
+                    focusNode: _chatFocusNode,
                     onSubmitted: (_) => _handleSend(),
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(

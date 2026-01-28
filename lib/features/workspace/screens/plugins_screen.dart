@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/plugin_models.dart';
 import '../providers/plugins_provider.dart';
 import '../widgets/plugin_card.dart';
+import '../widgets/plugin_config_dialog.dart';
 
 /// Main screen for managing plugins
 class PluginsScreen extends ConsumerStatefulWidget {
@@ -114,7 +115,10 @@ class _PluginsScreenState extends ConsumerState<PluginsScreen>
   }
 
   void _configurePlugin(Plugin plugin) {
-    _showSnackBar('Configuration for ${plugin.name} coming soon');
+    showDialog(
+      context: context,
+      builder: (context) => PluginConfigDialog(plugin: plugin),
+    );
   }
 
   void _showSnackBar(String message) {
@@ -172,7 +176,7 @@ class _PluginsScreenState extends ConsumerState<PluginsScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Extend Dify with custom models, tools, and integrations',
+                            'Extend INHAUS BRAIN with custom models, tools, and integrations',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white70,
                             ),

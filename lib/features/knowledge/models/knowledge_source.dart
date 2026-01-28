@@ -4,7 +4,9 @@ enum KnowledgeSourceType {
   file,
   pdf,
   googleDrive,
-  image
+  image,
+  audio,
+  youtube
 }
 
 class KnowledgeSource {

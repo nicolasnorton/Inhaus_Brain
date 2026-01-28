@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'models/campaign.dart';
 import 'providers/campaign_provider.dart';
 import '../creative/providers/creative_provider.dart';
@@ -13,10 +15,19 @@ class CampaignDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final campaign = ref.watch(campaignListProvider).firstWhere(
-          (c) => c.id == campaignId,
-          orElse: () => throw Exception('Campaign not found'),
-        );
+    final campaigns = ref.watch(campaignListProvider);
+    final campaign = campaigns.where((c) => c.id == campaignId).firstOrNull;
+
+    if (campaign == null) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)?.loading ?? 'Loading...'),
+          backgroundColor: Colors.transparent,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -32,13 +43,13 @@ class CampaignDetailScreen extends ConsumerWidget {
             _buildHeader(context, campaign),
             const SizedBox(height: 32),
             Text(
-              'Agent Research Insights',
+              AppLocalizations.of(context)!.agentResearchInsights,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Review and approve insights gathered by the Research Agent.',
-              style: TextStyle(color: Colors.white70),
+            Text(
+              AppLocalizations.of(context)!.reviewApproveInsights,
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 24),
             ...campaign.insights.map((insight) => _buildInsightCard(context, ref, campaign, insight)),
@@ -54,7 +65,7 @@ class CampaignDetailScreen extends ConsumerWidget {
                     // Trigger Creative Agent to propose a concept
                     await ref.read(creativeProvider.notifier).generateConceptForCampaign(campaign);
                   },
-                  child: const Text('Proceed to Design Plan'),
+                  child: Text(AppLocalizations.of(context)!.proceedToDesignPlan),
                 ),
               ),
             if (campaign.status == CampaignStatus.designing)
@@ -67,38 +78,87 @@ class CampaignDetailScreen extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context, Campaign campaign) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.info_outline, color: Colors.blueAccent, size: 20),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.lightbulb_outline, color: Colors.blueAccent, size: 24),
+              ),
+              const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  'Campaign Strategy Brief',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.campaignStrategyBrief,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.business, size: 14, color: Colors.white38),
+                        const SizedBox(width: 4),
+                        Text(
+                          campaign.clientName ?? AppLocalizations.of(context)!.notAvailable,
+                          style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w500),
+                        ),
+                        if (campaign.industry != null) ...[
+                          const SizedBox(width: 12),
+                          const Icon(Icons.category, size: 14, color: Colors.white38),
+                          const SizedBox(width: 4),
+                          Text(
+                            campaign.industry!,
+                            style: const TextStyle(color: Colors.white38, fontSize: 13),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const AIStatusBadge(),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(campaign.description, style: const TextStyle(color: Colors.white),),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Client:', style: TextStyle(color: Colors.white54),),
-              const SizedBox(width: 8),
-              Text(campaign.clientName ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold),),
-            ],
+          const SizedBox(height: 24),
+          const Divider(height: 1),
+          const SizedBox(height: 24),
+          MarkdownBody(
+            data: campaign.description,
+            styleSheet: MarkdownStyleSheet(
+              p: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, height: 1.6, fontSize: 15),
+              h1: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+              h2: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              h3: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 16),
+              strong: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
+              blockquote: const TextStyle(color: Colors.white54, fontStyle: FontStyle.italic),
+              blockquoteDecoration: BoxDecoration(
+                border: Border(left: BorderSide(color: Colors.blueAccent, width: 4)),
+              ),
+            ),
           ),
         ],
       ),
@@ -106,33 +166,87 @@ class CampaignDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildInsightCard(BuildContext context, WidgetRef ref, Campaign campaign, ResearchInsight insight) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(insight.content, style: const TextStyle(fontSize: 15),),
-            ),
-            const SizedBox(width: 16),
-            if (insight.isApproved)
-              const Icon(Icons.check_circle, color: Colors.green)
-            else
-              TextButton(
-                onPressed: () {
-                  final updatedInsights = campaign.insights.map((i) {
-                    if (i.id == insight.id) return i.copyWith(isApproved: true);
-                    return i;
-                  }).toList();
-                  ref.read(campaignListProvider.notifier).updateCampaign(
-                        campaign.copyWith(insights: updatedInsights),
-                      );
-                },
-                child: const Text('Approve'),
-              ),
-          ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2329), // Distinct card color
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: insight.isApproved ? Colors.green.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+          width: insight.isApproved ? 1.5 : 1,
         ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: MarkdownBody(
+                    data: insight.content,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(fontSize: 15, height: 1.5, color: Colors.white),
+                      strong: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold),
+                      listBullet: const TextStyle(color: Colors.white54),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.2),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (insight.isApproved)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context)!.approved,
+                          style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  TextButton.icon(
+                    onPressed: () {
+                      final updatedInsights = campaign.insights.map((i) {
+                        if (i.id == insight.id) return i.copyWith(isApproved: true);
+                        return i;
+                      }).toList();
+                      ref.read(campaignListProvider.notifier).updateCampaign(
+                            campaign.copyWith(insights: updatedInsights),
+                          );
+                    },
+                    icon: const Icon(Icons.thumb_up_outlined, size: 16),
+                    label: Text(AppLocalizations.of(context)!.approveInsight),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.blueAccent,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -154,20 +268,20 @@ class CampaignDetailScreen extends ConsumerWidget {
               const Icon(Icons.palette, color: Colors.purpleAccent),
               const SizedBox(width: 12),
               Text(
-                'Design Phase Active',
+                AppLocalizations.of(context)!.designPhaseActive,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('The Creative Agent has proposed visual directions for this campaign.'),
+          Text(AppLocalizations.of(context)!.creativeProposedDirections),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => context.push('/creative'),
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('Open Creative Studio'),
+              label: Text(AppLocalizations.of(context)!.openCreativeStudio),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.purpleAccent,
                 side: const BorderSide(color: Colors.purpleAccent),

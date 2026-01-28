@@ -1,8 +1,10 @@
-/// Models for Dify app types and configurations
+/// Models for INHAUS BRAIN app types and configurations
+library;
 
 import '../../workspace/models/app_models.dart' show AppType;
+export '../../workspace/models/app_models.dart' show AppType;
 
-/// Extension on AppType for Dify-specific logic
+/// Extension on AppType for INHAUS BRAIN-specific logic
 extension AppTypeExtensions on AppType {
   String get apiValue {
     switch (this) {
@@ -323,7 +325,7 @@ class AppConfig {
   }
 }
 
-/// Dify DSL export/import
+/// INHAUS BRAIN DSL export/import
 class DifyDSL {
   final String version;
   final AppConfig app;

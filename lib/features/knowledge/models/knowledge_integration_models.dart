@@ -1,4 +1,7 @@
 /// Models for integrating knowledge bases within applications
+library;
+
+import 'retrieval_settings_models.dart';
 
 /// Metadata filter mode
 enum MetadataFilterMode {

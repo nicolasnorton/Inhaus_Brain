@@ -33,10 +33,18 @@ class ProviderCard extends ConsumerWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              theme.cardColor,
-              theme.cardColor.withValues(alpha: 0.8),
+              theme.cardColor.withValues(alpha: 0.9),
+              theme.cardColor.withValues(alpha: 0.7),
             ],
           ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,7 +108,7 @@ class ProviderCard extends ConsumerWidget {
                     Switch(
                       value: config.enabled,
                       onChanged: (_) => onToggle?.call(),
-                      activeColor: theme.primaryColor,
+                      activeThumbColor: theme.primaryColor,
                     ),
                 ],
               ),
@@ -128,24 +136,37 @@ class ProviderCard extends ConsumerWidget {
                       ],
                     ),
                     if (config.defaultModel != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            FontAwesomeIcons.star,
-                            size: 14,
-                            color: theme.primaryColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Default: ${config.defaultModel!.name}',
-                              style: theme.textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.primaryColor.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: theme.primaryColor.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              FontAwesomeIcons.star,
+                              size: 10,
+                              color: theme.primaryColor,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Default: ${config.defaultModel!.name}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 12),
+                      _buildCapabilityIcons(context, config.defaultModel!),
                     ],
                   ] else
                     Text(
@@ -181,6 +202,13 @@ class ProviderCard extends ConsumerWidget {
                 ],
               ),
             ),
+            if (config.quota != null) ...[
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: _buildUsageQuotas(context, config.quota!),
+              ),
+            ],
             const Divider(height: 1),
             // Action buttons
             Padding(
@@ -219,6 +247,77 @@ class ProviderCard extends ConsumerWidget {
     );
   }
 
+  Widget _buildUsageQuotas(BuildContext context, UsageQuota quota) {
+    final theme = Theme.of(context);
+    final isNearLimit = quota.isNearLimit;
+
+    return Column(
+      children: [
+        _buildQuotaRow(
+          context,
+          'Requests',
+          quota.requestsUsed,
+          quota.requestsLimit,
+          quota.requestsPercentage,
+          isNearLimit,
+        ),
+        const SizedBox(height: 8),
+        _buildQuotaRow(
+          context,
+          'Tokens',
+          quota.tokensUsed,
+          quota.tokensLimit,
+          quota.tokensPercentage,
+          isNearLimit,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuotaRow(
+    BuildContext context,
+    String label,
+    int used,
+    int limit,
+    double percentage,
+    bool isWarning,
+  ) {
+    final theme = Theme.of(context);
+    final color = isWarning ? Colors.orange : theme.primaryColor;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+            ),
+            Text(
+              '$used / $limit',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 10,
+                color: isWarning ? Colors.orange : Colors.white60,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: percentage / 100,
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 4,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusIndicator(BuildContext context) {
     return Container(
       width: 8,
@@ -233,6 +332,36 @@ class ProviderCard extends ConsumerWidget {
             spreadRadius: 1,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCapabilityIcons(BuildContext context, ModelConfig model) {
+    return Row(
+      children: [
+        if (model.supportsVision)
+          _buildCapabilityIcon(context, FontAwesomeIcons.eye, 'Vision'),
+        if (model.supportsFunctionCalling)
+          _buildCapabilityIcon(context, FontAwesomeIcons.code, 'Tools'),
+        if (model.supportsStreaming)
+          _buildCapabilityIcon(context, FontAwesomeIcons.bolt, 'Stream'),
+      ],
+    );
+  }
+
+  Widget _buildCapabilityIcon(BuildContext context, IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Tooltip(
+        message: label,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(icon, size: 10, color: Colors.white38),
+        ),
       ),
     );
   }

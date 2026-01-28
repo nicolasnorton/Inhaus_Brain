@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../models/chat_models.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
@@ -25,5 +26,6 @@ abstract class BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
+    Ref? ref, // Phase 89
   });
 }

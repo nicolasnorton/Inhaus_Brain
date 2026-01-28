@@ -18,12 +18,30 @@ The Inhaus Brain intelligently coordinates a suite of specialized models via its
 - **Nano Banana 🍌**: Agentic visual refinement and image editing.
 - **Multi-Model Sovereignty**: Support for **OpenAI (GPT-4o)**, **Anthropic (Claude 3.5 Sonnet)**, **xAI (Grok Beta)**, **Eleven Labs (Voice)**, **Runway (Video)**, and **Midjourney** via BYOK (Bring Your Own Keys).
 - **Edge Fallback**: Uses Chrome Built-in AI or local mocks if no API keys are provided.
+- **Rich GenUI Library**: Triggers interactive Flutter widgets (`BudgetChart`, `KanbanBoard`, `StrategyBoard`) directly in the chat stream via natural language.
 
-### 🤖 Standardized Agentic Workbench (MCP)
-- **Collaborative Chat**: A unified "Workshop" interface where users, Research, Creative, Copywriter, and Developer agents collaborate.
-- **Knowledge Module**: Inject "Ground Truth" context (URLs, PDFs, Briefs) via the **Context Board**.
-- **MCP Tool Protocol**: All agent capabilities (Search, Image Gen, Video Gen, etc.) are standardized using the **Model Context Protocol**, ensuring a modular and pluggable architecture.
+### 🤖 Agency-Wide Specialist Workforce (New)
+The Inhaus Brain features a team of 11+ specialized agents, each with a custom markdown-driven persona:
+- **Brian (Super Admin)**: The world-class Chief of Staff who orchestrates the entire agency.
+- **Research Agent**: Deep market analysis and competitor scraping.
+- **Strategist Agent**: Data-driven campaign plans and risk assessment.
+- **Creative Agent**: Visual concepts, image prompts, and artistic direction.
+- **Copywriter Agent**: High-converting text for ads and social media.
+- **Design Agent**: Pixel-perfect UI/UX specs and wireframes.
+- **Video Production Agent**: Storyboarding and 4K production management.
+- **Customer Service Agent**: Empathetic client resolution and SLA tracking.
+- **CRM Agent**: Record management and audience segmentation.
+- **C-Suite Advisor Agent**: ROI projections and board-level strategy.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
+
+### 🦅 Blackboard 2.0 & Observability
+A robust, event-driven architecture designed for stability and transparency:
+- **Phase-Based State Machine**: Enforces strict transitions (Idle -> Research -> Creative -> Strategy) to prevent race conditions and ensure logical workflow progression.
+- **Flight Recorder**: Real-time observability widget (accessible via the ⚡️ icon) that visualizes agent status, phase changes, and workflow events.
+- **Semantic Cache**: Intelligent in-memory caching that stores LLM responses (hashed by intent and prompt) to reduce latency and token usage for repeated queries.
+- **Resilient Parsing**: Enhanced JSON extraction logic ensures reliable tool execution even with "noisy" LLM outputs.
+- **Human-in-the-Loop (The Gavel)**: Formal "Arbiter" pattern that detects stalled agents (retries > 2) and pauses execution for manual user review via specific `ApprovalCard` widgets.
+- **Strict Schema Enforcement**: "Typed Agents" use strict JSON validation to eliminate hallucinated structures.
 
 ### 🏗️ Agent Development Kit (ADK)
 A powerful orchestration layer that allows for complex, multi-step workflows:
@@ -37,6 +55,8 @@ A powerful orchestration layer that allows for complex, multi-step workflows:
 - **Responsive Dashboard**: Premium home screen with intelligent quick-access widgets for all core modules.
 - **User Input Node**: Dify-style variable collection with support for Text, Select, Number, Checkbox, and Files.
 - **Variable Injection**: Dynamic mustache-style `{{variable}}` resolution across all node configurations.
+- **Graph Validator (The Compiler)**: Topological sort engine that prevents infinite loops, detects dead ends, and ensures all dependencies are met before execution starts.
+- **Budget Governor**: "Token Bucket" economic system that tracks and limits credit usage per workflow run to prevent runaway API costs.
 
 ### 🚀 Publishing & Distribution
 Effortless deployment of your AI agents across multiple channels:
@@ -60,10 +80,9 @@ Enterprise-grade safety integrated directly into the agentic flow:
 - **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
 
 ### 🏢 Creative Studio & Client Factory
-- **Client Module**: Comprehensive portfolio management with **Project Plans**, **Task Boards**, and real-time tracking.
-- **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to sync agent activity with external tools.
-- **Campaign Wizard**: Conversational briefing with real-time agent grounding.
-- **Master Prompts (Agent Brain)**: Users can define and persist the system instructions for every agent in the roster.
+- **Streamlined Client Module**: Merged navigation for faster workflows (Contacts integrated into Overview, Commerce into Integrations).
+- **Project Plans & Task Boards**: Comprehensive portfolio management with real-time tracking.
+- **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel**.
 - **Human-in-the-Loop**: Approval cards ensure AI output is verified before proceeding to production.
 
 ### 🎨 Premium Auth & Settings
@@ -74,14 +93,15 @@ Enterprise-grade safety integrated directly into the agentic flow:
 ### 🚀 Deployment & Scalability (Step #4)
 - **Containerized Infrastructure**: Production-grade `Dockerfile` using Nginx to serve the Flutter Web app.
 - **Automated CI/CD**: Pre-configured `cloudbuild.yaml` for seamless deployment via Google Cloud Build.
-- **Infrastructure as Code (IaC)**: Scaffolding for **Terraform** to provision Google Cloud Run services.
-- **Scalable Architecture**: Built for the Google Cloud "Agent Starter Pack" ecosystem.
+- **Premium Auth**: Google Sign-In with production-ready `renderButton` and GIS migration.
+- **AI Stability**: Aggressive focus isolation and optimized image generation fallbacks.
+- **Professional Branding**: Integrated asset-based watermarking and "Powered by INHAUS BRAIN" identity.
 
 ## 🛠 Tech Stack
 - **Frontend**: Flutter (3.0+ architecture)
 - **State Management**: Riverpod (Notifier system)
 - **AI Integration**:
-    - **Cloud**: `google_generative_ai` for Vertex AI features.
+    - **Cloud**: `firebase_ai` (Unified SDK) for Gemini & Vertex AI features.
     - **Protocol**: Model Context Protocol (MCP) for tool definitions.
 - **Auth & Storage**:
     - `firebase_auth` & `google_sign_in` for Identity.
@@ -91,13 +111,20 @@ Enterprise-grade safety integrated directly into the agentic flow:
 
 ## Getting Started
 
-To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-c1a7b5673ab0/google_ai_setup.md).
+To use the full version of the app with live AI capabilities, please follow our [Google AI & Cloud Setup Guide](file:///Users/nicolasnorton/.gemini/antigravity/brain/2bf1f2da-605e-4566-a3b9-1a7b5673ab0/google_ai_setup.md).
 
-1.  Clone the repository.
-2.  Run `flutter pub get`.
-3.  Follow the setup guide to obtain your API keys.
-4.  Add your keys to the **Settings & Vault** in the app.
-5.  Launch with `flutter run`.
+ 1.  Clone the repository.
+ 2.  **Run Setup**: Execute the new setup script to bootstrap dependencies:
+     ```bash
+     ./setup.sh
+     ```
+ 3.  **Agent Rules**: All AI agents contributing to this repo must follow the constraints defined in `agentrules.md` and `.cursorrules`.
+ 3.  **Environment Setup**: Copy `.env.example` to `.env` and add your keys:
+    ```bash
+    cp .env.example .env
+    ```
+ 4.  Follow the setup guide to obtain your API keys if you haven't yet.
+ 5.  Launch with `flutter run`.
 - Google Chrome (with [Built-in AI features enabled](https://developer.chrome.com/docs/ai/built-in-ai#get_started))
 
 ### Installation
@@ -115,7 +142,15 @@ To use the full version of the app with live AI capabilities, please follow our 
    ```
 
 ### ☁️ Cloud Deployment
-See [DEPLOY.md](file:///Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
+See [DEPLOY.md](DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
+
+### 🛡️ App Check & Emulators
+- **Production**: Uses ReCaptcha v3 (Site Key in `main.dart`).
+- **Local Development**:
+  - Uses `debug` App Check provider.
+  - **Firestore Emulator** is **REQUIRED** for local database access (configured in `main.dart` for `kDebugMode`).
+  - Run emulators: `npx firebase emulators:start --only functions,firestore`.
+  - **Vertex AI**: Requires the "Vertex AI API" to be enabled in Google Cloud Console.
 
 ## 📂 Project Structure
 - `lib/core`: Theming, routing, and centralized services.

@@ -25,21 +25,26 @@ class PluginCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final isInstalled = plugin.status == PluginStatus.installed;
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              theme.cardColor,
-              theme.cardColor.withValues(alpha: 0.8),
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.cardColor.withValues(alpha: 0.9),
+            theme.cardColor.withValues(alpha: 0.7),
+          ],
         ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -234,9 +239,8 @@ class PluginCard extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
+    }
 
   Widget _buildDefaultIcon(ThemeData theme) {
     IconData icon;

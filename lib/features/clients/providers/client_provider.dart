@@ -1,10 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import '../models/client_model.dart';
+import 'package:inhaus_brain/features/knowledge/providers/knowledge_service_providers.dart';
+import 'package:inhaus_brain/features/clients/models/client_model.dart';
+import 'package:inhaus_brain/features/clients/models/client_contact_model.dart';
+import 'package:inhaus_brain/core/services/local_persistence_service.dart';
 
 class ClientNotifier extends StateNotifier<List<Client>> {
-  ClientNotifier() : super([]) {
-    _loadMockClients();
+  final LocalPersistenceService _persistenceService;
+  final Ref _ref;
+  
+  ClientNotifier(this._persistenceService, this._ref) : super([]) {
+    _loadClients();
+  }
+
+  Future<void> _loadClients() async {
+    final clients = await _persistenceService.getClients();
+    if (clients.isEmpty) {
+      _loadMockClients();
+    } else {
+      state = clients;
+    }
   }
 
   void _loadMockClients() {
@@ -24,28 +39,39 @@ class ClientNotifier extends StateNotifier<List<Client>> {
         campaignIds: ['camp-3'],
       ),
     ];
+    _persistenceService.saveClients(state);
   }
 
-  void addClient(String name, String industry, {String? email}) {
-
+  Future<void> addClient(String name, String industry, {String? email, String? website, String? address, String? size, String? description}) async {
     final newClient = Client(
       id: const Uuid().v4(),
       name: name,
       industry: industry,
       primaryContactEmail: email,
+      website: website,
+      address: address,
+      size: size,
+      description: description,
     );
     state = [...state, newClient];
-
+    await _persistenceService.saveClients(state);
+    _ref.read(knowledgeIngestionServiceProvider).ingestClient(newClient);
   }
 
-  void updateClient(Client updatedClient) {
+  Future<void> updateClient(Client updatedClient) async {
     state = [
       for (final client in state)
         if (client.id == updatedClient.id) updatedClient else client
     ];
+    await _persistenceService.saveClients(state);
+  }
+  
+  Future<void> deleteClient(String clientId) async {
+    state = state.where((client) => client.id != clientId).toList();
+    await _persistenceService.saveClients(state);
   }
 
-  void addCampaignToClient(String clientId, String campaignId) {
+  Future<void> addCampaignToClient(String clientId, String campaignId) async {
     state = [
       for (final client in state)
         if (client.id == clientId)
@@ -53,6 +79,29 @@ class ClientNotifier extends StateNotifier<List<Client>> {
         else
           client
     ];
+    await _persistenceService.saveClients(state);
+  }
+
+  Future<void> addClientContact(String clientId, String firstName, String lastName, String email, String role, {String accessLevel = 'viewer', String? phoneNumber}) async {
+    final contact = ClientContact(
+      id: const Uuid().v4(),
+      clientId: clientId,
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
+      role: role,
+      accessLevel: accessLevel,
+      phoneNumber: phoneNumber,
+    );
+    
+    state = [
+      for (final client in state)
+        if (client.id == clientId)
+          client.copyWith(contacts: [...client.contacts, contact])
+        else
+          client
+    ];
+    await _persistenceService.saveClients(state);
   }
 
   Client? getClientForCampaign(String campaignId) {
@@ -64,4 +113,7 @@ class ClientNotifier extends StateNotifier<List<Client>> {
   }
 }
 
-final clientProvider = StateNotifierProvider<ClientNotifier, List<Client>>((ref) => ClientNotifier());
+final clientProvider = StateNotifierProvider<ClientNotifier, List<Client>>((ref) {
+  final persistence = ref.watch(persistenceServiceProvider);
+  return ClientNotifier(persistence, ref);
+});

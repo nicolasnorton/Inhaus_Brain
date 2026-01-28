@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/adk/models/pipeline_models.dart';
 import '../../chat/models/chat_models.dart';
+import '../../../core/adk/defaults/default_pipelines.dart';
 
 class PipelineNotifier extends StateNotifier<List<Pipeline>> {
   PipelineNotifier() : super([]) {
@@ -12,6 +13,7 @@ class PipelineNotifier extends StateNotifier<List<Pipeline>> {
       _buildMasterAgencyPipeline(),
       _buildResearchDeepDive(),
       _buildCreativeSprint(),
+      ...DefaultPipelines.defaults,
     ];
   }
 

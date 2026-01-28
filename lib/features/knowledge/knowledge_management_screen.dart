@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'widgets/knowledge_library_widget.dart';
 import 'screens/quick_create_flow.dart';
 import 'screens/pipeline_selection_screen.dart';
@@ -46,11 +47,11 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 32, 24, 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
             child: Text(
-              'KNOWLEDGE',
-              style: TextStyle(
+              AppLocalizations.of(context)!.knowledgeModule,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -62,22 +63,22 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _buildSidebarSection('Create Knowledge', [
-                  _buildSubSidebarItem('Quick Create', 'quick-create', icon: Icons.bolt),
-                  _buildSubSidebarItem('Knowledge Pipeline', 'pipeline', icon: Icons.account_tree_outlined),
-                  _buildSubSidebarItem('Authorize Data Source', 'data-source', icon: Icons.key_outlined),
+                _buildSidebarSection(AppLocalizations.of(context)!.createKnowledge, [
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.quickCreate, 'quick-create', icon: Icons.bolt),
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.knowledgePipeline, 'pipeline', icon: Icons.account_tree_outlined),
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.authorizeDataSource, 'data-source', icon: Icons.key_outlined),
                 ]),
-                _buildSidebarSection('Connect to External', [
-                  _buildSubSidebarItem('External Base', 'external-base', icon: Icons.cloud_outlined),
-                  _buildSubSidebarItem('API Reference', 'api', icon: Icons.api_outlined),
+                _buildSidebarSection(AppLocalizations.of(context)!.connectToExternal, [
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.externalBase, 'external-base', icon: Icons.cloud_outlined),
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.apiReference, 'api', icon: Icons.api_outlined),
                 ]),
-                _buildSidebarSection('Manage Knowledge', [
-                  _buildSubSidebarItem('Content', 'content', icon: Icons.description_outlined),
-                  _buildSubSidebarItem('Settings', 'settings', icon: Icons.settings_outlined),
-                  _buildSubSidebarItem('Metadata', 'metadata', icon: Icons.label_important_outline),
+                _buildSidebarSection(AppLocalizations.of(context)!.manageKnowledge, [
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.contentLabel, 'content', icon: Icons.description_outlined),
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.navSettings, 'settings', icon: Icons.settings_outlined),
+                  _buildSubSidebarItem(AppLocalizations.of(context)!.metadataLabel, 'metadata', icon: Icons.label_important_outline),
                 ]),
-                _buildSidebarItem('Test Retrieval', 'test-retrieval', icon: Icons.plumbing_outlined),
-                _buildSidebarItem('Integrate within Apps', 'integrate', icon: Icons.extension_outlined),
+                _buildSidebarItem(AppLocalizations.of(context)!.testRetrieval, 'test-retrieval', icon: Icons.plumbing_outlined),
+                _buildSidebarItem(AppLocalizations.of(context)!.integrateApps, 'integrate', icon: Icons.extension_outlined),
               ],
             ),
           ),
@@ -102,7 +103,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
                 _currentView = 'content';
               }),
               icon: const Icon(Icons.chevron_left, size: 18),
-              label: const Text('Back', style: TextStyle(fontSize: 12)),
+              label: Text(AppLocalizations.of(context)!.backLabel, style: const TextStyle(fontSize: 12)),
               style: TextButton.styleFrom(foregroundColor: Colors.white38),
             ),
           ),
@@ -134,10 +135,10 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _buildKBSidebarItem('Documents', 'kb-documents', icon: Icons.description_outlined),
-                _buildKBSidebarItem('Pipeline', 'kb-pipeline', icon: Icons.account_tree_outlined),
-                _buildKBSidebarItem('Retrieval Test', 'kb-retrieval', icon: Icons.science_outlined),
-                _buildKBSidebarItem('Settings', 'kb-settings', icon: Icons.settings_outlined),
+                _buildKBSidebarItem(AppLocalizations.of(context)!.kbDocuments, 'kb-documents', icon: Icons.description_outlined),
+                _buildKBSidebarItem(AppLocalizations.of(context)!.knowledgePipeline, 'kb-pipeline', icon: Icons.account_tree_outlined),
+                _buildKBSidebarItem(AppLocalizations.of(context)!.kbRetrievalTest, 'kb-retrieval', icon: Icons.science_outlined),
+                _buildKBSidebarItem(AppLocalizations.of(context)!.navSettings, 'kb-settings', icon: Icons.settings_outlined),
               ],
             ),
           ),
@@ -269,11 +270,11 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('REVENUE', style: TextStyle(color: Colors.white38, fontSize: 10)),
+              Text(AppLocalizations.of(context)!.knowledgeUsage, style: const TextStyle(color: Colors.white38, fontSize: 10)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: Colors.blueAccent, borderRadius: BorderRadius.circular(4)),
-                child: const Text('CLOUD', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                child: Text(AppLocalizations.of(context)!.kbCloud, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -285,7 +286,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
             minHeight: 4,
           ),
           const SizedBox(height: 4),
-          const Text('4.5GB / 10GB used', style: TextStyle(color: Colors.white24, fontSize: 10)),
+          Text(AppLocalizations.of(context)!.kbUsedMsg('4.5GB', '10GB'), style: const TextStyle(color: Colors.white24, fontSize: 10)),
         ],
       ),
     );

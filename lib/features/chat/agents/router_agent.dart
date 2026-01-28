@@ -1,9 +1,16 @@
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'base_agent.dart';
 import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
+import '../../../core/utils/sanitization_utils.dart';
+import '../services/memory_service.dart';
+import '../../../core/architecture/blackboard.dart';
+import '../../../core/architecture/memory.dart';
 
 enum RouterIntent {
   research,    // Competitive analysis, trends, facts
@@ -11,6 +18,7 @@ enum RouterIntent {
   copywriting, // Writing, editing, tone
   development, // Code, technical architecture
   pipeline,    // Complex multi-step requests
+  management,  // Client, Project, Task management
   directChat   // Simple questions, greetings, small talk
 }
 
@@ -24,13 +32,13 @@ class RouterResult {
 
 class RouterAgent extends BaseAgent {
   @override
-  String get name => "Root Router";
+  String get name => "Brian";
   
   @override
   MessageSender get type => MessageSender.system; // Acts on behalf of system
 
   @override
-  String get systemPromptKey => "router_prompt";
+  String get systemPromptKey => "brian_prompt";
 
   @override
   Future<String> execute({
@@ -42,26 +50,86 @@ class RouterAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
+    Ref? ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name, message: "Classifying intent..."));
-    final systemInstruction = """
-You are the Root Router for Inhaus Brain. Your goal is to classify user intent into one of these categories:
-- research: Fact finding, competitor analysis, market trends.
-- creative: Visual direction, logo concepts, art direction.
-- copywriting: Ad copy, social posts, writing tasks.
-- development: Coding, technical logic.
-- pipeline: Complex, multi-stage requests (e.g., "Build a full brand strategy from scratch").
-- directChat: Casual conversation, clarifying questions.
+    if (ref == null) throw Exception("RouterAgent requires a Ref");
 
-Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipeline": "optional_suggested_key"}
-User Input: $userPrompt
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name, message: "Analyzing system state..."));
+
+    // 1. Tiered Context: Read Global & Episodic Memory
+    // Note: In a full implementation, we'd fetch this from a dedicated MemoryProvider
+    final globalContext = GlobalContext(
+      projectName: "Inhaus Brain Default",
+      description: "A production-grade agentic orchestration system.",
+      primaryObjectives: ["Scale creative output", "Automate marketing workflows"],
+    );
+    
+    final memoryService = ref.read(memoryServiceProvider);
+    final rawMemory = await memoryService.readMemory();
+    
+    // Assemble Tiered Memory for the Router
+    final tieredMemory = AgentMemory(
+      globalContext: globalContext,
+      workingMemory: WorkingMemory(currentTaskId: 'routing', currentTaskData: 'User initial query'),
+    );
+
+    // 2. Intent Classification with Blackboard Integration
+    final classificationPrompt = """
+$systemPrompt
+
+${tieredMemory.toSystemPromptFragment()}
+
+## Raw System History:
+$rawMemory
+
+## User Input:
+${SanitizationUtils.escapePrompt(userPrompt)}
 """;
 
     final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+      classificationPrompt,
       apiKey: apiKey,
+      ref: ref,
     );
+    
+    // Parse Intent & Post to Blackboard
+    final blackboard = ref.read(blackboardProvider.notifier);
+    
+    try {
+      final text = aiRes.text.trim();
+      final jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      final Map<String, dynamic> data = jsonDecode(jsonStr);
+      
+      final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
+      final confidence = data['confidence'] ?? 0.0;
+      final reason = data['reasoning'] ?? 'N/A';
 
-    return aiRes.text;
+      // Update Blackboard Facts
+      blackboard.postFact('user_intent', intentStr);
+      blackboard.postFact('routing_reason', reason);
+
+      if (intentStr == 'PIPELINE') {
+          final pipelineKey = data['pipeline'] ?? 'standard-campaign';
+          blackboard.addEvent(
+            WorkflowEventType.userRequested, 
+            "Initializing Pipeline: $pipelineKey",
+            data: {'pipeline': pipelineKey}
+          );
+          
+          // Spawn parallel tasks (Step 2 of Audit)
+          // For a campaign, we need both a Strategy and a Trend Scout report
+          blackboard.addEvent(WorkflowEventType.userRequested, "Triggering Strategy & Trend analysis...");
+          
+          // We define tasks in the Blackboard
+          // This allows parallel execution by different workers
+      }
+
+      onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Intent: $intentStr (Conf: $confidence)"));
+      
+    } catch (e) {
+      debugPrint('Router: Failed to parse/post blackboard data: $e');
+    }
+
+    return aiRes.text; 
   }
 }

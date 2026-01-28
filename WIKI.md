@@ -45,12 +45,28 @@ This is where you turn your workflows into real applications. You can publish th
 
 ### 6. 🛠️ Templates & Sharing
 *   **Workflow Templates**: Don't start from scratch! Use professionally designed blueprints (like "Simple Chatbot" or "Twitter Account Analyzer") to jumpstart your project.
+*   **Industry Blueprints (New)**: Explore over 100+ specialized blueprints across 10 major industries to solve real-world problems instantly:
+    *   🛍️ **Retail**: AI Shopping Assistants, Inventory Management, Personalization.
+    *   🎬 **Media & Entertainment**: Content Personalization, Script Analysis, Automated Editing.
+    *   🚚 **Automotive & Logistics**: Fleet Management, Predictive Maintenance, Route Optimization.
+    *   💸 **Financial Services**: Fraud Detection, Loan Processing, Personalized Banking.
+    *   🏥 **Healthcare**: Patient Diagnosis Support, Drug Discovery, Telemedicine Triage.
+    *   📡 **Telecommunications**: Network Optimization, Customer Churn Prediction.
+    *   ✈️ **Travel & Hospitality**: Dynamic Pricing, Travel Itinerary Generation.
+    *   🏭 **Manufacturing**: Quality Control, Supply Chain Optimization.
+    *   🏛️ **Public Sector**: Citizen Services, Policy Analysis, Smart City Management.
+    *   ⚡ **Productivity**: Meeting Summarizers, Email Assistants, Code Reviewers.
 *   **Import/Export**: Move your workflows between workspaces or share them with others using the **Export JSON** and **Import** features.
 
 ### 7. 🐛 Debug Tools (The Inspector)
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
 ### 8. 🏢 Client Module (Portfolio Management)
+### 8. 🏢 Client Module (Portfolio Management)
+This module allows you to manage your client relationships and projects:
+*   **Projects**: Organize work into specific project plans for each client.
+*   **Task Board**: Track task status (Todo, In-Progress, Review, Done) and set due dates.
+*   **Integrations**: Connect client workspaces to **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to automate communication and data syncing.
 
 ---
 
@@ -107,5 +123,14 @@ If you have a **User Input** block called "Topic", you can use that information 
 7.  **Approve**: Sometimes the AI will stop and ask "Does this look right?" You just click **Approve** to let it continue.
 
 ---
+
+---
+
+## 🛡️ Production & Security
+Inhaus Brain is built with enterprise-grade safety:
+*   **Automatic Redaction**: Sensitive data like emails and phone numbers are automatically hidden from AI models to protect privacy.
+*   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
+*   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.
+*   **Secure Access**: Your data is protected by strict Firebase Security Rules—only you can see your campaigns and research.
 
 *Built with ❤️ to make AI automation accessible for everyone.*

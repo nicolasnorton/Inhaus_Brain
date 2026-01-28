@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/command_models.dart';
@@ -15,6 +16,7 @@ class CommandPalette extends ConsumerStatefulWidget {
 class _CommandPaletteState extends ConsumerState<CommandPalette> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
+  final _keyboardFocusNode = FocusNode();
   int _selectedIndex = 0;
 
   @override
@@ -30,6 +32,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   void dispose() {
     _searchController.dispose();
     _focusNode.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -83,7 +86,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final displayCommands = searchQuery.isEmpty ? recentCommands : filteredCommands;
 
     return RawKeyboardListener(
-      focusNode: FocusNode(),
+      focusNode: _keyboardFocusNode,
       onKey: _handleKeyEvent,
       child: GestureDetector(
         onTap: () {
@@ -195,23 +198,24 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     }
 
     // Show recent commands
-    return ListView(
+    return ListView.builder(
       shrinkWrap: true,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Text(
-            'Recent',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white60,
-              fontWeight: FontWeight.bold,
+      itemCount: commands.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              'Recent',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.white60,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ),
-        ...commands.asMap().entries.map((entry) {
-          return _buildCommandItem(entry.value, entry.key, theme);
-        }),
-      ],
+          );
+        }
+        return _buildCommandItem(commands[index - 1], index - 1, theme);
+      },
     );
   }
 

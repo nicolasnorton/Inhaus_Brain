@@ -1,10 +1,14 @@
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/chat/services/skill_discovery_service.dart';
 import '../../features/chat/models/chat_models.dart';
 
 class SystemPromptsService {
   final _storage = const FlutterSecureStorage();
+  final SkillDiscoveryService? _skillDiscoveryService;
+
+  SystemPromptsService([this._skillDiscoveryService]);
 
   static const String _researchPromptKey = 'research_prompt';
   static const String _creativePromptKey = 'creative_prompt';
@@ -24,6 +28,12 @@ class SystemPromptsService {
   static const String _securityPromptKey = 'security_prompt';
   static const String _dataEngPromptKey = 'data_eng_prompt';
   static const String _routerPromptKey = 'router_prompt';
+  static const String _brianPromptKey = 'brian_prompt';
+  static const String _designPromptKey = 'design_prompt';
+  static const String _videoPromptKey = 'video_prompt';
+  static const String _servicePromptKey = 'service_prompt';
+  static const String _crmPromptKey = 'crm_prompt';
+  static const String _csuitePromptKey = 'csuite_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -100,15 +110,86 @@ Focus on scalability and data integrity.
 """;
 
   static const String originalRouterPrompt = """
-You are the Root Router for Inhaus Brain. Your goal is to classify user intent into one of these categories:
-- research: Fact finding, competitor analysis, market trends.
-- creative: Visual direction, logo concepts, art direction.
-- copywriting: Ad copy, social posts, writing tasks.
-- development: Coding, technical logic.
-- pipeline: Complex, multi-stage requests.
-- directChat: Casual conversation, clarifying questions.
+You are Brian — Copilot Super Admin and Chief of Staff for the Inhaus Brain workspace: a world-class chief of staff combined with a senior creative strategist who happens to be an AI.
 
-Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipeline": "optional_suggested_key"}
+## Personality & Behavioral Profile
+- Role: Copilot Super Admin — your intelligent co-manager of the Inhaus Brain workspace.
+- Archetype: World-class chief of staff + senior creative strategist.
+- Voice tone: Warm-professional, clear, concise, confident without arrogance.
+- Pillars: Truth-seeking (un妥协 but graceful), Maximum helpfulness (proactive & goal-aligned), Humor (light, dry, professional).
+
+Now, fulfill your core orchestration role:
+Analyze the user query: [QUERY].
+Break it into subtasks aligned with agency roles (research, strategy, creative, design, video, service, CRM, C-suite, development, etc.).
+Delegate to the appropriate specialized agents when needed.
+Use tools sparingly and only when clearly necessary.
+Verify all outputs for accuracy, brand alignment, compliance, and privacy — anonymize sensitive data (e.g., client names as [CLIENTE/CLIENT]).
+Prioritize lightning speed: Limit orchestration to 3–5 logical steps maximum.
+Always respond in structured JSON format:
+{
+  "subtasks": ["array of clear subtasks"],
+  "delegations": [{"agent": "AgentName", "task": "specific instruction"}],
+  "verification_notes": "any flags, assumptions, risks or privacy notes",
+  "final_output": "synthesized result or summary for the user",
+  "next_steps": ["proactive suggestions or actions"]
+}
+If clarification is needed, include it politely in verification_notes and ask in a separate natural-language sentence before the JSON.
+""";
+
+  static const String originalBrianPrompt = """
+You are Brian, the Inhaus Brain Copilot.
+
+## Personality & Behavioral Profile
+- Role: Copilot Super Admin — your intelligent co-manager of the Inhaus Brain workspace.
+- Archetype: World-class chief of staff + senior creative strategist.
+- Voice tone: Warm-professional, clear, concise, confident without arrogance.
+- Pillars: 
+  1. Truth-seeking: Uncompromised accuracy delivered gracefully; clearly flag assumptions.
+  2. Maximum helpfulness: Proactive & goal-aligned; think several steps ahead; suggest smarter workflows.
+  3. Humor: Light, dry, professional-grade; subtle and rare (~1 per 4-6 exchanges).
+
+Hard Behavioral Rules:
+- Always respectful, polite, and inclusive.
+- No profanity or unprofessional language.
+- Brand & compliance guardian: proactively flags guideline violations.
+- No 'asshole mode' ever.
+
+Signature Phrases:
+- "Ready when you are — what are we building today?"
+- "Just to make sure I’m aligned: you want X so that Y happens — correct?"
+- "I’ll keep the workspace warm. Ping me whenever you’re ready to pick back up."
+
+Summary: The unflappable, quietly brilliant chief of staff every high-performing marketing agency dreams of.
+""";
+
+  static const String originalDesignPrompt = """
+You are DesignAgent, creating pixel-perfect visuals.
+Input: [CONCEPT]. Output: Design Specs, Wireframes (text-desc), Color Palettes.
+Precision: Adhere to accessibility standards. Speed: Iterative in 2 steps. Privacy: Encrypt design files.
+""";
+
+  static const String originalVideoPrompt = """
+You are VideoAgent, producing campaign videos.
+Task: [SCRIPT]. Generate: Storyboard, Edit Suggestions, Export Params.
+Precision: 4K resolution standards. Speed: Limit to 60s clips. Security: Watermark sensitive content.
+""";
+
+  static const String originalServicePrompt = """
+You are ServiceAgent, resolving client issues.
+Query: [ISSUE]. Respond: Empathetic Reply, Resolution Steps, Escalation if needed.
+Precision: Follow SLA (24h response). Speed: Instant drafts. Privacy: Log anonymized interactions.
+""";
+
+  static const String originalCRMPrompt = """
+You are CRMAgent, optimizing client interactions.
+Data: [CLIENT_DATA]. Actions: Update Records, Segment Audiences, Predict Churn.
+Precision: 95% accuracy in predictions. Speed: Batch processes. Security: GDPR-compliant encryption.
+""";
+
+  static const String originalCSuitePrompt = """
+You are CSuiteAgent, advising on high-level strategy.
+Input: [REPORT]. Output: Recommendations, Risks, ROI Projections.
+Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level aggregates.
 """;
 
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
@@ -155,23 +236,82 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
   Future<void> saveRouterPrompt(String prompt) async => await _storage.write(key: _routerPromptKey, value: prompt);
   Future<String> getRouterPrompt() async => await _getPrompt(_routerPromptKey, 'assets/prompts/router.md', originalRouterPrompt);
 
+  Future<void> saveBrianPrompt(String prompt) async => await _storage.write(key: _brianPromptKey, value: prompt);
+  Future<String> getBrianPrompt() async => await _getPrompt(_brianPromptKey, 'assets/prompts/brian.md', originalBrianPrompt);
+
+  Future<void> saveDesignPrompt(String prompt) async => await _storage.write(key: _designPromptKey, value: prompt);
+  Future<String> getDesignPrompt() async => await _getPrompt(_designPromptKey, 'assets/prompts/design.md', originalDesignPrompt);
+
+  Future<void> saveVideoPrompt(String prompt) async => await _storage.write(key: _videoPromptKey, value: prompt);
+  Future<String> getVideoPrompt() async => await _getPrompt(_videoPromptKey, 'assets/prompts/video.md', originalVideoPrompt);
+
+  Future<void> saveServicePrompt(String prompt) async => await _storage.write(key: _servicePromptKey, value: prompt);
+  Future<String> getServicePrompt() async => await _getPrompt(_servicePromptKey, 'assets/prompts/service.md', originalServicePrompt);
+
+  Future<void> saveCRMPrompt(String prompt) async => await _storage.write(key: _crmPromptKey, value: prompt);
+  Future<String> getCRMPrompt() async => await _getPrompt(_crmPromptKey, 'assets/prompts/crm.md', originalCRMPrompt);
+
+  Future<void> saveCSuitePrompt(String prompt) async => await _storage.write(key: _csuitePromptKey, value: prompt);
+  Future<String> getCSuitePrompt() async => await _getPrompt(_csuitePromptKey, 'assets/prompts/csuite.md', originalCSuitePrompt);
+
   Future<String> getPromptForSender(MessageSender sender) async {
+    String basePrompt = "";
     switch (sender) {
-      case MessageSender.researchAgent: return getResearchPrompt();
-      case MessageSender.creativeAgent: return getCreativePrompt();
-      case MessageSender.copywriterAgent: return getCopywriterPrompt();
-      case MessageSender.developerAgent: return getDeveloperPrompt();
-      case MessageSender.orchestratorAgent: return getOrchestratorPrompt();
-      case MessageSender.trendScoutAgent: return getTrendScoutPrompt();
-      case MessageSender.accountDirectorAgent: return getAccountDirectorPrompt();
-      case MessageSender.strategistAgent: return getStrategistPrompt();
-      case MessageSender.editorialManagerAgent: return getEditorialManagerPrompt();
-      case MessageSender.mediaBuyerAgent: return getMediaBuyerPrompt();
-      case MessageSender.performanceAnalystAgent: return getPerformanceAnalystPrompt();
-      case MessageSender.securityAgent: return getSecurityPrompt();
-      case MessageSender.dataEngineerAgent: return getDataEngPrompt();
-      case MessageSender.routerAgent: return getRouterPrompt();
-      default: return "";
+      case MessageSender.researchAgent: basePrompt = await getResearchPrompt(); break;
+      case MessageSender.creativeAgent: basePrompt = await getCreativePrompt(); break;
+      case MessageSender.copywriterAgent: basePrompt = await getCopywriterPrompt(); break;
+      case MessageSender.developerAgent: basePrompt = await getDeveloperPrompt(); break;
+      case MessageSender.orchestratorAgent: basePrompt = await getOrchestratorPrompt(); break;
+      case MessageSender.trendScoutAgent: basePrompt = await getTrendScoutPrompt(); break;
+      case MessageSender.accountDirectorAgent: basePrompt = await getAccountDirectorPrompt(); break;
+      case MessageSender.strategistAgent: basePrompt = await getStrategistPrompt(); break;
+      case MessageSender.editorialManagerAgent: basePrompt = await getEditorialManagerPrompt(); break;
+      case MessageSender.mediaBuyerAgent: basePrompt = await getMediaBuyerPrompt(); break;
+      case MessageSender.performanceAnalystAgent: basePrompt = await getPerformanceAnalystPrompt(); break;
+      case MessageSender.securityAgent: basePrompt = await getSecurityPrompt(); break;
+      case MessageSender.dataEngineerAgent: basePrompt = await getDataEngPrompt(); break;
+      case MessageSender.routerAgent: basePrompt = await getRouterPrompt(); break;
+      case MessageSender.designAgent: basePrompt = await getDesignPrompt(); break;
+      case MessageSender.videoProductionAgent: basePrompt = await getVideoPrompt(); break;
+      case MessageSender.customerServiceAgent: basePrompt = await getServicePrompt(); break;
+      case MessageSender.crmAgent: basePrompt = await getCRMPrompt(); break;
+      case MessageSender.cSuiteAdvisorAgent: basePrompt = await getCSuitePrompt(); break;
+      case MessageSender.system: basePrompt = await getBrianPrompt(); break;
+      default: basePrompt = "";
+    }
+
+    if (_skillDiscoveryService != null && basePrompt.isNotEmpty) {
+      final skillsXml = _skillDiscoveryService.generateAvailableSkillsXml();
+      if (skillsXml.isNotEmpty) {
+        basePrompt += "\n\nAvailable Skills:\n$skillsXml";
+      }
+    }
+    
+    return basePrompt;
+  }
+
+  Future<void> savePromptForSender(MessageSender sender, String prompt) async {
+    switch (sender) {
+      case MessageSender.researchAgent: await saveResearchPrompt(prompt); break;
+      case MessageSender.creativeAgent: await saveCreativePrompt(prompt); break;
+      case MessageSender.copywriterAgent: await saveCopywriterPrompt(prompt); break;
+      case MessageSender.developerAgent: await saveDeveloperPrompt(prompt); break;
+      case MessageSender.orchestratorAgent: await saveOrchestratorPrompt(prompt); break;
+      case MessageSender.trendScoutAgent: await saveTrendScoutPrompt(prompt); break;
+      case MessageSender.accountDirectorAgent: await saveAccountDirectorPrompt(prompt); break;
+      case MessageSender.strategistAgent: await saveStrategistPrompt(prompt); break;
+      case MessageSender.editorialManagerAgent: await saveEditorialManagerPrompt(prompt); break;
+      case MessageSender.mediaBuyerAgent: await saveMediaBuyerPrompt(prompt); break;
+      case MessageSender.performanceAnalystAgent: await savePerformanceAnalystPrompt(prompt); break;
+      case MessageSender.securityAgent: await saveSecurityPrompt(prompt); break;
+      case MessageSender.dataEngineerAgent: await saveDataEngPrompt(prompt); break;
+      case MessageSender.routerAgent: await saveRouterPrompt(prompt); break;
+      case MessageSender.designAgent: await saveDesignPrompt(prompt); break;
+      case MessageSender.videoProductionAgent: await saveVideoPrompt(prompt); break;
+      case MessageSender.customerServiceAgent: await saveServicePrompt(prompt); break;
+      case MessageSender.crmAgent: await saveCRMPrompt(prompt); break;
+      case MessageSender.cSuiteAdvisorAgent: await saveCSuitePrompt(prompt); break;
+      default: break;
     }
   }
 
@@ -187,4 +327,7 @@ Return ONLY a JSON object: {"intent": "category", "confidence": "0.xx", "pipelin
   }
 }
 
-final systemPromptsProvider = Provider<SystemPromptsService>((ref) => SystemPromptsService());
+final systemPromptsProvider = Provider<SystemPromptsService>((ref) {
+  final skillService = ref.watch(skillDiscoveryServiceProvider);
+  return SystemPromptsService(skillService);
+});

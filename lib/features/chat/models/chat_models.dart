@@ -15,6 +15,11 @@ enum MessageSender {
   dataEngineerAgent, // Phase 15
   visionAgent,       // Phase 18
   routerAgent,       // Phase 23
+  knowledgeLibrarianAgent,
+  performanceAnalystAgent,
+  dataScientistAgent,
+  digitalStrategyAgent,
+  dashboardAgent,
   
   // Phase 31: Agency Model Alignment
   trendScoutAgent,
@@ -22,7 +27,15 @@ enum MessageSender {
   strategistAgent,
   editorialManagerAgent,
   mediaBuyerAgent,
-  performanceAnalystAgent,
+  managementAgent, // Phase 4: Client Management
+  reportsAgent,    // Phase 6: Reports Module
+
+  // Upgraded Agency Roles
+  designAgent,
+  videoProductionAgent,
+  customerServiceAgent,
+  crmAgent,
+  cSuiteAdvisorAgent,
 
   humanAgent,
   system
@@ -35,6 +48,57 @@ enum MessageType {
   approvalWidget
 }
 
+enum ArtifactType {
+  markdown,
+  code,
+  image,
+  file,
+  plan // For task.md or implementation plans
+}
+
+class Artifact {
+  final String id;
+  final String title;
+  final ArtifactType type;
+  final String content;       // Text content or file path
+  final int version;
+  final DateTime updatedAt;
+
+  Artifact({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.content,
+    this.version = 1,
+    required this.updatedAt,
+  });
+
+  factory Artifact.fromJson(Map<String, dynamic> json) {
+    return Artifact(
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      title: json['title']?.toString() ?? 'Untitled',
+      type: ArtifactType.values.firstWhere(
+        (e) => e.name == json['type'], 
+        orElse: () => ArtifactType.markdown
+      ),
+      content: json['content']?.toString() ?? '',
+      version: json['version'] ?? 1,
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'type': type.name,
+    'content': content,
+    'version': version,
+    'updatedAt': updatedAt.toIso8601String(),
+  };
+}
+
 class ChatMessage {
   final String id;
   final String content;
@@ -43,6 +107,7 @@ class ChatMessage {
   final DateTime createdAt;
   final List<Attachment> attachments;
   final Map<String, dynamic>? metadata; // For tool usage or widget data
+  final List<String>? suggestedPrompts; // Phase 1195 - Audit Rec
 
   ChatMessage({
     required this.id,
@@ -52,19 +117,32 @@ class ChatMessage {
     required this.createdAt,
     this.attachments = const [],
     this.metadata,
+    this.suggestedPrompts,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
-      id: json['id'] as String,
-      content: json['content'] as String,
-      sender: MessageSender.values.firstWhere((e) => e.name == json['sender']),
-      type: MessageType.values.firstWhere((e) => e.name == json['type']),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      content: json['content']?.toString() ?? '',
+      sender: MessageSender.values.firstWhere(
+        (e) => e.name == json['sender'],
+        orElse: () => MessageSender.system,
+      ),
+      type: MessageType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => MessageType.text,
+      ),
+      createdAt: json['createdAt'] != null 
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       attachments: (json['attachments'] as List? ?? [])
-          .map((a) => Attachment.fromJson(a as Map<String, dynamic>))
+          .map((a) => Attachment.fromJson(Map<String, dynamic>.from(a as Map? ?? {})))
           .toList(),
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      metadata: json['metadata'] is Map ? Map<String, dynamic>.from(json['metadata']) : null,
+      suggestedPrompts: (json['suggestedPrompts'] as List?)
+          ?.where((e) => e != null)
+          .map((e) => e.toString())
+          .toList(),
     );
   }
 
@@ -76,7 +154,30 @@ class ChatMessage {
     'createdAt': createdAt.toIso8601String(),
     'attachments': attachments.map((a) => a.toJson()).toList(),
     'metadata': metadata,
+    'suggestedPrompts': suggestedPrompts,
   };
+
+  ChatMessage copyWith({
+    String? id,
+    String? content,
+    MessageSender? sender,
+    MessageType? type,
+    DateTime? createdAt,
+    List<Attachment>? attachments,
+    Map<String, dynamic>? metadata,
+    List<String>? suggestedPrompts,
+  }) {
+    return ChatMessage(
+      id: id ?? this.id,
+      content: content ?? this.content,
+      sender: sender ?? this.sender,
+      type: type ?? this.type,
+      createdAt: createdAt ?? this.createdAt,
+      attachments: attachments ?? this.attachments,
+      metadata: metadata ?? this.metadata,
+      suggestedPrompts: suggestedPrompts ?? this.suggestedPrompts,
+    );
+  }
 }
 
 class ChatSession {
@@ -94,12 +195,14 @@ class ChatSession {
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
     return ChatSession(
-      id: json['id'] as String,
-      campaignId: json['campaignId'] as String,
+      id: json['id']?.toString() ?? 'unknown-session',
+      campaignId: json['campaignId']?.toString() ?? 'unknown-campaign',
       messages: (json['messages'] as List? ?? [])
-          .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+          .map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m as Map? ?? {})))
           .toList(),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 

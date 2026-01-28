@@ -1,0 +1,32 @@
+[
+    {
+        "id": "nike_strategy",
+        "input": "Create a Nike ad strategy for a new line of sustainable running shoes.",
+        "expected_intent": "pipeline",
+        "required_elements": [
+            "strategy",
+            "target audience",
+            "sustainability"
+        ]
+    },
+    {
+        "id": "gen_z_banking",
+        "input": "Find the latest trends in Gen Z banking.",
+        "expected_intent": "research",
+        "required_elements": [
+            "digital",
+            "social media",
+            "financial literacy"
+        ]
+    },
+    {
+        "id": "linkedin_post",
+        "input": "Write a LinkedIn post about AI orchestration.",
+        "expected_intent": "copywriting",
+        "required_elements": [
+            "agentic",
+            "productivity",
+            "AI"
+        ]
+    }
+]

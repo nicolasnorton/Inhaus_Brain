@@ -1,4 +1,5 @@
 enum UserRole {
+  superAdmin,
   admin,
   accountManager,
   designer,

@@ -104,6 +104,7 @@ class App {
   final List<String> tags;
   final String? createdBy;
   final bool hasUnsavedChanges;
+  final Map<String, dynamic> config;
 
   const App({
     required this.id,
@@ -118,6 +119,7 @@ class App {
     this.tags = const [],
     this.createdBy,
     this.hasUnsavedChanges = false,
+    this.config = const {},
   });
 
   App copyWith({
@@ -133,6 +135,7 @@ class App {
     List<String>? tags,
     String? createdBy,
     bool? hasUnsavedChanges,
+    Map<String, dynamic>? config,
   }) {
     return App(
       id: id ?? this.id,
@@ -147,6 +150,7 @@ class App {
       tags: tags ?? this.tags,
       createdBy: createdBy ?? this.createdBy,
       hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
+      config: config ?? this.config,
     );
   }
 
@@ -163,23 +167,52 @@ class App {
         'tags': tags,
         if (createdBy != null) 'created_by': createdBy,
         'has_unsaved_changes': hasUnsavedChanges,
+        'config': config,
       };
 
   factory App.fromJson(Map<String, dynamic> json) {
     return App(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      type: AppType.values.byName(json['type'] as String),
-      description: json['description'] as String,
-      icon: json['icon'] as String,
-      status: AppStatus.values.byName(json['status'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      id: (json['id'] ?? '') as String,
+      name: (json['name'] ?? 'Untitled App') as String,
+      type: _parseAppType(json['type']),
+      description: (json['description'] ?? '') as String,
+      icon: (json['icon'] ?? '⚡') as String,
+      status: _parseAppStatus(json['status']),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
       runCount: json['run_count'] as int? ?? 0,
       tags: (json['tags'] as List?)?.cast<String>() ?? [],
       createdBy: json['created_by'] as String?,
       hasUnsavedChanges: json['has_unsaved_changes'] as bool? ?? false,
+      config: Map<String, dynamic>.from(json['config'] ?? {}),
     );
+  }
+
+  static AppType _parseAppType(dynamic value) {
+    if (value is! String) return AppType.workflow;
+    try {
+      return AppType.values.byName(value);
+    } catch (_) {
+      return AppType.workflow;
+    }
+  }
+
+  static AppStatus _parseAppStatus(dynamic value) {
+    if (value is! String) return AppStatus.draft;
+    try {
+      return AppStatus.values.byName(value);
+    } catch (_) {
+      return AppStatus.draft;
+    }
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is! String) return DateTime.now();
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }
 
@@ -203,9 +236,44 @@ class AppDSL {
     this.includeSecrets = false,
   });
 
+  String _toYamlValue(dynamic value, int indent) {
+    if (value is Map) {
+      final buffer = StringBuffer();
+      value.forEach((k, v) {
+        buffer.writeln();
+        buffer.write('  ' * indent);
+        buffer.write('$k: ${_toYamlValue(v, indent + 1)}');
+      });
+      return buffer.toString();
+    } else if (value is List) {
+      if (value.isEmpty) return '[]';
+      final buffer = StringBuffer();
+      for (var item in value) {
+        buffer.writeln();
+        buffer.write('  ' * indent);
+        buffer.write('- ${_toYamlValue(item, indent + 1)}');
+      }
+      return buffer.toString();
+    } else {
+      return value.toString();
+    }
+  }
+
   String toYAML() {
-    // ... existing YAML implementation (kept for backward compatibility if needed)
-    return toJsonString(); // For now, let's prefer JSON as requested
+    final buffer = StringBuffer();
+    buffer.writeln('version: $version');
+    buffer.writeln('kind: $kind');
+    buffer.write('app:');
+    app.toJson().forEach((k, v) {
+      buffer.writeln();
+      buffer.write('  $k: $v');
+    });
+    buffer.write('\nworkflow:');
+    workflow.forEach((k, v) {
+      buffer.writeln();
+      buffer.write('  $k: ${_toYamlValue(v, 2)}');
+    });
+    return buffer.toString();
   }
 
   String toJsonString() {
@@ -223,16 +291,21 @@ class AppDSL {
   static AppDSL? fromJsonString(String jsonString) {
     try {
       final json = jsonDecode(jsonString);
+      if (json is! Map<String, dynamic>) return null;
+
+      final appJson = json['app'];
+      if (appJson == null || appJson is! Map<String, dynamic>) return null;
+
       return AppDSL(
-        version: json['version'] ?? '0.0.1',
-        kind: json['kind'] ?? 'app',
-        app: App.fromJson(json['app']),
-        workflow: json['workflow'] ?? {},
-        knowledge: List<Map<String, dynamic>>.from(json['knowledge'] ?? []),
-        environment: List<Map<String, dynamic>>.from(json['environment'] ?? []),
+        version: (json['version'] ?? '0.0.1') as String,
+        kind: (json['kind'] ?? 'app') as String,
+        app: App.fromJson(appJson),
+        workflow: (json['workflow'] ?? {}) as Map<String, dynamic>,
+        knowledge: (json['knowledge'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
+        environment: (json['environment'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [],
       );
     } catch (e) {
-      print('Error parsing DSL: $e');
+      debugPrint('Error parsing AppDSL: $e');
       return null;
     }
   }

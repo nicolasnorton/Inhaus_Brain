@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/model_provider_models.dart';
@@ -282,7 +281,7 @@ class _ProviderConfigDialogState extends ConsumerState<ProviderConfigDialog> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<ModelConfig>(
-                  value: _selectedDefaultModel,
+                  initialValue: _selectedDefaultModel,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),

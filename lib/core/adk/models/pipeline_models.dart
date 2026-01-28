@@ -14,6 +14,20 @@ class Pipeline {
     required this.steps,
   });
 
+  Pipeline copyWith({
+    String? id,
+    String? name,
+    String? description,
+    List<PipelineStep>? steps,
+  }) {
+    return Pipeline(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      steps: steps ?? this.steps,
+    );
+  }
+
   factory Pipeline.fromJson(Map<String, dynamic> json) {
     return Pipeline(
       id: json['id'] as String,
@@ -34,6 +48,7 @@ class Pipeline {
 }
 
 enum WorkflowNodeType {
+  start,
   userInput,
   trigger,
   llm,
@@ -53,7 +68,8 @@ enum WorkflowNodeType {
   variableAssigner,
   parameterExtractor,
   httpRequest,
-  listOperator
+  listOperator,
+  note
 }
 
 enum PipelineStepType { sequential, parallel, loop }
@@ -70,7 +86,7 @@ class PipelineStep {
   final List<String> dependencies; 
   final Map<String, double>? uiPosition; 
   
-  // New Dify-style fields
+  // New INHAUS BRAIN-style fields
   final Map<String, dynamic> config;
   final Map<String, String> inputMappings; // node_id.output_name -> input_name
 

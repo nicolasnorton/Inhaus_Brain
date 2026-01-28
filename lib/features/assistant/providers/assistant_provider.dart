@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/material.dart';
 import '../services/assistant_service.dart';
 
 // State for the open/close status of the assistant overlay
 final isAssistantOpenProvider = StateProvider<bool>((ref) => false);
 
-// Service provider
-final assistantServiceProvider = Provider<AssistantService>((ref) => AssistantService());
+// Current status of the assistant (e.g. "Searching...", "Thinking...")
+final assistantStatusProvider = StateProvider<String?>((ref) => null);
+
+// Trigger for sending message from FAB
+final assistantSendTriggerProvider = StateProvider<int>((ref) => 0);
 
 // Chat history state
 class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
@@ -14,13 +16,12 @@ class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
 
   AssistantChatState(this._service) : super([]);
 
-  Future<void> sendMessage(String text, BuildContext context) async {
-    // Ensure service has context for navigation tools
-    _service.setContext(context);
+  Future<void> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment}) async {
+    // Service now uses Riverpod Ref for tools, no context needed
     
     // Optimistic update for user message (controlled by service actually, but triggered here)
     // The service manages the authoritative history list, we just sync the state
-    await _service.sendMessage(text);
+    await _service.sendMessage(text, attachment: attachment, audioAttachment: audioAttachment);
     state = [..._service.history];
   }
   

@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/design_concept.dart';
 import '../../campaigns/models/campaign.dart';
 import '../../../core/services/edge_ai_service.dart';
-import '../../../core/services/firebase_service_provider.dart';
+
 
 class CreativeNotifier extends Notifier<List<DesignConcept>> {
   @override
@@ -22,35 +22,66 @@ class CreativeNotifier extends Notifier<List<DesignConcept>> {
         visualContext = ' based on the provided visual assets (brand style/product shots)';
       }
 
-      final res1 = await EdgeAIService.generateText("Write 2 sentences of ad copy for a campaign titled $title$visualContext.");
-      ref.read(aiProximityProvider.notifier).setProximity(res1.proximity);
-      final copy = res1.text;
+      final creativePrompt = """
+You are a Creative Director. Based on the campaign "$title" and $visualContext, generate:
+1. Two sentences of compelling ad copy.
+2. A technical visual prompt for an image generator (labeled "Visual Prompt:").
+3. A description of the ideal color palette and mood (labeled "Mood:").
 
-      final res2 = await EdgeAIService.generateText("Describe a visual atmosphere for a campaign titled $title$visualContext in one technical prompt.");
-      ref.read(aiProximityProvider.notifier).setProximity(res2.proximity);
-      final visualPrompt = res2.text;
+Format your response clearly.
+""";
 
-      final res3 = await EdgeAIService.generateText("Describe a color palette for $title$visualContext.");
-      ref.read(aiProximityProvider.notifier).setProximity(res3.proximity);
-      final moodDesc = res3.text;
+      final res1 = await EdgeAIService.generateText(
+        creativePrompt,
+        ref: ref,
+      );
+      
+      // Parse the output
+      final output = res1.text;
+      
+      String copy = output;
+      String visualPrompt = "Cinematic, high detail, 8k resolution, photorealistic";
+      String moodDescription = "Vibrant and impactful";
 
+      // Basic parsing logic
+      if (output.contains("Visual Prompt:")) {
+        final parts = output.split("Visual Prompt:");
+        copy = parts[0].trim();
+        final rest = parts[1];
+        if (rest.contains("Mood:")) {
+           final visualParts = rest.split("Mood:");
+           visualPrompt = visualParts[0].trim();
+           moodDescription = visualParts[1].trim();
+        } else {
+           visualPrompt = rest.trim();
+        }
+      }
+
+      // Generate visual assets for the moodboard in parallel
+      final imageFutures = [
+        EdgeAIService.generateImage(visualPrompt + ", wide angle, cinematic lighting"),
+        EdgeAIService.generateImage(visualPrompt + ", close up detail, macro photography"),
+      ];
+      
+      final imageUrls = await Future.wait(imageFutures);
+      
       final newConcept = DesignConcept(
         id: const Uuid().v4(),
         campaignId: campaign.id,
         title: 'Visual Direction: $title',
-        copy: copy,
+        copy: copy.length > 500 ? copy.substring(0, 500) : copy,
         visualPrompt: visualPrompt,
         moodboards: [
           Moodboard(
             id: 'mb1',
             title: 'Mood & Color',
-            imageUrls: [],
-            description: moodDesc,
+            imageUrls: imageUrls,
+            description: moodDescription,
           ),
         ],
       );
       state = [...state, newConcept];
-      debugPrint('CreativeAgent: Local concept generated successfully.');
+      debugPrint('CreativeAgent: Concept generated with real-feel imagery.');
     } catch (e, stack) {
       debugPrint('CreativeAgent ERROR: Failed to generate local concept: $e');
       debugPrint(stack.toString());
@@ -60,20 +91,30 @@ class CreativeNotifier extends Notifier<List<DesignConcept>> {
   Future<void> generateHighTierAssets(DesignConcept concept) async {
     try {
       debugPrint('CreativeAgent: Initiating High-Tier Cloud Generation for ${concept.id}');
-      final firebaseService = ref.read(firebaseServiceProvider);
       
       // Update proximity to Cloud for this high-tier operation
       ref.read(aiProximityProvider.notifier).setProximity(AIProximity.cloud);
 
-      final results = await firebaseService.generateFinalAssets(
-        campaignId: concept.campaignId,
-        creativeBrief: concept.copy,
-        visualPrompt: concept.visualPrompt,
-      );
+      // 1. Refine Copy with Copywriter Agent (Gemini)
+      final copyPrompt = """
+Act as a Senior Copywriter. Refine the following draft copy for a high-impact ad campaign. 
+Make it punchy, persuasive, and production-ready.
+
+Draft: ${concept.copy}
+
+Return ONLY the refined copy text.
+""";
+      final copyRes = await EdgeAIService.generateText(copyPrompt, ref: ref);
+      
+      // 2. Generate High-Quality Visual Mock (Imagen 3 / Pollinations)
+      // Enhance the prompt for final output
+      final finalImagePrompt = "${concept.visualPrompt}, award winning, billboard quality, 8k, highly detailed";
+      final finalImageUrl = await EdgeAIService.generateImage(finalImagePrompt);
 
       final updatedConcept = concept.copyWith(
-        finalCopy: results['finalCopy'],
-        finalImageURL: results['finalImageURL'],
+        finalCopy: copyRes.text,
+        finalImageURL: finalImageUrl,
+        // finalVideoURL: finalVideoUrl, // Video generation can be added later or via separate tool
         isFinalReady: true,
       );
 
