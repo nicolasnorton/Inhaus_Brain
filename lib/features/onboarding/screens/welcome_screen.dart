@@ -25,9 +25,8 @@ class WelcomeScreen extends ConsumerWidget {
               // Central Brain Icon
               Image.asset(
                 'assets/images/inhaus_brain_logo.png',
-                width: 300, // Increased for full logo visibility
+                width: 300,
                 fit: BoxFit.contain,
-                color: Colors.white,
               ).animate().fadeIn(duration: 800.ms).scale(begin: const Offset(0.9, 0.9)),
               
               const SizedBox(height: 32),
