@@ -123,4 +123,13 @@ If you have a **User Input** block called "Topic", you can use that information 
 
 ---
 
+---
+
+## 🛡️ Production & Security
+Inhaus Brain is built with enterprise-grade safety:
+*   **Automatic Redaction**: Sensitive data like emails and phone numbers are automatically hidden from AI models to protect privacy.
+*   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
+*   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.
+*   **Secure Access**: Your data is protected by strict Firebase Security Rules—only you can see your campaigns and research.
+
 *Built with ❤️ to make AI automation accessible for everyone.*
