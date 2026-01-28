@@ -499,6 +499,29 @@ $ephemeralMsg
                  _ref.read(assistantStatusProvider.notifier).state = null;
                  return result;
                }
+
+               // BRIAN ORCHESTRATION EXTRACTION
+               final hasOrchestration = parsed.containsKey('subtasks') || 
+                                      parsed.containsKey('final_output') ||
+                                      parsed.containsKey('subtareas') ||
+                                      parsed.containsKey('salida_final');
+               
+               if (hasOrchestration) {
+                 debugPrint('Assistant: Detected Brian Orchestration JSON');
+                 final blackboard = _ref.read(blackboardProvider.notifier);
+                 final subtasks = parsed['subtasks'] ?? parsed['subtareas'];
+                 if (subtasks is List) {
+                   for (var task in subtasks) {
+                     blackboard.addEvent(WorkflowEventType.agentAction, "Brian Plan: $task");
+                   }
+                 }
+                 final output = parsed['final_output'] ?? parsed['salida_final'] ?? responseText;
+                 final notes = parsed['verification_notes'] ?? parsed['notas_verificacion'];
+                 if (notes != null) {
+                   blackboard.postFact('verification_notes', notes);
+                 }
+                 return ToolExecutionSummary(text: output.toString());
+               }
             }
           } catch (e) {
              // Continue searching if this bracket pair wasn't valid JSON
