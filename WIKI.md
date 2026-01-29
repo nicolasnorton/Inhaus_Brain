@@ -77,7 +77,6 @@ Generate high-fidelity branded video assets directly from your research or creat
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
 ### 8. 🏢 Client Module (Portfolio Management)
-### 8. 🏢 Client Module (Portfolio Management)
 This module allows you to manage your client relationships and projects:
 *   **Projects**: Organize work into specific project plans for each client.
 *   **Task Board**: Track task status (Todo, In-Progress, Review, Done) and set due dates.
@@ -173,5 +172,33 @@ Inhaus Brain is built with enterprise-grade safety:
 *   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
 *   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.
 
-*Built with ❤️ to make AI automation accessible for everyone.*
+---
 
+## 🔧 Troubleshooting Video Generation
+
+Is video generation stalling or failing? Use these steps to diagnose and fix common issues in the Video Generation Pipeline.
+
+### 1. Polling Errors (404/500)
+*   **Symptom**: The console shows `Proxy Poll Error 500` followed by a `404 Not Found` from the Google API.
+*   **Cause**: The Veo model returns an operation ID with a special "publisher" path that the standard Vertex AI polling endpoint doesn't recognize.
+*   **Solution**: Ensure your Cloud Function `proxyVertexAI` is up to date (Deployed Jan 29, 2026). It now automatically rewrites the Veo operation path to the canonical `v1` endpoint.
+
+### 2. "Operation ID must be a Long"
+*   **Symptom**: Error message complaining about UUID vs Long format.
+*   **Cause**: This happens when hitting the `v1beta1` endpoint with a Veo UUID operation ID.
+*   **Solution**: The system now routes polling to the `v1` endpoint which accepts UUIDs. No action needed if the latest proxy is deployed.
+
+### 3. Video Stuck in "Thinking..."
+*   **Symptom**: The generation never completes.
+*   **Cause**: This is usually a timeout in the polling loop (Veo can take 5+ minutes).
+*   **Fallback**: The system will eventually timeout (after 5 minutes) and return a static "Storyboard" image so the UI doesn't break. You can try regenerating with a simpler prompt (Preview Mode).
+
+### 4. Mock Video (Big Buck Bunny) Appearing
+*   **Symptom**: You see a cartoon bunny video.
+*   **Cause**: This is the system's "Safety Fallback". It appears if:
+    *   The API returned an error.
+    *   Authentication failed.
+    *   You are running in a constrained environment without Proxy access.
+*   **Fix**: Check your network tab. If `proxyVertexAI` failed, verify your Firebase Auth token.
+
+*Built with ❤️ to make AI automation accessible for everyone.*

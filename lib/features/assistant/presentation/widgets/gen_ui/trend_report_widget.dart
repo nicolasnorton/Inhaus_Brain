@@ -31,26 +31,52 @@ class TrendReportWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
+          // Header with gradient accent
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.purpleAccent.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.trending_up, color: Colors.purpleAccent, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  gradient: LinearGradient(
+                    colors: [Colors.purpleAccent.withOpacity(0.3), Colors.blueAccent.withOpacity(0.2)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purpleAccent.withOpacity(0.2),
+                      blurRadius: 8,
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.trending_up_rounded, color: Colors.purpleAccent, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Market Intelligence',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -126,41 +152,73 @@ class TrendReportWidget extends StatelessWidget {
     final items = sectionData['items'] as List?;
     if (items != null) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
+        padding: const EdgeInsets.only(bottom: 24.0),
         child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 16,
+          runSpacing: 16,
           children: items.map((item) => _buildSingleStat(item)).toList(),
         ),
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.only(bottom: 24.0),
       child: _buildSingleStat(sectionData),
     );
   }
 
   Widget _buildSingleStat(dynamic data) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minWidth: 140),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            data['label'] ?? 'Stat',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+            (data['label'] ?? 'Stat').toString().toUpperCase(),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5), 
+              fontSize: 11, 
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             data['value']?.toString() ?? '-',
-            style: const TextStyle(color: Colors.blueAccent, fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white, 
+              fontSize: 24, 
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
           ),
+          if (data['change'] != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                data['change'].toString(),
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ]
         ],
       ),
     );
@@ -181,18 +239,27 @@ class TrendReportWidget extends StatelessWidget {
     if (maxVal == 0) maxVal = 1;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-         color: Colors.black26,
-         borderRadius: BorderRadius.circular(12),
+         color: Colors.black.withOpacity(0.3),
+         borderRadius: BorderRadius.circular(16),
+         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null) ...[
-             Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-             const SizedBox(height: 12),
+             Text(
+               title.toUpperCase(), 
+               style: TextStyle(
+                 color: Colors.white.withOpacity(0.9), 
+                 fontWeight: FontWeight.bold, 
+                 fontSize: 13,
+                 letterSpacing: 0.8,
+               )
+             ),
+             const SizedBox(height: 16),
           ],
           ...dataMap.entries.map((e) {
              final label = e.key.toString();
@@ -200,33 +267,65 @@ class TrendReportWidget extends StatelessWidget {
              final pct = (val / maxVal).clamp(0.0, 1.0);
              
              return Padding(
-               padding: const EdgeInsets.only(bottom: 8.0),
+               padding: const EdgeInsets.only(bottom: 12.0),
                child: Row(
                  children: [
                    SizedBox(
-                     width: 80,
-                     child: Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12), overflow: TextOverflow.ellipsis),
+                     width: 90,
+                     child: Text(
+                       label, 
+                       style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500), 
+                       overflow: TextOverflow.ellipsis
+                     ),
                    ),
-                   const SizedBox(width: 8),
+                   const SizedBox(width: 12),
                    Expanded(
                      child: Stack(
                        children: [
-                         Container(height: 8, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4))),
+                         Container(
+                           height: 10, 
+                           decoration: BoxDecoration(
+                             color: Colors.white.withOpacity(0.05), 
+                             borderRadius: BorderRadius.circular(5)
+                           )
+                         ),
                          FractionallySizedBox(
                            widthFactor: pct,
                            child: Container(
-                             height: 8, 
+                             height: 10, 
                              decoration: BoxDecoration(
-                               color: Colors.purpleAccent, 
-                               borderRadius: BorderRadius.circular(4)
+                               gradient: LinearGradient(
+                                 colors: [Colors.blueAccent, Colors.purpleAccent],
+                                 begin: Alignment.centerLeft,
+                                 end: Alignment.centerRight,
+                               ),
+                               borderRadius: BorderRadius.circular(5),
+                               boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blueAccent.withOpacity(0.4),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  )
+                               ]
                              )
                            ),
                          ),
                        ],
                      ),
                    ),
-                   const SizedBox(width: 8),
-                   Text(val.toStringAsFixed(0), style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
+                   const SizedBox(width: 12),
+                   SizedBox(
+                     width: 40,
+                     child: Text(
+                       val.toStringAsFixed(0), 
+                       style: const TextStyle(
+                         color: Colors.white, 
+                         fontSize: 13, 
+                         fontWeight: FontWeight.bold
+                       ),
+                       textAlign: TextAlign.end,
+                     ),
+                   ),
                  ],
                ),
              );
@@ -248,11 +347,11 @@ class TrendReportWidget extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,32 +364,33 @@ class TrendReportWidget extends StatelessWidget {
                   name,
                   style: const TextStyle(
                     color: Colors.white, 
-                    fontSize: 15, 
+                    fontSize: 16, 
                     fontWeight: FontWeight.w600
                   ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: growthColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  color: growthColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: growthColor.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-                      size: 12,
+                      isPositive ? Icons.trending_up : Icons.trending_down,
+                      size: 14,
                       color: growthColor,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6),
                     Text(
                       '${growth.abs()}%',
                       style: TextStyle(
                         color: growthColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -301,25 +401,31 @@ class TrendReportWidget extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             description,
-            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7), 
+              fontSize: 14, 
+              height: 1.4
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           
           // Impact Meter
           Row(
             children: [
-              Text('Impact', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-              const SizedBox(width: 8),
+              Text('IMPACT', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+              const SizedBox(width: 12),
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: impact,
-                    backgroundColor: Colors.white10,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.purpleAccent),
-                    minHeight: 4,
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      impact > 0.7 ? Colors.deepPurpleAccent : (impact > 0.4 ? Colors.purpleAccent : Colors.blueAccent)
+                    ),
+                    minHeight: 6,
                   ),
                 ),
               ),

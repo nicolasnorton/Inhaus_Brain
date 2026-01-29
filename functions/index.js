@@ -147,15 +147,11 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const tokenResponse = await client.getAccessToken();
                 const accessToken = tokenResponse.token;
 
-                const pollUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
-                let targetUrl = pollUrl;
+                let targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
 
-                // [NOTE] Veo operations must use the FULL operation name path, not the canonical simplified one.
-                // The simplified "projects/{p}/locations/{l}/operations/{uuid}" fails with:
-                // "The Operation ID must be a Long, but was instead: {uuid}"
-                // Veo requires: "projects/{p}/locations/{l}/publishers/google/models/{model}/operations/{uuid}"
-
-                /* DISABLED: This rewrite causes 400 errors for Veo
+                // [FIX] Veo returns a "publisher model" path for operations, but the polling endpoint
+                // requires the canonical `projects/.../locations/.../operations/...` path.
+                // We rewrite it here to fix the 404 error caused by querying the publisher path directly.
                 if (operationName.includes('/publishers/') && operationName.includes('/operations/')) {
                     try {
                         const match = operationName.match(/projects\/([^/]+)\/locations\/([^/]+)\/(?:.*)\/operations\/([^/]+)/);
@@ -165,10 +161,13 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                             const lId = match[2];
                             const opId = match[3];
 
+                            // Construct the canonical Operations resource name
                             const canonicalName = `projects/${pId}/locations/${lId}/operations/${opId}`;
-                            console.log(`[PROXY] Rewriting Veo LRO name:\nFROM: ${operationName}\nTO:   ${canonicalName}`);
 
-                            targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
+                            // Use the v1 API endpoint which is the standard for long-running operations
+                            // This resolves issues where v1beta1 endpoints might not recognize the UUID or the publisher path
+                            targetUrl = `https://${lId}-aiplatform.googleapis.com/v1/${canonicalName}`;
+                            console.log(`[PROXY] Rewriting Veo LRO name for polling:\nFROM: ${operationName}\nTO:   ${targetUrl}`);
                         } else {
                             console.warn(`[PROXY] Failed to parse Veo LRO structure: ${operationName}`);
                         }
@@ -176,7 +175,6 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                         console.error('[PROXY] URL Rewrite Error:', rewriteErr);
                     }
                 }
-                */
 
                 const response = await fetch(targetUrl, {
                     method: 'GET',
