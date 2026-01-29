@@ -164,9 +164,9 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                             // Construct the canonical Operations resource name
                             const canonicalName = `projects/${pId}/locations/${lId}/operations/${opId}`;
 
-                            // Use the v1 API endpoint which is the standard for long-running operations
-                            // This resolves issues where v1beta1 endpoints might not recognize the UUID or the publisher path
-                            targetUrl = `https://${lId}-aiplatform.googleapis.com/v1/${canonicalName}`;
+                            // Use the v1beta1 API endpoint for Veo operations
+                            // This resolves "Operation ID must be a Long" error which occurs on some v1 endpoints
+                            targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
                             console.log(`[PROXY] Rewriting Veo LRO name for polling:\nFROM: ${operationName}\nTO:   ${targetUrl}`);
                         } else {
                             console.warn(`[PROXY] Failed to parse Veo LRO structure: ${operationName}`);

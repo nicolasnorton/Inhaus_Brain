@@ -42,6 +42,7 @@ class AssistantMessage {
   final List<String>? sources;
   final List<Artifact>? artifacts;
   final Map<String, dynamic>? uiPayload; // For GenUI components
+  final List<String>? clarificationQuestions; // New: For ambiguity handling
 
   AssistantMessage({
     required this.id,
@@ -58,6 +59,7 @@ class AssistantMessage {
     this.sources,
     this.artifacts,
     this.uiPayload,
+    this.clarificationQuestions,
   });
 
   Map<String, dynamic> toJson() => {
@@ -75,6 +77,7 @@ class AssistantMessage {
     'audioAttachment': audioAttachment != null ? base64Encode(audioAttachment!) : null,
     'artifacts': artifacts?.map((a) => a.toJson()).toList(),
     'uiPayload': uiPayload,
+    'clarificationQuestions': clarificationQuestions,
   };
 
   factory AssistantMessage.fromJson(Map<String, dynamic> json) {
@@ -105,6 +108,7 @@ class AssistantMessage {
       uiPayload: (json['uiPayload'] != null && json['uiPayload'] is Map) 
           ? Map<String, dynamic>.from(json['uiPayload'] as Map) 
           : null,
+      clarificationQuestions: (json['clarificationQuestions'] as List?)?.map((e) => e.toString()).toList(),
     );
   }
 }
@@ -375,13 +379,15 @@ CRITICAL INSTRUCTIONS:
 3. GENERATION: Use 'image_generation' or 'video_generation' for media.
 4. GEN UI: Strategy reports, TREND REPORTS, competitor analysis, and complex data MUST be rendered via 'gen_ui_component'.
    - CRITICAL: Gen UI data MUST be RICH, SPECIFIC, and DETAILED. NO placeholders like "TBD" or "XX%".
+   - RESTRICTION: The `summary_text` argument in `gen_ui_component` MUST be a single headline sentence. Do NOT put long reports there.
+   - FORBIDDEN: Do NOT return a text-only report if the intent is RESEARCH or STRATEGY. You MUST use a tool.
    - Use Google Search grounding to get REAL market data, competitor names, actual metrics.
    - Include 5-7 diverse sections: stat_card, text (2-4 sentences), chart (4-6 data points), trend_list (with growth% and descriptions).
    - Example: {"tool": "gen_ui_component", "args": {"component_type": "trend_report", "data": {"title": "Competitor Analysis: Bajaj Ecuador", "sections": [{"type": "stat_card", "items": [{"label": "Market Share", "value": "23.4%", "trend": "up"}]}, {"type": "chart", "data": {"Bajaj": 23.4, "Honda": 31.2, "Yamaha": 18.9}}]}}}
    - Do NOT just write a text summary. You MUST generate the UI component with real, detailed data.
 5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
 6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
-7. If NO tool from the restricted list above applies, answer from your grounded knowledge.
+7. If NO tool from the restricted list above applies, answer from your grounded knowledge. Simple answers for simple questions only. Complex tasks require GEN UI.
 
 $ephemeralMsg
 """;
@@ -404,7 +410,7 @@ $ephemeralMsg
     String responseText = "";
 
     // 3. Strict Mode Check (Typed Agents)
-    if (intentEnum == RouterIntent.management || blackboard.state.phase == BlackboardPhase.strategy) {
+    if (intentEnum == RouterIntent.management || intentEnum == RouterIntent.research || intentEnum == RouterIntent.seo || blackboard.state.phase == BlackboardPhase.strategy) {
        debugPrint('Assistant: Strict Mode Active for Strategy.');
        final strictResult = await _runStrictAgent(
          "Generate a comprehensive marketing strategy for: $text",
@@ -466,6 +472,11 @@ $ephemeralMsg
         }
       }
 
+      // 1.5 Handle Python code prefix or other junk
+      if (cleanResponse.contains('import json') || cleanResponse.contains('report_')) {
+          cleanResponse = cleanResponse.substring(cleanResponse.indexOf('{'));
+      }
+
       // 2. Find JSON Object using Brace Counting (Robust)
       int startIndex = 0;
       while (true) {
@@ -509,12 +520,19 @@ $ephemeralMsg
                     toolName = call['name'];
                     toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
                  }
+               } else if (parsed.containsKey('name') && (parsed.containsKey('args') || parsed.containsKey('parameters'))) {
+                 toolName = parsed['name'];
+                 toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
                } else if (parsed.containsKey('llamada_herramienta')) { // Spanish support
                  final call = parsed['llamada_herramienta'];
                  if (call is Map) {
                     toolName = call['nombre'];
                     toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
                  }
+               } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
+                 // DIRECT COMPONENT OUTPUT SUPPORT
+                 toolName = 'gen_ui_component';
+                 toolArgs = parsed;
                } else {
                  // Heuristic inference
                  final prefix = cleanResponse.substring(0, jsonStart).trim();
@@ -633,21 +651,31 @@ $ephemeralMsg
          ref: _ref
        );
 
-       // Confidence Check
-       if (result.confidence < 0.7) {
-          throw Exception('Low Confidence Generation (${result.confidence}). Requesting retry.');
+     // Confidence Check
+     if (result.confidence < 0.7) {
+        throw Exception('Low Confidence Generation (${result.confidence}). Requesting retry.');
+     }
+     
+     final Map<String, dynamic> json = jsonDecode(result.text);
+     
+     debugPrint('Assistant: Strict Agent Success! Type: $T');
+     
+     // 1. Determine Component Type based on intent/type
+     String componentType = 'trend_report';
+     if (prompt.toLowerCase().contains('strategy')) {
+        componentType = 'strategy_board';
+     }
+
+     _ref.read(blackboardProvider.notifier).resetRetry();
+     
+     return ToolExecutionSummary(
+       text: "I've analyzed the data and generated a report for you.",
+       uiPayload: {
+         'type': componentType,
+         ...json,
        }
-       
-       final json = jsonDecode(result.text);
-       final output = factory(json); // Verify it parses
-       
-       debugPrint('Assistant: Strict Agent Success! Type: $T');
-       
-       // For now, we return the JSON as text so the chat can see it. 
-       // In production, we would likely return a custom UI widget or just the refined message.
-       _ref.read(blackboardProvider.notifier).resetRetry();
-       return ToolExecutionSummary(text: "Strategy Generated (Strict Type):\n```json\n${jsonEncode(output.toJson())}\n```");
-    } catch (e) {
+     );
+  } catch (e) {
        debugPrint('Assistant: Strict Agent Error: $e');
        
        // ARBITER LOGIC
@@ -703,8 +731,13 @@ $ephemeralMsg
                  ? Map<String, dynamic>.from(rawData)
                  : {'error': 'Invalid data format from AI'};
 
+             String summary = args['summary_text'] ?? "I've generated a visual component for you.";
+             if (summary.length > 250) {
+                summary = "${summary.substring(0, 247).trim()}...";
+             }
+
              return ToolExecutionSummary(
-               text: args['summary_text'] ?? "I've generated a visual component for you.",
+               text: summary,
                uiPayload: {
                  'type': args['component_type'],
                  ...safeData,

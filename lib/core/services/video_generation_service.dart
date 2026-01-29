@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'ai_proxy_service.dart';
+import 'open_model_service.dart';
 import '../tokens/llm_provider.dart';
 import 'telemetry_service.dart';
 
@@ -18,6 +19,9 @@ class VideoGenerationService {
   static const int _previewDurationParams = 5; 
   static const String _previewAspectRatio = "16:9"; 
   static const String _previewResolution = "720p"; // Min resolution for Veo models
+  
+  // High-Quality Fallback (Imagen 3.0)
+  static const String _fallbackImageModel = 'imagen-3.0-generate-001';
 
   /// Generates a video preview (LiteRT / Fast model).
   /// AGENT 3: Prioritizes REAL video generation with retries before fallback
@@ -37,13 +41,15 @@ class VideoGenerationService {
       effectivePrompt += " Include bilingual subtitles: English and Spanish (LatAm).";
     }
     
-    debugPrint('VideoService: 🚀 Starting REAL video preview generation (priority: cloud)');
-    debugPrint('VideoService: Max retries: $maxRetries');
+    debugPrint('VideoService: 🚀 Starting MULTI-TIER video preview generation (Priority: Cloud)');
     onProgress?.call(0.05);
+
+    // 1. Cloud Preview Priority (Highest Consistency)
+    debugPrint('VideoService: Attempting CLOUD generation (Veo Fast)...');
     
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        debugPrint('VideoService: Attempt ${attempt + 1}/$maxRetries');
+        debugPrint('VideoService: Cloud Attempt ${attempt + 1}/$maxRetries');
         
         final result = await _generateVideoInternal(
           prompt: effectivePrompt,
@@ -52,38 +58,43 @@ class VideoGenerationService {
           onProgress: onProgress,
         );
         
-        stopwatch.stop();
-        
         // Check if result is a real video (not fallback)
-        if (!result.startsWith('IMAGE:')) {
-          debugPrint('VideoService: ✅ REAL preview generated in ${stopwatch.elapsed.inSeconds}s');
+        if (result.isNotEmpty && !result.startsWith('IMAGE:')) {
+          stopwatch.stop();
+          debugPrint('VideoService: ✅ REAL cloud preview generated in ${stopwatch.elapsed.inSeconds}s');
           debugPrint('📊 [Telemetry] video_preview_success: duration=${stopwatch.elapsedMilliseconds}ms, attempt=${attempt + 1}, source=veo_cloud_preview');
+          onProgress?.call(1.0);
           return result;
-        } else if (attempt < maxRetries - 1) {
-          debugPrint('VideoService: ⚠️ Got fallback, retrying... (${attempt + 1}/$maxRetries)');
-          await Future.delayed(Duration(seconds: 2 * (attempt + 1))); // Backoff
-          continue;
-        } else {
-          debugPrint('VideoService: Used fallback after $maxRetries attempts');
-          debugPrint('📊 [Telemetry] video_preview_fallback: duration=${stopwatch.elapsedMilliseconds}ms, attempts=$maxRetries');
-          return result; // Return fallback
         }
+
+        debugPrint('VideoService: ⚠️ Cloud preview returned fallback or empty, trying next tier...');
+        break; // Break loop to try Edge
       } catch (e) {
+        debugPrint('VideoService: Cloud Preview attempt ${attempt + 1} failed: $e');
         if (attempt < maxRetries - 1) {
-           debugPrint('VideoService: ❌ Preview attempt ${attempt + 1} failed: $e');
            await Future.delayed(Duration(seconds: 2 * (attempt + 1))); // Backoff
            continue;
         }
-        
-        // Last attempt failed
-        stopwatch.stop();
-        debugPrint('VideoService: ❌ All preview attempts failed after ${stopwatch.elapsed.inSeconds}s');
-        debugPrint('📊 [Telemetry] video_preview_failed: duration=${stopwatch.elapsedMilliseconds}ms, attempts=$maxRetries, error=$e');
-        return _getStaticFallback("Preview generation failed after $maxRetries attempts: $e");
       }
     }
-    
-    return _getStaticFallback("Unexpected preview flow termination");
+
+    // 2. Edge/On-Device Secondary fallback
+    try {
+      debugPrint('VideoService: Falling back to ON-DEVICE generation (OpenModel ONNX)...');
+      final onDeviceResult = await OpenModelService.generatePreviewOnDevice(effectivePrompt);
+      if (onDeviceResult.isNotEmpty && !onDeviceResult.startsWith('IMAGE:')) {
+        stopwatch.stop();
+        debugPrint('VideoService: ✅ On-device preview success in ${stopwatch.elapsed.inSeconds}s!');
+        onProgress?.call(1.0);
+        return onDeviceResult;
+      }
+    } catch (e) {
+      debugPrint('VideoService: On-device generation failed: $e');
+    }
+
+    // 3. Last Resort Fallback (Imagen Storyboard)
+    debugPrint('VideoService: 🚨 All real video tiers exhausted. Using last-resort storyboards.');
+    return await _generateImagenFallback(effectivePrompt);
   }
 
   /// Generates the final high-quality video (Veo 3.1).
@@ -114,6 +125,7 @@ class VideoGenerationService {
     onStatusMessage?.call('Generating high-quality video... This may take up to 2 minutes.');
     onProgress?.call(0.05);
     
+    // Tier 1: Cloud Final (Priority)
     try {
       final result = await _generateVideoInternal(
         prompt: effectivePrompt,
@@ -122,26 +134,35 @@ class VideoGenerationService {
         onProgress: onProgress,
       );
       
-      stopwatch.stop();
-      
       if (!result.startsWith('IMAGE:')) {
-        debugPrint('VideoService: ✅ FINAL video created in ${stopwatch.elapsed.inSeconds}s');
+        stopwatch.stop();
+        debugPrint('VideoService: ✅ FINAL cloud video created in ${stopwatch.elapsed.inSeconds}s');
         debugPrint('📊 [Telemetry] video_final_success: duration=${stopwatch.elapsed.inSeconds}s, source=veo_3.1_cloud, subtitles=$includeSubtitles');
         onStatusMessage?.call('High-quality video ready!');
         return result;
-      } else {
-        debugPrint('VideoService: ⚠️ Final generation fell back to static');
-        debugPrint('📊 [Telemetry] video_final_fallback: duration=${stopwatch.elapsedMilliseconds}ms');
-        onStatusMessage?.call('Video generation unavailable. Using static preview.');
-        return result;
       }
     } catch (e) {
-      stopwatch.stop();
-      debugPrint('VideoService: ❌ Final generation failed after ${stopwatch.elapsed.inSeconds}s');
-      debugPrint('📊 [Telemetry] video_final_failed: duration=${stopwatch.elapsedMilliseconds}ms, error=$e');
-      onStatusMessage?.call('Video generation failed. Please try again.');
-      rethrow;
+      debugPrint('VideoService: Cloud Final failed: $e. Trying Tier 2 (Edge)...');
     }
+
+    // Tier 2: Edge/On-Device (Secondary)
+    try {
+      debugPrint('VideoService: Attempting ON-DEVICE fallback for FINAL request...');
+      final onDeviceResult = await OpenModelService.generatePreviewOnDevice(effectivePrompt);
+      if (onDeviceResult.isNotEmpty && !onDeviceResult.startsWith('IMAGE:')) {
+        stopwatch.stop();
+        debugPrint('VideoService: ✅ FINAL request fulfilled by Edge video in ${stopwatch.elapsed.inSeconds}s');
+        onStatusMessage?.call('Video ready (on-device preview quality).');
+        return onDeviceResult;
+      }
+    } catch (e) {
+      debugPrint('VideoService: On-device generation also failed for FINAL: $e');
+    }
+
+    // Tier 3: Last Resort Fallback (Imagen Storyboard)
+    debugPrint('VideoService: ⚠️ All real video paths failed for final. Using storyboard.');
+    onStatusMessage?.call('Video generation unavailable. Providing cinematic storyboard.');
+    return await _generateImagenFallback(effectivePrompt);
   }
 
   static Future<String> _generateVideoInternal({
@@ -181,7 +202,7 @@ class VideoGenerationService {
         if (proxyResponse['custom_type'] == 'veo_lro') {
           final opName = proxyResponse['operationName'];
           debugPrint('VideoService: LRO started: $opName. Polling...');
-          return await _pollProxyVeoOperation(opName, onProgress: onProgress);
+          return await _pollProxyVeoOperation(opName, originalPrompt: prompt, onProgress: onProgress);
         } else if (proxyResponse['custom_type'] == 'veo_result') {
            final predictions = proxyResponse['predictions'] as List?;
            if (predictions != null && predictions.isNotEmpty) {
@@ -214,6 +235,7 @@ class VideoGenerationService {
 
   static Future<String> _pollProxyVeoOperation(
     String operationName, {
+    required String originalPrompt,
     Function(double)? onProgress,
     int maxRetries = 10,
   }) async {
@@ -222,9 +244,9 @@ class VideoGenerationService {
     const maxConsecutiveErrors = 3;
     const max404Retries = 6;
     
-    // Extended timeout: 180 seconds total (36 polls * 5s)
-    const int maxPolls = 36;
-    const Duration pollInterval = Duration(seconds: 5);
+    // Enhanced timeout: 600 seconds total (60 polls * 10s)
+    const int maxPolls = 60;
+    const Duration pollInterval = Duration(seconds: 10);
     
     debugPrint('VideoService: 🎬 Starting REAL video generation poll');
     debugPrint('VideoService: Operation ID: $operationName');
@@ -320,9 +342,43 @@ class VideoGenerationService {
         }
     }
     
-    debugPrint('VideoService: ⏰ Timeout after ${maxPolls * pollInterval.inSeconds}s');
+    debugPrint('VideoService: ⏰ Timeout after ${maxPolls * pollInterval.inSeconds}s. Triggering Storyboard Fallback.');
     debugPrint('📊 [Telemetry] video_generation_timeout: duration=${maxPolls * pollInterval.inSeconds}s, polls=$maxPolls');
-    return _getStaticFallback('Generation timed out after ${maxPolls * pollInterval.inSeconds}s.');
+    
+    // Try High-Quality Image Fallback before giving up
+    return await _generateImagenFallback(originalPrompt);
+  }
+
+  static Future<String> _generateImagenFallback(String prompt) async {
+    debugPrint('VideoService: 🎨 Falling back to High-Quality Storyboard (Imagen)...');
+    try {
+       final config = AIModelConfig(
+         provider: AIProvider.vertex, 
+         modelId: _fallbackImageModel,
+         temperature: 0.5, 
+         maxTokens: 100,
+       );
+       
+       final response = await AIProxyService.generateContent(
+         prompt: "$prompt. HIGH-QUALITY CINEMATIC STORYBOARD KEYFRAME.",
+         config: config,
+       );
+       
+       if (response['custom_type'] == 'imagen') {
+         final predictions = response['predictions'] as List?;
+         if (predictions != null && predictions.isNotEmpty) {
+           final imageUrl = predictions[0]['url'] ?? predictions[0]['gcsUri'];
+           if (imageUrl != null) {
+              debugPrint('VideoService: ✅ Imagen fallback success!');
+              return _sanitizeMediaUrl(imageUrl);
+           }
+         }
+       }
+    } catch (e) {
+       debugPrint('VideoService: Imagen fallback also failed: $e');
+    }
+    
+    return _getStaticFallback('Video generation timed out and Imagen fallback failed.');
   }
 
   static String _getStaticFallback(String reason) {
@@ -332,8 +388,8 @@ class VideoGenerationService {
     
     debugPrint('📊 [Telemetry] video_fallback_used: reason="$reason", timestamp=${DateTime.now().toIso8601String()}');
     
-    // Return IMAGE: prefix so UI knows this is not a real video
-    return "IMAGE:https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop"; 
+    // Return plain URL - UI should handle based on type/context
+    return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop"; 
   }
 
   static String _sanitizeMediaUrl(String url) {

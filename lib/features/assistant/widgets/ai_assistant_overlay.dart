@@ -696,6 +696,49 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             padding: const EdgeInsets.only(top: 12.0),
                             child: _buildGenUI(message.uiPayload!),
                           ),
+                        if (message.clarificationQuestions != null && message.clarificationQuestions!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "I need a few more details to get this just right:",
+                                  style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic, fontSize: 13),
+                                ),
+                                const SizedBox(height: 8),
+                                ...message.clarificationQuestions!.map((q) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: InkWell(
+                                    onTap: () {
+                                      _controller.text = q;
+                                      _keyboardFocusNode.requestFocus();
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueAccent.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.help_outline, size: 14, color: Colors.blueAccent),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              q,
+                                              style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                )),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -977,8 +1020,14 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                right: 8,
                child: Container(
                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                 decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
-                 child: const Text("VEO-2", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                 decoration: BoxDecoration(
+                   color: path.contains('commondatastorage.googleapis.com') ? Colors.blueAccent : Colors.orangeAccent,
+                   borderRadius: BorderRadius.circular(4)
+                 ),
+                 child: Text(
+                   path.contains('commondatastorage.googleapis.com') ? "PREVIEW ready (open model edge)" : "FINAL ready (Veo 3.1)", 
+                   style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
+                 ),
                ),
              )
           ],
@@ -1011,15 +1060,35 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: ThinkingIndicator(
-                  message: ChatMessage(
-                    id: 'temp',
-                    content: status ?? 'Thinking...',
-                    sender: MessageSender.system,
-                    type: MessageType.toolUsage,
-                    createdAt: _statusStartTime ?? DateTime.now(),
-                    metadata: {'status': status ?? 'thinking'},
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ThinkingIndicator(
+                      message: ChatMessage(
+                        id: 'temp',
+                        content: status ?? 'Thinking...',
+                        sender: MessageSender.system,
+                        type: MessageType.toolUsage,
+                        createdAt: _statusStartTime ?? DateTime.now(),
+                        metadata: {'status': status ?? 'thinking'},
+                      ),
+                    ),
+                    if (status != null && (status.contains('Using video_generation') || status.contains('polling')))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: TextButton.icon(
+                          onPressed: () {
+                            ref.read(assistantStatusProvider.notifier).state = null;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Video generation cancelled'))
+                            );
+                          },
+                          icon: const Icon(Icons.cancel_outlined, size: 14, color: Colors.redAccent),
+                          label: const Text('Cancel', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                          style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
