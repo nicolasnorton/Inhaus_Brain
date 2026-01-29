@@ -150,23 +150,24 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const pollUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
                 let targetUrl = pollUrl;
 
-                // [FIX for VEO] Veo returns an operation name with 'publishers/' which yields 404 on direct poll.
-                // We must rewrite this to the canonical project-level operations path.
+                // [NOTE] Veo operations must use the FULL operation name path, not the canonical simplified one.
+                // The simplified "projects/{p}/locations/{l}/operations/{uuid}" fails with:
+                // "The Operation ID must be a Long, but was instead: {uuid}"
+                // Veo requires: "projects/{p}/locations/{l}/publishers/google/models/{model}/operations/{uuid}"
+
+                /* DISABLED: This rewrite causes 400 errors for Veo
                 if (operationName.includes('/publishers/') && operationName.includes('/operations/')) {
                     try {
-                        // Regex to capture project, location, and the final operation ID (ignoring the middle)
-                        // Structure: projects/{p}/locations/{l}/publishers/.../operations/{id}
                         const match = operationName.match(/projects\/([^/]+)\/locations\/([^/]+)\/(?:.*)\/operations\/([^/]+)/);
 
                         if (match && match.length === 4) {
                             const pId = match[1];
-                            const lId = match[2]; // e.g. us-central1
-                            const opId = match[3]; // the UUID
+                            const lId = match[2];
+                            const opId = match[3];
 
                             const canonicalName = `projects/${pId}/locations/${lId}/operations/${opId}`;
                             console.log(`[PROXY] Rewriting Veo LRO name:\nFROM: ${operationName}\nTO:   ${canonicalName}`);
 
-                            // Update targetUrl to the canonical path
                             targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
                         } else {
                             console.warn(`[PROXY] Failed to parse Veo LRO structure: ${operationName}`);
@@ -175,6 +176,7 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                         console.error('[PROXY] URL Rewrite Error:', rewriteErr);
                     }
                 }
+                */
 
                 const response = await fetch(targetUrl, {
                     method: 'GET',
