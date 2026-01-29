@@ -107,44 +107,60 @@ class AIProxyService {
     }
   }
 
-  /// Specialized routing for Embeddings
+  /// Specialized routing for Embeddings with retry logic
   static Future<Map<String, dynamic>> generateEmbeddings({
     required String model,
     required List<Map<String, dynamic>> instances,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('User must be logged in to use AI Proxy.');
-    }
+    const maxRetries = 2; // Fewer retries for embeddings to keep total time reasonable
+    const timeout = Duration(seconds: 30); // Increased from implicit default
+    
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          throw Exception('User must be logged in to use AI Proxy.');
+        }
 
-    final idToken = await user.getIdToken();
-    if (idToken == null) {
-      throw Exception('Failed to retrieve ID Token.');
-    }
+        final idToken = await user.getIdToken();
+        if (idToken == null) {
+          throw Exception('Failed to retrieve ID Token.');
+        }
 
-    final body = {
-      "model": model,
-      "instances": instances,
-    };
+        final body = {
+          "model": model,
+          "instances": instances,
+        };
 
-    try {
-      final response = await http.post(
-        Uri.parse(_functionUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode(body),
-      );
+        final response = await http.post(
+          Uri.parse(_functionUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $idToken',
+          },
+          body: jsonEncode(body),
+        ).timeout(timeout); // Add explicit timeout
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Proxy Embedding Error ${response.statusCode}: ${response.body}');
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body);
+        } else {
+          throw Exception('Proxy Embedding Error ${response.statusCode}: ${response.body}');
+        }
+      } catch (e) {
+        final isLastAttempt = attempt == maxRetries - 1;
+        
+        if (isLastAttempt) {
+          debugPrint('AIProxyService Embedding Error (Final): $e');
+          rethrow;
+        }
+        
+        // Exponential backoff: 1s, 2s
+        final delay = Duration(seconds: 1 << attempt);
+        debugPrint('AIProxyService Embedding Attempt ${attempt + 1} Failed: $e. Retrying in ${delay.inSeconds}s...');
+        await Future.delayed(delay);
       }
-    } catch (e) {
-      debugPrint('AIProxyService Embedding Error: $e');
-      rethrow;
     }
+    
+    throw Exception('Embedding generation failed after $maxRetries attempts');
   }
 }

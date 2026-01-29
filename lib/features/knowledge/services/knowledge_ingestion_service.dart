@@ -65,28 +65,41 @@ $taskSummary
   }
 
   Future<void> ingestCopilotScreencap(String historySnippet, {List<int>? attachment}) async {
-    // Create the future but don't await it yet
-    final ingestionFuture = _knowledgeApi.createDocumentFromText(
-      datasetId: 'agent-learnings',
-      name: 'Copilot Learning ${DateTime.now().toIso8601String()}',
-      text: historySnippet,
-      chunkSize: _calculateChunkSize(KnowledgeSourceType.text, historySnippet),
-    );
+    const maxRetries = 3;
+    const initialDelay = Duration(seconds: 2);
+    
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Create the ingestion future
+        final ingestionFuture = _knowledgeApi.createDocumentFromText(
+          datasetId: 'agent-learnings',
+          name: 'Copilot Learning ${DateTime.now().toIso8601String()}',
+          text: historySnippet,
+          chunkSize: _calculateChunkSize(KnowledgeSourceType.text, historySnippet),
+        );
 
-    // We don't need a separate catchError if we handle it in the try-catch block
-    // and ensuring the timeout doesn't leave unhandled futures.
-    // However, to satisfy the requirement of "silently caught background fails":
-    final safeIngestionFuture = ingestionFuture.catchError((e) {
-      debugPrint('Background Ingestion Failed (Silently Caught): ${_safeError(e)}');
-      throw e; // Rethrow so the try-catch below can catch it
-    });
-
-    try {
-      // Now await with timeout
-      await safeIngestionFuture.timeout(const Duration(seconds: 60));
-    } catch (e) {
-      // Swallowed to prevent dangling future crashes after timeout
-      debugPrint('Ingestion Timeout/Error (Handled): ${_safeError(e)}');
+        // Attempt with timeout (90s total, allowing for retry delays)
+        await ingestionFuture.timeout(const Duration(seconds: 90));
+        
+        // Success - break out of retry loop
+        debugPrint('Knowledge ingestion succeeded on attempt ${attempt + 1}');
+        return;
+      } catch (e) {
+        final isLastAttempt = attempt == maxRetries - 1;
+        final errorMsg = _safeError(e);
+        
+        if (isLastAttempt) {
+          // Final attempt failed, log and swallow
+          debugPrint('Ingestion Failed After $maxRetries Attempts: $errorMsg');
+          return;
+        }
+        
+        // Calculate exponential backoff delay
+        final delay = initialDelay * (1 << attempt); // 2s, 4s, 8s
+        debugPrint('Ingestion Attempt ${attempt + 1} Failed: $errorMsg. Retrying in ${delay.inSeconds}s...');
+        
+        await Future.delayed(delay);
+      }
     }
   }
 
