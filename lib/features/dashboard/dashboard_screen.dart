@@ -42,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      Consumer(
+                      child: Consumer(
                         builder: (context, ref, child) {
                           final userAsync = ref.watch(appUserProvider);
                           return userAsync.when(

@@ -13,9 +13,12 @@ service cloud.firestore {
     }
 
     // Role helpers (assuming role in token or user document)
-    // For local development we can also check a 'roles' field if we had a get() helper
+    function getRole() {
+      return request.auth.token.get('role', '');
+    }
+
     function hasRole(role) {
-      return isAuthenticated() && request.auth.token.role == role;
+      return isAuthenticated() && getRole() == role;
     }
 
     function isSuperAdmin() {
@@ -24,10 +27,10 @@ service cloud.firestore {
 
     function isAgencyStaff() {
       return isAuthenticated() && (
-        request.auth.token.role == 'superAdmin' || 
-        request.auth.token.role == 'admin' || 
-        request.auth.token.role == 'humanAgencyStaff' ||
-        request.auth.token.role == 'accountManager'
+        getRole() == 'superAdmin' || 
+        getRole() == 'admin' || 
+        getRole() == 'humanAgencyStaff' ||
+        getRole() == 'accountManager'
       );
     }
 

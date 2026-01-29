@@ -71,7 +71,7 @@ class _PipelineSelectionScreenState extends ConsumerState<PipelineSelectionScree
       mainAxisSpacing: 20,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.8,
+      childAspectRatio: 1.6,
       children: children,
     );
   }
