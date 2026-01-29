@@ -268,8 +268,13 @@ class EdgeAIService {
              fullText += callJson;
           } else if (part is FunctionResponse) {
              fullText += "\n**Function Result:** ${part.response}";
+          } else if (part is ExecutableCodePart) {
+             // Handle ExecutableCodePart - extract the actual code
+             debugPrint('EdgeAI: ExecutableCodePart detected - language: ${part.language}, code length: ${part.code.length}');
+             fullText += part.code;
           } else {
-             // Fallback for other types (ExecutableCode, etc. might be in toString)
+             // Fallback for other unknown types
+             debugPrint('EdgeAI Warning: Unknown part type: ${part.runtimeType}');
              fullText += part.toString();
           }
        }
