@@ -118,7 +118,9 @@ class VideoGenerationService {
 
   static Future<String> _pollProxyVeoOperation(String operationName, {Function(double)? onProgress}) async {
     int errors = 0;
-    const maxErrors = 3;
+    const maxErrors = 5; // Increased tolerance for 404s during initial propagation
+
+    debugPrint('VideoService: Starting poll for Operation: $operationName');
 
     for (int i = 0; i < 60; i++) {
         await Future.delayed(const Duration(seconds: 5));
@@ -152,10 +154,16 @@ class VideoGenerationService {
             }
         } catch (e) {
             errors++;
-            debugPrint('VideoService: Polling error (attempt $i): $e');
+            debugPrint('VideoService: Polling error (attempt ${i + 1}): $e');
+            
+            // Check for 404 specifically in the error string or 500 which might wrap the 404 from proxy
+            if (e.toString().contains('404') || e.toString().contains('Not Found')) {
+                debugPrint('VideoService: 404 Not Found during polling. This might be a path issue.');
+            }
+
             if (errors >= maxErrors) {
-               debugPrint('VideoService: Max polling errors reached. Returning fallback.');
-               return _getStaticFallback('Network or API error during polling.');
+               debugPrint('VideoService: Max polling errors ($maxErrors) reached. Returning fallback.');
+               return _getStaticFallback('Network or API error during polling (Persistent 404/500).');
             }
             // Continue polling despite transient errors until maxErrors
         }

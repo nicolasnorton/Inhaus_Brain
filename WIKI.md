@@ -180,8 +180,8 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
 
 ### 1. Polling Errors (404/500)
 *   **Symptom**: The console shows `Proxy Poll Error 500` followed by a `404 Not Found` from the Google API.
-*   **Cause**: The Veo model returns an operation ID with a special "publisher" path that the standard Vertex AI polling endpoint doesn't recognize.
-*   **Solution**: Ensure your Cloud Function `proxyVertexAI` is up to date (Deployed Jan 29, 2026). It now automatically rewrites the Veo operation path to the canonical `v1` endpoint.
+*   **Cause**: The Veo model returns an operation ID with a special "publisher" path. While the proxy rewrites this, transient 404s may occur during propagation or if the region is overloaded.
+*   **Solution**: The system now includes **automatic retries** (up to 5 attempts) and an extended fallback mechanism. If it persists, checking the GCP Console for 'Vertex AI' API enablement in `us-central1` is recommended.
 
 ### 2. "Operation ID must be a Long"
 *   **Symptom**: Error message complaining about UUID vs Long format.
