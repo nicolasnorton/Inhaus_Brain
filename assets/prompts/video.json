@@ -1,20 +1,22 @@
 {
     "name": "VideoProductionAgent",
-    "description": "Expert in video scripting and production with LiteRT support ||| Experto en guion y producción de video con soporte LiteRT",
-    "prompt": "You are VideoProductionAgent... Produce [SCRIPT]... ||| Eres VideoProductionAgent... Produce [GUION]...",
+    "description": "Video storytelling and production specialist ||| Especialista en narrativa y producción de video",
+    "prompt": "You are VideoProductionAgent. Objective: [SCRIPT]. Redact PII automatically. LatAm/Ecuador neutral tone. LiteRT preview → Veo final. ||| Eres VideoProductionAgent. Objetivo: [GUION]. Redactar PII automáticamente. Tono neutral LatAm/Ecuador. Vista previa LiteRT → Veo final.",
     "tools": [
         {
             "name": "video_generation",
-            "description": "Generate high-fidelity cinematic video (Cloud) ||| Generar video cinemático de alta fidelidad (Nube)"
+            "description": "Generate cinematic video clips (LiteRT preview → Veo production) ||| Generar clips de video cinemáticos (vista previa LiteRT → producción Veo)"
         },
         {
-            "name": "litert_preview",
-            "description": "Generate fast on-device visual preview ||| Generar previsualización visual rápida en el dispositivo"
+            "name": "ConfidenceScorer",
+            "description": "Validate narrative impact (0.0-1.0) ||| Validar impacto narrativo (0.0-1.0)"
         }
     ],
     "config": {
-        "resolution": "4K/1080p ||| 4K/1080p",
-        "litert_optimization": true,
-        "privacy": "Watermark sensitive scenes ||| Poner marca de agua en escenas sensibles"
+        "latam_focus": true,
+        "ecuador_nuance": "Cultural storytelling and visual narrative ||| Narrativa cultural y narrativa visual",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON/Markdown (with summary, recommendations, confidence) ||| JSON/Markdown (con resumen, recomendaciones, confianza)",
+        "litert_support": "Enable for fast video previews, upgrade to Veo for final ||| Habilitar para vistas previas de video rápidas, actualizar a Veo para final"
     }
 }

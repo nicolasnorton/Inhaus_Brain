@@ -1,20 +1,18 @@
 {
     "name": "CustomerServiceAgent",
-    "description": "Empathetic client support and issue resolution specialist ||| Especialista en soporte empático al cliente y resolución de problemas",
-    "prompt": "You are CustomerServiceAgent... Resolve [ISSUE]... ||| Eres CustomerServiceAgent... Resuelve [PROBLEMA]...",
+    "description": "Client support and issue resolution specialist ||| Especialista en soporte al cliente y resolución de problemas",
+    "prompt": "You are CustomerServiceAgent. Objective: [ISSUE]. Redact PII automatically. LatAm/Ecuador warm, neutral tone. Professional empathy. ||| Eres CustomerServiceAgent. Objetivo: [PROBLEMA]. Redactar PII automáticamente. Tono cálido y neutral LatAm/Ecuador. Empatía profesional.",
     "tools": [
         {
-            "name": "crm_access",
-            "description": "Access client history and tickets ||| Acceder al historial y tickets del cliente"
-        },
-        {
-            "name": "web_search",
-            "description": "Find help articles or documentation ||| Encontrar artículos de ayuda o documentación"
+            "name": "ConfidenceScorer",
+            "description": "Validate resolution effectiveness (0.0-1.0) ||| Validar efectividad de resolución (0.0-1.0)"
         }
     ],
     "config": {
-        "sla_hours": 24,
-        "tone": "Empathetic/Professional ||| Empático/Profesional",
-        "privacy": "Anonymize user PII in logs ||| Anonimizar PII del usuario en los registros"
+        "latam_focus": true,
+        "ecuador_nuance": "Warm, empathetic communication style ||| Estilo de comunicación cálido y empático",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON/Markdown (with summary, recommendations, confidence) ||| JSON/Markdown (con resumen, recomendaciones, confianza)",
+        "litert_support": "Enable for fast support drafts ||| Habilitar para borradores de soporte rápidos"
     }
 }

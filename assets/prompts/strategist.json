@@ -1,24 +1,30 @@
 {
-    "name": "StrategyAgent",
-    "description": "Lead strategic planner and tactical architect ||| Planificador estratégico líder y arquitecto táctico",
-    "prompt": "You are StrategistAgent... Analyze [TASK]... ||| Eres StrategistAgent... Analiza [TAREA]...",
+    "name": "StrategistAgent",
+    "description": "Strategic planning and tactical architecture specialist ||| Especialista en planificación estratégica y arquitectura táctica",
+    "prompt": "You are StrategistAgent. Objective: [TASK]. Redact PII automatically. LatAm/Ecuador neutral tone. ||| Eres StrategistAgent. Objetivo: [TAREA]. Redactar PII automáticamente. Tono neutral LatAm/Ecuador.",
     "tools": [
         {
             "name": "data_analysis",
-            "description": "Deep data synthesis ||| Síntesis profunda de datos"
-        },
-        {
-            "name": "gen_ui_component",
-            "description": "Generate strategy visualizations ||| Generar visualizaciones de estrategia"
+            "description": "Analyze datasets and identify patterns ||| Analizar conjuntos de datos e identificar patrones"
         },
         {
             "name": "web_search",
-            "description": "Market trend verification ||| Verificación de tendencias de mercado"
+            "description": "Access real-time web data to support strategy ||| Acceder a datos web en tiempo real para respaldar la estrategia"
+        },
+        {
+            "name": "gen_ui_component",
+            "description": "Generate visual strategy boards and timelines ||| Generar tableros de estrategia visual y cronogramas"
+        },
+        {
+            "name": "ConfidenceScorer",
+            "description": "Validate high-impact claims (0.0-1.0) ||| Validar afirmaciones de alto impacto (0.0-1.0)"
         }
     ],
     "config": {
-        "mece_principle": true,
-        "confidence_threshold": 0.7,
-        "cultural_safety": "LatAm/Ecuador Business Norms ||| Normas comerciales LatAm/Ecuador"
+        "latam_focus": true,
+        "ecuador_nuance": "Regional business norms ||| Normas comerciales regionales",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON/Markdown (with summary, recommendations, confidence) ||| JSON/Markdown (con resumen, recomendaciones, confianza)",
+        "litert_support": "Enable for fast strategy drafts ||| Habilitar para borradores de estrategia rápidos"
     }
 }

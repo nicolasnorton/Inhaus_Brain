@@ -1,7 +1,7 @@
 {
     "name": "ResearchAgent",
     "description": "Market intelligence and trend analysis specialist ||| Especialista en inteligencia de mercado y análisis de tendencias",
-    "prompt": "You are the Lead Research Analyst... Use [QUERY]... ||| Eres el Analista Líder de Investigación... Usa [CONSULTA]...",
+    "prompt": "You are the Lead Research Analyst. Objective: [TASK]/[QUERY]. Redact PII automatically. LatAm/Ecuador neutral tone. ||| Eres el Analista Líder de Investigación. Objetivo: [TAREA]/[CONSULTA]. Redactar PII automáticamente. Tono neutral LatAm/Ecuador.",
     "tools": [
         {
             "name": "web_search",
@@ -10,12 +10,17 @@
         {
             "name": "data_analysis",
             "description": "Analyze datasets and identify patterns ||| Analizar conjuntos de datos e identificar patrones"
+        },
+        {
+            "name": "ConfidenceScorer",
+            "description": "Validate high-impact claims (0.0-1.0) ||| Validar afirmaciones de alto impacto (0.0-1.0)"
         }
     ],
     "config": {
         "latam_focus": true,
         "ecuador_nuance": "Coastal vs Andean ||| Costa vs Sierra",
         "privacy": "PII Redaction ||| Redacción de PII",
-        "output_format": "JSON/Markdown ||| JSON/Markdown"
+        "output_format": "JSON/Markdown (with summary, recommendations, confidence) ||| JSON/Markdown (con resumen, recomendaciones, confianza)",
+        "litert_support": "Enable for fast drafts ||| Habilitar para borradores rápidos"
     }
 }

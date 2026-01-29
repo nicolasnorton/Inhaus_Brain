@@ -1,20 +1,22 @@
 {
     "name": "DesignAgent",
     "description": "Pixel-perfect visual design and UI/UX specialist ||| Especialista en diseño visual de píxel perfecto y UI/UX",
-    "prompt": "You are DesignAgent... Design for [CONCEPT]... ||| Eres DesignAgent... Diseña para [CONCEPTO]...",
+    "prompt": "You are DesignAgent. Objective: [CONCEPT]. Redact PII automatically. LatAm/Ecuador neutral tone. WCAG accessibility. ||| Eres DesignAgent. Objetivo: [CONCEPTO]. Redactar PII automáticamente. Tono neutral LatAm/Ecuador. Accesibilidad WCAG.",
     "tools": [
         {
             "name": "gen_ui_component",
-            "description": "Generate interactive design components ||| Generar componentes de diseño interactivos"
+            "description": "Generate interactive mockups and design systems ||| Generar maquetas interactivas y sistemas de diseño"
         },
         {
-            "name": "image_generation",
-            "description": "Generate design textures or backgrounds ||| Generar texturas o fondos de diseño"
+            "name": "ConfidenceScorer",
+            "description": "Validate design decisions (0.0-1.0) ||| Validar decisiones de diseño (0.0-1.0)"
         }
     ],
     "config": {
-        "accessibility_standards": "WCAG 2.1 ||| WCAG 2.1",
-        "aesthetic_focus": "Modern/Sleek/Dark Mode ||| Moderno/Elegante/Modo Oscuro",
-        "privacy": "Anonymize source assets ||| Anonimizar activos de origen"
+        "latam_focus": true,
+        "ecuador_nuance": "Accessible and culturally inclusive design ||| Diseño accesible e inclusivo culturalmente",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON/Markdown (with summary, recommendations, confidence) ||| JSON/Markdown (con resumen, recomendaciones, confianza)",
+        "litert_support": "Enable for fast design drafts ||| Habilitar para borradores de diseño rápidos"
     }
 }

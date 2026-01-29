@@ -28,6 +28,30 @@ exports.onCampaignCreated = functions.firestore
         });
     });
 
+/**
+ * Syncs user roles from Firestore to Firebase Auth Custom Claims.
+ * This ensures that Firestore security rules can reliably use request.auth.token.role.
+ */
+exports.onUserUpdated = functions.firestore
+    .document('users/{userId}')
+    .onWrite(async (change, context) => {
+        const userId = context.params.userId;
+        const data = change.after.data();
+
+        if (!data || !data.role) {
+            console.log(`User ${userId} deleted or has no role. Removing claims.`);
+            return admin.auth().setCustomUserClaims(userId, null);
+        }
+
+        const role = data.role;
+        try {
+            await admin.auth().setCustomUserClaims(userId, { role: role });
+            console.log(`Success: Set custom claim 'role' to '${role}' for user ${userId}`);
+        } catch (error) {
+            console.error(`Error setting custom claims for user ${userId}:`, error);
+        }
+    });
+
 // Callable function for High-Fidelity Final Asset Generation (Cloud Fallback)
 exports.generateFinalAssets = functions.https.onCall(async (data, context) => {
     // Ensure user is authenticated

@@ -166,7 +166,9 @@ Additional roles like **Designer**, **Ad Manager**, and **Social Media Manager**
 
 ## 🛡️ Production & Security
 Inhaus Brain is built with enterprise-grade safety:
-*   **Role-Based Security**: Access is strictly enforced via Firebase Security Rules at the database level.
+*   **Role-Based Security**: Access is strictly enforced via Firebase Security Rules at the database level and Firebase Auth Custom Claims for fast, secure permission checking.
+*   **Custom Claims Sync**: Cloud Functions automatically sync user roles from Firestore to Firebase Auth tokens, enabling instant RBAC validation without additional database reads.
+*   **UI Masking**: Navigation and action buttons are automatically hidden based on the active user's role (e.g., Client Users cannot see Debug, Knowledge, or Admin tools).
 *   **Automatic Redaction**: Sensitive data like emails and phone numbers are automatically hidden from AI models to protect privacy.
 *   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
 *   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.

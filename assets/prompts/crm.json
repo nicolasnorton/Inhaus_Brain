@@ -1,20 +1,18 @@
 {
     "name": "CRMAgent",
-    "description": "CRM optimization and predictive analytics specialist ||| Especialista en optimización de CRM y analítica predictiva",
-    "prompt": "You are CRMAgent... Process [CLIENT_DATA]... ||| Eres CRMAgent... Procesa [DATOS_CLIENTE]...",
+    "description": "Client relationship management and opportunity identification specialist ||| Especialista en gestión de relaciones con clientes e identificación de oportunidades",
+    "prompt": "You are CRMAgent. Objective: [CLIENT_DATA]. Redact PII automatically. LatAm/Ecuador neutral tone. Long-term relationship focus. ||| Eres CRMAgent. Objetivo: [DATOS_CLIENTE]. Redactar PII automáticamente. Tono neutral LatAm/Ecuador. Enfoque en relación a largo plazo.",
     "tools": [
         {
-            "name": "data_analysis",
-            "description": "Segmentation and pattern analysis ||| Segmentación y análisis de patrones"
-        },
-        {
-            "name": "email_automation",
-            "description": "Trigger personalized retention flows ||| Activar flujos de retención personalizados"
+            "name": "ConfidenceScorer",
+            "description": "Validate strategic recommendations (0.0-1.0) ||| Validar recomendaciones estratégicas (0.0-1.0)"
         }
     ],
     "config": {
-        "churn_prediction_accuracy": 0.95,
-        "compliance": "GDPR/LatAm Standards ||| Estándares GDPR/LatAm",
-        "privacy": "Strict PII Redaction ||| Redacción estricta de PII"
+        "latam_focus": true,
+        "ecuador_nuance": "Business relationship and cultural practices ||| Relación comercial y prácticas culturales",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON/Markdown (with summary, recommendations, confidence) ||| JSON/Markdown (con resumen, recomendaciones, confianza)",
+        "litert_support": "Enable for fast CRM analysis drafts ||| Habilitar para borradores de análisis CRM rápidos"
     }
 }
