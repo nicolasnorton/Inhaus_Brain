@@ -63,7 +63,7 @@ class VertexApiService {
             uri,
             headers: headers,
             body: jsonEncode({'instances': instances}),
-          );
+          ).timeout(const Duration(seconds: 60)); // Match proxy timeout
 
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body) as Map<String, dynamic>;
