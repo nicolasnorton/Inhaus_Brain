@@ -200,4 +200,12 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
     *   **Failure Fallback**: If the API returned an error or timed out, the system defaults to this "Storyboard" so the UI remains functional.
 *   **Fix**: Check your network tab. If `proxyVertexAI` failed, verify your Firebase Auth token. If you are in `Preview` mode, this is expected behavior for fast iteration if the cloud model is unreachable.
 
+### 5. Gen UI: Detailed vs Placeholder Data
+*   **Symptom**: Reports show "TBD%" or "XX%" rather than actual numbers.
+*   **Cause**: The model chose a "fast" path or didn't have enough grounded data.
+*   **Solution**: 
+    1.  Ensure you are using **Google Search grounding** (automatically enabled for Research tasks).
+    2.  The system now strictly forbids placeholders. If you see placeholders, try refreshing or re-prompting with "Use real data for the report."
+    3.  Detailed reports require at least 5-7 sections; if the report is too short, the model may be ignoring quality guidelines.
+
 *Built with ❤️ to make AI automation accessible for everyone.*
