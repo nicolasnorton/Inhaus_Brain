@@ -149,31 +149,27 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
 
                 let targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
 
-                // [FIX] Veo returns a "publisher model" path for operations, but the polling endpoint
-                // requires the canonical `projects/.../locations/.../operations/...` path.
-                // We rewrite it here to fix the 404 error caused by querying the publisher path directly.
-                if (operationName.includes('/publishers/') && operationName.includes('/operations/')) {
-                    try {
-                        const match = operationName.match(/projects\/([^/]+)\/locations\/([^/]+)\/(?:.*)\/operations\/([^/]+)/);
+                // [PERMANENT FIX] Handle Veo and other models that return UUIDs as Operation IDs.
+                // The standard 'v1' operations endpoint often requires a 'Long' (numeric) ID.
+                // To support UUIDs, we must:
+                // 1. Use the 'v1beta1' endpoint.
+                // 2. Use the location-specific regional host (e.g., us-central1-aiplatform).
+                // 3. Keep the original model-specific path if it exists, as it's often more UUID-friendly.
 
-                        if (match && match.length === 4) {
-                            const pId = match[1];
-                            const lId = match[2];
-                            const opId = match[3];
+                try {
+                    // Extract location from operationName if present (format: projects/.../locations/{location}/...)
+                    const locationMatch = operationName.match(/locations\/([^/]+)/);
+                    const lId = locationMatch ? locationMatch[1] : 'us-central1';
 
-                            // Construct the canonical Operations resource name
-                            const canonicalName = `projects/${pId}/locations/${lId}/operations/${opId}`;
+                    // Construct targeted URL using regional host and v1beta1
+                    targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
 
-                            // Use the v1beta1 API endpoint for Veo operations
-                            // This resolves "Operation ID must be a Long" error which occurs on some v1 endpoints
-                            targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
-                            console.log(`[PROXY] Rewriting Veo LRO name for polling:\nFROM: ${operationName}\nTO:   ${targetUrl}`);
-                        } else {
-                            console.warn(`[PROXY] Failed to parse Veo LRO structure: ${operationName}`);
-                        }
-                    } catch (rewriteErr) {
-                        console.error('[PROXY] URL Rewrite Error:', rewriteErr);
-                    }
+                    console.log(`[PROXY] Targeted Polling Path: ${targetUrl}`);
+
+                    // If it's the publisher-specific path (Veo), we definitely want to keep it as is.
+                    // If it was already a canonical path, it also works on this URL structure.
+                } catch (rewriteErr) {
+                    console.error('[PROXY] URL Construction Error:', rewriteErr);
                 }
 
                 // Retry logic for polling requests (transient network errors)
@@ -205,10 +201,35 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
+
+                    // [RECOVERY] If we got a 400 (Invalid Argument - probably the Long vs UUID error)
+                    // or a 404, let's try a canonical rewrite as a last-resort attempt.
+                    if (response.status === 400 && operationName.includes('/publishers/')) {
+                        console.log('[PROXY] 400 Detected on publisher path. Attempting canonical path repair...');
+                        const match = operationName.match(/projects\/([^/]+)\/locations\/([^/]+)\/(?:.*)\/operations\/([^/]+)/);
+                        if (match) {
+                            const [, , lId, opId] = match;
+                            const repairUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${match[1]}/locations/${lId}/operations/${opId}`;
+                            console.log(`[PROXY] Retrying with repaired URL: ${repairUrl}`);
+                            const retryResp = await fetch(repairUrl, {
+                                method: 'GET',
+                                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+                            });
+                            if (retryResp.ok) {
+                                const data = await retryResp.json();
+                                return res.status(200).json(data);
+                            }
+                            console.warn('[PROXY] Repair attempt also failed.');
+                        }
+                    }
+
                     // Return 200 with error info so client can handle it gracefully instead of crashing
                     return res.status(200).json({
                         done: true,
-                        error: { message: `Polling HTTP Error ${response.status}: ${errorText}` }
+                        error: {
+                            message: `Polling HTTP Error ${response.status}: ${errorText}`,
+                            code: response.status
+                        }
                     });
                 }
 

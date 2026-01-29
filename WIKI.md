@@ -184,9 +184,10 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
 *   **Solution**: The system now includes **automatic retries** (up to 5 attempts) and an extended fallback mechanism. If it persists, checking the GCP Console for 'Vertex AI' API enablement in `us-central1` is recommended.
 
 ### 2. "Operation ID must be a Long"
-*   **Symptom**: Error message complaining about UUID vs Long format.
-*   **Cause**: This happens when hitting the `v1beta1` endpoint with a Veo UUID operation ID.
-*   **Solution**: The system now routes polling to the `v1` endpoint which accepts UUIDs. No action needed if the latest proxy is deployed.
+*   **Symptom**: Error message `"The Operation ID must be a Long, but was instead: UUID"`.
+*   **Cause**: This happens when hitting the standard `v1` endpoint with a Veo UUID operation ID. The `v1` API version often expects numeric (Long) IDs.
+*   **Solution**: The system now strictly uses the **`v1beta1`** regional endpoint (e.g., `us-central1-aiplatform.googleapis.com`) which supports UUIDs. 
+*   **Hardening**: If a 400 error occurs, the proxy now automatically attempts to "repair" the operation name to the canonical format. If cloud polling still fails, the system instantly falls back to the **LiteRT Edge Preview** to ensure a real video is still produced.
 
 ### 3. Video Stuck in "Thinking..."
 *   **Symptom**: The generation never completes.

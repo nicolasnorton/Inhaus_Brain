@@ -282,6 +282,26 @@ class VideoGenerationService {
                       return _getStaticFallback("API quota exceeded: $errorMsg");
                    }
                    
+                   // [NEW] Handle specific Operation ID structure error
+                   if (errorMsg.contains('must be a Long') || errorMsg.contains('INVALID_ARGUMENT')) {
+                      debugPrint('VideoService: 🚨 Operation ID Format Error detected. Cloud Veo 3.1 polling is incompatible with this ID type.');
+                      debugPrint('📊 [Telemetry] video_id_format_error: id=$operationName');
+                      
+                      // Immediate fallback to Tier 2 (Edge/LiteRT) to save the user experience
+                      debugPrint('VideoService: Falling back to Edge Preview (LiteRT) due to structural error.');
+                      try {
+                        final edgeResult = await OpenModelService.generatePreviewOnDevice(originalPrompt);
+                        if (edgeResult.isNotEmpty && !edgeResult.startsWith('IMAGE:')) {
+                          debugPrint('VideoService: ✅ Fallback to Edge succeeded after Cloud ID error.');
+                          return edgeResult;
+                        }
+                      } catch (e) {
+                        debugPrint('VideoService: Edge fallback also failed: $e');
+                      }
+                      
+                      return _getStaticFallback("Video format error (ID mismatch). Showing storyboard instead.");
+                   }
+                   
                    return _getStaticFallback("Generation failed: $errorMsg");
                 }
                 
