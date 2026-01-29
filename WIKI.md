@@ -178,108 +178,26 @@ Inhaus Brain is built with enterprise-grade safety:
 
 Is video generation stalling or failing? Use these steps to diagnose and fix common issues in the Video Generation Pipeline.
 
-### ✅ What's New (Latest Updates)
-**The video generation system has been significantly hardened:**
-*   **180-Second Timeout**: Real video generation now allows up to **3 minutes** for cloud rendering (previously 5 minutes, now optimized to 180s with more frequent polling).
-*   **Exponential Backoff**: Network errors trigger smart retry logic with increasing delays (capped at 10s).
-*   **404 Recovery**: Up to **6 automatic retries** for "operation not found" errors before fallback.
-*   **Non-Blocking Ingest**: Knowledge auto-ingest no longer blocks video generation (fire-and-forget pattern).
-*   **Real Video Priority**: System always attempts real Veo cloud generation first. Fallback to static storyboard only after all retries exhausted.
-*   **User Messaging**: Clear status updates like "Generating high-quality video... This may take up to 2 minutes."
-
 ### 1. Polling Errors (404/500)
-*   **Symptom**: Console shows `Proxy Poll Error 500` or `404 Not Found` from Vertex AI.
-*   **Cause**: Transient network issues or Google API propagation delay for LRO (Long Running Operation) IDs.
-*   **Solution**: 
-    *   ✅ **Automatic retries**: System now retries up to 6 times for 404 errors with exponential backoff.
-    *   If 404 persists after 6 retries: fallback to static storyboard (last resort).
-    *   Check GCP Console: Ensure Vertex AI API is enabled in `us-central1`.
-    *   Telemetry will log `video_generation_failed` with reason `404_operation_not_found`.
+*   **Symptom**: The console shows `Proxy Poll Error 500` followed by a `404 Not Found` from the Google API.
+*   **Cause**: The Veo model returns an operation ID with a special "publisher" path. While the proxy rewrites this, transient 404s may occur during propagation or if the region is overloaded.
+*   **Solution**: The system now includes **automatic retries** (up to 5 attempts) and an extended fallback mechanism. If it persists, checking the GCP Console for 'Vertex AI' API enablement in `us-central1` is recommended.
 
 ### 2. "Operation ID must be a Long"
-*   **Symptom**: Error about UUID vs Long format in operation ID.
-*   **Cause**: Mismatch between `v1beta1` and `v1` Vertex AI endpoints.
-*   **Solution**: ✅ **Fixed**. Proxy now routes polling to `v1` endpoint which accepts UUIDs. No action needed if latest functions are deployed.
+*   **Symptom**: Error message complaining about UUID vs Long format.
+*   **Cause**: This happens when hitting the `v1beta1` endpoint with a Veo UUID operation ID.
+*   **Solution**: The system now routes polling to the `v1` endpoint which accepts UUIDs. No action needed if the latest proxy is deployed.
 
-### 3. Video Takes a Long Time (1-2 Minutes)
-*   **Symptom**: Video generation shows "Still processing..." for 60-120 seconds.
-*   **This is NORMAL**: 
-    *   **Preview (veo-3.0-fast)**: ~10-30 seconds typical.
-    *   **Final (veo-3.1)**: ~60-180 seconds typical for HQ render.
-*   **What to expect**:
-    *   Progress bar updates every 5 seconds.
-    *   Status message: "Generating high-quality video... This may take up to 2 minutes."
-    *   Total timeout: 180 seconds (36 polls).
-*   **When to worry**: If it exceeds 180 seconds, it will timeout and show fallback.
+### 3. Video Stuck in "Thinking..."
+*   **Symptom**: The generation never completes.
+*   **Cause**: This acts as a timeout. Cloud rendering (Veo 3.1) can take ~5 minutes, but **LiteRT Previews** have a strict 3-second timeout.
+*   **Fallback**: If a Preview takes longer than 3 seconds, the system instantly switches to a **Static Storyboard** image so you aren't left waiting. You can try "Render Final" if you are happy with the static concept.
 
-### 4. Knowledge Ingest TimeoutException
-*   **Symptom**: Console shows `TimeoutException after 0:00:10.000000` during video generation.
-*   **Cause**: Knowledge auto-ingest was blocking the main flow (now fixed).
-*   **Solution**: ✅ **Fixed**. Ingest is now fire-and-forget (unawaited) with 90s timeout. It won't block video generation.
-*   **Impact**: You may still see the timeout warning in logs, but it's non-blocking and won't affect video generation.
-
-### 5. Mock Video / Static Storyboard Appearing
-*   **Symptom**: You see a static image or placeholder instead of real video.
-*   **When this happens**:
-    *   **Last Resort Fallback**: After all retries exhausted (2 preview retries + 36 polling attempts).
-    *   **Quota Exceeded**: API quota hit (immediate fallback).
-    *   **Network Failure**: 3+ consecutive network errors during polling.
-*   **How to verify**:
-    *   Check console for telemetry: `video_fallback_used` with reason.
-    *   Look for 🚨 emoji in logs: "[LAST RESORT FALLBACK]".
-    *   Result URL starts with `IMAGE:` prefix.
-*   **What to do**:
-    *   **First time**: Try again - might be transient network issue.
-    *   **Repeated failures**: Check Firebase Auth, Vertex AI API quotas, network connectivity.
-    *   **Expected in dev**: Non-web platforms use mock for fast iteration.
-
-### 6. Progress Bar Stuck at Same Percentage
-*   **Symptom**: Progress shows 45% and doesn't update.
-*   **Cause**: Likely a polling timeout or dropped connection.
-*   **Solution**:
-    *   Wait for full 180s timeout - might resume.
-    *   If stuck beyond 180s, operation timed out.
-    *   Check network tab: Is `proxyVertexAI` returning 200?
-    *   Telemetry will log `video_generation_timeout`.
-
-### 7. How to Verify Real Video Generation
-**Check these logs for successful REAL video:**
-```
-VideoService: 🎬 Starting REAL video generation poll
-VideoService: Poll 1/36 (0s elapsed)
-...
-VideoService: Poll 17/36 (80s elapsed)
-VideoService: ✅ Operation complete!
-VideoService: 🎥 REAL video URL found: https://storage.googleapis.com/.../video.mp4
-TelemetryService: video_generation_success { duration_s: 80, polls: 17, source: veo_cloud }
-```
-
-**Telemetry Events for Success:**
-*   `video_preview_success` - Preview completed
-*   `video_final_success` - Final render completed
-*   `video_generation_success` - Cloud operation succeeded
-
-**Telemetry Events for Issues:**
-*   `video_generation_failed` - Operation failed (reason: 404_operation_not_found, consecutive_errors, quota)
-*   `video_generation_timeout` - Exceeded 180s
-*   `video_fallback_used` - Last resort fallback triggered
-*   `video_preview_fallback` / `video_final_fallback` - Specific stage fallbacks
-
-### 8. Cancel Long-Running Generation (Future)
-*   **Current**: No cancel button yet.
-*   **Workaround**: Wait for timeout (180s) or refresh page.
-*   **Planned**: Cancel button to abort LRO during long generations.
-
----
-
-## 📊 Expected Video Generation Times
-
-| Type | Model | Typical Duration | Max Timeout | Fallback After |
-|------|-------|------------------|-------------|----------------|
-| **Preview** | veo-3.0-fast | 10-30s | 180s | 2 retries + 180s polling |
-| **Final** | veo-3.1 | 60-180s | 180s | 36 polls (180s) |
-| **Mock (Dev)** | Local | 1.5s | N/A | Immediate (non-web) |
-
----
+### 4. Mock Video / Storyboard (Big Buck Bunny) Appearing
+*   **Symptom**: You see a cartoon bunny video or a static video placeholder.
+*   **Cause**: This is the system's "Safety Fallback" or a "LiteRT Mock" in development environments. It appears if:
+    *   **LiteRT Preview**: In non-web/dev environments, the system simulates a fast preview generation (<2s).
+    *   **Failure Fallback**: If the API returned an error or timed out, the system defaults to this "Storyboard" so the UI remains functional.
+*   **Fix**: Check your network tab. If `proxyVertexAI` failed, verify your Firebase Auth token. If you are in `Preview` mode, this is expected behavior for fast iteration if the cloud model is unreachable.
 
 *Built with ❤️ to make AI automation accessible for everyone.*
