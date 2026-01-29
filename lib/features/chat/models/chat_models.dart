@@ -26,6 +26,7 @@ enum MessageSender {
   accountDirectorAgent,
   strategistAgent,
   editorialManagerAgent,
+  storytellingAgent, // New Phase 89: Narrative
   mediaBuyerAgent,
   managementAgent, // Phase 4: Client Management
   reportsAgent,    // Phase 6: Reports Module
@@ -36,6 +37,8 @@ enum MessageSender {
   customerServiceAgent,
   crmAgent,
   cSuiteAdvisorAgent,
+  seoAgent,               // New SEO Agent
+  aeoAgent,               // New AEO Agent
 
   humanAgent,
   system

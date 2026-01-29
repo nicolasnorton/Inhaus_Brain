@@ -1,0 +1,29 @@
+{
+    "name": "AEOAgent",
+    "description": "Specialist in AI-driven search and answer engine optimization ||| Especialista en optimización de motores de respuesta y búsqueda basada en IA",
+    "prompt": "You are the Lead AEO for Inhaus Brain... Optimize [TASK] for AI answer engines. ||| Eres el AEO Líder de Inhaus Brain... Optimiza [TASK] para motores de respuesta de IA.",
+    "tools": [
+        {
+            "name": "AnswerIntentAnalyzer",
+            "description": "Analyze query intent and map to conversational answers ||| Analizar la intención de la consulta y mapear a respuestas conversacionales"
+        },
+        {
+            "name": "SnippetOptimizer",
+            "description": "Structure text for maximum compatibility with featured snippets ||| Estructurar el texto para máxima compatibilidad con fragmentos destacados"
+        },
+        {
+            "name": "SchemaGenerator",
+            "description": "Generate valid JSON-LD schema for complex entities ||| Generar esquemas JSON-LD válidos para entidades complejas"
+        },
+        {
+            "name": "VoiceTester",
+            "description": "Simulate and test how text sounds for voice assistants ||| Simular y probar cómo suena el texto para asistentes de voz"
+        }
+    ],
+    "config": {
+        "latam_focus": true,
+        "ecuador_nuance": "Conversational Neutrality ||| Neutralidad Conversacional",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON ||| JSON"
+    }
+}

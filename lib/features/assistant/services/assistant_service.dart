@@ -176,6 +176,7 @@ class AssistantService {
         processingTime: stopwatch.elapsed,
         sources: executionResult.sources,
         artifacts: executionResult.artifacts,
+        uiPayload: executionResult.uiPayload,
       );
 
       _history.add(message);
@@ -241,6 +242,8 @@ Classify into one of:
 - RESEARCH: User is asking for facts, searching for info, or analysis.
 - MANAGEMENT: User wants to create/manage clients, campaigns, or tasks.
 - DEVELOPMENT: User is asking for code or technical help.
+- SEO: User is asking for search engine optimization, keywords, or site audits.
+- AEO: User is asking for answer engine optimization, snippets, or voice search.
 - DIRECT_CHAT: Simple conversation or greeting.
 
 Return ONLY a JSON object:
@@ -338,6 +341,12 @@ Return ONLY a JSON object:
     final promptService = _ref.read(systemPromptsProvider);
     final brianPersona = await promptService.getBrianPrompt();
 
+    // Build Conversation History (Last 6 messages)
+    final recentHistory = _history.reversed.take(6).toList().reversed.map((m) {
+      final role = m.isUser ? "User" : "Brian";
+      return "$role: ${m.text}";
+    }).join("\n");
+
     final mainPrompt = """
 $brianPersona
 
@@ -346,10 +355,13 @@ Context:
 - Detected Intent: ${intentEnum.name.toUpperCase()}
 - System Memory: $longTermMemory
 
+CONVERSATION HISTORY:
+$recentHistory
+
 AVAILABLE TOOLS:
 $toolDefinitions
 
-VISION/RESEARCH/MULTIMODAL:
+MULTI-MODAL CAPABILITIES:
 - I have direct access to Google Search via "Grounding". I will use it for all factual queries and real-time research.
 - I can see and analyze attached images (Multimodal Vision).
 - I generate images via 'image_generation' tool.
@@ -358,11 +370,13 @@ VISION/RESEARCH/MULTIMODAL:
 User Input: "$text"
 
 CRITICAL INSTRUCTIONS:
-1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research. Do NOT call 'web_search' or any external search tool.
-2. NAVIGATION: If the user wants to navigate (e.g., "go to settings", "show campaigns"), YOU MUST use the 'navigate_to' tool.
-3. GENERATION: If the user wants an image or video, YOU MUST use 'image_generation' or 'video_generation'.
-4. GEN UI: Strategy reports and complex data MUST be rendered via 'gen_ui_component'.
-5. To use a valid tool (navigate, generate, ui), return: {"tool": "name", "args": {...}}
+1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research.
+2. NAVIGATION: Use 'navigate_to' tool for navigation.
+3. GENERATION: Use 'image_generation' or 'video_generation' for media.
+4. GEN UI: Strategy reports, TREND REPORTS, and complex data MUST be rendered via 'gen_ui_component'.
+   - If user asks for "Trend Report", use tool: {"tool": "gen_ui_component", "args": {"component_type": "trend_report", "data": {"title": "...", "trends": [...]}}}
+   - Do NOT just write a text summary. You MUST generate the UI component.
+5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
 6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
 7. If NO tool from the restricted list above applies, answer from your grounded knowledge.
 
@@ -403,6 +417,7 @@ $ephemeralMsg
     
     // DIRECT EDGE AI SERVICE (Primary)
     // CopilotKit bypassed due to protocol errors
+    List<String>? sources;
     try {
       _ref.read(assistantStatusProvider.notifier).state = "Thinking...";
       final mainConfig = AIModelConfig.geminiResearch;
@@ -413,6 +428,8 @@ $ephemeralMsg
         ref: _ref,
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
       );
+
+      sources = edgeResult.sourceCitations;
       
       print('DEBUG: Assistant - Received AI Response: ${edgeResult.text.substring(0, edgeResult.text.length > 50 ? 50 : edgeResult.text.length)}...');
       
@@ -578,12 +595,16 @@ $ephemeralMsg
     blackboard.updateAgentStatus('Creative', AgentStatus.idle);
     blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
 
-    // Store in Cache
-    await semanticCache.store(intentEnum.name, mainPrompt, responseText);
+    // Store in Cache (only if valid/successful)
+    if (!responseText.contains("No content generated") && 
+        !responseText.contains("I encountered an error") &&
+        responseText.length > 20) {
+      await semanticCache.store(intentEnum.name, mainPrompt, responseText);
+    }
 
     return ToolExecutionSummary(
       text: responseText, 
-      sources: (edgeResult is EdgeAIResult) ? (edgeResult as EdgeAIResult).sourceCitations : null
+      sources: sources
     );
   }
 
@@ -674,11 +695,16 @@ $ephemeralMsg
              );
         }
         if (name == 'gen_ui_component' || name == 'render_gen_ui') {
+             final rawData = args['data'];
+             final Map<String, dynamic> safeData = (rawData is Map) 
+                 ? Map<String, dynamic>.from(rawData)
+                 : {'error': 'Invalid data format from AI'};
+
              return ToolExecutionSummary(
                text: args['summary_text'] ?? "I've generated a visual component for you.",
                uiPayload: {
                  'type': args['component_type'],
-                 ...Map<String, dynamic>.from(args['data'] ?? {}),
+                 ...safeData,
                },
              );
         }

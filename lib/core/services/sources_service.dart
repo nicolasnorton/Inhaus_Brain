@@ -110,6 +110,7 @@ class SourcesService {
       uri: "analytics://$platformName/$propertyId",
       content: "Mock analytics data for $propertyId from $platformName...",
       addedAt: DateTime.now(),
+    );
   }
 
   /// Fetch real data from a connected account and add as source

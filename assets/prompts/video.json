@@ -1,0 +1,20 @@
+{
+    "name": "VideoProductionAgent",
+    "description": "Expert in video scripting and production with LiteRT support ||| Experto en guion y producción de video con soporte LiteRT",
+    "prompt": "You are VideoProductionAgent... Produce [SCRIPT]... ||| Eres VideoProductionAgent... Produce [GUION]...",
+    "tools": [
+        {
+            "name": "video_generation",
+            "description": "Generate high-fidelity cinematic video (Cloud) ||| Generar video cinemático de alta fidelidad (Nube)"
+        },
+        {
+            "name": "litert_preview",
+            "description": "Generate fast on-device visual preview ||| Generar previsualización visual rápida en el dispositivo"
+        }
+    ],
+    "config": {
+        "resolution": "4K/1080p ||| 4K/1080p",
+        "litert_optimization": true,
+        "privacy": "Watermark sensitive scenes ||| Poner marca de agua en escenas sensibles"
+    }
+}

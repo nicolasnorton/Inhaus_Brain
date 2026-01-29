@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/services/semantic_cache_service.dart';
 import '../models/external_knowledge_models.dart';
 import '../services/external_knowledge_service.dart';
 
 /// Provider for ExternalKnowledgeService
 final externalKnowledgeServiceProvider = Provider<ExternalKnowledgeService>((ref) {
-  return ExternalKnowledgeService();
+  final cache = ref.watch(semanticCacheServiceProvider);
+  return ExternalKnowledgeService(cache: cache);
 });
 
 /// Provider for list of configured external connections

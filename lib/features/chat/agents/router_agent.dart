@@ -19,7 +19,9 @@ enum RouterIntent {
   development, // Code, technical architecture
   pipeline,    // Complex multi-step requests
   management,  // Client, Project, Task management
-  directChat   // Simple questions, greetings, small talk
+  directChat,   // Simple questions, greetings, small talk
+  seo,          // SEO optimization
+  aeo           // AEO optimization
 }
 
 class RouterResult {

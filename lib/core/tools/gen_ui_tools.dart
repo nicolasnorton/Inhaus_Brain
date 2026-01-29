@@ -30,12 +30,28 @@ class GenUIComponentTool extends AgentTool {
         'properties': {
           'component_type': {
             'type': 'string',
-            'enum': ['strategy_board', 'budget_chart', 'kanban_board', 'timeline'],
-            'description': 'The type of UI component to render. Use "budget_chart" for any financial/budget data. Use "kanban_board" for task/status lists. Use "strategy_board" for high level plans.'
+            'enum': ['strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report'],
+            'description': 'The type of UI component to render. Use "budget_chart" for any financial/budget data. Use "kanban_board" for task/status lists. Use "strategy_board" for high level plans. Use "trend_report" for market research reports.'
           },
           'data': {
             'type': 'object',
-            'description': 'The structured data required by the component'
+            'description': '''The structured data for the component.
+For "trend_report": {
+  "title": "Report Title",
+  "summary": "High-level summary",
+  "sections": [
+    {"type": "text", "content": "..."},
+    {"type": "stat_card", "items": [{"label": "Metric", "value": "100%", "trend": "up"}]},
+    {"type": "chart", "title": "Chart Title", "data": {"Label1": 10, "Label2": 20}},
+    {"type": "trend_list", "items": [{"name": "TrendName", "growth": 25, "description": "...", "impact_score": 0.8}]}
+  ]
+}
+For "strategy_board": {
+  "title": "Strategy Name",
+  "objectives": ["Obj 1", "Obj 2"],
+  "pillars": [{"title": "Pillar 1", "description": "...", "kpis": ["KPI 1"]}],
+  "milestones": [{"date": "2026-Q1", "label": "Launch"}]
+}'''
           },
           'summary_text': {
             'type': 'string',

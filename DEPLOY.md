@@ -89,3 +89,19 @@ We have implemented aggressive focus isolation with `ExcludeFocus` and `FocusSco
 flutter clean
 flutter run -d chrome
 ```
+### Knowledge Module: Infrastructure Requirements
+The hardened Knowledge Module requires specific Firestore configurations:
+1.  **Composite Indexes**: While primary queries are handled by single-field indexes, complex filters (e.g., ClientID + CreatedAt) may require composite indexes. If you see index errors in `KnowledgeLibraryWidget`, click the link provided in the Firebase Console log to auto-generate the index.
+2.  **Security Rules**: Ensure the latest `firestore.rules` are deployed:
+    ```bash
+    firebase deploy --only firestore:rules
+    ```
+3.  **LiteRT (On-Device AI)**: No server-side setup required. On-device models are downloaded by the client on-demand or pre-bundled in the asset folder for offline/reliable fallback.
+
+## 🚀 Recent Enhancements (v1.1.0)
+- **Bilingual SEO/AEO Workforce**: New agents for search and answer engine optimization integrated.
+- **Agentic Tooling**: Deployment now includes the latest `KeywordResearcher`, `TechnicalAuditor`, and `SchemaGenerator` tool configurations.
+- **Orchestration Hardening**: Updated `RouterAgent` logic for more accurate intent detection across marketing domains.
+
+---
+*Built with ❤️ to make AI automation accessible for everyone.*

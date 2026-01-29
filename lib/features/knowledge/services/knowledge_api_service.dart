@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:uuid/uuid.dart'; // Unused
 import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
+import '../../../core/services/semantic_cache_service.dart';
+import '../../../core/utils/security_utils.dart';
 import '../models/knowledge_api_models.dart';
 
 /// Service for Knowledge Base operations (Native Vertex + Firestore)
@@ -13,15 +15,17 @@ class KnowledgeApiService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final VertexApiService _vertexService;
   final SecretVaultService _vault;
+  final SemanticCacheService? _cache;
   final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
 
   KnowledgeApiService({
     required VertexApiService vertexService,
     required SecretVaultService vault,
     required this.tokenProvider,
+    SemanticCacheService? cache,
     String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _vertexService = vertexService, _vault = vault;
+  }) : _vertexService = vertexService, _vault = vault, _cache = cache;
 
   static const String _collectionDatasets = 'knowledge_datasets';
   static const String _collectionDocuments = 'documents';
@@ -114,9 +118,14 @@ class KnowledgeApiService {
     required String datasetId,
     required String name,
     required String text,
+    int chunkSize = 500,
     String indexingTechnique = 'high_quality',
     Map<String, dynamic>? processRule,
+    bool scrubPII = true, 
   }) async {
+    // Optional PII Scrubbing
+    final processedText = scrubPII ? SecurityUtils.scrubPII(text) : text;
+    
     // 1. Create Document Record
     final docRef = _firestore
         .collection(_collectionDatasets)
@@ -128,8 +137,8 @@ class KnowledgeApiService {
     final docId = docRef.id;
 
     // 2. Chunking (Simple Splitter for MVP)
-    final chunks = _splitText(text, 500); // ~500 chars per chunk
-    int totalTokens = text.split(' ').length; // Rough estimate
+    final chunks = _splitText(processedText, chunkSize); // Used specified chunkSize
+    int totalTokens = processedText.split(' ').length; // Rough estimate
 
        // 3. Embeddings via Vertex AI
     List<List<double>> embeddings = [];
@@ -233,7 +242,7 @@ class KnowledgeApiService {
       enabled: true,
       archived: false,
       displayStatus: 'normal',
-      wordCount: text.split(' ').length,
+      wordCount: processedText.split(' ').length,
       hitCount: 0,
       docForm: 'text_model',
     );
@@ -446,14 +455,30 @@ class KnowledgeApiService {
   }) async => {};
 
   // ==================== Retrieval Operations ====================
-  // This would ideally do Vector Search using Firestore Vector Search
   Future<Map<String, dynamic>> retrieveChunks({
     required String datasetId,
     required String query,
     required Map<String, dynamic> retrievalModel,
   }) async {
+     final cacheKey = 'retrieve:$datasetId:$query:${jsonEncode(retrievalModel)}';
+     
+     if (_cache != null) {
+       final cachedResponse = await _cache.lookup('knowledge_retrieval', cacheKey);
+       if (cachedResponse != null) {
+         try {
+           return jsonDecode(cachedResponse) as Map<String, dynamic>;
+         } catch (_) {}
+       }
+     }
+
      // TODO: Implement actual Vector Search here
-     return {'records': []};
+     final result = {'records': []};
+     
+     if (_cache != null) {
+       await _cache.store('knowledge_retrieval', cacheKey, jsonEncode(result));
+     }
+     
+     return result;
   }
 
   void dispose() {}
@@ -481,20 +506,6 @@ class KnowledgeApiException implements Exception {
 
   @override
   String toString() {
-    try {
-      final dynError = error as dynamic;
-      if (dynError == null) return 'KnowledgeApiException: (Internal error is null)';
-      
-      final m = dynError.message?.toString() ?? 'Unknown Error';
-      final c = dynError.code?.toString() ?? 'Unknown Code';
-      return 'KnowledgeApiException: $m ($c)';
-    } catch (e) {
-      // LAST RESORT SAFE STRING
-      String safeE = 'Unknown';
-      try {
-        if (e != null) safeE = e.toString();
-      } catch (_) {}
-      return 'KnowledgeApiException: (Unable to parse details) - nested error: $safeE';
-    }
+    return 'KnowledgeApiException: ${error.message} (${error.code})';
   }
 }

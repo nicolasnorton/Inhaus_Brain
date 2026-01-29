@@ -12,6 +12,7 @@ import '../models/project_model.dart';
 import '../models/task_model.dart';
 import 'project_detail_screen.dart';
 import '../../reports/models/report_model.dart';
+import '../../reports/providers/reports_provider.dart';
 
 class ClientDetailScreen extends ConsumerStatefulWidget {
   final String clientId;

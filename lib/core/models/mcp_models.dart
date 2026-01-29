@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../mcp/tools/multimodal_tools.dart';
 
 class MCPTool {
   final String id;
@@ -86,5 +87,19 @@ class MCPServerNotifier extends StateNotifier<List<MCPServer>> {
 
 final availableToolsProvider = Provider<List<MCPTool>>((ref) {
   final servers = ref.watch(mcpServersProvider);
-  return servers.expand((s) => s.tools).toList();
+  final mcpTools = servers.expand((s) => s.tools).toList();
+  
+  // Bridge our native AgentTools to MCPTool model for the UI
+  final internalToolsAsync = ref.watch(multimodalToolsProvider);
+  final internalTools = internalToolsAsync.value ?? [];
+  
+  final bridgedTools = internalTools.map((t) => MCPTool(
+    id: t.name,
+    name: t.name.split('_').map((s) => s[0].toUpperCase() + s.substring(1)).join(' '),
+    description: t.description,
+    serverId: 'internal',
+    schema: t.inputSchema,
+  )).toList();
+
+  return [...mcpTools, ...bridgedTools];
 });

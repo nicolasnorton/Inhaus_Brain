@@ -1,0 +1,15 @@
+{
+    "name": "Human Agency Staff",
+    "description": "Full operational access for agency employees ||| Acceso operativo completo para empleados de la agencia",
+    "capabilities": [
+        "Manage client data ||| Gestionar datos de clientes",
+        "Oversee AI workflows ||| Supervisar flujos de trabajo de IA",
+        "Campaign execution ||| Ejecución de campañas"
+    ],
+    "permissions": {
+        "reports": "read_write ||| lectura_escritura",
+        "clients": "read_write ||| lectura_escritura",
+        "agents": "read_write ||| lectura_escritura",
+        "analytics": "read ||| lectura"
+    }
+}

@@ -12,24 +12,78 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Role helpers (assuming role in token or user document)
+    // For local development we can also check a 'roles' field if we had a get() helper
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
+    }
+
+    function isSuperAdmin() {
+      return hasRole('superAdmin');
+    }
+
+    function isAgencyStaff() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'superAdmin' || 
+        request.auth.token.role == 'admin' || 
+        request.auth.token.role == 'humanAgencyStaff' ||
+        request.auth.token.role == 'accountManager'
+      );
+    }
+
+    function isClient() {
+      return hasRole('clientUser');
+    }
+
     // REPORTS MODULE RULES
     match /reports/{reportId} {
-      // Allow create if authenticated
-      allow create: if isAuthenticated();
-      
-      // Allow read/write if user is the creator (assuming 'createdBy' field stores uid)
-      // OR if the report belongs to the user's client (complex, simplified here to owner)
-      allow read, update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || resource.data.clientId == request.auth.uid);
+      allow create: if isAgencyStaff();
+      allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
+      allow update, delete: if isAgencyStaff();
     }
 
     match /dashboards/{dashboardId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || resource.data.clientId == request.auth.uid);
+      allow create: if isAgencyStaff();
+      allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
+      allow update, delete: if isAgencyStaff();
     }
 
     match /connected_accounts/{accountId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.createdBy == request.auth.uid);
+      allow create: if isAgencyStaff();
+      allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
+      allow update, delete: if isAgencyStaff();
+    }
+
+    match /campaigns/{campaignId} {
+      allow create: if isAgencyStaff();
+      allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
+      allow update, delete: if isAgencyStaff();
+    }
+
+    // KNOWLEDGE MODULE RULES (Production Hardened)
+    match /knowledge_datasets/{datasetId} {
+      allow create: if isAgencyStaff();
+      
+      allow read: if isAgencyStaff() || (
+        isClient() && (
+          resource.data.get('permission', '') == 'client_shared' ||
+          resource.data.get('clientId', '') == request.auth.uid
+        )
+      );
+      
+      allow update, delete: if isAgencyStaff() && (
+        isSuperAdmin() || resource.data.get('createdBy', '') == request.auth.uid
+      );
+      
+      match /documents/{documentId} {
+        allow read: if isAgencyStaff() || isClient();
+        allow write: if isAgencyStaff();
+        
+        match /chunks/{chunkId} {
+          allow read: if isAgencyStaff() || isClient();
+          allow write: if isAgencyStaff();
+        }
+      }
     }
     
     // USER PROFILES

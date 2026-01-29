@@ -6,7 +6,11 @@ enum KnowledgeSourceType {
   googleDrive,
   image,
   audio,
-  youtube
+  youtube,
+  gmail,
+  googleWorkspace,
+  googleAds,
+  ga4
 }
 
 class KnowledgeSource {

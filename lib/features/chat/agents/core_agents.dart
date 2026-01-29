@@ -8,6 +8,7 @@ import '../../../core/mcp/agent_tool.dart';
 import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/system_prompts_service.dart';
+import '../../../core/tokens/llm_provider.dart';
 
 class ResearchAgent extends BaseAgent {
   @override
@@ -291,6 +292,45 @@ class CSuiteAdvisorAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+    );
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return aiRes.text;
+  }
+}
+
+class StorytellingAgent extends BaseAgent {
+  @override
+  String get name => "Storytelling Agent";
+  @override
+  MessageSender get type => MessageSender.storytellingAgent;
+  @override
+  String get systemPromptKey => "storytelling_prompt";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getStorytellingPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT]', userPrompt);
+    
+    final aiRes = await EdgeAIService.generateText(
+      prompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+      modelConfig: AIModelConfig.geminiFlash, // Fast iteration
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;

@@ -32,6 +32,8 @@ The Inhaus Brain features a team of 11+ specialized agents, each with a custom m
 - **Customer Service Agent**: Empathetic client resolution and SLA tracking.
 - **CRM Agent**: Record management and audience segmentation.
 - **C-Suite Advisor Agent**: ROI projections and board-level strategy.
+- **SEO Agent (New)**: Search engine optimization, keyword research, and regional audits.
+- **AEO Agent (New)**: Answer engine optimization for AI search and voice assistants.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 
 ### 🦅 Blackboard 2.0 & Observability

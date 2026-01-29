@@ -8,6 +8,7 @@ import 'screens/retrieval_sandbox_screen.dart';
 import 'screens/knowledge_settings_screen.dart';
 import 'screens/external_knowledge_screen.dart';
 import 'screens/pipeline_orchestrator.dart';
+import 'widgets/knowledge_tour_overlay.dart';
 
 class KnowledgeManagementScreen extends ConsumerStatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -19,24 +20,35 @@ class KnowledgeManagementScreen extends ConsumerStatefulWidget {
 class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementScreen> {
   String _currentView = 'overview';
   String? _selectedKB;
+  bool _showTour = true;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1116),
-      body: Row(
-        children: [
-          // Sub-sidebar for Knowledge Module
-          _selectedKB != null ? _buildKBSubSidebar() : _buildMainSubSidebar(),
-          
-          const VerticalDivider(width: 1, thickness: 1, color: Colors.white10),
-          
-          // Content Area
-          Expanded(
-            child: _buildContent(),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFF0F1116),
+          body: Row(
+            children: [
+              // Sub-sidebar for Knowledge Module
+              _selectedKB != null ? _buildKBSubSidebar() : _buildMainSubSidebar(),
+              
+              const VerticalDivider(width: 1, thickness: 1, color: Colors.white10),
+              
+              // Content Area
+              Expanded(
+                child: _buildContent(),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (_showTour)
+          Positioned.fill(
+            child: KnowledgeTourOverlay(
+              onDismiss: () => setState(() => _showTour = false),
+            ),
+          ),
+      ],
     );
   }
 

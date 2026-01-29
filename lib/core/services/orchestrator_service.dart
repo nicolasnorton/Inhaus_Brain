@@ -141,7 +141,8 @@ class OrchestratorService {
     // 5. Automated Polish (Text & Reasoning Agent)
     // Only polish Agent outputs that are client-facing
     if (senderName.contains('Agent') && !originalResponse.contains('```json')) {
-       // Heuristic: Don't polish raw JSON or tool calls
+       // Heuristic: Don't polish raw JSON or tool calls (e.g. SEO, AEO, Strategy JSONs)
+       // SEO Agent and AEO Agent outputs that are substantial should be polished if not raw JSON.
        // Polish only if text is substantial
        if (processed.length > 50) {
           try {

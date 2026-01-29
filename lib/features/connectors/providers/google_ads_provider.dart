@@ -1,7 +1,6 @@
-
-import '../../core/interfaces/ad_platform_provider.dart';
-import '../../features/connectors/models/connected_account_model.dart';
-import '../../features/connectors/models/unified_campaign_model.dart';
+import '../../../core/interfaces/ad_platform_provider.dart';
+import '../models/connected_account_model.dart';
+import '../models/unified_campaign_model.dart';
 
 class GoogleAdsProvider implements AdPlatformProvider {
   @override

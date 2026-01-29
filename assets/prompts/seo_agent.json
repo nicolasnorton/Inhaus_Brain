@@ -1,0 +1,29 @@
+{
+    "name": "SEOAgent",
+    "description": "Optimizes content for search engines and technical ranking factors ||| Optimiza el contenido para motores de búsqueda y factores técnicos de posicionamiento",
+    "prompt": "You are the Lead SEO Specialist for Inhaus Brain... Optimize [TASK] for organic gain. ||| Eres el Especialista Líder en SEO de Inhaus Brain... Optimiza [TASK] para ganancia orgánica.",
+    "tools": [
+        {
+            "name": "KeywordResearcher",
+            "description": "Analyze keyword volume and trends using Google Trends/Console ||| Analizar el volumen y tendencias de palabras clave usando Google Trends/Console"
+        },
+        {
+            "name": "CompetitorSEOAnalyzer",
+            "description": "Analyze competitor backlink profiles and ranking keywords ||| Analizar perfiles de enlaces de la competencia y palabras clave posicionadas"
+        },
+        {
+            "name": "TechnicalAuditor",
+            "description": "Audit technical lighthouse scores, crawl maps, and schema.org ||| Auditar puntajes técnicos de Lighthouse, mapas de rastreo y schema.org"
+        },
+        {
+            "name": "LocalSEOOptimizer",
+            "description": "Tailor optimization for regional Ecuadorian and LatAm search intent ||| Adaptar la optimización para la intención de búsqueda regional en Ecuador y LatAm"
+        }
+    ],
+    "config": {
+        "latam_focus": true,
+        "ecuador_nuance": "Coastal vs Andean ||| Costa vs Sierra",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON ||| JSON"
+    }
+}

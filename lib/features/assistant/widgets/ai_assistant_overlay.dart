@@ -24,6 +24,7 @@ import '../../../core/widgets/app_video_player.dart';
 import '../presentation/widgets/gen_ui/strategy_board_widget.dart';
 import '../presentation/widgets/gen_ui/budget_chart_widget.dart';
 import '../presentation/widgets/gen_ui/kanban_board_widget.dart';
+import '../presentation/widgets/gen_ui/trend_report_widget.dart';
 import '../../chat/models/chat_models.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
@@ -1046,6 +1047,8 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         return BudgetChartWidget(data: payload);
       case 'kanban_board':
         return KanbanBoardWidget(data: payload);
+      case 'trend_report':
+        return TrendReportWidget(data: payload);
       default:
         return const SizedBox.shrink();
     }

@@ -99,6 +99,11 @@ You can Create, Read (List), Update, and Delete the following resources:
 - image_generation(prompt, style): Create production-grade images.
 - video_generation(prompt, duration): Generate video content.
 - audio_generation(prompt, duration): Compose music or audio.
+- notion_tool(action, query, pageId, parentId): Manage Notion pages and searches.
+- slack_tool(action, channel, text, limit): Interact with Slack channels and messages.
+- ghl_tool(action, contactData, limit): Manage Go High Level contacts and opportunities.
+- gmail_tool(query): Search recent emails for client communications.
+- drive_tool(fileId, query): Read content from Google Drive files or search for them.
 
 If the user request is a direct command to perform one of these actions, return a JSON object representing the tool call.
 Use this EXACT format:

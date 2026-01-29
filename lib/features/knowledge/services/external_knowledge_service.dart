@@ -2,16 +2,19 @@ import 'dart:convert';
 // import 'dart:io'; // Removed for web compatibility
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import '../../../core/services/semantic_cache_service.dart';
 import '../models/external_knowledge_models.dart';
 
 /// Service for managing external knowledge API connections and queries
 class ExternalKnowledgeService {
   final http.Client _client;
+  final SemanticCacheService? _cache;
   static const Duration _timeout = Duration(seconds: 30);
   static const int _maxRetries = 3;
 
-  ExternalKnowledgeService({http.Client? client})
-      : _client = client ?? http.Client();
+  ExternalKnowledgeService({http.Client? client, SemanticCacheService? cache})
+      : _client = client ?? http.Client(),
+        _cache = cache;
 
   /// Test connection to external knowledge API (health check)
   /// Sends a non-JSON request and expects 200 response
@@ -68,6 +71,17 @@ class ExternalKnowledgeService {
          );
       }
     }
+    
+    final cacheKey = 'external:${finalRequest.knowledgeId}:${finalRequest.query}:$endpoint:$intent';
+    
+    if (_cache != null) {
+      final cachedResponse = await _cache!.lookup('external_knowledge', cacheKey);
+      if (cachedResponse != null) {
+        try {
+          return ExternalKnowledgeResponse.fromJson(jsonDecode(cachedResponse) as Map<String, dynamic>);
+        } catch (_) {}
+      }
+    }
 
     int retries = 0;
 
@@ -88,7 +102,13 @@ class ExternalKnowledgeService {
             throw FormatException('Invalid response format from external API');
           }
 
-          return ExternalKnowledgeResponse.fromJson(jsonResponse);
+          final responseData = ExternalKnowledgeResponse.fromJson(jsonResponse);
+          
+          if (_cache != null) {
+            await _cache!.store('external_knowledge', cacheKey, jsonEncode(jsonResponse));
+          }
+
+          return responseData;
         } else if (response.statusCode == 403) {
           throw ExternalKnowledgeException(
             ExternalKnowledgeError(

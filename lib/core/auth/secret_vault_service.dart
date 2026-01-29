@@ -21,6 +21,10 @@ class SecretVaultService {
   static const String _elevenLabsKey = 'eleven_labs_api_key';
   static const String _vertexKey = 'vertex_api_key';
   static const String _difyKey = 'dify_api_key';
+  static const String _notionKey = 'notion_api_key';
+  static const String _slackToken = 'slack_token';
+  static const String _ghlKey = 'ghl_api_key';
+  static const String _ghlLocationId = 'ghl_location_id';
 
   Future<void> saveGeminiKey(String key) async => await _storage.write(key: _geminiKey, value: key);
   
@@ -116,6 +120,18 @@ class SecretVaultService {
     if (buildKey.isNotEmpty) return buildKey;
     return await _storage.read(key: _difyKey);
   }
+  
+  Future<void> saveNotionKey(String key) async => await _storage.write(key: _notionKey, value: key);
+  Future<String?> getNotionKey() async => await _storage.read(key: _notionKey);
+
+  Future<void> saveSlackToken(String token) async => await _storage.write(key: _slackToken, value: token);
+  Future<String?> getSlackToken() async => await _storage.read(key: _slackToken);
+
+  Future<void> saveGHLKey(String key) async => await _storage.write(key: _ghlKey, value: key);
+  Future<String?> getGHLKey() async => await _storage.read(key: _ghlKey);
+
+  Future<void> saveGHLLocationId(String id) async => await _storage.write(key: _ghlLocationId, value: id);
+  Future<String?> getGHLLocationId() async => await _storage.read(key: _ghlLocationId);
 
   Future<void> clearAllKeys() async {
     await _storage.delete(key: _geminiKey);

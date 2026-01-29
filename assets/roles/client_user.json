@@ -1,0 +1,15 @@
+{
+    "name": "Client User",
+    "description": "Restricted access for external clients ||| Acceso restringido para clientes externos",
+    "capabilities": [
+        "View deliverables ||| Ver entregables",
+        "Monitor progress ||| Monitorear progreso",
+        "Review reports ||| Revisar reportes"
+    ],
+    "permissions": {
+        "reports": "read_only ||| solo_lectura",
+        "clients": "none ||| ninguno",
+        "agents": "none ||| ninguno",
+        "analytics": "read_own ||| leer_propios"
+    }
+}

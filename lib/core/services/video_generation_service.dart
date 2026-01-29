@@ -76,7 +76,7 @@ class VideoGenerationService {
        // For now, we simulate the "Veo 3 Fast" instant generation.
        await Future.delayed(const Duration(milliseconds: 1500)); // Super fast
        onProgress?.call(1.0);
-       return "assets/models/veo_3_fast_preview.gif"; // Placeholder for the local gen result
+       return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"; // Placeholder Loop
     }
 
     // 1. WEB PROXY PATH (Primary for Web & Secure Environments)

@@ -2419,6 +2419,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Analyze this visual asset: {title}'**
   String analyzeVisualAsset(String title);
+
+  /// No description provided for @catProductivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Productivity & CRM'**
+  String get catProductivity;
+
+  /// No description provided for @catAdPlatforms.
+  ///
+  /// In en, this message translates to:
+  /// **'Advertising Platforms'**
+  String get catAdPlatforms;
+
+  /// No description provided for @catAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics & Insights'**
+  String get catAnalytics;
+
+  /// No description provided for @catSocial.
+  ///
+  /// In en, this message translates to:
+  /// **'Social Media (Organic)'**
+  String get catSocial;
+
+  /// No description provided for @googleAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Ads'**
+  String get googleAds;
+
+  /// No description provided for @metaAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Meta Ads (FB/IG)'**
+  String get metaAds;
+
+  /// No description provided for @tiktokAds.
+  ///
+  /// In en, this message translates to:
+  /// **'TikTok Ads'**
+  String get tiktokAds;
+
+  /// No description provided for @twitterAds.
+  ///
+  /// In en, this message translates to:
+  /// **'X Ads'**
+  String get twitterAds;
+
+  /// No description provided for @linkedinAds.
+  ///
+  /// In en, this message translates to:
+  /// **'LinkedIn Ads'**
+  String get linkedinAds;
+
+  /// No description provided for @pinterestAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinterest Ads'**
+  String get pinterestAds;
+
+  /// No description provided for @appleSearchAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Search Ads'**
+  String get appleSearchAds;
+
+  /// No description provided for @googleAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Analytics 4'**
+  String get googleAnalytics;
+
+  /// No description provided for @searchConsole.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Console'**
+  String get searchConsole;
+
+  /// No description provided for @googleBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Business Profile'**
+  String get googleBusiness;
+
+  /// No description provided for @metaOrganic.
+  ///
+  /// In en, this message translates to:
+  /// **'Meta Organic'**
+  String get metaOrganic;
+
+  /// No description provided for @tiktokOrganic.
+  ///
+  /// In en, this message translates to:
+  /// **'TikTok Organic'**
+  String get tiktokOrganic;
+
+  /// No description provided for @fromConnectedAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'From Connected Account'**
+  String get fromConnectedAccount;
 }
 
 class _AppLocalizationsDelegate

@@ -64,6 +64,45 @@ class TelemetryService {
       // Ignore analytics errors
     }
   }
+
+  // Log Knowledge Ingestion Performance
+  Future<void> logKnowledgeIngestion({
+    required String type,
+    required int docCount,
+    required double durationMs,
+    bool success = true,
+  }) async {
+    try {
+      await _analytics.logEvent(
+        name: 'kb_ingestion',
+        parameters: {
+          'source_type': type,
+          'doc_count': docCount,
+          'duration_ms': durationMs,
+          'success': success ? 1 : 0,
+        },
+      );
+    } catch (_) {}
+  }
+
+  // Log RAG Query Performance
+  Future<void> logKnowledgeQuery({
+    required String query,
+    required int chunkCount,
+    required double durationMs,
+    bool cacheHit = false,
+  }) async {
+    try {
+      await _analytics.logEvent(
+        name: 'kb_query',
+        parameters: {
+          'chunk_count': chunkCount,
+          'duration_ms': durationMs,
+          'cache_hit': cacheHit ? 1 : 0,
+        },
+      );
+    } catch (_) {}
+  }
 }
 
 final telemetryServiceProvider = Provider<TelemetryService>((ref) => TelemetryService());

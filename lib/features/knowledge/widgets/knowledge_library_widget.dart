@@ -258,34 +258,51 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
 
   Widget _buildEmptyState(String title, String subtitle) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(FontAwesomeIcons.layerGroup, size: 48, color: Colors.white.withValues(alpha: 0.1)),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white54, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
+      child: Container(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1)),
+              ),
+              child: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Colors.blueAccent, Colors.purpleAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: const FaIcon(FontAwesomeIcons.layerGroup, size: 48, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white24, fontSize: 13),
+              style: const TextStyle(color: Colors.white38, fontSize: 14, height: 1.5),
             ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton(
-            onPressed: _showAddSourceDialog,
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.white24),
-              foregroundColor: Colors.white,
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _showAddSourceDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Create First Knowledge Base"),
             ),
-            child: const Text("Add Sources"),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -490,6 +507,22 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
       case KnowledgeSourceType.youtube:
         icon = FontAwesomeIcons.youtube;
         color = Colors.redAccent;
+        break;
+      case KnowledgeSourceType.gmail:
+        icon = Icons.mail_outline;
+        color = Colors.orangeAccent;
+        break;
+      case KnowledgeSourceType.googleWorkspace:
+        icon = FontAwesomeIcons.google;
+        color = Colors.blueAccent;
+        break;
+      case KnowledgeSourceType.googleAds:
+        icon = FontAwesomeIcons.google;
+        color = Colors.blueAccent;
+        break;
+      case KnowledgeSourceType.ga4:
+        icon = FontAwesomeIcons.chartLine;
+        color = Colors.cyanAccent;
         break;
     }
 

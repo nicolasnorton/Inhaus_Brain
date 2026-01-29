@@ -1245,4 +1245,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String analyzeVisualAsset(String title) {
     return 'Analyze this visual asset: $title';
   }
+
+  @override
+  String get catProductivity => 'Productivity & CRM';
+
+  @override
+  String get catAdPlatforms => 'Advertising Platforms';
+
+  @override
+  String get catAnalytics => 'Analytics & Insights';
+
+  @override
+  String get catSocial => 'Social Media (Organic)';
+
+  @override
+  String get googleAds => 'Google Ads';
+
+  @override
+  String get metaAds => 'Meta Ads (FB/IG)';
+
+  @override
+  String get tiktokAds => 'TikTok Ads';
+
+  @override
+  String get twitterAds => 'X Ads';
+
+  @override
+  String get linkedinAds => 'LinkedIn Ads';
+
+  @override
+  String get pinterestAds => 'Pinterest Ads';
+
+  @override
+  String get appleSearchAds => 'Apple Search Ads';
+
+  @override
+  String get googleAnalytics => 'Google Analytics 4';
+
+  @override
+  String get searchConsole => 'Search Console';
+
+  @override
+  String get googleBusiness => 'Google Business Profile';
+
+  @override
+  String get metaOrganic => 'Meta Organic';
+
+  @override
+  String get tiktokOrganic => 'TikTok Organic';
+
+  @override
+  String get fromConnectedAccount => 'From Connected Account';
 }

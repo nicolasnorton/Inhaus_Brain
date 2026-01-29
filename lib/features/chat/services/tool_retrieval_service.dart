@@ -20,6 +20,8 @@ class ToolRetrievalService {
       'read_url'
     };
     final Set<String> devTools = {'read_file', 'list_dir', 'grep_search'}; // Hypothetical dev tools
+    final Set<String> seoTools = {'KeywordResearcher', 'CompetitorSEOAnalyzer', 'TechnicalAuditor', 'LocalSEOOptimizer', 'read_url', 'web_search'};
+    final Set<String> aeoTools = {'AnswerIntentAnalyzer', 'SnippetOptimizer', 'SchemaGenerator', 'VoiceTester', 'read_url', 'web_search'};
 
     switch (intent) {
       case RouterIntent.research:
@@ -30,6 +32,10 @@ class ToolRetrievalService {
         return allTools.where((t) => managementTools.contains(t.name)).toList();
       case RouterIntent.development:
         return allTools.where((t) => devTools.contains(t.name)).toList();
+      case RouterIntent.seo:
+        return allTools.where((t) => seoTools.contains(t.name)).toList();
+      case RouterIntent.aeo:
+        return allTools.where((t) => aeoTools.contains(t.name)).toList();
       case RouterIntent.pipeline:
       case RouterIntent.directChat:
       default:

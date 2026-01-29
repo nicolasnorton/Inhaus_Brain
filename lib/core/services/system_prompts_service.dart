@@ -23,6 +23,9 @@ class SystemPromptsService {
   static const String _editorialManagerPromptKey = 'editorial_manager_prompt';
   static const String _mediaBuyerPromptKey = 'media_buyer_prompt';
   static const String _performanceAnalystPromptKey = 'performance_analyst_prompt';
+  static const String _storytellingPromptKey = 'storytelling_prompt';
+  static const String _seoPromptKey = 'seo_prompt';
+  static const String _aeoPromptKey = 'aeo_prompt';
   
   // Utility Roles
   static const String _securityPromptKey = 'security_prompt';
@@ -57,6 +60,36 @@ Your goal is to write high-converting copy for social media, ads, and landing pa
 Use a tone that is professional yet engaging, suitable for the Latin American market.
 Focus on clear calls-to-action and emotional resonance. Avoid generic Spanish; favor natural phrasing used in Ecuador where appropriate.
 """;
+
+  static const String originalStorytellingPrompt = """
+You are StorytellingAgent, master narrative architect for a high-end digital marketing agency serving Ecuador and LatAm markets.  
+Your mission: transform briefs, data, campaign goals, and brand voice into emotionally powerful, culturally resonant stories.  
+
+Given input: [INPUT] (may include research data, strategy outline, brand guidelines, target audience, tone of voice, desired emotion/outcome).  
+
+Follow this strict process:  
+1. Identify core emotional hook and human truth (empathy, aspiration, belonging, etc.)  
+2. Structure the story: Setup (world/problem), Conflict (tension/need), Climax (transformation), Resolution (brand role/payoff)  
+3. Adapt tone & cultural nuance: neutral LatAm business Spanish/English, avoid Quito-centric bias, respect regional differences (Guayaquil coastal vibrancy, Cuenca Andean heritage, etc.)  
+4. Keep language polished, concise, brand-safe, and conversion-oriented  
+5. Output in JSON:  
+   {  
+     "story_title": "string",  
+     "hook": "short opening line",  
+     "full_narrative": "complete story text",  
+     "key_messages": ["array of 3–5 bullet points"],  
+     "emotional_arc": "one sentence summary of emotional journey",  
+     "suggested_formats": ["Social Post", "Video Script", "Email Sequence", ...],  
+     "confidence": 0.0–1.0,  
+     "refinement_notes": "any suggestions or flags"  
+   }  
+
+Always prioritize: authenticity > cleverness, emotion > facts alone, cultural respect > generic messaging.  
+If input is unclear or contradictory: output low confidence + polite clarification request.  
+Never fabricate data; always cite sources when present.  
+Redact any PII automatically.  
+""";
+
 
   static const String originalDeveloperPrompt = """
 You are the Inhaus Brain Developer Agent.
@@ -98,6 +131,16 @@ Focus on maximizing ROI and reaching the right audience at the right time.
   static const String originalPerformanceAnalystPrompt = """
 You are the Performance Analyst. Decipher complex campaign data into actionable optimization steps.
 Report on KPIs and suggest iterative improvements.
+""";
+
+  static const String originalSEOPrompt = """
+You are the SEO Agent. Your mission is to optimize organic visibility and technical search performance for the Ecuadorian and LatAm markets.
+Focus on regional search intent, mobile optimization, and Core Web Vitals.
+""";
+
+  static const String originalAEOPrompt = """
+You are the AEO Agent. Your mission is to optimize for AI search and answer engines. 
+Focus on structured data (JSON-LD), conversational answers, and snippet eligibility.
 """;
 
   static const String originalSecurityPrompt = """
@@ -222,11 +265,20 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
   Future<void> saveEditorialManagerPrompt(String prompt) async => await _storage.write(key: _editorialManagerPromptKey, value: prompt);
   Future<String> getEditorialManagerPrompt() async => await _getPrompt(_editorialManagerPromptKey, 'assets/prompts/editorial_manager.md', originalEditorialManagerPrompt);
 
+  Future<void> saveStorytellingPrompt(String prompt) async => await _storage.write(key: _storytellingPromptKey, value: prompt);
+  Future<String> getStorytellingPrompt() async => await _getPrompt(_storytellingPromptKey, 'assets/prompts/storytelling.md', originalStorytellingPrompt);
+
   Future<void> saveMediaBuyerPrompt(String prompt) async => await _storage.write(key: _mediaBuyerPromptKey, value: prompt);
   Future<String> getMediaBuyerPrompt() async => await _getPrompt(_mediaBuyerPromptKey, 'assets/prompts/media_buyer.md', originalMediaBuyerPrompt);
 
   Future<void> savePerformanceAnalystPrompt(String prompt) async => await _storage.write(key: _performanceAnalystPromptKey, value: prompt);
   Future<String> getPerformanceAnalystPrompt() async => await _getPrompt(_performanceAnalystPromptKey, 'assets/prompts/performance_analyst.md', originalPerformanceAnalystPrompt);
+
+  Future<void> saveSEOPrompt(String prompt) async => await _storage.write(key: _seoPromptKey, value: prompt);
+  Future<String> getSEOPrompt() async => await _getPrompt(_seoPromptKey, 'assets/prompts/seo_agent.md', originalSEOPrompt);
+
+  Future<void> saveAEOPrompt(String prompt) async => await _storage.write(key: _aeoPromptKey, value: prompt);
+  Future<String> getAEOPrompt() async => await _getPrompt(_aeoPromptKey, 'assets/prompts/aeo_agent.md', originalAEOPrompt);
 
   // Utility
   Future<void> saveSecurityPrompt(String prompt) async => await _storage.write(key: _securityPromptKey, value: prompt);
@@ -267,7 +319,9 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
       case MessageSender.trendScoutAgent: basePrompt = await getTrendScoutPrompt(); break;
       case MessageSender.accountDirectorAgent: basePrompt = await getAccountDirectorPrompt(); break;
       case MessageSender.strategistAgent: basePrompt = await getStrategistPrompt(); break;
+      case MessageSender.strategistAgent: basePrompt = await getStrategistPrompt(); break;
       case MessageSender.editorialManagerAgent: basePrompt = await getEditorialManagerPrompt(); break;
+      case MessageSender.storytellingAgent: basePrompt = await getStorytellingPrompt(); break;
       case MessageSender.mediaBuyerAgent: basePrompt = await getMediaBuyerPrompt(); break;
       case MessageSender.performanceAnalystAgent: basePrompt = await getPerformanceAnalystPrompt(); break;
       case MessageSender.securityAgent: basePrompt = await getSecurityPrompt(); break;
@@ -278,6 +332,8 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
       case MessageSender.customerServiceAgent: basePrompt = await getServicePrompt(); break;
       case MessageSender.crmAgent: basePrompt = await getCRMPrompt(); break;
       case MessageSender.cSuiteAdvisorAgent: basePrompt = await getCSuitePrompt(); break;
+      case MessageSender.seoAgent: basePrompt = await getSEOPrompt(); break;
+      case MessageSender.aeoAgent: basePrompt = await getAEOPrompt(); break;
       case MessageSender.system: basePrompt = await getBrianPrompt(); break;
       default: basePrompt = "";
     }
@@ -302,7 +358,9 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
       case MessageSender.trendScoutAgent: await saveTrendScoutPrompt(prompt); break;
       case MessageSender.accountDirectorAgent: await saveAccountDirectorPrompt(prompt); break;
       case MessageSender.strategistAgent: await saveStrategistPrompt(prompt); break;
+      case MessageSender.strategistAgent: await saveStrategistPrompt(prompt); break;
       case MessageSender.editorialManagerAgent: await saveEditorialManagerPrompt(prompt); break;
+      case MessageSender.storytellingAgent: await saveStorytellingPrompt(prompt); break;
       case MessageSender.mediaBuyerAgent: await saveMediaBuyerPrompt(prompt); break;
       case MessageSender.performanceAnalystAgent: await savePerformanceAnalystPrompt(prompt); break;
       case MessageSender.securityAgent: await saveSecurityPrompt(prompt); break;
@@ -313,6 +371,8 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
       case MessageSender.customerServiceAgent: await saveServicePrompt(prompt); break;
       case MessageSender.crmAgent: await saveCRMPrompt(prompt); break;
       case MessageSender.cSuiteAdvisorAgent: await saveCSuitePrompt(prompt); break;
+      case MessageSender.seoAgent: await saveSEOPrompt(prompt); break;
+      case MessageSender.aeoAgent: await saveAEOPrompt(prompt); break;
       default: break;
     }
   }

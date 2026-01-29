@@ -1,6 +1,6 @@
 
-import '../features/connectors/models/connected_account_model.dart';
-import '../features/connectors/models/unified_campaign_model.dart';
+import '../../features/connectors/models/connected_account_model.dart';
+import '../../features/connectors/models/unified_campaign_model.dart';
 
 /// Abstract base class for all Ad Platform Providers
 abstract class AdPlatformProvider {

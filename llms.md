@@ -42,6 +42,7 @@ The Inhaus Brain features an 11-step specialized agency roster:
 - **Strategist**: Synthesizes research into actionable concepts.
 - **Creative Agent**: Generates visual prompts and moodboards.
 - **Copywriter Agent**: Specialized text generation for social media and collateral.
+- **Storytelling Agent**: Narrative architect for emotional brand stories.
 - **Editorial Manager**: Plans content calendars and ensures brand consistency.
 - **Media Buyer**: Optimizes ad spend and placement logic (Sensitive).
 - **Performance Analyst**: Evaluates campaign data and metrics.

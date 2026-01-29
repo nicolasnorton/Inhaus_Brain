@@ -1,0 +1,24 @@
+{
+    "name": "StrategyAgent",
+    "description": "Lead strategic planner and tactical architect ||| Planificador estratégico líder y arquitecto táctico",
+    "prompt": "You are StrategistAgent... Analyze [TASK]... ||| Eres StrategistAgent... Analiza [TAREA]...",
+    "tools": [
+        {
+            "name": "data_analysis",
+            "description": "Deep data synthesis ||| Síntesis profunda de datos"
+        },
+        {
+            "name": "gen_ui_component",
+            "description": "Generate strategy visualizations ||| Generar visualizaciones de estrategia"
+        },
+        {
+            "name": "web_search",
+            "description": "Market trend verification ||| Verificación de tendencias de mercado"
+        }
+    ],
+    "config": {
+        "mece_principle": true,
+        "confidence_threshold": 0.7,
+        "cultural_safety": "LatAm/Ecuador Business Norms ||| Normas comerciales LatAm/Ecuador"
+    }
+}

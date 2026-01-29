@@ -42,37 +42,34 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
-                          _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
-                          _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
-                          _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
-                          _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
-                          _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
-                          _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
-                          _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref), // Index 10 for Reports
-                          _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
-                          _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
-                          
-                          // Admin Nav Item (Conditional)
-                          Consumer(
-                            builder: (context, ref, _) {
-                              final userAsync = ref.watch(appUserProvider);
-                              return userAsync.when(
-                                data: (user) {
-                                  if (user == null || (user.role != UserRole.superAdmin && user.role != UserRole.admin)) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref);
-                                },
-                                loading: () => const SizedBox.shrink(),
-                                error: (_, __) => const SizedBox.shrink(),
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final userAsync = ref.watch(appUserProvider);
+                          return userAsync.when(
+                            data: (user) {
+                              final isClient = user?.role == UserRole.clientUser;
+                              return Column(
+                                children: [
+                                  _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
+                                  if (!isClient) _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
+                                  _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
+                                  _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
+                                  if (!isClient) _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
+                                  if (!isClient) _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
+                                  if (!isClient) _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
+                                  _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
+                                  _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
+                                  if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
+                                  if (user?.role == UserRole.superAdmin || user?.role == UserRole.admin)
+                                    _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref),
+                                  const SizedBox(height: 20),
+                                ],
                               );
                             },
-                          ),
-                          const SizedBox(height: 20), // Spacing at the end of scroll
-                        ],
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          );
+                        },
                       ),
                     ),
                   ),

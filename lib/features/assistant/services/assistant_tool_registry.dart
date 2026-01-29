@@ -14,7 +14,10 @@ import 'package:inhaus_brain/core/mcp/tools/video_generation_tool.dart';
 import 'package:inhaus_brain/core/mcp/tools/audio_generation_tool.dart';
 import 'package:inhaus_brain/core/tools/web_tools.dart';
 import 'package:inhaus_brain/core/tools/gen_ui_tools.dart';
+import 'package:inhaus_brain/core/tools/data_tools.dart';
 import 'package:inhaus_brain/core/auth/secret_vault_service.dart';
+
+import 'package:inhaus_brain/features/marketing/tools/seo_aeo_tools.dart';
 
 /// Aggregates all available tools for the assistant
 final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
@@ -26,7 +29,9 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
   final systemTools = ref.watch(systemToolsProvider);
   final workflowTools = ref.watch(workflowToolsProvider);
   final webTools = ref.watch(webToolsProvider);
-  
+  final dataTools = ref.watch(dataToolsProvider);
+  final marketingTools = ref.watch(marketingToolsProvider);
+
   // Generation Tools
   final aiKeysAsync = ref.watch(aiKeysProvider);
   final aiKeys = aiKeysAsync.value;
@@ -53,7 +58,9 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...knowledgeTools,
     ...systemTools,
     ...workflowTools,
-    ReadUrlTool(), // Keep ReadUrl but remove WebSearch
+    ...webTools,
+    ...dataTools,
+    ...marketingTools,
     ...generationTools,
     ...ucpTools,
     GenUIComponentTool(),

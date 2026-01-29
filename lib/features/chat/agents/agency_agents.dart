@@ -339,3 +339,89 @@ class PerformanceAnalystAgent extends BaseAgent {
     );
   }
 }
+
+/// 7. SEO Agent
+class SEOAgent extends BaseAgent {
+  @override
+  String get name => "SEO Agent";
+  
+  @override
+  MessageSender get type => MessageSender.seoAgent;
+
+  @override
+  String get systemPromptKey => "seo_agent.md";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getSEOPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
+
+    return _simpleExecute(
+      agentName: name,
+      systemPromptKey: systemPromptKey,
+      systemPrompt: prompt,
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      ref: ref,
+    );
+  }
+}
+
+/// 8. AEO Agent
+class AEOAgent extends BaseAgent {
+  @override
+  String get name => "AEO Agent";
+  
+  @override
+  MessageSender get type => MessageSender.aeoAgent;
+
+  @override
+  String get systemPromptKey => "aeo_agent.md";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    Ref? ref,
+  }) async {
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getAEOPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
+
+    return _simpleExecute(
+      agentName: name,
+      systemPromptKey: systemPromptKey,
+      systemPrompt: prompt,
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      ref: ref,
+    );
+  }
+}

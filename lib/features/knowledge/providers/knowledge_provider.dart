@@ -5,6 +5,7 @@ import '../services/knowledge_api_service.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
+import '../../../core/services/semantic_cache_service.dart';
 
 // --- Legacy Source Management ---
 
@@ -43,10 +44,12 @@ final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
   final authService = ref.watch(authServiceProvider);
   final vault = ref.watch(secretVaultProvider);
   final vertex = ref.watch(vertexApiServiceProvider);
+  final cache = ref.watch(semanticCacheServiceProvider);
   
   return KnowledgeApiService(
     vertexService: vertex,
     vault: vault,
+    cache: cache,
     tokenProvider: () async {
       // 1. Try Vertex Access Token (Saved from Google Sign-In)
       final vertexKey = await vault.getVertexKey();

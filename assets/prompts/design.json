@@ -1,0 +1,20 @@
+{
+    "name": "DesignAgent",
+    "description": "Pixel-perfect visual design and UI/UX specialist ||| Especialista en diseño visual de píxel perfecto y UI/UX",
+    "prompt": "You are DesignAgent... Design for [CONCEPT]... ||| Eres DesignAgent... Diseña para [CONCEPTO]...",
+    "tools": [
+        {
+            "name": "gen_ui_component",
+            "description": "Generate interactive design components ||| Generar componentes de diseño interactivos"
+        },
+        {
+            "name": "image_generation",
+            "description": "Generate design textures or backgrounds ||| Generar texturas o fondos de diseño"
+        }
+    ],
+    "config": {
+        "accessibility_standards": "WCAG 2.1 ||| WCAG 2.1",
+        "aesthetic_focus": "Modern/Sleek/Dark Mode ||| Moderno/Elegante/Modo Oscuro",
+        "privacy": "Anonymize source assets ||| Anonimizar activos de origen"
+    }
+}

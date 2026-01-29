@@ -28,7 +28,7 @@ The system is divided into three main areas:
 This is where you "build" your automation. It's a visual board where you drag and drop blocks (Nodes) and connect them with lines to show the AI what to do first, second, and third.
 
 ### 2. 💬 Agent Workbench (The Chat)
-This is where you talk to the AI. You can chat with specialized agents like a **Researcher**, **Strategist**, or **Copywriter**. They can work together to answer your questions or execute the workflows you built.
+This is where you talk to the AI. You can chat with specialized agents like a **Researcher**, **Strategist**, **Copywriter**, **SEO Specialist**, or **AEO Expert**. They can work together to answer your questions or execute the workflows you built.
 
 ### 3. 🤖 AI Copilot (The Manager)
 The Copilot is your AI assistant for running the platform. Instead of clicking through menus, you can just ask it to do things.
@@ -38,7 +38,12 @@ The Copilot is your AI assistant for running the platform. Instead of clicking t
 *   **Create Apps**: "Build a new research app for Competitor Analysis".
 
 ### 4. 📚 Knowledge Base (The Library)
-You can upload your own PDFs, documents, or website links here. The AI will "read" them and use that information to make sure its answers are accurate and specific to your business.
+Inhaus Brain's Knowledge Module is designed for agency-level intelligence with enterprise security:
+*   **Adaptive Chunking**: Automatically adjusts how it "reads" your documents. Data records (like Google Ads) are kept granular, while long PDFs use larger context windows.
+*   **Semantic Caching**: The system remembers complex RAG queries. Repeat searches are nearly instantaneous and cost-saving.
+*   **Hybrid Search**: Combines literal keyword matching with AI-powered "semantic" understanding for >90% retrieval accuracy.
+*   **LiteRT Fallback**: If the cloud is unavailable, the platform automatically switches to local, on-device embedding models to ensure your knowledge is always accessible.
+*   **PII Scrubbing**: Before any data is processed for metadata extraction, names, emails, and phone numbers are automatically masked to ensure privacy compliance.
 
 ### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
@@ -136,11 +141,35 @@ If you have a **User Input** block called "Topic", you can use that information 
 
 ---
 
+## 👥 User Roles & Access Control (RBAC)
+Inhaus Brain features a robust Role-Based Access Control (RBAC) system to ensure data security and operational efficiency across the agency and its clients.
+
+### 1. 🛡️ Super Admin / Admin
+*   **Access**: Full system access.
+*   **Capabilities**: Manage all users, system secrets, global settings, and audit logs.
+*   **Target**: Agency owners and IT managers.
+
+### 2. 👔 Human Agency Staff (New)
+*   **Access**: Full operational access within the agency workspace.
+*   **Capabilities**: Manage all clients, trigger AI workflows, create reports, and view analytics.
+*   **Target**: Account managers, creative directors, and agency employees.
+
+### 3. 👥 Client User (New)
+*   **Access**: Restricted read-only access to assigned projects.
+*   **Capabilities**: View their own Reports, Dashboards, and Campaign status. Cannot access agency-internal tools or other clients' data.
+*   **Target**: External clients and project stakeholders.
+
+### 4. 🤖 Specialized Roles
+Additional roles like **Designer**, **Ad Manager**, and **Social Media Manager** provide tailored permissions for specific agency functions.
+
+---
+
 ## 🛡️ Production & Security
 Inhaus Brain is built with enterprise-grade safety:
+*   **Role-Based Security**: Access is strictly enforced via Firebase Security Rules at the database level.
 *   **Automatic Redaction**: Sensitive data like emails and phone numbers are automatically hidden from AI models to protect privacy.
 *   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
 *   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.
-*   **Secure Access**: Your data is protected by strict Firebase Security Rules—only you can see your campaigns and research.
 
 *Built with ❤️ to make AI automation accessible for everyone.*
+

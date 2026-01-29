@@ -4,7 +4,9 @@ enum UserRole {
   accountManager,
   designer,
   socialMediaManager,
-  adManager
+  adManager,
+  humanAgencyStaff,
+  clientUser
 }
 
 class AppUser {

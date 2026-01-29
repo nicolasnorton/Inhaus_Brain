@@ -18,6 +18,11 @@ enum AdPlatform {
   pinterestAds,
   pinterestOrganic,
   appleSearchAds,
+  notion,
+  slack,
+  goHighLevel,
+  gmail,
+  googleWorkspace,
   other
 }
 

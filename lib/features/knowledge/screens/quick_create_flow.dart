@@ -5,7 +5,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
+import '../../connectors/models/connected_account_model.dart';
+import '../../clients/providers/client_provider.dart';
 import '../providers/knowledge_provider.dart';
+import '../providers/knowledge_service_providers.dart';
+import '../../../core/auth/auth_service.dart';
 
 class QuickCreateFlow extends ConsumerStatefulWidget {
   const QuickCreateFlow({super.key});
@@ -422,11 +426,15 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
           const SizedBox(height: 32),
           Row(
             children: [
-              _buildSourceCard(AppLocalizations.of(context)!.importFromFile, 'local-file', FontAwesomeIcons.fileLines, Colors.orangeAccent),
+               _buildSourceCard(AppLocalizations.of(context)!.importFromFile, 'local-file', FontAwesomeIcons.fileLines, Colors.orangeAccent),
               const SizedBox(width: 16),
               _buildSourceCard(AppLocalizations.of(context)!.syncFromNotion, 'notion', FontAwesomeIcons.notion, Colors.black),
               const SizedBox(width: 16),
               _buildSourceCard(AppLocalizations.of(context)!.syncFromWebsite, 'website', FontAwesomeIcons.globe, Colors.blueAccent),
+              const SizedBox(width: 16),
+              _buildSourceCard(AppLocalizations.of(context)!.googleAds, 'google-ads', FontAwesomeIcons.google, Colors.yellowAccent),
+              const SizedBox(width: 16),
+              _buildSourceCard(AppLocalizations.of(context)!.googleAnalytics, 'ga4', FontAwesomeIcons.chartLine, Colors.orange),
             ],
           ),
           if (_selectedSourceType == 'local-file') ...[
@@ -756,6 +764,38 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating knowledge: $e')));
         }
         setState(() => _uploadError = e.toString());
+      } finally {
+        if (mounted) setState(() => _isUploading = false);
+      }
+    } else if (_selectedSourceType == 'google-ads' || _selectedSourceType == 'ga4') {
+      // Handle Platform Sync
+      setState(() {
+        _isUploading = true;
+        _uploadError = null;
+      });
+
+      try {
+        final platform = _selectedSourceType == 'google-ads' ? AdPlatform.googleAds : AdPlatform.googleAnalytics;
+        final ingestion = ref.read(knowledgeIngestionServiceProvider);
+        
+        // Mocking raw data for now - in production, this would fetch from the connected account
+        final clientId = ref.read(authServiceProvider).currentUser?.uid ?? 'default-client';
+        final mockData = "Syncing ${platform.name} data for Client ID $clientId...";
+        
+        await ingestion.ingestPlatformData(
+          platform, 
+          clientId, 
+          mockData
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully synced ${platform.name} data.')));
+          Navigator.of(context).pop();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error syncing data: $e')));
+        }
       } finally {
         if (mounted) setState(() => _isUploading = false);
       }

@@ -1,0 +1,21 @@
+{
+    "name": "ResearchAgent",
+    "description": "Market intelligence and trend analysis specialist ||| Especialista en inteligencia de mercado y análisis de tendencias",
+    "prompt": "You are the Lead Research Analyst... Use [QUERY]... ||| Eres el Analista Líder de Investigación... Usa [CONSULTA]...",
+    "tools": [
+        {
+            "name": "web_search",
+            "description": "Access real-time web data ||| Acceder a datos web en tiempo real"
+        },
+        {
+            "name": "data_analysis",
+            "description": "Analyze datasets and identify patterns ||| Analizar conjuntos de datos e identificar patrones"
+        }
+    ],
+    "config": {
+        "latam_focus": true,
+        "ecuador_nuance": "Coastal vs Andean ||| Costa vs Sierra",
+        "privacy": "PII Redaction ||| Redacción de PII",
+        "output_format": "JSON/Markdown ||| JSON/Markdown"
+    }
+}

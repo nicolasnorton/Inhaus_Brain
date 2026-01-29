@@ -131,10 +131,24 @@ class EdgeAIService {
                 } catch (proxyErr) {
                    _logger.e('EdgeAI: Proxy fallback failed: $proxyErr');
                    if (forceMock) rethrow; 
-                   result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+                   // Fallback to LiteRT (On-Device)
+                   try {
+                     _logger.i('EdgeAI: Proxy failed. Switching to LiteRT (On-Device)...');
+                     result = await _generateLiteRT(effectivePrompt, config);
+                   } catch (liteErr) {
+                     _logger.w('EdgeAI: LiteRT failed: $liteErr. Using Mock.');
+                     result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+                   }
                 }
              } else {
-                result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+                 // Not Web - Try LiteRT immediately
+                 try {
+                   _logger.i('EdgeAI: Cloud failed. Switching to LiteRT (On-Device)...');
+                   result = await _generateLiteRT(effectivePrompt, config);
+                 } catch (liteErr) {
+                   _logger.w('EdgeAI: LiteRT failed: $liteErr. Using Mock.');
+                   result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+                 }
              }
           }
           break;
@@ -246,14 +260,25 @@ class EdgeAIService {
           if (part is TextPart) {
              fullText += part.text;
           } else if (part is FunctionCall) {
-             fullText += "\n[System: Call ${part.name}(${part.args})]";
+             // Convert native function call to JSON format for AssistantService
+             final callJson = jsonEncode({
+               'tool': part.name,
+               'args': part.args,
+             });
+             fullText += callJson;
           } else if (part is FunctionResponse) {
              fullText += "\n**Function Result:** ${part.response}";
+          } else {
+             // Fallback for other types (ExecutableCode, etc. might be in toString)
+             fullText += part.toString();
           }
        }
     }
     
-    if (fullText.isEmpty) fullText = 'No content generated.';
+    if (fullText.trim().isEmpty) {
+        debugPrint('EdgeAI Warning: Response candidates empty or unparseable. Parts: ${response.candidates.firstOrNull?.content.parts}');
+        fullText = 'No content generated. (Empty Response)';
+    }
 
     // Check for grounding
     List<String> validSources = [];
@@ -542,7 +567,7 @@ class EdgeAIService {
     throw Exception('Image Generation Failed: Please verify Vertex AI credentials or connectivity.');
   }
 
-  static Future<String> generateVideo(String prompt, {bool isFinal = false, String? veoKey, String? vertexKey, String? runwayKey, Ref? ref, Function(double)? onProgress}) async {
+  static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, String? runwayKey, Ref? ref, Function(double)? onProgress}) async {
     if (isFinal) {
       return await VideoGenerationService.generateFinal(prompt, confirmedByUser: true, onProgress: onProgress);
     } else {
