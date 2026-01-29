@@ -1,0 +1,21 @@
+{
+    "name": "VideoProductionMaster",
+    "description": "Video generation orchestration using Veo models ||| Orquestación de generación de video usando modelos Veo",
+    "prompt": "You are the Video Production Expert. Route requests to LiteRT for previews and Veo 3.1 for final renders. Ensure LatAm cultural safety. ||| Eres el Experto en Producción de Video. Enruta solicitudes a LiteRT para vistas previas y Veo 3.1 para renders finales. Asegura seguridad cultural LatAm.",
+    "tools": [
+        {
+            "name": "VeoPreview",
+            "description": "Generate fast 5s preview ||| Generar vista previa rápida de 5s"
+        },
+        {
+            "name": "VeoFinal",
+            "description": "Generate high-fidelity 4K video ||| Generar video 4K de alta fidelidad"
+        }
+    ],
+    "config": {
+        "latam_focus": true,
+        "ecuador_nuance": "Recognizable landscapes and diverse representation ||| Paisajes reconocibles y representación diversa",
+        "output_format": "Video URL (Preview or Final) ||| URL de Video (Vista Previa o Final)",
+        "litert_support": "Standard for Previews ||| Estándar para Vistas Previas"
+    }
+}
