@@ -11,6 +11,7 @@ import '../tokens/llm_provider.dart';
 import '../auth/secret_vault_service.dart';
 import 'ai_proxy_service.dart';
 import 'video_generation_service.dart';
+import 'telemetry_service.dart';
 
 // --- JS Interop for Chrome Prompt API ---
 // These will only work on Chrome with experimental flags enabled.

@@ -192,7 +192,7 @@ class AssistantService {
         await _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
           "Query: $text\nResponse: ${message.text}",
           attachment: attachment,
-        ).timeout(const Duration(seconds: 30)); // Increased from 10s to 30s
+        ).timeout(const Duration(seconds: 60)); 
       } catch (e) {
         debugPrint('Knowledge Auto-Ingest Error: ${_safeError(e)}');
       }

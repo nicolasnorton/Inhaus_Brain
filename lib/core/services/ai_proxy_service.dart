@@ -113,7 +113,7 @@ class AIProxyService {
     required List<Map<String, dynamic>> instances,
   }) async {
     const maxRetries = 2; // Fewer retries for embeddings to keep total time reasonable
-    const timeout = Duration(seconds: 30); // Increased from implicit default
+    const timeout = Duration(seconds: 60);
     
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {

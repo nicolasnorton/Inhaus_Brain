@@ -48,14 +48,14 @@ Inhaus Brain's Knowledge Module is designed for agency-level intelligence with e
 ### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
 
-### 6. 🎬 Flawless Video Generation & On-Device AI
-Generate high-fidelity branded video assets directly from your research or creative concepts, powered by a hybrid engine.
-*   **On-Device Previews (LiteRT)**: Instant, zero-cost previews using **Gemma 2B** and **Veo 3 Fast** running directly on your device (NPU/GPU accelerated).
-*   **Cost-Aware Routing**: The system automatically chooses the best model:
-    *   _Drafts/Previews_: LiteRT (Local)
-    *   _Final/High-Fidelity_: Veo 3.1 (Cloud)
-*   **High-Fidelity Rendering**: Only uses flagship models (Veo 3.1) for the **Final Render** once you are 100% satisfied.
-*   **Bilingual Subtitles**: One-click generation of professional English/Spanish captions for international reach.
+### 6. 🎬 Flawless Video Generation & On-Device AI (DeepMind Only)
+Generate high-fidelity branded video assets using an exclusive **Google DeepMind** pipeline.
+*   **On-Device Previews (LiteRT)**: Instant, zero-cost previews using **Gemini Nano**, **Gemma 2**, and **Veo Fast** variants running directly on your device (NPU/GPU accelerated).
+*   **DeepMind-Only Routing**:
+    *   _Drafts/Previews_: **LiteRT / Veo Fast** (<2s generation time). Fallback to **Static Storyboard** if generation >3s.
+    *   _Final/High-Fidelity_: **Veo 3 / Veo 3.1** via Vertex AI (Cloud).
+*   **High-Fidelity Rendering**: Only uses flagship DeepMind models (Veo 3.1) for the **Final Render** once you are 100% satisfied.
+*   **Bilingual Subtitles**: One-click generation of professional English/Spanish (LatAm) captions.
 *   **Cultural Safety**: Automatically applies LatAm/Ecuadorian cultural filters to ensure brand-safe, respectful visuals.
 
 ### 7. 🛠️ Templates & Sharing
@@ -190,8 +190,8 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
 
 ### 3. Video Stuck in "Thinking..."
 *   **Symptom**: The generation never completes.
-*   **Cause**: This is usually a timeout in the polling loop (Veo can take 5+ minutes).
-*   **Fallback**: The system will eventually timeout (after 5 minutes) and return a static "Storyboard" image so the UI doesn't break. You can try regenerating with a simpler prompt (Preview Mode).
+*   **Cause**: This acts as a timeout. Cloud rendering (Veo 3.1) can take ~5 minutes, but **LiteRT Previews** have a strict 3-second timeout.
+*   **Fallback**: If a Preview takes longer than 3 seconds, the system instantly switches to a **Static Storyboard** image so you aren't left waiting. You can try "Render Final" if you are happy with the static concept.
 
 ### 4. Mock Video / Storyboard (Big Buck Bunny) Appearing
 *   **Symptom**: You see a cartoon bunny video or a static video placeholder.
