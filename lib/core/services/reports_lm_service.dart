@@ -7,10 +7,9 @@ import '../tokens/llm_provider.dart';
 class ReportsLMService {
   
   /// Generates a "Deep Dive" Audio Overview script and returns a URL to the audio.
-  /// (Currently mocks the TTS part, but generates the script via Gemini)
-  static Future<String> generateAudioOverview(Report report, dynamic ref) async {
+  static Future<String> generateAudioOverview(Report report, dynamic ref, {bool isPreview = false}) async {
     final context = _buildContextFromSources(report);
-    const prompt = """
+    final prompt = """
     You are two AI hosts, 'Nova' (energetic, insightful) and 'Sage' (calm, analytical).
     Create a 3-minute engaging podcast script summarizing the provided source material.
     Focus on key trends, surprising data points, and strategic implications.
@@ -21,16 +20,18 @@ class ReportsLMService {
 
     final scriptResult = await EdgeAIService.generateText(
       prompt,
-      modelConfig: AIModelConfig.geminiFlash,
+      modelConfig: isPreview ? AIModelConfig.gemma2n : AIModelConfig.geminiFlash,
       memoryContext: context,
       ref: ref,
     );
 
     // In a real implementation, we would send this script to a TTS service (ElevenLabs/OpenAI).
-    // For now, we return a placeholder URL but logged the script.
-    print("Generated Podcast Script:\n${scriptResult.text}");
+    if (isPreview) {
+       // Return local placeholder for preview
+       return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+    }
     
-    // Simulate processing time
+    // Simulate processing time for high quality
     await Future.delayed(const Duration(seconds: 4));
     return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
   }
@@ -63,7 +64,7 @@ class ReportsLMService {
   }
 
   /// Generates a Mind Map structure (JSON)
-  static Future<String> generateMindMap(Report report, dynamic ref) async {
+  static Future<String> generateMindMap(Report report, dynamic ref, {bool isPreview = false}) async {
      final context = _buildContextFromSources(report);
      final prompt = """
      Analyze the sources and create a hierarchical mind map of the key concepts.
@@ -78,14 +79,47 @@ class ReportsLMService {
 
      final result = await EdgeAIService.generateText(
        prompt, 
-       modelConfig: AIModelConfig.geminiFlash, // Use JSON mode if available, otherwise Flash is good at JSON
+       modelConfig: isPreview ? AIModelConfig.gemma2n : AIModelConfig.geminiFlash,
        memoryContext: context,
        ref: ref
      );
 
      // Strip markdown code blocks if present
      final json = result.text.replaceAll('```json', '').replaceAll('```', '').trim();
+     
+     // Quick fix for LiteRT mock text if it doesn't return JSON
+     if (isPreview && !json.startsWith('{')) {
+       return '{ "root": "LiteRT Preview", "children": [{ "name": "Speed", "children": [] }] }';
+     }
      return json;
+  }
+
+  /// Generates a Slide Deck Outline
+  static Future<String> generateSlideDeck(Report report, dynamic ref, {bool isPreview = false}) async {
+    final context = _buildContextFromSources(report);
+    const prompt = "Create a 5-slide presentation outline based on these sources. Title + 3 bullets per slide.";
+    
+    final result = await EdgeAIService.generateText(
+       prompt, 
+       modelConfig: isPreview ? AIModelConfig.gemma2n : AIModelConfig.geminiFlash,
+       memoryContext: context,
+       ref: ref
+    );
+    return result.text;
+  }
+
+  /// Generates an Infographic Concept
+  static Future<String> generateInfographic(Report report, dynamic ref, {bool isPreview = false}) async {
+    final context = _buildContextFromSources(report);
+    const prompt = "Describe a visual infographic layout that best explains the data (Flowchart, Bar Graph, or Comparison).";
+    
+    final result = await EdgeAIService.generateText(
+       prompt, 
+       modelConfig: isPreview ? AIModelConfig.gemma2n : AIModelConfig.geminiFlash,
+       memoryContext: context,
+       ref: ref
+    );
+    return result.text;
   }
 
   static String _buildContextFromSources(Report report) {

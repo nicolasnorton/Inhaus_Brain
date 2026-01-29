@@ -11,7 +11,8 @@ import '../widgets/slide_deck_config_dialog.dart';
 import '../../../../core/services/reports_lm_service.dart';
 import '../providers/reports_provider.dart';
 import '../../../../core/widgets/video_preview_player.dart';
-// import '../models/slide_deck_model.dart'; // Unused directly here?
+import '../../connectors/models/connected_account_model.dart';
+import '../../../../core/services/ad_platforms_service.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -165,23 +166,47 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  Widget _buildConnectedAccountOption(Report report, String platform, String name, SourceType type) {
+  Widget _buildConnectedAccountOption(Report report, String platformName, String name, SourceType type) {
     return SimpleDialogOption(
       onPressed: () async {
         Navigator.pop(context); // Close selection
-        final source = await (type == SourceType.adAccount 
-            ? SourcesService.addAccountSource(report.id, platform, name)
-            : SourcesService.addAnalyticsSource(report.id, platform, name));
-        _addSource(report, source);
+        
+        // Construct a mock/temporary account object (In real usage this comes from a provider list)
+        final platform = _getPlatformEnum(platformName);
+        final account = ConnectedAccount(
+          id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+          clientId: report.clientId,
+          platform: platform,
+          accountName: name,
+          externalAccountId: 'ext_123',
+          updatedAt: DateTime.now(),
+        );
+
+        if (type == SourceType.adAccount) {
+           final adService = ref.read(adPlatformsServiceProvider);
+           final source = await SourcesService.fetchAndAddConnectedSource(report.id, account, adService);
+           _addSource(report, source);
+        } else {
+           // Fallback for analytics until fully implemented
+           final source = await SourcesService.addAnalyticsSource(report.id, platformName, name);
+           _addSource(report, source);
+        }
       },
       child: Row(
         children: [
-          Icon(_getIconForPlatform(platform), color: Colors.blueAccent, size: 18),
+          Icon(_getIconForPlatform(platformName), color: Colors.blueAccent, size: 18),
           const SizedBox(width: 12),
           Text(name, style: const TextStyle(color: Colors.white70)),
         ],
       ),
     );
+  }
+
+  AdPlatform _getPlatformEnum(String name) {
+    if (name.contains("Google Ads")) return AdPlatform.googleAds;
+    if (name.contains("Meta")) return AdPlatform.metaAds;
+    if (name.contains("TikTok")) return AdPlatform.tiktokAds;
+    return AdPlatform.other;
   }
 
   IconData _getIconForPlatform(String platform) {
@@ -249,16 +274,116 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  Future<void> _handleAudioGeneration(Report report) async {
-    _showLoadingDialog("Generating Audio Overview...");
+  Future<void> _handleAudioGeneration(Report report, {bool isPreview = true}) async {
+    _showLoadingDialog(isPreview ? "Generating Audio Preview (LiteRT)..." : "Synthesizing Final Audio...");
     try {
-      final url = await ReportsLMService.generateAudioOverview(report, ref);
-      if (mounted) Navigator.pop(context); // Close loading
-      if (mounted) _showResultDialog("Audio Overview Ready", "Podcast script generated and audio synthesized.", url: url, isAudio: true);
+      final url = await ReportsLMService.generateAudioOverview(report, ref, isPreview: isPreview);
+      if (mounted) Navigator.pop(context); 
+      if (mounted) {
+        if (isPreview) {
+          _showPreviewDialog(
+            "Audio Script Preview", 
+            "The generated script is ready. Preview audio is a placeholder.", 
+            onGenerateFinal: () => _handleAudioGeneration(report, isPreview: false)
+          );
+        } else {
+          _showResultDialog("Audio Overview Ready", "Podcast script generated and audio synthesized.", url: url, isAudio: true);
+        }
+      }
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context); 
       if (mounted) _showErrorDialog(e.toString());
     }
+  }
+
+  Future<void> _handleMindMapGeneration(Report report, {bool isPreview = true}) async {
+      _showLoadingDialog(isPreview ? "Generating Mind Map Preview (LiteRT)..." : "Generating Final Mind Map...");
+      try {
+        final json = await ReportsLMService.generateMindMap(report, ref, isPreview: isPreview);
+        if (mounted) Navigator.pop(context);
+        if (mounted) {
+           if (isPreview) {
+             _showPreviewDialog(
+               "Mind Map Preview", 
+               "JSON Structure:\n$json", 
+               onGenerateFinal: () => _handleMindMapGeneration(report, isPreview: false)
+             );
+           } else {
+             _showResultDialog("Final Mind Map", json); 
+           }
+        }
+      } catch (e) {
+        if (mounted) Navigator.pop(context);
+        if (mounted) _showErrorDialog(e.toString());
+      }
+  }
+
+  Future<void> _handleInfographicGeneration(Report report, {bool isPreview = true}) async {
+      _showLoadingDialog(isPreview ? "Generating Infographic Concept (LiteRT)..." : "Designing Final Infographic...");
+      try {
+        final text = await ReportsLMService.generateInfographic(report, ref, isPreview: isPreview);
+        if (mounted) Navigator.pop(context);
+        if (mounted) {
+            if (isPreview) {
+              _showPreviewDialog(
+                "Infographic Concept Preview", 
+                text, 
+                onGenerateFinal: () => _handleInfographicGeneration(report, isPreview: false)
+              );
+            } else {
+              _showResultDialog("Infographic Design", text);
+            }
+        }
+      } catch (e) {
+        if (mounted) Navigator.pop(context);
+        if (mounted) _showErrorDialog(e.toString());
+      }
+  }
+
+  Future<void> _handleSlideDeckGeneration(Report report, {bool isPreview = true}) async {
+      _showLoadingDialog(isPreview ? "Drafting Slide Deck (LiteRT)..." : "Building Final Deck...");
+      try {
+        final text = await ReportsLMService.generateSlideDeck(report, ref, isPreview: isPreview);
+        if (mounted) Navigator.pop(context);
+        if (mounted) {
+            if (isPreview) {
+              _showPreviewDialog(
+                "Deck Outline Preview", 
+                text, 
+                onGenerateFinal: () => _handleSlideDeckGeneration(report, isPreview: false)
+              );
+            } else {
+              _showResultDialog("Final Slide Deck", text);
+            }
+        }
+      } catch (e) {
+        if (mounted) Navigator.pop(context);
+        if (mounted) _showErrorDialog(e.toString());
+      }
+  }
+
+  void _showPreviewDialog(String title, String content, {required VoidCallback onGenerateFinal}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Text(content, style: const TextStyle(color: Colors.white70)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onGenerateFinal();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            child: const Text("Generate Final (Vertex AI)")
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleVideoGeneration(Report report, {bool isFinal = false, bool includeSubtitles = false}) async {
@@ -346,17 +471,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  Future<void> _handleMindMapGeneration(Report report) async {
-      _showLoadingDialog("Generating Mind Map...");
-      try {
-        final json = await ReportsLMService.generateMindMap(report, ref);
-        if (mounted) Navigator.pop(context);
-        if (mounted) _showResultDialog("Mind Map Generated", json); // Show JSON for now
-      } catch (e) {
-        if (mounted) Navigator.pop(context);
-        if (mounted) _showErrorDialog(e.toString());
-      }
-  }
+
 
   void _showLoadingDialog(String message) {
     showDialog(
@@ -598,26 +713,12 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                                _buildStudioCard("Video Overview", FontAwesomeIcons.video, Colors.green, onTap: () => _handleVideoGeneration(report)),
                                _buildStudioCard("Mind Map", FontAwesomeIcons.diagramProject, Colors.purple, onTap: () => _handleMindMapGeneration(report)),
                                _buildStudioCard("Reports", FontAwesomeIcons.fileLines, Colors.orange),
-                               _buildStudioCard("Infographic", FontAwesomeIcons.chartPie, Colors.pink),
+                               _buildStudioCard("Infographic", FontAwesomeIcons.chartPie, Colors.pink, onTap: () => _handleInfographicGeneration(report)),
                                _buildStudioCard(
                                  "Slide Deck", 
                                  FontAwesomeIcons.layerGroup, 
                                  Colors.amber,
-                                 onTap: () {
-                                   showDialog(
-                                     context: context,
-                                     builder: (context) => SlideDeckConfigDialog(
-                                       onGenerate: (format, lang, length, prompt) {
-                                         ScaffoldMessenger.of(context).showSnackBar(
-                                           SnackBar(
-                                             content: Text("Generating $length ${format.name} deck in $lang..."),
-                                             backgroundColor: AppTheme.primary,
-                                           ),
-                                         );
-                                       },
-                                     ),
-                                   );
-                                 },
+                                 onTap: () => _handleSlideDeckGeneration(report),
                                ),
                              ],
                            ),

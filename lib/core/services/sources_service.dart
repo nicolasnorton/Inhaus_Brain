@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../features/reports/models/source_model.dart';
+import 'ad_platforms_service.dart';
+import '../../features/connectors/models/connected_account_model.dart';
+import '../../features/connectors/models/unified_campaign_model.dart';
 
 class SourcesService {
   
@@ -107,7 +110,53 @@ class SourcesService {
       uri: "analytics://$platformName/$propertyId",
       content: "Mock analytics data for $propertyId from $platformName...",
       addedAt: DateTime.now(),
-    );
+  }
+
+  /// Fetch real data from a connected account and add as source
+  static Future<ReportSource> fetchAndAddConnectedSource(
+      String reportId, 
+      ConnectedAccount account, 
+      AdPlatformsService adService,
+      {DateTime? start, DateTime? end}
+  ) async {
+      final s = start ?? DateTime.now().subtract(const Duration(days: 30));
+      final e = end ?? DateTime.now();
+      
+      try {
+        final campaigns = await adService.getCampaignsForAccount(account, s, e);
+        
+        // Convert campaigns to CSV-like string for the LLM
+        final buffer = StringBuffer();
+        buffer.writeln("Campaign Compliance Report (${account.platform.name})");
+        buffer.writeln("Period: ${s.toIso8601String()} to ${e.toIso8601String()}");
+        buffer.writeln("Campaign,Status,Spend,Impressions,Clicks,CTR,ROAS");
+        
+        for (var c in campaigns) {
+           buffer.writeln("${c.name},${c.status},${c.spend},${c.impressions},${c.clicks},${c.ctr},${c.roas}");
+        }
+
+        return ReportSource(
+          id: const Uuid().v4(),
+          reportId: reportId,
+          type: SourceType.adAccount,
+          name: "${account.platform.name}: ${account.accountName}",
+          uri: "account://${account.platform.name}/${account.externalAccountId}",
+          content: buffer.toString(),
+          metadata: {'campaignCheckCount': campaigns.length},
+          addedAt: DateTime.now(),
+        );
+
+      } catch (err) {
+        // Fallback or error source
+        return ReportSource(
+          id: const Uuid().v4(),
+          reportId: reportId,
+          type: SourceType.adAccount,
+          name: "Error: ${account.accountName}",
+          content: "Failed to fetch data: $err",
+          addedAt: DateTime.now(),
+        );
+      }
   }
 }
 
