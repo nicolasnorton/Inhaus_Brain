@@ -65,37 +65,41 @@ service cloud.firestore {
 
     // KNOWLEDGE MODULE RULES (Production Hardened)
     match /knowledge_datasets/{datasetId} {
-      allow create: if isAgencyStaff();
+      // Allow creation by any authenticated user (Agency OR Client wanting private knowledge)
+      allow create: if isAuthenticated();
       
       allow read: if isAgencyStaff() || (
         isClient() && (
           resource.data.get('permission', '') == 'client_shared' ||
           resource.data.get('clientId', '') == request.auth.uid
         )
-      );
+      ) || resource.data.createdBy == request.auth.uid; // Allow creator to read
       
-      allow update, delete: if isAgencyStaff() && (
-        isSuperAdmin() || resource.data.get('createdBy', '') == request.auth.uid
-      );
+      allow update, delete: if isAgencyStaff() || resource.data.createdBy == request.auth.uid;
       
       match /documents/{documentId} {
-        allow create: if isAgencyStaff(); // Explicit create permission
-        allow read: if isAgencyStaff() || isClient();
-        allow update, delete: if isAgencyStaff();
+        allow create: if isAuthenticated(); // Allow adding docs
+        allow read: if isAgencyStaff() || isClient() || get(/databases/$(database)/documents/knowledge_datasets/$(datasetId)).data.createdBy == request.auth.uid;
+        allow update, delete: if isAgencyStaff() || get(/databases/$(database)/documents/knowledge_datasets/$(datasetId)).data.createdBy == request.auth.uid;
         
         match /chunks/{chunkId} {
-          allow create: if isAgencyStaff(); // Explicit create permission
-          allow read: if isAgencyStaff() || isClient();
-          allow update, delete: if isAgencyStaff();
+          allow create: if isAuthenticated(); 
+          allow read: if isAgencyStaff() || isClient() || get(/databases/$(database)/documents/knowledge_datasets/$(datasetId)).data.createdBy == request.auth.uid;
+          allow update, delete: if isAgencyStaff() || get(/databases/$(database)/documents/knowledge_datasets/$(datasetId)).data.createdBy == request.auth.uid;
         }
       }
     }
     
-    // USER PROFILES
+    // USER PROFILES & USER KNOWLEDGE
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create: if request.auth != null && request.auth.uid == userId; // Allow self-creation
+      allow create: if request.auth != null && request.auth.uid == userId;
       allow update, delete: if isOwner(userId);
+
+      // User-specific Knowledge (Reference from summary)
+      match /knowledge/{docId} {
+         allow read, write: if isOwner(userId);
+      }
     }
 
     // DEFAULT DENY
