@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'ai_proxy_service.dart';
 import '../tokens/llm_provider.dart';
+import 'telemetry_service.dart';
 
 /// Service dedicated to Video Generation using Veo models via Secure Proxy.
 /// Implements cost-aware routing (Preview vs Final) and cultural safety checks.
@@ -21,18 +22,40 @@ class VideoGenerationService {
     bool useCulturalSafety = true,
     bool includeSubtitles = false,
     Function(double)? onProgress,
+    TelemetryService? telemetry,
   }) async {
+    final stopwatch = Stopwatch()..start();
     String effectivePrompt = useCulturalSafety ? _appendCulturalSafety(prompt) : prompt;
     if (includeSubtitles) {
       effectivePrompt += " Include bilingual subtitles: English and Spanish (LatAm).";
     }
     
-    return _generateVideoInternal(
-      prompt: effectivePrompt,
-      modelId: _previewModel,
-      isPreview: true,
-      onProgress: onProgress,
-    );
+    try {
+      final result = await _generateVideoInternal(
+        prompt: effectivePrompt,
+        modelId: _previewModel,
+        isPreview: true,
+        onProgress: onProgress,
+      );
+      stopwatch.stop();
+      telemetry?.logVideoGeneration(
+        modelId: _previewModel, 
+        isPreview: true, 
+        durationMs: stopwatch.elapsedMilliseconds.toDouble(), 
+        success: true
+      );
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+       telemetry?.logVideoGeneration(
+        modelId: _previewModel, 
+        isPreview: true, 
+        durationMs: stopwatch.elapsedMilliseconds.toDouble(), 
+        success: false,
+        errorReason: e.toString()
+      );
+      rethrow;
+    }
   }
 
   /// Generates the final high-quality video (Flagship model).
@@ -44,22 +67,44 @@ class VideoGenerationService {
     bool useCulturalSafety = true,
     bool includeSubtitles = false,
     Function(double)? onProgress,
+    TelemetryService? telemetry,
   }) async {
     if (!confirmedByUser) {
       throw Exception('VideoGenerationService: User confirmation required for final render.');
     }
 
+    final stopwatch = Stopwatch()..start();
     String effectivePrompt = useCulturalSafety ? _appendCulturalSafety(prompt) : prompt;
     if (includeSubtitles) {
       effectivePrompt += " Include bilingual subtitles: English and Spanish (LatAm).";
     }
 
-    return _generateVideoInternal(
-      prompt: effectivePrompt,
-      modelId: _finalModel,
-      isPreview: false,
-      onProgress: onProgress,
-    );
+    try {
+      final result = await _generateVideoInternal(
+        prompt: effectivePrompt,
+        modelId: _finalModel,
+        isPreview: false,
+        onProgress: onProgress,
+      );
+      stopwatch.stop();
+      telemetry?.logVideoGeneration(
+        modelId: _finalModel, 
+        isPreview: false, 
+        durationMs: stopwatch.elapsedMilliseconds.toDouble(), 
+        success: true
+      );
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      telemetry?.logVideoGeneration(
+        modelId: _finalModel, 
+        isPreview: false, 
+        durationMs: stopwatch.elapsedMilliseconds.toDouble(), 
+        success: false,
+        errorReason: e.toString()
+      );
+      rethrow;
+    }
   }
 
   static Future<String> _generateVideoInternal({
@@ -85,6 +130,8 @@ class VideoGenerationService {
           // passing a raw config map if supported, or via careful prompt engineering
           // For now, the proxy handles 'durationSeconds' in its body construction if we could pass it.
           // We'll rely on the proxy default (5s) or passed config if we extend AIModelConfig.
+          // Note: Adding explicit instruction to prompt for short duration since we can't easily change config object here without breaking types.
+          prompt += " (Limit duration to 5 seconds for preview)."; 
         }
 
         final proxyResponse = await AIProxyService.generateContent(
@@ -95,7 +142,7 @@ class VideoGenerationService {
         if (proxyResponse['custom_type'] == 'veo_lro') {
           final opName = proxyResponse['operationName'];
           debugPrint('VideoService: LRO started: $opName. Polling...');
-          return await _pollProxyVeoOperation(opName, onProgress: onProgress);
+          return await _pollProxyVeoOperation(opName, onProgress: onProgress, isPreview: isPreview);
         } 
         
         else if (proxyResponse['custom_type'] == 'veo_result') {
@@ -128,7 +175,7 @@ class VideoGenerationService {
     return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
   }
 
-  static Future<String> _pollProxyVeoOperation(String operationName, {Function(double)? onProgress}) async {
+  static Future<String> _pollProxyVeoOperation(String operationName, {Function(double)? onProgress, bool isPreview = false}) async {
     int errors = 0;
     const maxErrors = 5; // Increased tolerance for 404s during initial propagation
 

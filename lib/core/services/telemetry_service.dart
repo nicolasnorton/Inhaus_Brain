@@ -103,6 +103,30 @@ class TelemetryService {
       );
     } catch (_) {}
   }
+  // Log Video Generation Performance
+  Future<void> logVideoGeneration({
+    required String modelId,
+    required bool isPreview,
+    required double durationMs,
+    required bool success,
+    String? errorReason,
+    bool isFallback = false,
+  }) async {
+    try {
+      await _analytics.logEvent(
+        name: 'video_generation',
+        parameters: {
+          'model_id': modelId,
+          'is_preview': isPreview ? 1 : 0,
+          'duration_ms': durationMs,
+          'success': success ? 1 : 0,
+          'error': errorReason ?? 'none',
+          'is_fallback': isFallback ? 1 : 0,
+        },
+      );
+      _logger.i('[Telemetry] Video Gen ($modelId): ${success ? "Success" : "Fail"} in ${durationMs}ms (Fallback: $isFallback)');
+    } catch (_) {}
+  }
 }
 
 final telemetryServiceProvider = Provider<TelemetryService>((ref) => TelemetryService());

@@ -52,7 +52,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
-                    'PREVIEW',
+                    'LITERT PREVIEW',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 10,
