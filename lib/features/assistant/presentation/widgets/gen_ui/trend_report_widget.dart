@@ -129,7 +129,33 @@ class TrendReportWidget extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 16.0),
           child: Text(
             sectionData['content'] ?? '',
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14, height: 1.5),
+          ),
+        );
+      case 'heading':
+        return Padding(
+          padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
+          child: Text(
+            sectionData['title'] ?? sectionData['content'] ?? 'Section',
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        );
+      case 'check_list':
+        final items = sectionData['items'] as List? ?? [];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline, size: 16, color: Colors.blueAccent),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(item.toString(), style: const TextStyle(color: Colors.white70, fontSize: 13))),
+                ],
+              ),
+            )).toList(),
           ),
         );
       case 'stat_card':

@@ -29,7 +29,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
   @override
   Widget build(BuildContext context) {
     // Check if we are showing a fallback image (Storyboard) instead of a video
-    final isFallbackImage = widget.videoUrl.startsWith('IMAGE:');
+    final isFallbackImage = widget.videoUrl.toUpperCase().startsWith('IMAGE:');
     final mediaUrl = isFallbackImage ? widget.videoUrl.substring(6) : widget.videoUrl;
 
     return Column(

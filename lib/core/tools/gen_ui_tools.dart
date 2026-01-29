@@ -30,87 +30,53 @@ class GenUIComponentTool extends AgentTool {
         'properties': {
           'component_type': {
             'type': 'string',
-            'enum': ['strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report'],
-            'description': 'The type of UI component to render. Use "budget_chart" for any financial/budget data. Use "kanban_board" for task/status lists. Use "strategy_board" for high level plans. Use "trend_report" for market research reports.'
+            'enum': ['strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report'],
+            'description': 'The type of UI component to render. Use "recipe_card" for instructions or processes. Use "analysis_report" for deep dives on data or competitors. Use "strategy_board" for high level plans. Use "trend_report" for market research reports.'
           },
           'data': {
             'type': 'object',
             'description': '''The structured data for the component. CRITICAL: Generate REAL, DETAILED, SPECIFIC data. NO placeholders like "TBD". Use realistic numbers, competitor names, metrics, and insights.
 
-For "trend_report" (MUST include AT LEAST 5-7 diverse sections):
+For "analysis_report" or "trend_report" (MUST include AT LEAST 5-7 diverse sections):
 {
-  "title": "Specific Report Title (e.g., 'Competitor Analysis Report: Bajaj in Ecuador')",
+  "title": "Specific Analysis Title (e.g., 'Risk Analysis: Entering Ecuadorian Motorcycle Market')",
   "summary": "2-3 sentence executive summary with key findings",
   "sections": [
     {
       "type": "stat_card",
       "items": [
-        {"label": "Market Share (Bajaj)", "value": "23.4%", "trend": "up", "change": "+3.2%"},
-        {"label": "Market Growth Rate", "value": "12.8%", "trend": "up", "change": "+1.5%"},
-        {"label": "Price Index", "value": "\$2,850", "trend": "down", "change": "-5.0%"}
+        {"label": "Current Market Cap", "value": "\\\$12.5B", "trend": "up", "change": "+5%"},
+        {"label": "Risk Level", "value": "Medium", "trend": "down"}
       ]
     },
     {
       "type": "text",
-      "title": "Market Overview",
-      "content": "Detailed 3-4 sentence analysis of the market landscape, competition dynamics, and key drivers"
+      "title": "Sector Overview",
+      "content": "Detailed 3-4 sentence analysis of the sector landscape."
     },
     {
       "type": "chart",
-      "title": "Market Share Distribution",
-      "data": {"Bajaj": 23.4, "Honda": 31.2, "Yamaha": 18.9, "Suzuki": 15.3, "Others": 11.2}
+      "title": "Revenue Forecast",
+      "data": {"2024": 1500, "2025": 1850, "2026": 2300}
     },
     {
-      "type": "trend_list",
-      "title": "Key Market Trends",
-      "items": [
-        {"name": "Electric Mobility Shift", "growth": 35, "description": "2-3 sentence deep dive on why this matters", "impact_score": 0.85},
-        {"name": "Price Sensitivity", "growth": 20, "description": "Detailed consumer behavior insight", "impact_score": 0.72},
-        {"name": "After-Sales Service", "growth": 18, "description": "Market differentiation factor", "impact_score": 0.68}
-      ]
-    },
-    {
-      "type": "text",
-      "title": "Competitive Positioning",
-      "content": "Specific analysis of Bajaj's strengths (e.g., 'fuel efficiency 45km/L', 'service network: 120 centers') vs competitors"
-    },
-    {
-      "type": "stat_card",
-      "title": "Strategic Opportunities",
-      "items": [
-        {"label": "Untapped Rural Markets", "value": "42%", "trend": "neutral"},
-        {"label": "Electric Segment Potential", "value": "\$85M", "trend": "up", "change": "+45%"}
-      ]
-    },
-    {
-      "type": "text",
-      "title": "Recommendations",
-      "content": "3-5 specific, actionable recommendations with rationale"
+       "type": "check_list",
+       "title": "Key Requirements",
+       "items": ["Local distribution permit", "Customs clearance", "VAT registration"]
     }
   ]
 }
 
-REQUIREMENTS FOR EXCELLENCE:
-1. Numbers MUST be specific and realistic (23.4%, NOT "TBD" or "XX%")
-2. Competitor/brand names MUST be real (Honda, Yamaha, NOT "Competitor A")
-3. Include 5-7 sections minimum with variety: stat_card, text, chart, trend_list
-4. Text content MUST be 2-4 sentences minimum (NO single sentence summaries)
-5. Charts MUST have 4-6 data points with realistic distribution
-6. Trend items MUST include growth numbers AND detailed descriptions
-7. Include both quantitative (metrics, charts) AND qualitative (analysis, recommendations) content
-
-For "strategy_board":
+For "recipe_card" (used for ANY step-by-step process, not just food):
 {
-  "title": "Specific Strategy Name",
-  "objectives": ["Measurable Objective 1 (e.g., 'Increase market share to 28% by Q4')", "Objective 2 with metric", "Objective 3 with timeline"],
-  "pillars": [
-    {"title": "Pillar 1: [Name]", "description": "2-3 sentence detailed explanation", "kpis": ["Specific KPI with target: CAC less than fifty dollars", "KPI 2", "KPI 3"]},
-    {"title": "Pillar 2", "description": "...", "kpis": ["...", "...", "..."]}
-  ],
-  "milestones": [
-    {"date": "2026-Q1", "label": "Specific Launch Event"},
-    {"date": "2026-Q2", "label": "Expansion Phase 1"},
-    {"date": "2026-Q3", "label": "Market Consolidation"}
+  "title": "Process/Recipe Name",
+  "duration": "Duration (e.g., 2 hours)",
+  "difficulty": "Easy/Medium/Hard",
+  "ingredients": ["Requirement 1", "Requirement 2"],
+  "steps": [
+    {"title": "Phase 1: Preparation", "description": "Detailed 2-sentence description of preparation steps."},
+    {"title": "Phase 2: Execution", "description": "..."},
+    {"title": "Phase 3: Finalization", "description": "..."}
   ]
 }'''
           },

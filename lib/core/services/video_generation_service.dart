@@ -94,7 +94,8 @@ class VideoGenerationService {
 
     // 3. Last Resort Fallback (Imagen Storyboard)
     debugPrint('VideoService: 🚨 All real video tiers exhausted. Using last-resort storyboards.');
-    return await _generateImagenFallback(effectivePrompt);
+    final result = await _generateImagenFallback(effectivePrompt);
+    return result.startsWith('https') ? 'IMAGE:$result' : result;
   }
 
   /// Generates the final high-quality video (Veo 3.1).
@@ -221,7 +222,8 @@ class VideoGenerationService {
           // Allow caller to handle retry
           rethrow;
         } else {
-          return _getStaticFallback("Generation Error: $e");
+          final fallback = _getStaticFallbackUrl("Generation Error: $e");
+          return 'IMAGE:$fallback';
         }
       }
     }
@@ -279,7 +281,8 @@ class VideoGenerationService {
                    
                    if (errorMsg.contains('quota') || errorMsg.contains('rate limit')) {
                       debugPrint('VideoService: Quota/rate limit hit - immediate fallback');
-                      return _getStaticFallback("API quota exceeded: $errorMsg");
+                      final fallback = _getStaticFallbackUrl("API quota exceeded: $errorMsg");
+                      return 'IMAGE:$fallback';
                    }
                    
                    // [NEW] Handle specific Operation ID structure error
@@ -299,10 +302,12 @@ class VideoGenerationService {
                         debugPrint('VideoService: Edge fallback also failed: $e');
                       }
                       
-                      return _getStaticFallback("Video format error (ID mismatch). Showing storyboard instead.");
+                      final fallback = _getStaticFallbackUrl("Video format error (ID mismatch). Showing storyboard instead.");
+                      return 'IMAGE:$fallback';
                    }
                    
-                   return _getStaticFallback("Generation failed: $errorMsg");
+                   final fallback = _getStaticFallbackUrl("Generation failed: $errorMsg");
+                   return 'IMAGE:$fallback';
                 }
                 
                 final respObj = data['response'];
@@ -329,7 +334,8 @@ class VideoGenerationService {
                     return _sanitizeMediaUrl(metadata['outputUri']);
                  }
                  
-                 return _getStaticFallback('Video generated but URL missing in response.');
+                 final fallback = _getStaticFallbackUrl('Video generated but URL missing in response.');
+                 return 'IMAGE:$fallback';
             } else {
                 debugPrint('VideoService: ⏳ Still processing... (done: ${data['done']})');
                 consecutiveErrors = 0; 
@@ -346,7 +352,8 @@ class VideoGenerationService {
                 if (total404Count >= max404Retries) {
                     debugPrint('VideoService: ❌ Operation lost after $total404Count attempts');
                     debugPrint('📊 [Telemetry] video_generation_failed: reason=404_operation_not_found, duration=${i * pollInterval.inSeconds}s, polls=${i + 1}');
-                    return _getStaticFallback('Operation not found (404) after $total404Count retries');
+                    final fallback = _getStaticFallbackUrl('Operation not found (404) after $total404Count retries');
+                    return 'IMAGE:$fallback';
                 }
                 consecutiveErrors = 0;
                 continue;
@@ -357,7 +364,8 @@ class VideoGenerationService {
             if (consecutiveErrors >= maxConsecutiveErrors) {
                debugPrint('VideoService: 🛑 Too many consecutive errors ($consecutiveErrors)');
                debugPrint('📊 [Telemetry] video_generation_failed: reason=consecutive_errors, duration=${i * pollInterval.inSeconds}s, polls=${i + 1}, error=$errorStr');
-               return _getStaticFallback('Network errors during polling (consecutive failures).');
+               final fallback = _getStaticFallbackUrl('Network errors during polling (consecutive failures).');
+               return 'IMAGE:$fallback';
             }
         }
     }
@@ -366,7 +374,8 @@ class VideoGenerationService {
     debugPrint('📊 [Telemetry] video_generation_timeout: duration=${maxPolls * pollInterval.inSeconds}s, polls=$maxPolls');
     
     // Try High-Quality Image Fallback before giving up
-    return await _generateImagenFallback(originalPrompt);
+    final result = await _generateImagenFallback(originalPrompt);
+    return result.startsWith('https') ? 'IMAGE:$result' : result;
   }
 
   static Future<String> _generateImagenFallback(String prompt) async {
@@ -398,17 +407,18 @@ class VideoGenerationService {
        debugPrint('VideoService: Imagen fallback also failed: $e');
     }
     
-    return _getStaticFallback('Video generation timed out and Imagen fallback failed.');
+    final staticUrl = _getStaticFallbackUrl('Video generation timed out and Imagen fallback failed.');
+    return 'IMAGE:$staticUrl';
   }
 
-  static String _getStaticFallback(String reason) {
+  static String _getStaticFallbackUrl(String reason) {
     debugPrint('VideoService: 🚨 [LAST RESORT FALLBACK] Using static storyboard');
     debugPrint('VideoService: Reason: $reason');
     debugPrint('VideoService: This should be rare - investigate if occurring frequently');
     
     debugPrint('📊 [Telemetry] video_fallback_used: reason="$reason", timestamp=${DateTime.now().toIso8601String()}');
     
-    // Return plain URL - UI should handle based on type/context
+    // Return clean URL - prefixing is handled at the service boundary
     return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop"; 
   }
 

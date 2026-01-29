@@ -377,13 +377,14 @@ CRITICAL INSTRUCTIONS:
 1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research.
 2. NAVIGATION: Use 'navigate_to' tool for navigation.
 3. GENERATION: Use 'image_generation' or 'video_generation' for media.
-4. GEN UI: Strategy reports, TREND REPORTS, competitor analysis, and complex data MUST be rendered via 'gen_ui_component'.
-   - CRITICAL: Gen UI data MUST be RICH, SPECIFIC, and DETAILED. NO placeholders like "TBD" or "XX%".
+4. GEN UI: Strategy reports, TREND REPORTS, competitor analysis, RECIPES, comparison charts, and complex data MUST be rendered via 'gen_ui_component'.
+   - CRITICAL: GenUI Should be used for every prompt that can benefit from information presented graphically (Reports, Recipes, Strategy, Analysis, etc).
+   - CRITICAL: Gen UI data MUST be RICH, SPECIFIC, and DETAILED. NO placeholders like "TBD" or "XX%". Use real metrics and competitor names via Research/Grounding.
    - RESTRICTION: The `summary_text` argument in `gen_ui_component` MUST be a single headline sentence. Do NOT put long reports there.
-   - FORBIDDEN: Do NOT return a text-only report if the intent is RESEARCH or STRATEGY. You MUST use a tool.
+   - FORBIDDEN: Do NOT return a text-only report if the intent is RESEARCH, STRATEGY, or ANALYSIS. You MUST use a tool.
    - Use Google Search grounding to get REAL market data, competitor names, actual metrics.
-   - Include 5-7 diverse sections: stat_card, text (2-4 sentences), chart (4-6 data points), trend_list (with growth% and descriptions).
-   - Example: {"tool": "gen_ui_component", "args": {"component_type": "trend_report", "data": {"title": "Competitor Analysis: Bajaj Ecuador", "sections": [{"type": "stat_card", "items": [{"label": "Market Share", "value": "23.4%", "trend": "up"}]}, {"type": "chart", "data": {"Bajaj": 23.4, "Honda": 31.2, "Yamaha": 18.9}}]}}}
+   - Include 5-7 diverse sections for reports: stat_card, text, chart, trend_list, or check_list.
+   - Example (Recipe/Process): {"tool": "gen_ui_component", "args": {"component_type": "recipe_card", "data": {"title": "Campaign Growth Strategy", "steps": [{"title": "Phase 1: Research", "description": "Execute deep market dive using Grounding."}]}}}
    - Do NOT just write a text summary. You MUST generate the UI component with real, detailed data.
 5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
 6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
@@ -507,7 +508,7 @@ $ephemeralMsg
           
           try {
             final dynamic parsed = jsonDecode(candidate);
-            if (parsed is Map<String, dynamic>) {
+            if (parsed is Map) {
                String? toolName;
                Map<String, dynamic>? toolArgs;
 
@@ -532,14 +533,14 @@ $ephemeralMsg
                } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
                  // DIRECT COMPONENT OUTPUT SUPPORT
                  toolName = 'gen_ui_component';
-                 toolArgs = parsed;
+                  toolArgs = Map<String, dynamic>.from(parsed);
                } else {
                  // Heuristic inference
                  final prefix = cleanResponse.substring(0, jsonStart).trim();
                  final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
                  if (funcMatch != null) {
                    toolName = funcMatch.group(1);
-                   toolArgs = parsed;
+                   toolArgs = Map<String, dynamic>.from(parsed);
                  }
                }
 
@@ -639,7 +640,8 @@ $ephemeralMsg
       provider: AIProvider.gemini, 
       modelId: 'gemini-2.0-flash',
       responseMimeType: 'application/json',
-      temperature: 0.2 // Lower temp for logic
+      temperature: 0.2, // Lower temp for logic
+      maxTokens: 4096,
     );
 
     final fullPrompt = "$prompt\n\nCRITICAL: Output must be valid JSON adhering to this schema:\n$schemaDescription";
@@ -660,11 +662,16 @@ $ephemeralMsg
      
      debugPrint('Assistant: Strict Agent Success! Type: $T');
      
-     // 1. Determine Component Type based on intent/type
-     String componentType = 'trend_report';
-     if (prompt.toLowerCase().contains('strategy')) {
-        componentType = 'strategy_board';
-     }
+      // 1. Determine Component Type based on intent/type
+      String targetLower = prompt.toLowerCase();
+      String componentType = 'trend_report';
+      if (targetLower.contains('strategy')) {
+         componentType = 'strategy_board';
+      } else if (targetLower.contains('recipe') || targetLower.contains('process') || targetLower.contains('steps')) {
+         componentType = 'recipe_card';
+      } else if (targetLower.contains('analysis') || targetLower.contains('audit') || targetLower.contains('research')) {
+         componentType = 'analysis_report';
+      }
 
      _ref.read(blackboardProvider.notifier).resetRetry();
      

@@ -20,11 +20,13 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../../chat/widgets/sources_carousel.dart';
 import '../../chat/widgets/thinking_indicator.dart';
 import 'artifact_renderer.dart';
-import '../../../core/widgets/app_video_player.dart';
 import '../presentation/widgets/gen_ui/strategy_board_widget.dart';
 import '../presentation/widgets/gen_ui/budget_chart_widget.dart';
 import '../presentation/widgets/gen_ui/kanban_board_widget.dart';
 import '../presentation/widgets/gen_ui/trend_report_widget.dart';
+import '../presentation/widgets/gen_ui/recipe_card_widget.dart';
+import '../../../core/widgets/app_video_player.dart';
+import '../../../core/widgets/video_preview_player.dart';
 import '../../chat/models/chat_models.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
@@ -940,6 +942,13 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   }
 
   Widget _buildGeneratedAsset(String path, String? type) {
+    // Universal Sanitization: strip known prefixes used for internal routing
+    // Use recursive replacement to handle any accidental double-prefixing
+    String cleanPath = path;
+    while (cleanPath.toUpperCase().startsWith('IMAGE:') || cleanPath.toUpperCase().startsWith('VIDEO:')) {
+      cleanPath = cleanPath.substring(6);
+    }
+
     if (type == 'image') {
       return ExcludeSemantics(
         child: SizedBox(
@@ -954,15 +963,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: path.startsWith('http') 
+                  child: cleanPath.startsWith('http') 
                       ? Image.network(
-                          path, 
+                          cleanPath, 
                           fit: BoxFit.cover, 
                           width: 300,
                           height: 300,
                           semanticLabel: 'Generated Image',
                           errorBuilder: (c,e,s) {
-                            debugPrint('Image Load Error for $path: $e');
+                            debugPrint('Image Load Error for $cleanPath: $e');
                             return const Center(child: Icon(Icons.error, color: Colors.red));
                           },
                           loadingBuilder: (context, child, loadingProgress) {
@@ -1001,36 +1010,16 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       );
     } else if (type == 'video') {
        return Container(
-        width: 300,
-        height: 180,
+        width: 400,
         decoration: BoxDecoration(
           color: Colors.black,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white10),
         ),
         clipBehavior: Clip.antiAlias,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-             AppVideoPlayer(
-               videoUrl: path,
-             ),
-             Positioned(
-               bottom: 8,
-               right: 8,
-               child: Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                 decoration: BoxDecoration(
-                   color: path.contains('commondatastorage.googleapis.com') ? Colors.blueAccent : Colors.orangeAccent,
-                   borderRadius: BorderRadius.circular(4)
-                 ),
-                 child: Text(
-                   path.contains('commondatastorage.googleapis.com') ? "PREVIEW ready (open model edge)" : "FINAL ready (Veo 3.1)", 
-                   style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)
-                 ),
-               ),
-             )
-          ],
+        child: VideoPreviewPlayer(
+          videoUrl: path,
+          isFinal: false,
         ),
       );
     }
@@ -1116,9 +1105,16 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         return BudgetChartWidget(data: payload);
       case 'kanban_board':
         return KanbanBoardWidget(data: payload);
+      case 'recipe_card':
+        return RecipeCardWidget(data: payload);
       case 'trend_report':
+      case 'analysis_report':
         return TrendReportWidget(data: payload);
       default:
+        // Fallback for any other type that might have sections (generic report)
+        if (payload.containsKey('sections') || payload.containsKey('trends')) {
+          return TrendReportWidget(data: payload);
+        }
         return const SizedBox.shrink();
     }
   }

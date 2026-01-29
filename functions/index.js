@@ -203,13 +203,18 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
 
                     // [RECOVERY] If we got a 400 (Invalid Argument - probably the Long vs UUID error)
-                    // or a 404, let's try a canonical rewrite as a last-resort attempt.
-                    if (response.status === 400 && operationName.includes('/publishers/')) {
-                        console.log('[PROXY] 400 Detected on publisher path. Attempting canonical path repair...');
-                        const match = operationName.match(/projects\/([^/]+)\/locations\/([^/]+)\/(?:.*)\/operations\/([^/]+)/);
-                        if (match) {
-                            const [, , lId, opId] = match;
-                            const repairUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${match[1]}/locations/${lId}/operations/${opId}`;
+                    // or a 404 (Not Found - sometimes REST API expects canonical path), 
+                    // let's try a canonical rewrite as a last-resort attempt.
+                    if ((response.status === 400 || response.status === 404) && operationName.includes('/publishers/')) {
+                        console.log(`[PROXY] ${response.status} Detected on publisher path. Attempting canonical path repair...`);
+                        // Extract project, location, and opId using a more robust split
+                        const parts = operationName.split('/');
+                        const pId = parts[1];
+                        const lId = parts[3];
+                        const opId = parts[parts.length - 1]; // UUID is always last
+
+                        if (pId && lId && opId) {
+                            const repairUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`;
                             console.log(`[PROXY] Retrying with repaired URL: ${repairUrl}`);
                             const retryResp = await fetch(repairUrl, {
                                 method: 'GET',
