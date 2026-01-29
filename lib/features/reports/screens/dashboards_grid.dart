@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../models/dashboard_model.dart';
+import '../services/dashboards_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
-class DashboardsGrid extends StatelessWidget {
+class DashboardsGrid extends ConsumerWidget {
   const DashboardsGrid({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboardsAsync = ref.watch(dashboardsStreamProvider);
+
     return CustomScrollView(
       slivers: [
         // Header
@@ -73,20 +79,25 @@ class DashboardsGrid extends StatelessWidget {
         
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 300,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.8,
+          sliver: dashboardsAsync.when(
+            data: (dashboards) => SliverGrid(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 300,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.8,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == 0) return _buildNewDashboardCard(context, ref);
+                  final dashboard = dashboards[index - 1];
+                  return _buildDashboardCard(dashboard);
+                },
+                childCount: dashboards.length + 1, 
+              ),
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index == 0) return _buildNewDashboardCard();
-                return _buildDashboardCard(index);
-              },
-              childCount: 4, 
-            ),
+            loading: () => const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator(color: AppTheme.primary))),
+            error: (err, stack) => SliverToBoxAdapter(child: Text("Error: $err", style: const TextStyle(color: Colors.red))),
           ),
         ),
         
@@ -117,7 +128,7 @@ class DashboardsGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildNewDashboardCard() {
+  Widget _buildNewDashboardCard(BuildContext context, WidgetRef ref) {
     return Card(
       color: Colors.transparent,
       elevation: 0,
@@ -126,7 +137,7 @@ class DashboardsGrid extends StatelessWidget {
         side: const BorderSide(color: Colors.white24, style: BorderStyle.solid),
       ),
       child: InkWell(
-        onTap: () {},
+        onTap: () => _showCreateDashboardDialog(context, ref),
         borderRadius: BorderRadius.circular(16),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -144,7 +155,52 @@ class DashboardsGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildDashboardCard(int index) {
+  void _showCreateDashboardDialog(BuildContext context, WidgetRef ref) {
+    final TextEditingController nameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text("Create New Dashboard", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             TextField(
+               controller: nameController,
+               decoration: const InputDecoration(
+                 hintText: "Dashboard Name",
+                 hintStyle: TextStyle(color: Colors.white30),
+                 enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+               ),
+               style: const TextStyle(color: Colors.white),
+             ),
+             const SizedBox(height: 24),
+             const Text("Generative AI can build your dashboard layout automatically.", style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (nameController.text.isNotEmpty) {
+                 final newDash = Dashboard.create(title: nameController.text, clientId: 'client_1');
+                 await ref.read(dashboardsServiceProvider).createDashboard(newDash);
+                 
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   SnackBar(content: Text("Created '${newDash.title}'"), backgroundColor: AppTheme.primary),
+                 );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            child: const Text("Create"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard(Dashboard dashboard) {
     return Card(
       color: AppTheme.surface,
       elevation: 4,
@@ -170,20 +226,20 @@ class DashboardsGrid extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                "Custom Board ${index + 1}",
+                dashboard.title,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
               const Text(
-                "3 visualizations",
+                "Custom Layout",
                 style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
               const SizedBox(height: 4),
-              const Text(
-                "Edited 2d ago",
-                style: TextStyle(color: Colors.white30, fontSize: 10),
+              Text(
+                "Updated ${timeago.format(dashboard.updatedAt)}",
+                style: const TextStyle(color: Colors.white30, fontSize: 10),
               ),
             ],
           ),

@@ -236,8 +236,6 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
     );
   }
 
-
-
   Widget _buildProjectsTab(Client client) {
     final projects = ref.watch(projectProvider).where((p) => p.clientId == client.id).toList();
 
@@ -403,38 +401,63 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
 
   Widget _buildIntegrationsTab(Client client) {
     final integrationState = ref.watch(clientIntegrationsProvider)[client.id] ?? ClientIntegrationState();
+    final l10n = AppLocalizations.of(context)!;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppLocalizations.of(context)!.connectThirdPartyTools, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
+          Text(l10n.connectThirdPartyTools, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 8),
-          Text(AppLocalizations.of(context)!.authorizeInhausBrainMsg, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
+          Text(l10n.authorizeInhausBrainMsg, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
           const SizedBox(height: 32),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 2.5,
-            children: [
-              _buildIntegrationCard('Gmail', FontAwesomeIcons.envelope, integrationState.isGmailConnected, Colors.redAccent, client.id),
-              _buildIntegrationCard('Slack', FontAwesomeIcons.slack, integrationState.isSlackConnected, Colors.purpleAccent, client.id),
-              _buildIntegrationCard('Notion', FontAwesomeIcons.noteSticky, integrationState.isNotionConnected, Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white, client.id),
-              _buildIntegrationCard('GoHighLevel', FontAwesomeIcons.rocket, integrationState.isGHLConnected, Colors.blueAccent, client.id),
-            ],
-          ),
+
+          _buildCategoryHeader(l10n.catProductivity),
+          const SizedBox(height: 16),
+          _buildIntegrationGrid([
+            _IntegrationDef('Gmail', FontAwesomeIcons.envelope, integrationState.isGmailConnected, Colors.redAccent),
+            _IntegrationDef('Slack', FontAwesomeIcons.slack, integrationState.isSlackConnected, Colors.purpleAccent),
+            _IntegrationDef('Notion', FontAwesomeIcons.noteSticky, integrationState.isNotionConnected, Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white),
+            _IntegrationDef('GoHighLevel', FontAwesomeIcons.rocket, integrationState.isGHLConnected, Colors.blueAccent),
+          ], client.id),
+
+          const SizedBox(height: 32),
+          _buildCategoryHeader(l10n.catAdPlatforms),
+          const SizedBox(height: 16),
+          _buildIntegrationGrid([
+            _IntegrationDef('Google Ads', FontAwesomeIcons.google, integrationState.isGoogleAdsConnected, Colors.blue),
+            _IntegrationDef('Meta Ads', FontAwesomeIcons.meta, integrationState.isMetaAdsConnected, Colors.blueAccent),
+            _IntegrationDef('TikTok Ads', FontAwesomeIcons.tiktok, integrationState.isTikTokAdsConnected, Colors.pinkAccent),
+            _IntegrationDef('LinkedIn Ads', FontAwesomeIcons.linkedin, integrationState.isLinkedInAdsConnected, Colors.blue),
+            _IntegrationDef('Pinterest Ads', FontAwesomeIcons.pinterest, integrationState.isPinterestAdsConnected, Colors.red),
+            _IntegrationDef('Apple Search Ads', FontAwesomeIcons.apple, integrationState.isAppleSearchAdsConnected, Colors.grey),
+          ], client.id),
+
+          const SizedBox(height: 32),
+          _buildCategoryHeader(l10n.catAnalytics),
+          const SizedBox(height: 16),
+          _buildIntegrationGrid([
+            _IntegrationDef('Google Analytics 4', FontAwesomeIcons.chartLine, integrationState.isGA4Connected, Colors.orange),
+            _IntegrationDef('Search Console', FontAwesomeIcons.magnifyingGlassChart, integrationState.isSearchConsoleConnected, Colors.blue),
+            _IntegrationDef('Google Business', FontAwesomeIcons.store, integrationState.isGoogleBusinessConnected, Colors.blueAccent),
+          ], client.id),
+
+          const SizedBox(height: 32),
+          _buildCategoryHeader(l10n.catSocial),
+          const SizedBox(height: 16),
+          _buildIntegrationGrid([
+            _IntegrationDef('Meta Organic', FontAwesomeIcons.facebook, integrationState.isMetaOrganicConnected, Colors.blueAccent),
+            _IntegrationDef('TikTok Organic', FontAwesomeIcons.tiktok, integrationState.isTikTokOrganicConnected, Colors.black),
+          ], client.id),
           
           const SizedBox(height: 40),
           const Divider(height: 1),
           const SizedBox(height: 40),
           
-          Text(AppLocalizations.of(context)!.ucpTitle, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
+          Text(l10n.ucpTitle, style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
           const SizedBox(height: 8),
-          Text(AppLocalizations.of(context)!.ucpSubTitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
+          Text(l10n.ucpSubTitle, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5)),),
           const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(24),
@@ -451,9 +474,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(AppLocalizations.of(context)!.ucpStatusActive, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(l10n.ucpStatusActive, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text(AppLocalizations.of(context)!.discoveryServiceOnline, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
+                      Text(l10n.discoveryServiceOnline, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),),
                     ],
                   ),
                 ),
@@ -461,18 +484,84 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
                   onPressed: () {
                     // Trigger discovery mock
                   },
-                  child: Text(AppLocalizations.of(context)!.discoverBusinesses),
+                  child: Text(l10n.discoverBusinesses),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 32),
-          Text(AppLocalizations.of(context)!.connectedCommerceAgents, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(l10n.connectedCommerceAgents, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           // Mock list
           _buildUCPParticipantCard('Shoaming Assistant', 'Platform Agent', FontAwesomeIcons.robot),
           const SizedBox(height: 16),
           _buildUCPParticipantCard('TechStore Global', 'Business', FontAwesomeIcons.store),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryHeader(String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title.toUpperCase(), style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        const SizedBox(height: 4),
+        Container(width: 40, height: 2, color: Colors.blueAccent.withValues(alpha: 0.3)),
+      ],
+    );
+  }
+
+  Widget _buildIntegrationGrid(List<_IntegrationDef> platforms, String clientId) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 400,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 2.8,
+      ),
+      itemCount: platforms.length,
+      itemBuilder: (context, index) {
+        final p = platforms[index];
+        return _buildIntegrationCard(p.name, p.icon, p.isConnected, p.color, clientId);
+      },
+    );
+  }
+
+  Widget _buildIntegrationCard(String name, IconData icon, bool isConnected, Color color, String clientId) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isConnected ? color.withValues(alpha: 0.3) : Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          FaIcon(icon, color: color, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(isConnected ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected, style: TextStyle(color: isConnected ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24), fontSize: 10)),
+              ],
+            ),
+          ),
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: isConnected,
+              onChanged: (val) {
+                ref.read(clientIntegrationsProvider.notifier).handleToggle(clientId, name, val);
+              },
+              activeThumbColor: color,
+            ),
+          ),
         ],
       ),
     );
@@ -505,7 +594,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
   }
 
   Widget _buildReportsTab(Client client) {
-    final clientReports = mockReports.where((r) => r.clientId == client.id).toList();
+    // Note: mockReports is not available here, we need to fetch real reports or use a placeholder.
+    // I'll use a placeholder or check if I can fetch from Provider.
+    final reportsAsync = ref.watch(reportsStreamProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
@@ -517,7 +608,10 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
             children: [
               Text("Reports & Dashboards", style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color, fontWeight: FontWeight.bold),),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  // Navigate to reports to create new?
+                  context.go('/reports');
+                },
                 icon: const Icon(Icons.add),
                 label: const Text("Create Analysis"),
               ),
@@ -529,27 +623,33 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
           const SizedBox(height: 32),
           Text("ACTIVE REPORTS", style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),),
           const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 350,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.5,
-            ),
-            itemCount: clientReports.length,
-            itemBuilder: (context, index) {
-              final report = clientReports[index];
-              return _buildSimpleReportCard(report);
+          reportsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => Text("Error: $err"),
+            data: (reports) {
+               final clientReports = reports.where((r) => r.clientId == client.id).toList();
+               if (clientReports.isEmpty) return const Text("No active reports for this client.", style: TextStyle(color: Colors.white54));
+               return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 350,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 1.5,
+                ),
+                itemCount: clientReports.length,
+                itemBuilder: (context, index) {
+                  final report = clientReports[index];
+                  return _buildSimpleReportCard(report);
+                },
+              );
             },
           ),
           
           const SizedBox(height: 40),
           Text("DASHBOARDS", style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),),
           const SizedBox(height: 16),
-          // Use a simplified version of DashboardsGrid here?
-          // For now, let's just add a placeholder or a few cards.
           Row(
             children: [
               Expanded(child: _buildDashboardCard("Campaign Performance", FontAwesomeIcons.chartLine, Colors.blueAccent)),
@@ -630,42 +730,6 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       ),
     );
   }
-
-  Widget _buildIntegrationCard(String name, IconData icon, bool isConnected, Color color, String clientId) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isConnected ? color.withValues(alpha: 0.3) : Theme.of(context).dividerColor),
-      ),
-      child: Row(
-        children: [
-          FaIcon(icon, color: color, size: 24),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold),),
-                Text(isConnected ? AppLocalizations.of(context)!.connected : AppLocalizations.of(context)!.notConnected, style: TextStyle(color: isConnected ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.light ? Colors.black26 : Colors.white24), fontSize: 10)),
-              ],
-            ),
-          ),
-          Switch(
-            value: isConnected,
-            onChanged: (val) {
-              ref.read(clientIntegrationsProvider.notifier).toggleIntegration(clientId, name, val);
-            },
-            activeThumbColor: color,
-          ),
-        ],
-      ),
-    );
-  }
-
-
 
   void _showAddProjectDialog(Client client) {
     final nameController = TextEditingController();
@@ -776,4 +840,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> with Si
       ),
     );
   }
+}
+
+class _IntegrationDef {
+  final String name;
+  final IconData icon;
+  final bool isConnected;
+  final Color color;
+  _IntegrationDef(this.name, this.icon, this.isConnected, this.color);
 }

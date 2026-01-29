@@ -516,64 +516,33 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
   }
 
   Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? openAIKey, String? anthropicKey, String? xAIKey, AIModelConfig? config}) async {
-    // 1. Tool Usage Indicator (Status 1: Searching)
+    // 1. Tool Usage Indicator
     final toolMsgId = const Uuid().v4();
     final toolMsg = ChatMessage(
       id: toolMsgId,
-      content: 'Searching the web for "$userPrompt"...',
+      content: 'Using Google Search Grounding to research "$userPrompt"...',
       sender: MessageSender.researchAgent,
       type: MessageType.toolUsage,
       createdAt: DateTime.now(),
-      metadata: {'tool': 'web_search_mcp', 'status': 'searching'},
+      metadata: {'tool': 'google_search_grounding', 'status': 'searching'},
     );
     state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
-    // 2. Perform Research (MCP Tool Call)
-    final searchTool = WebSearchTool();
-    // Simulate thinking delay for status update visibility
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // Simulate UX delay
+    await Future.delayed(const Duration(milliseconds: 1500));
 
-    final result = await searchTool.execute({'query': userPrompt});
-    
-    String researchSummaray = "";
-    List<Map<String, dynamic>> sources = [];
-
-    if (result.isSuccess) {
-      final results = result.data['results'] as List?;
-      if (results != null && results.isNotEmpty) {
-        sources = results.cast<Map<String, dynamic>>().map((r) => {
-          'title': r['title'],
-          'url': r['url'],
-          'snippet': r['snippet']
-        }).toList();
-
-        // Update Status: Reading results
-        _updateMessageStatus(toolMsgId, 'Reading ${results.length} results...', extraMetadata: {'status': 'reading'});
-        // Small delay to let user see "Reading..."
-        await Future.delayed(const Duration(milliseconds: 1000));
-
-        researchSummaray = results.map((r) {
-          if (r is Map) {
-            return "- ${r['title'] ?? 'Untitled'}: ${r['snippet'] ?? 'No snippet'}";
-          }
-          return "- Unknown result";
-        }).join("\n");
-      } else {
-        researchSummaray = "No relevant trends found in the Knowledge Base.";
-        _updateMessageStatus(toolMsgId, 'No results found. Analyzing context...', extraMetadata: {'status': 'analyzing'});
-      }
-    } else {
-      researchSummaray = "Search failed: ${result.errorMessage}";
-      _updateMessageStatus(toolMsgId, 'Search failed. Falling back to internal knowledge...', extraMetadata: {'status': 'error'});
-    }
-    
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getResearchPrompt();
+    
+    // We pass the user prompt directly. The model will search if needed because we enable the tool.
     final systemInstruction = masterPrompt.isNotEmpty
-        ? "You are a Research Agent. Research Results: $researchSummaray. $masterPrompt. User Context: $userPrompt"
-        : "You are a Research Agent. User Request: '$userPrompt'. Research: $researchSummaray. Provide a strategic recommendation.";
+        ? "You are a Research Agent. $masterPrompt. User Context: $userPrompt"
+        : "You are a Research Agent. Research the following: '$userPrompt'. Provide a strategic recommendation.";
 
-    // 3. AI Generation Grounded in Research & Context
+    // 3. AI Generation Grounded in Google Search
+    // We force enable Google Search for the Research Agent
+    final researchConfig = config?.copyWith(useGoogleSearch: true) ?? AIModelConfig.geminiResearch;
+
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
       context: context,
@@ -581,18 +550,33 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: researchConfig,
     );
+    
+    // Update the tool message to show success
+    _updateMessageStatus(toolMsgId, 'Research Complete. Sources found: ${aiRes.sourceCitations?.length ?? 0}', extraMetadata: {'status': 'complete'});
 
     // 4. Orchestrator Audit
     final auditedContent = await ref.read(orchestratorProvider).auditResponse(aiRes.text, 'ResearchAgent');
 
     // 5. Final Message with Sources Metadata
+    // Transform simple URL strings into the map format likely expected by UI (or just pass as is if UI handles it)
+    // The previous code used {'title', 'url', 'snippet'}. We only have URLs now.
+    List<Map<String, dynamic>>? sourcesMetadata;
+    if (aiRes.sourceCitations != null && aiRes.sourceCitations!.isNotEmpty) {
+      sourcesMetadata = aiRes.sourceCitations!.map((url) => {
+        'title': 'Source',
+        'url': url,
+        'snippet': 'Referenced by Google Grounding'
+      }).toList();
+    }
+
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.researchAgent,
       createdAt: DateTime.now(),
-      metadata: sources.isNotEmpty ? {'sources': sources} : null,
+      metadata: sourcesMetadata != null ? {'sources': sourcesMetadata} : null,
     );
 
     // 6. Propose Approval Widget
@@ -788,8 +772,32 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         ? "$brianPrompt\n\n[CONVERSATION HISTORY]:\n$history\n\nUser Request: $userPrompt"
         : "You are the Inhaus Brain assistant.\n[HISTORY]:\n$history\n\nUser Request: $userPrompt";
 
+    // Check for image attachments in the latest message for Multimodal Vision
+    Uint8List? imageBytes;
+    String? mimeType;
+    if (state != null && state!.messages.isNotEmpty) {
+      final lastMsg = state!.messages.last;
+      // We look for any image attachment
+      final imageAttachment = lastMsg.attachments.firstWhere(
+        (a) => a.type == AttachmentType.image, 
+        orElse: () => Attachment(id: '', type: AttachmentType.file, url: '', name: '', createdAt: DateTime.now()),
+      );
+      
+      if (imageAttachment.id.isNotEmpty && imageAttachment.url.startsWith('data:')) {
+         try {
+           final uri = Uri.parse(imageAttachment.url);
+           imageBytes = uri.data?.contentAsBytes();
+           mimeType = uri.data?.mimeType;
+         } catch (e) {
+           debugPrint('Brian(Vision): Failed to parse data URI: $e');
+         }
+      }
+    }
+
     final aiRes = await EdgeAIService.generateText(
       combinedPrompt,
+      imageBytes: imageBytes,
+      imageMimeType: mimeType,
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -797,8 +805,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       openAIKey: openAIKey,
       anthropicKey: anthropicKey,
       xaiKey: xAIKey,
-      modelConfig: config,
-      ref: ref, // Phase 89
+      modelConfig: config?.copyWith(useGoogleSearch: true) ?? AIModelConfig.geminiResearch,
+      ref: ref,
     );
 
     final finalMsg = ChatMessage(

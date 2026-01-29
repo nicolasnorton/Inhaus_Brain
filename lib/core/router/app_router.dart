@@ -26,6 +26,7 @@ import '../../features/adk/screens/debug_tools_screen.dart';
 import '../../features/knowledge/knowledge_management_screen.dart';
 import '../../features/reports/screens/reports_main_screen.dart';
 import '../../features/reports/screens/report_detail_screen.dart';
+import '../../features/connectors/screens/connections_screen.dart';
 import '../../features/campaigns/screens/camera_capture_screen.dart';
 import '../../features/settings/screens/personal_settings_screen.dart';
 import '../../features/settings/screens/user_secrets_screen.dart';
@@ -168,6 +169,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/reports',
             builder: (context, state) => const ReportsMainScreen(),
             routes: [
+              GoRoute(
+                path: 'connections',
+                builder: (context, state) => const ConnectionsScreen(),
+              ),
               GoRoute(
                 path: ':id',
                 builder: (context, state) => ReportDetailScreen(

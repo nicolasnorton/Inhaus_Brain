@@ -18,7 +18,7 @@ class ResearchAgent extends BaseAgent {
   String get systemPromptKey => "research_prompt";
 
   @override
-  List<AgentTool> get tools => [WebSearchTool()];
+  List<AgentTool> get tools => [];
 
   @override
   Future<String> execute({
@@ -38,18 +38,6 @@ class ResearchAgent extends BaseAgent {
       message: "Researching: $userPrompt",
     ));
 
-    // 1. Perform Research (Using Unified Tool Interface)
-    final searchTool = tools.firstWhere((t) => t.name == 'web_search');
-    final result = await searchTool.execute({'query': userPrompt});
-    
-    String researchSummary = "";
-    if (result.isSuccess) {
-      final results = result.data['results'] as List;
-      researchSummary = results.map((r) => "- ${r['title']}: ${r['snippet']}").join("\n");
-    } else {
-      researchSummary = "Search failed: ${result.errorMessage}";
-    }
-    
     // Fetch system prompt from service
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getResearchPrompt();
@@ -57,11 +45,12 @@ class ResearchAgent extends BaseAgent {
     final systemInstruction = basePrompt
         .replaceAll('[TASK]', userPrompt)
         .replaceAll('{{userPrompt}}', userPrompt)
-        .replaceAll('{{researchSummary}}', researchSummary);
+        .replaceAll('{{researchSummary}}', "Use [GROUNDING] to find latest data.");
 
-    // 2. AI Generation Grounded in Research
+    // 2. AI Generation Grounded in Research (NATIVE)
     final aiRes = await EdgeAIService.generateText(
       systemInstruction,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       context: context,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
@@ -71,10 +60,16 @@ class ResearchAgent extends BaseAgent {
     onEvent?.call(AdkEvent(
       type: AdkEventType.agentCompleted,
       source: name,
-      message: "Research complete.",
+      message: "Research complete (Found ${aiRes.sourceCitations?.length ?? 0} sources).",
     ));
     
-    return aiRes.text;
+    // We append sources to the text for the Chat UI to handle if it doesn't support metadata citations yet
+    String responseText = aiRes.text;
+    if (aiRes.sourceCitations != null && aiRes.sourceCitations!.isNotEmpty) {
+       responseText += "\n\n**Sources:**\n" + aiRes.sourceCitations!.map((s) => "- $s").join("\n");
+    }
+
+    return responseText;
   }
 }
 

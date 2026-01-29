@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/edge_ai_service.dart';
+import '../../../core/tokens/llm_provider.dart';
 import '../../../features/knowledge/models/knowledge_source.dart';
 import '../models/chat_models.dart';
 import 'base_agent.dart';
@@ -25,6 +26,7 @@ Future<String> _simpleExecute({
   Uint8List? imageBytes,
   String? imageMimeType,
   Function(AdkEvent)? onEvent,
+  AIModelConfig? modelConfig,
   Ref? ref, // Phase 89: Required for CopilotKit
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
@@ -89,6 +91,7 @@ Future<String> _simpleExecute({
     imageMimeType: imageMimeType,
     apiKey: apiKey,
     gemmaKey: gemmaKey,
+    modelConfig: modelConfig,
     ref: ref,
   );
   
@@ -130,6 +133,7 @@ class TrendScoutAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch,
       ref: ref,
     );
   }
@@ -213,6 +217,7 @@ class StrategistAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch,
       ref: ref,
     );
   }

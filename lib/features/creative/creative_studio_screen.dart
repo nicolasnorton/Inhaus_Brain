@@ -7,6 +7,7 @@ import 'providers/creative_provider.dart';
 import 'models/design_concept.dart';
 import '../chat/agentic_chat_view.dart';
 import '../../core/widgets/app_video_player.dart';
+import '../../core/widgets/video_preview_player.dart';
 import '../../core/widgets/app_audio_player.dart';
 
 class CreativeStudioScreen extends ConsumerWidget {
@@ -360,14 +361,13 @@ class CreativeStudioScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    if (concept.finalVideoURL != null) ...[
+                    if (concept.previewVideoURL != null || concept.finalVideoURL != null) ...[
                       const SizedBox(height: 16),
-                       ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: AspectRatio(
-                           aspectRatio: 16/9,
-                           child: AppVideoPlayer(videoUrl: concept.finalVideoURL!),
-                        ),
+                      VideoPreviewPlayer(
+                        videoUrl: concept.isVideoFinal ? concept.finalVideoURL! : concept.previewVideoURL!,
+                        isFinal: concept.isVideoFinal,
+                        onRefine: (withSubtitles) => ref.read(creativeProvider.notifier).generateHighTierAssets(concept, includeSubtitles: withSubtitles),
+                        onRenderFinal: (withSubtitles) => ref.read(creativeProvider.notifier).renderFinalVideo(concept, includeSubtitles: withSubtitles),
                       ),
                     ],
 

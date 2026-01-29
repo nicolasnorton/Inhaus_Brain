@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 class Moodboard {
   final String id;
   final String title;
@@ -23,6 +25,8 @@ class DesignConcept {
   final String? finalCopy;
   final String? finalImageURL;
   final String? finalVideoURL;
+  final String? previewVideoURL;
+  final bool isVideoFinal;
   final String? finalAudioURL;
   final bool isFinalReady;
 
@@ -37,6 +41,8 @@ class DesignConcept {
     this.finalCopy,
     this.finalImageURL,
     this.finalVideoURL,
+    this.previewVideoURL,
+    this.isVideoFinal = false,
     this.finalAudioURL,
     this.isFinalReady = false,
   });
@@ -52,6 +58,8 @@ class DesignConcept {
     String? finalCopy,
     String? finalImageURL,
     String? finalVideoURL,
+    String? previewVideoURL,
+    bool? isVideoFinal,
     String? finalAudioURL,
     bool? isFinalReady,
   }) {
@@ -66,6 +74,8 @@ class DesignConcept {
       finalCopy: finalCopy ?? this.finalCopy,
       finalImageURL: finalImageURL ?? this.finalImageURL,
       finalVideoURL: finalVideoURL ?? this.finalVideoURL,
+      previewVideoURL: previewVideoURL ?? this.previewVideoURL,
+      isVideoFinal: isVideoFinal ?? this.isVideoFinal,
       finalAudioURL: finalAudioURL ?? this.finalAudioURL,
       isFinalReady: isFinalReady ?? this.isFinalReady,
     );

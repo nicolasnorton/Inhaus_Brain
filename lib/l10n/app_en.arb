@@ -510,7 +510,24 @@
     "placeholders": {
       "count": { "type": "int" }
     }
-  }
+  },
+  "catProductivity": "Productivity & CRM",
+  "catAdPlatforms": "Advertising Platforms",
+  "catAnalytics": "Analytics & Insights",
+  "catSocial": "Social Media (Organic)",
+  "googleAds": "Google Ads",
+  "metaAds": "Meta Ads (FB/IG)",
+  "tiktokAds": "TikTok Ads",
+  "twitterAds": "X Ads",
+  "linkedinAds": "LinkedIn Ads",
+  "pinterestAds": "Pinterest Ads",
+  "appleSearchAds": "Apple Search Ads",
+  "googleAnalytics": "Google Analytics 4",
+  "searchConsole": "Search Console",
+  "googleBusiness": "Google Business Profile",
+  "metaOrganic": "Meta Organic",
+  "tiktokOrganic": "TikTok Organic",
+  "fromConnectedAccount": "From Connected Account"
 }
 
 

@@ -88,7 +88,7 @@ Format your response clearly.
     }
   }
 
-  Future<void> generateHighTierAssets(DesignConcept concept) async {
+  Future<void> generateHighTierAssets(DesignConcept concept, {bool includeSubtitles = false}) async {
     try {
       debugPrint('CreativeAgent: Initiating High-Tier Cloud Generation for ${concept.id}');
       
@@ -106,23 +106,44 @@ Return ONLY the refined copy text.
 """;
       final copyRes = await EdgeAIService.generateText(copyPrompt, ref: ref);
       
-      // 2. Generate High-Quality Visual Mock (Imagen 3 / Pollinations)
-      // Enhance the prompt for final output
+      // 2. Generate High-Quality Visual Mock (Imagen 3)
       final finalImagePrompt = "${concept.visualPrompt}, award winning, billboard quality, 8k, highly detailed";
       final finalImageUrl = await EdgeAIService.generateImage(finalImagePrompt);
+
+      // 3. Generate Video Preview (Automatic with high-tier assets)
+      final previewVideoUrl = await EdgeAIService.generateVideo(concept.visualPrompt, isFinal: false, includeSubtitles: includeSubtitles);
 
       final updatedConcept = concept.copyWith(
         finalCopy: copyRes.text,
         finalImageURL: finalImageUrl,
-        // finalVideoURL: finalVideoUrl, // Video generation can be added later or via separate tool
+        previewVideoURL: previewVideoUrl,
+        isVideoFinal: false,
         isFinalReady: true,
       );
 
       updateConcept(updatedConcept);
-      debugPrint('CreativeAgent: High-Tier assets generated and updated.');
+      debugPrint('CreativeAgent: High-Tier assets (including video preview) generated.');
     } catch (e, stack) {
       debugPrint('CreativeAgent ERROR: High-Tier generation failed: $e');
       debugPrint(stack.toString());
+    }
+  }
+
+  Future<void> renderFinalVideo(DesignConcept concept, {bool includeSubtitles = false}) async {
+    try {
+      debugPrint('CreativeAgent: Rendering Final High-Quality Video for ${concept.id}');
+      
+      final finalVideoUrl = await EdgeAIService.generateVideo(concept.visualPrompt, isFinal: true, includeSubtitles: includeSubtitles);
+      
+      final updatedConcept = concept.copyWith(
+        finalVideoURL: finalVideoUrl,
+        isVideoFinal: true,
+      );
+
+      updateConcept(updatedConcept);
+      debugPrint('CreativeAgent: Final video rendered successfully.');
+    } catch (e) {
+      debugPrint('CreativeAgent ERROR: Final video render failed: $e');
     }
   }
 

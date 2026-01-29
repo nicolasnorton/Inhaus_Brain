@@ -29,9 +29,7 @@ class DefaultFirebaseOptions {
           'iOS options are not configured. Run `flutterfire configure` to generate options.',
         );
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'macOS options are not configured. Run `flutterfire configure` to generate options.',
-        );
+        return web;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'Windows options are not configured. Run `flutterfire configure` to generate options.',

@@ -12,12 +12,12 @@ class ToolRetrievalService {
     final allTools = _ref.read(assistantToolRegistryProvider);
     
     // Define tool categories
-    final Set<String> researchTools = {'web_search', 'extract_pdf', 'read_url'};
+    final Set<String> researchTools = {'extract_pdf', 'read_url'};
     final Set<String> creativeTools = {'image_generation', 'video_generation', 'create_campaign'}; // Add creative tools
     final Set<String> managementTools = {
       'create_client', 'update_client', 'create_project', 'create_task', 
       'navigate_to', 'create_campaign', 'create_knowledge_source',
-      'read_url', 'web_search'
+      'read_url'
     };
     final Set<String> devTools = {'read_file', 'list_dir', 'grep_search'}; // Hypothetical dev tools
 

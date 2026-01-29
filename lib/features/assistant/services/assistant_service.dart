@@ -349,20 +349,22 @@ Context:
 AVAILABLE TOOLS:
 $toolDefinitions
 
-VISION/MULTIMODAL:
-- I can see attached images (Gemini 2.0 Flash).
-- I generate images via 'image_generation'.
-- I generate videos via 'video_generation'.
+VISION/RESEARCH/MULTIMODAL:
+- I have direct access to Google Search via "Grounding". I will use it for all factual queries and real-time research.
+- I can see and analyze attached images (Multimodal Vision).
+- I generate images via 'image_generation' tool.
+- I generate videos via 'video_generation' tool.
 
 User Input: "$text"
 
 CRITICAL INSTRUCTIONS:
-1. If the user wants to navigate (e.g., "go to settings", "show campaigns"), YOU MUST use the 'navigate_to' tool.
-2. If the user wants an image or video, YOU MUST use the corresponding generation tool.
-3. TREND REPORTS and outputs typically requiring structure MUST be presented via 'gen_ui_component' (e.g., component_type: 'strategy_board') rather than long text. GEN UI FIRST.
-4. To use a tool, either return {"tool": "name", "args": {...}} OR include "tool_call": {"name": "...", "args": {...}} in your standard JSON response.
-5. DO NOT explain yourself first. DO NOT wrap JSON in code blocks.
-6. If NO tool applies, answer helpfully with rich Markdown.
+1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research. Do NOT call 'web_search' or any external search tool.
+2. NAVIGATION: If the user wants to navigate (e.g., "go to settings", "show campaigns"), YOU MUST use the 'navigate_to' tool.
+3. GENERATION: If the user wants an image or video, YOU MUST use 'image_generation' or 'video_generation'.
+4. GEN UI: Strategy reports and complex data MUST be rendered via 'gen_ui_component'.
+5. To use a valid tool (navigate, generate, ui), return: {"tool": "name", "args": {...}}
+6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
+7. If NO tool from the restricted list above applies, answer from your grounded knowledge.
 
 $ephemeralMsg
 """;
@@ -403,9 +405,11 @@ $ephemeralMsg
     // CopilotKit bypassed due to protocol errors
     try {
       _ref.read(assistantStatusProvider.notifier).state = "Thinking...";
+      final mainConfig = AIModelConfig.geminiResearch;
+      
       final edgeResult = await EdgeAIService.generateText(
         mainPrompt,
-        modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash'),
+        modelConfig: mainConfig,
         ref: _ref,
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
       );
@@ -577,7 +581,10 @@ $ephemeralMsg
     // Store in Cache
     await semanticCache.store(intentEnum.name, mainPrompt, responseText);
 
-    return ToolExecutionSummary(text: responseText);
+    return ToolExecutionSummary(
+      text: responseText, 
+      sources: (edgeResult is EdgeAIResult) ? (edgeResult as EdgeAIResult).sourceCitations : null
+    );
   }
 
   Future<ToolExecutionSummary?> _runStrictAgent<T extends AgentOutput>(

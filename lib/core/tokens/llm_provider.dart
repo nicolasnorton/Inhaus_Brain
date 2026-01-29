@@ -6,7 +6,8 @@ enum AIProvider {
   grok,
   mistral,
   runway, // For video
-  midjourney // Proxy/Mock
+  midjourney, // Proxy/Mock
+  litert // On-Device
 }
 
 class AIModelConfig {
@@ -14,8 +15,9 @@ class AIModelConfig {
   final String modelId;
   final double temperature;
   final int? maxTokens;
-  final String? overrideBaseUrl; // For local proxies or enterprise endpoints
-  final String? responseMimeType; // e.g. 'application/json'
+  final String? overrideBaseUrl;
+  final String? responseMimeType;
+  final bool useGoogleSearch;
 
   const AIModelConfig({
     required this.provider,
@@ -24,7 +26,28 @@ class AIModelConfig {
     this.maxTokens,
     this.overrideBaseUrl,
     this.responseMimeType,
+    this.useGoogleSearch = false,
   });
+
+  AIModelConfig copyWith({
+    AIProvider? provider,
+    String? modelId,
+    double? temperature,
+    int? maxTokens,
+    String? overrideBaseUrl,
+    String? responseMimeType,
+    bool? useGoogleSearch,
+  }) {
+    return AIModelConfig(
+      provider: provider ?? this.provider,
+      modelId: modelId ?? this.modelId,
+      temperature: temperature ?? this.temperature,
+      maxTokens: maxTokens ?? this.maxTokens,
+      overrideBaseUrl: overrideBaseUrl ?? this.overrideBaseUrl,
+      responseMimeType: responseMimeType ?? this.responseMimeType,
+      useGoogleSearch: useGoogleSearch ?? this.useGoogleSearch,
+    );
+  }
 
   String get displayName {
     switch (provider) {
@@ -36,12 +59,14 @@ class AIModelConfig {
       case AIProvider.mistral: return 'Mistral AI ($modelId)';
       case AIProvider.runway: return 'Runway Gen-2';
       case AIProvider.midjourney: return 'Midjourney v6';
+      case AIProvider.litert: return 'LiteRT On-Device ($modelId)';
     }
   }
 
   // Factory for known heavy hitters
   static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro-latest');
   static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash');
+  static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', useGoogleSearch: true);
   
   static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4o');
   static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4-turbo');
@@ -51,6 +76,10 @@ class AIModelConfig {
   static AIModelConfig get claude3Sonnet => const AIModelConfig(provider: AIProvider.claude, modelId: 'claude-3-5-sonnet-20240620');
   
   static AIModelConfig get grok1 => const AIModelConfig(provider: AIProvider.grok, modelId: 'grok-1');
+
+  // LiteRT Models
+  static AIModelConfig get gemma2n => const AIModelConfig(provider: AIProvider.litert, modelId: 'gemma-2b-it-gpu');
+  static AIModelConfig get veoFastPreview => const AIModelConfig(provider: AIProvider.litert, modelId: 'veo-3-fast-preview');
   
   // Serialization helpers if needed for persistence
   Map<String, dynamic> toJson() => {
@@ -60,6 +89,7 @@ class AIModelConfig {
     'maxTokens': maxTokens,
     'overrideBaseUrl': overrideBaseUrl,
     'responseMimeType': responseMimeType,
+    'useGoogleSearch': useGoogleSearch,
   };
 
   factory AIModelConfig.fromJson(Map<String, dynamic> json) {
@@ -70,6 +100,8 @@ class AIModelConfig {
       maxTokens: json['maxTokens'] as int?,
       overrideBaseUrl: json['overrideBaseUrl'] as String?,
       responseMimeType: json['responseMimeType'] as String?,
+      useGoogleSearch: json['useGoogleSearch'] as bool? ?? false,
     );
   }
 }
+

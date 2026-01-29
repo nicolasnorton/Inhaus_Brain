@@ -53,7 +53,7 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...knowledgeTools,
     ...systemTools,
     ...workflowTools,
-    ...webTools,
+    ReadUrlTool(), // Keep ReadUrl but remove WebSearch
     ...generationTools,
     ...ucpTools,
     GenUIComponentTool(),

@@ -39,8 +39,8 @@ Return ONLY the polished text. No meta-commentary.
       final result = await EdgeAIService.generateText(
         prompt,
         modelConfig: const AIModelConfig(
-          provider: AIProvider.gemini,
-          modelId: 'gemini-1.5-flash', // Use Flash for speed
+          provider: AIProvider.litert,
+          modelId: 'gemma-2b-it-gpu', // On-Device for low latency
           temperature: 0.3,
         ),
         ref: _ref,

@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check if user is owner of the document (assuming userId field)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // REPORTS MODULE RULES
+    match /reports/{reportId} {
+      // Allow create if authenticated
+      allow create: if isAuthenticated();
+      
+      // Allow read/write if user is the creator (assuming 'createdBy' field stores uid)
+      // OR if the report belongs to the user's client (complex, simplified here to owner)
+      allow read, update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || resource.data.clientId == request.auth.uid);
+    }
+
+    match /dashboards/{dashboardId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || resource.data.clientId == request.auth.uid);
+    }
+
+    match /connected_accounts/{accountId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAuthenticated() && (resource.data.clientId == request.auth.uid || resource.data.createdBy == request.auth.uid);
+    }
+    
+    // USER PROFILES
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

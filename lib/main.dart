@@ -43,11 +43,11 @@ void main() async {
 
   if (kDebugMode) {
     try {
-      // Use localhost to align with browser origin
-      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-      FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5005);
-      print('🔥 Using Firestore Emulator on localhost:8080');
-      print('🔥 Using Functions Emulator on localhost:5005');
+      // Use IPv4 loopback to align with browser origin and avoid IPv6 issues
+      FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
+      FirebaseFunctions.instance.useFunctionsEmulator('127.0.0.1', 5005);
+      print('🔥 Using Firestore Emulator on 127.0.0.1:8080');
+      print('🔥 Using Functions Emulator on 127.0.0.1:5005');
     } catch (e) {
       print('⚠️ Failed to connect to Firebase Emulators: $e');
     }

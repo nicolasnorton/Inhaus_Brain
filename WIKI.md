@@ -43,7 +43,17 @@ You can upload your own PDFs, documents, or website links here. The AI will "rea
 ### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
 
-### 6. 🛠️ Templates & Sharing
+### 6. 🎬 Flawless Video Generation & On-Device AI
+Generate high-fidelity branded video assets directly from your research or creative concepts, powered by a hybrid engine.
+*   **On-Device Previews (LiteRT)**: Instant, zero-cost previews using **Gemma 2B** and **Veo 3 Fast** running directly on your device (NPU/GPU accelerated).
+*   **Cost-Aware Routing**: The system automatically chooses the best model:
+    *   _Drafts/Previews_: LiteRT (Local)
+    *   _Final/High-Fidelity_: Veo 3.1 (Cloud)
+*   **High-Fidelity Rendering**: Only uses flagship models (Veo 3.1) for the **Final Render** once you are 100% satisfied.
+*   **Bilingual Subtitles**: One-click generation of professional English/Spanish captions for international reach.
+*   **Cultural Safety**: Automatically applies LatAm/Ecuadorian cultural filters to ensure brand-safe, respectful visuals.
+
+### 7. 🛠️ Templates & Sharing
 *   **Workflow Templates**: Don't start from scratch! Use professionally designed blueprints (like "Simple Chatbot" or "Twitter Account Analyzer") to jumpstart your project.
 *   **Industry Blueprints (New)**: Explore over 100+ specialized blueprints across 10 major industries to solve real-world problems instantly:
     *   🛍️ **Retail**: AI Shopping Assistants, Inventory Management, Personalization.

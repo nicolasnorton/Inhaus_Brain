@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'reports_dashboard_screen.dart'; // This is now the "Reports" grid
 import 'dashboards_grid.dart';
@@ -25,14 +26,76 @@ class _ReportsMainScreenState extends State<ReportsMainScreen> with SingleTicker
     super.dispose();
   }
 
+  void _showWalkthrough(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text("Analytics Hub Guide", style: TextStyle(color: Colors.white)),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStep("1. Data Connections", "Link your Google Ads, Meta, or TikTok accounts via the 'Data Connections' button."),
+                _buildStep("2. Create a Report", "Go to the 'Reports' tab and click 'New Report'."),
+                _buildStep("3. Add Sources", "Inside your report, add Files, Web URLs, or Paste Text for analysis."),
+                _buildStep("4. Generate Insights", "Use the Studio panel to create Audio podcasts, Video previews, or Mind Maps."),
+                _buildStep("5. Dashboards", "Monitor live performance in the 'Dashboards' tab."),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Got it!")),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep(String title, String desc) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(desc, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        toolbarHeight: 0, // Hide default toolbar, we just want the tab bar effectively
+        title: const Text("Analytics Hub", style: TextStyle(color: Colors.white, fontSize: 18)),
+        backgroundColor: AppTheme.surface,
+        centerTitle: false,
+        actions: [
+           IconButton(
+             icon: const Icon(Icons.help_outline, color: Colors.white70),
+             onPressed: () => _showWalkthrough(context),
+             tooltip: "User Guide",
+           ),
+           Padding(
+             padding: const EdgeInsets.only(right: 16.0),
+             child: OutlinedButton.icon(
+               icon: const Icon(Icons.link, size: 16),
+               label: const Text("Data Connections"),
+               style: OutlinedButton.styleFrom(
+                 foregroundColor: Colors.white, 
+                 side: const BorderSide(color: Colors.white24)
+               ),
+               onPressed: () => context.go('/reports/connections'), 
+             ),
+           )
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppTheme.primary,

@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+import 'source_model.dart';
 
 class Report {
   final String id;
@@ -6,17 +7,16 @@ class Report {
   final String clientId;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final List<String> sources; // File names or connection names
-  // In a real app, we'd have list of ChatMessages, Notes, etc.
-  
+  final List<ReportSource> sources; // Changed to full object
+
   Report({
     required this.id,
     required this.title,
     required this.clientId,
     required this.createdAt,
     required this.updatedAt,
-    this.sources = const [],
-  });
+    List<ReportSource>? sources,
+  }) : sources = sources ?? [];
 
   factory Report.create({required String title, required String clientId}) {
     final now = DateTime.now();
@@ -26,6 +26,30 @@ class Report {
       clientId: clientId,
       createdAt: now,
       updatedAt: now,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'clientId': clientId,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'sources': sources.map((s) => s.toJson()).toList(),
+    };
+  }
+
+  factory Report.fromJson(Map<String, dynamic> json) {
+    return Report(
+      id: json['id'],
+      title: json['title'],
+      clientId: json['clientId'],
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+      sources: (json['sources'] as List<dynamic>?)
+          ?.map((e) => ReportSource.fromJson(e))
+          .toList(),
     );
   }
 }
@@ -38,7 +62,10 @@ final List<Report> mockReports = [
     clientId: 'client_1',
     createdAt: DateTime.now().subtract(const Duration(days: 5)),
     updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
-    sources: ['BigQuery: Monthly Stats', 'Drive: Strategy Doc'],
+    sources: [
+       ReportSource(id: 's1', reportId: '1', type: SourceType.dataConnector, name: 'BigQuery: Monthly Stats', addedAt: DateTime.now()),
+       ReportSource(id: 's2', reportId: '1', type: SourceType.file, name: 'Strategy Doc.pdf', addedAt: DateTime.now()),
+    ],
   ),
   Report(
     id: '2',
@@ -46,6 +73,8 @@ final List<Report> mockReports = [
     clientId: 'client_2',
     createdAt: DateTime.now().subtract(const Duration(days: 12)),
     updatedAt: DateTime.now().subtract(const Duration(days: 1)),
-    sources: ['Web: Top 25 Ads', 'Drive: Competitor List'],
+    sources: [
+       ReportSource(id: 's3', reportId: '2', type: SourceType.web, name: 'Web: Top 25 Ads', addedAt: DateTime.now()),
+    ],
   ),
 ];

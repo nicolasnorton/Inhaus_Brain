@@ -124,26 +124,33 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const accessToken = tokenResponse.token;
 
                 const pollUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
-
-                // Fix for possible incorrect operation names coming from Veo response
-                // If operationName contains 'publishers/', it implies a model-specific operation path that might not support UUIDs in some endpoints.
-                // We rewrite it to the generic project-level operations path which handles UUIDs correctly.
                 let targetUrl = pollUrl;
 
-                // [MODIFIED] Disable rewriting. Veo operations seem to require the full publisher path.
-                // Rewriting to canonical operations path triggers "Operation ID must be a Long" error.
-                /*
-                if (operationName.includes('publishers/') && operationName.includes('/operations/')) {
-                    // ... rewriting logic disabled ...
-                    const parts = operationName.split('/operations/');
-                    if (parts.length > 1) {
-                        const opId = parts[1];
-                        const canonicalName = `projects/inhausbrain/locations/us-central1/operations/${opId}`;
-                        console.log(`[PROXY] Detected non-standard Operation Name. Rewriting to canonical: ${canonicalName}`);
-                        targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
+                // [FIX for VEO] Veo returns an operation name with 'publishers/' which yields 404 on direct poll.
+                // We must rewrite this to the canonical project-level operations path.
+                if (operationName.includes('/publishers/') && operationName.includes('/operations/')) {
+                    try {
+                        // Regex to capture project, location, and the final operation ID (ignoring the middle)
+                        // Structure: projects/{p}/locations/{l}/publishers/.../operations/{id}
+                        const match = operationName.match(/projects\/([^/]+)\/locations\/([^/]+)\/(?:.*)\/operations\/([^/]+)/);
+
+                        if (match && match.length === 4) {
+                            const pId = match[1];
+                            const lId = match[2]; // e.g. us-central1
+                            const opId = match[3]; // the UUID
+
+                            const canonicalName = `projects/${pId}/locations/${lId}/operations/${opId}`;
+                            console.log(`[PROXY] Rewriting Veo LRO name:\nFROM: ${operationName}\nTO:   ${canonicalName}`);
+
+                            // Update targetUrl to the canonical path
+                            targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${canonicalName}`;
+                        } else {
+                            console.warn(`[PROXY] Failed to parse Veo LRO structure: ${operationName}`);
+                        }
+                    } catch (rewriteErr) {
+                        console.error('[PROXY] URL Rewrite Error:', rewriteErr);
                     }
                 }
-                */
 
                 const response = await fetch(targetUrl, {
                     method: 'GET',
