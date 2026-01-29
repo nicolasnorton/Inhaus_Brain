@@ -112,7 +112,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                   child: OutlinedButton.icon(
                     onPressed: () => widget.onRefine!(_includeSubtitles),
                     icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Refine'),
+                    label: const Text('Refine Preview'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white70,
                       side: const BorderSide(color: Colors.white24),

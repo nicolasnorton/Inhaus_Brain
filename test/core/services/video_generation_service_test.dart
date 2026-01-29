@@ -14,14 +14,14 @@ class MockAIProxyService {
 
 void main() {
   group('VideoGenerationService Tests', () {
-    test('generatePreview appends cultural safety prompt', () async {
-       // This test verifies the prompt modification logic
-       // Since _generateVideoInternal calls the static AIProxyService, we can't easily mock the static call 
-       // without dependency injection or a wrapper. 
-       // However, we can test the public API contracts and logical branches if we refactor or just trust the integration.
-       
-       // For this environment, we will verify the constants and method signatures match expectations.
-       expect(VideoGenerationService.generatePreview("cat"), completes); 
+    test('generatePreview (Mock/LiteRT) completes rapidly (<2s)', () async {
+       final stopwatch = Stopwatch()..start();
+       await VideoGenerationService.generatePreview("cat");
+       stopwatch.stop();
+
+       // Should be around 1.0s (10 * 100ms) + overhead. 
+       // Assert it is definitely faster than the old 3s.
+       expect(stopwatch.elapsedMilliseconds, lessThan(2000), reason: "Preview generation too slow for LiteRT experience");
     });
   });
 }

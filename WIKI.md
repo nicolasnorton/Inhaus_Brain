@@ -193,12 +193,11 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
 *   **Cause**: This is usually a timeout in the polling loop (Veo can take 5+ minutes).
 *   **Fallback**: The system will eventually timeout (after 5 minutes) and return a static "Storyboard" image so the UI doesn't break. You can try regenerating with a simpler prompt (Preview Mode).
 
-### 4. Mock Video (Big Buck Bunny) Appearing
-*   **Symptom**: You see a cartoon bunny video.
-*   **Cause**: This is the system's "Safety Fallback". It appears if:
-    *   The API returned an error.
-    *   Authentication failed.
-    *   You are running in a constrained environment without Proxy access.
-*   **Fix**: Check your network tab. If `proxyVertexAI` failed, verify your Firebase Auth token.
+### 4. Mock Video / Storyboard (Big Buck Bunny) Appearing
+*   **Symptom**: You see a cartoon bunny video or a static video placeholder.
+*   **Cause**: This is the system's "Safety Fallback" or a "LiteRT Mock" in development environments. It appears if:
+    *   **LiteRT Preview**: In non-web/dev environments, the system simulates a fast preview generation (<2s).
+    *   **Failure Fallback**: If the API returned an error or timed out, the system defaults to this "Storyboard" so the UI remains functional.
+*   **Fix**: Check your network tab. If `proxyVertexAI` failed, verify your Firebase Auth token. If you are in `Preview` mode, this is expected behavior for fast iteration if the cloud model is unreachable.
 
 *Built with ❤️ to make AI automation accessible for everyone.*

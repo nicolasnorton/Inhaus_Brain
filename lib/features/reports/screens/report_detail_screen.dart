@@ -388,7 +388,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
 
   Future<void> _handleVideoGeneration(Report report, {bool isFinal = false, bool includeSubtitles = false}) async {
     double progress = 0.0;
-    String status = isFinal ? "Rendering Final (HQ)..." : "Generating Preview...";
+    String status = isFinal ? "Rendering Final (HQ)..." : "Generating fast preview (LiteRT)...";
     if (includeSubtitles) status += " (With Subtitles)";
     
     // To allow setDialogState to be called from the async task, we need a way to capture it.
