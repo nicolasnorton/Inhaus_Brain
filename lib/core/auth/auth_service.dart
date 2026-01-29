@@ -232,10 +232,6 @@ class AuthService {
       if (user != null) {
         await user.updateDisplayName(displayName);
         // Force profile creation
-        final newUser = AppUser(
-            id: user.uid,
-            email: email,
-            displayName: displayName,
         // Determine role based on domain
         UserRole initialRole = UserRole.clientUser;
         if (email.endsWith('@inhauscorp.com') || email.endsWith('@inhaus.agency')) {
