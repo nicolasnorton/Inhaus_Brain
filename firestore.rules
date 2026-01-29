@@ -79,12 +79,14 @@ service cloud.firestore {
       );
       
       match /documents/{documentId} {
+        allow create: if isAgencyStaff(); // Explicit create permission
         allow read: if isAgencyStaff() || isClient();
-        allow write: if isAgencyStaff();
+        allow update, delete: if isAgencyStaff();
         
         match /chunks/{chunkId} {
+          allow create: if isAgencyStaff(); // Explicit create permission
           allow read: if isAgencyStaff() || isClient();
-          allow write: if isAgencyStaff();
+          allow update, delete: if isAgencyStaff();
         }
       }
     }
