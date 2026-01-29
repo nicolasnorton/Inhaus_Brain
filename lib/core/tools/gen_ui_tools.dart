@@ -47,7 +47,7 @@ For "trend_report" (MUST include AT LEAST 5-7 diverse sections):
       "items": [
         {"label": "Market Share (Bajaj)", "value": "23.4%", "trend": "up", "change": "+3.2%"},
         {"label": "Market Growth Rate", "value": "12.8%", "trend": "up", "change": "+1.5%"},
-        {"label": "Price Index", "value": "\\$2,850", "trend": "down", "change": "-5.0%"}
+        {"label": "Price Index", "value": "\$2,850", "trend": "down", "change": "-5.0%"}
       ]
     },
     {
@@ -79,7 +79,7 @@ For "trend_report" (MUST include AT LEAST 5-7 diverse sections):
       "title": "Strategic Opportunities",
       "items": [
         {"label": "Untapped Rural Markets", "value": "42%", "trend": "neutral"},
-        {"label": "Electric Segment Potential", "value": "\\$85M", "trend": "up", "change": "+45%"}
+        {"label": "Electric Segment Potential", "value": "\$85M", "trend": "up", "change": "+45%"}
       ]
     },
     {
@@ -104,7 +104,7 @@ For "strategy_board":
   "title": "Specific Strategy Name",
   "objectives": ["Measurable Objective 1 (e.g., 'Increase market share to 28% by Q4')", "Objective 2 with metric", "Objective 3 with timeline"],
   "pillars": [
-    {"title": "Pillar 1: [Name]", "description": "2-3 sentence detailed explanation", "kpis": ["Specific KPI with target: 'CAC < $50'", "KPI 2", "KPI 3"]},
+    {"title": "Pillar 1: [Name]", "description": "2-3 sentence detailed explanation", "kpis": ["Specific KPI with target: CAC less than fifty dollars", "KPI 2", "KPI 3"]},
     {"title": "Pillar 2", "description": "...", "kpis": ["...", "...", "..."]}
   ],
   "milestones": [
