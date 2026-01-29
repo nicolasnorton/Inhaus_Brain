@@ -68,20 +68,9 @@ class VideoGenerationService {
     required bool isPreview,
     Function(double)? onProgress,
   }) async {
-    // 0. ON-DEVICE PATH (LiteRT) for Previews
-    if (isPreview && kIsWeb) { // Also support native if configured, but checking WebGPU mainly
-       debugPrint('VideoService: LiteRT Fast Preview (WebGPU/NPU)...');
-       onProgress?.call(0.1);
-       // Check if we can use EdgeAIService's LiteRT bridge or call directly.
-       // For now, we simulate the "Veo 3 Fast" instant generation.
-       await Future.delayed(const Duration(milliseconds: 1500)); // Super fast
-       onProgress?.call(1.0);
-       return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"; // Placeholder Loop
-    }
-
-    // 1. WEB PROXY PATH (Primary for Web & Secure Environments)
+    // WEB PROXY PATH (Recommended for all environments)
     if (kIsWeb) {
-      debugPrint('VideoService: Requesting $modelId (Preview: $isPreview)...');
+      debugPrint('VideoService: Requesting $modelId via Secure Proxy (Preview: $isPreview)...');
       onProgress?.call(0.1);
       try {
         final proxyResponse = await AIProxyService.generateContent(
@@ -118,8 +107,8 @@ class VideoGenerationService {
       }
     }
 
-    // 2. FALLBACK/MOCK
-    debugPrint('VideoService: Local/Non-Web fallback. Returning mock.');
+    // FALLBACK/MOCK (Only for non-web environments during development)
+    debugPrint('VideoService: Non-Web environment. Returning development mock.');
     for (int i = 0; i <= 10; i++) {
       await Future.delayed(const Duration(milliseconds: 300));
       onProgress?.call(i / 10.0);
