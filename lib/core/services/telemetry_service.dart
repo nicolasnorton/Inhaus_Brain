@@ -127,6 +127,26 @@ class TelemetryService {
       _logger.i('[Telemetry] Video Gen ($modelId): ${success ? "Success" : "Fail"} in ${durationMs}ms (Fallback: $isFallback)');
     } catch (_) {}
   }
+
+  
+  // Log Role Actions (RBAC)
+  Future<void> logRoleAction({
+    required String role,
+    required String action,
+    String? resourceId,
+  }) async {
+    try {
+      await _analytics.logEvent(
+        name: 'rbac_action',
+        parameters: {
+          'user_role': role,
+          'action': action,
+          'resource_id': resourceId ?? 'n/a',
+        },
+      );
+      _logger.d('[Telemetry] RBAC: $role performed $action on ${resourceId ?? "global"}');
+    } catch (_) {}
+  }
 }
 
 final telemetryServiceProvider = Provider<TelemetryService>((ref) => TelemetryService());

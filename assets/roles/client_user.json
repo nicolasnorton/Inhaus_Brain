@@ -1,15 +1,37 @@
 {
-    "name": "Client User",
-    "description": "Restricted access for external clients ||| Acceso restringido para clientes externos",
-    "capabilities": [
-        "View deliverables ||| Ver entregables",
-        "Monitor progress ||| Monitorear progreso",
-        "Review reports ||| Revisar reportes"
+    "role": "clientUser",
+    "permissions": [
+        "view_dashboard",
+        "view_own_reports",
+        "export_own_reports",
+        "view_own_assets"
     ],
-    "permissions": {
-        "reports": "read_only ||| solo_lectura",
-        "clients": "none ||| ninguno",
-        "agents": "none ||| ninguno",
-        "analytics": "read_own ||| leer_propios"
+    "constraints": {
+        "max_daily_generations": 0,
+        "can_view_competitor_data": false,
+        "data_scope": "own_client_id_only"
+    },
+    "ui_features": {
+        "show_admin_panel": false,
+        "show_debug_overlay": false,
+        "show_audit_logs": false
+    }
+} ||| {
+    "rol": "clientUser",
+    "permisos": [
+        "ver_tablero",
+        "ver_propios_informes",
+        "exportar_propios_informes",
+        "ver_propios_activos"
+    ],
+    "restricciones": {
+        "max_generaciones_diarias": 0,
+        "puede_ver_datos_competencia": false,
+        "alcance_datos": "solo_id_cliente_propio"
+    },
+    "caracteristicas_ui": {
+        "mostrar_panel_admin": false,
+        "mostrar_overlay_depuracion": false,
+        "mostrar_registros_auditoria": false
     }
 }

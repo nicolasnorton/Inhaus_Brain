@@ -272,60 +272,94 @@ class DashboardHome extends ConsumerWidget {
                 crossAxisSpacing: 16,
                 childAspectRatio: 1.1,
                 children: [
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.usersViewfinder,
-                    label: AppLocalizations.of(context)!.navClients,
-                    onTap: () => context.go('/clients'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.bullhorn,
-                    label: AppLocalizations.of(context)!.navCampaigns,
-                    onTap: () => context.go('/campaigns'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.chartLine,
-                    label: AppLocalizations.of(context)!.navAnalytics,
-                    onTap: () => context.go('/analytics'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.diagramProject,
-                    label: AppLocalizations.of(context)!.navWorkflows,
-                    onTap: () => context.go('/workflows'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.rocket,
-                    label: AppLocalizations.of(context)!.navPublish,
-                    onTap: () => context.go('/publish'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.book,
-                    label: AppLocalizations.of(context)!.navKnowledge,
-                    onTap: () => context.go('/knowledge'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.gear,
-                    label: AppLocalizations.of(context)!.navSettings,
-                    onTap: () => context.go('/settings'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.clipboardList,
-                    label: "Reports",
-                    onTap: () => context.go('/reports'),
-                  ),
-                  _buildNavCard(
-                    context,
-                    icon: FontAwesomeIcons.bug,
-                    label: AppLocalizations.of(context)!.navDebug,
-                    onTap: () => context.go('/debug'),
-                  ),
+                  if (user?.role != UserRole.clientUser) ...[
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.usersViewfinder,
+                      label: AppLocalizations.of(context)!.navClients,
+                      onTap: () => context.go('/clients'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.bullhorn,
+                      label: AppLocalizations.of(context)!.navCampaigns,
+                      onTap: () => context.go('/campaigns'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.chartLine,
+                      label: AppLocalizations.of(context)!.navAnalytics,
+                      onTap: () => context.go('/analytics'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.diagramProject,
+                      label: AppLocalizations.of(context)!.navWorkflows,
+                      onTap: () => context.go('/workflows'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.rocket,
+                      label: AppLocalizations.of(context)!.navPublish,
+                      onTap: () => context.go('/publish'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.book,
+                      label: AppLocalizations.of(context)!.navKnowledge,
+                      onTap: () => context.go('/knowledge'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.gear,
+                      label: AppLocalizations.of(context)!.navSettings,
+                      onTap: () => context.go('/settings'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.clipboardList,
+                      label: "Reports",
+                      onTap: () => context.go('/reports'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.bug,
+                      label: AppLocalizations.of(context)!.navDebug,
+                      onTap: () => context.go('/debug'),
+                    ),
+                  ] else ...[
+                     // Client User View
+                      _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.gaugeHigh,
+                      label: AppLocalizations.of(context)!.navDashboard,
+                      onTap: () => context.go('/'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.clipboardList,
+                      label: "Reports",
+                      onTap: () => context.go('/reports'),
+                    ),
+                    _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.bullhorn,
+                      label: AppLocalizations.of(context)!.navCampaigns,
+                      onTap: () => context.go('/campaigns'),
+                    ),
+                     _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.chartLine,
+                      label: AppLocalizations.of(context)!.navAnalytics,
+                      onTap: () => context.go('/analytics'),
+                    ),
+                     _buildNavCard(
+                      context,
+                      icon: FontAwesomeIcons.gear,
+                      label: AppLocalizations.of(context)!.navSettings,
+                      onTap: () => context.go('/settings'),
+                    ),
+                  ],
                 ],
               );
             },

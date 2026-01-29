@@ -1,15 +1,45 @@
 {
-    "name": "Human Agency Staff",
-    "description": "Full operational access for agency employees ||| Acceso operativo completo para empleados de la agencia",
-    "capabilities": [
-        "Manage client data ||| Gestionar datos de clientes",
-        "Oversee AI workflows ||| Supervisar flujos de trabajo de IA",
-        "Campaign execution ||| Ejecución de campañas"
+    "role": "humanAgencyStaff",
+    "permissions": [
+        "view_dashboard",
+        "create_report",
+        "edit_report",
+        "delete_report",
+        "manage_clients",
+        "manage_users",
+        "access_debug_tools",
+        "view_analytics",
+        "generate_content"
     ],
-    "permissions": {
-        "reports": "read_write ||| lectura_escritura",
-        "clients": "read_write ||| lectura_escritura",
-        "agents": "read_write ||| lectura_escritura",
-        "analytics": "read ||| lectura"
+    "constraints": {
+        "max_daily_generations": 1000,
+        "can_view_competitor_data": true
+    },
+    "ui_features": {
+        "show_admin_panel": true,
+        "show_debug_overlay": true,
+        "show_audit_logs": true
+    }
+} ||| {
+    "rol": "humanAgencyStaff",
+    "permisos": [
+        "ver_tablero",
+        "crear_informe",
+        "editar_informe",
+        "eliminar_informe",
+        "gestionar_clientes",
+        "gestionar_usuarios",
+        "acceder_herramientas_depuracion",
+        "ver_analiticas",
+        "generar_contenido"
+    ],
+    "restricciones": {
+        "max_generaciones_diarias": 1000,
+        "puede_ver_datos_competencia": true
+    },
+    "caracteristicas_ui": {
+        "mostrar_panel_admin": true,
+        "mostrar_overlay_depuracion": true,
+        "mostrar_registros_auditoria": true
     }
 }

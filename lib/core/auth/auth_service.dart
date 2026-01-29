@@ -91,8 +91,12 @@ class AuthService {
     }
 
     // Fallback / First time creation
-    // Check for hardcoded super admins here if needed for bootstrap
-    UserRole role = UserRole.accountManager;
+    UserRole role = UserRole.clientUser; // Default Secure Role
+    if (user.email != null && (user.email!.endsWith('@inhauscorp.com') || user.email!.endsWith('@inhaus.agency'))) {
+      role = UserRole.humanAgencyStaff;
+    }
+    
+    // Bootstrap Super Admin
     if (user.email == 'nnorton@inhauscorp.com') {
       role = UserRole.superAdmin;
     }
@@ -232,7 +236,17 @@ class AuthService {
             id: user.uid,
             email: email,
             displayName: displayName,
-            role: UserRole.accountManager, // Default role
+        // Determine role based on domain
+        UserRole initialRole = UserRole.clientUser;
+        if (email.endsWith('@inhauscorp.com') || email.endsWith('@inhaus.agency')) {
+          initialRole = UserRole.humanAgencyStaff;
+        }
+
+        final newUser = AppUser(
+            id: user.uid,
+            email: email,
+            displayName: displayName,
+            role: initialRole,
         );
          _userProfiles[user.uid] = newUser;
         await _syncUserWithFirestore(newUser);

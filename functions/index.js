@@ -176,7 +176,25 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     }
                 }
 
-                const response = await fetch(targetUrl, {
+                // Retry logic for polling requests (transient network errors)
+                const fetchWithRetry = async (url, options, retries = 3) => {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            const response = await fetch(url, options);
+                            if (response.status === 404 && i < retries - 1) {
+                                console.log(`[PROXY] 404 encountered, retrying (${i + 1}/${retries})...`);
+                                await new Promise(r => setTimeout(r, 1000));
+                                continue;
+                            }
+                            return response;
+                        } catch (err) {
+                            if (i === retries - 1) throw err;
+                            await new Promise(r => setTimeout(r, 1000));
+                        }
+                    }
+                };
+
+                const response = await fetchWithRetry(targetUrl, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
@@ -187,7 +205,11 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
-                    throw new Error(`Polling failed with status ${response.status}: ${errorText}`);
+                    // Return 200 with error info so client can handle it gracefully instead of crashing
+                    return res.status(200).json({
+                        done: true,
+                        error: { message: `Polling HTTP Error ${response.status}: ${errorText}` }
+                    });
                 }
 
                 const operationData = await response.json();

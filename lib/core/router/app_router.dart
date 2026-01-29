@@ -42,6 +42,7 @@ import '../../features/workspace/screens/plugins_screen.dart';
 import '../../features/workspace/screens/manage_apps_screen.dart';
 import '../../features/copilot/presentation/copilot_view.dart';
 import '../../core/auth/auth_service.dart';
+import '../../features/auth/models/user_model.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider).value;
@@ -54,12 +55,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.uri.toString() == '/login';
       final isOnboarding = state.uri.toString() == '/onboarding';
 
+      final appUserAsync = ref.read(appUserProvider);
+      final appUser = appUserAsync.value;
+
       if (!isLoggedIn && !isLoggingIn) return '/login';
       if (isLoggedIn && !onboardingCompleted && !isOnboarding) return '/onboarding';
       if (isLoggedIn && isLoggingIn) return '/';
       
       // If completed but trying to go to onboarding, redirect home
       if (isLoggedIn && onboardingCompleted && isOnboarding) return '/';
+
+      // RBAC: Client User Restrictions
+      if (isLoggedIn && appUser?.role == UserRole.clientUser) {
+         final path = state.uri.toString();
+         // List of restricted prefixes/paths for Client Users
+         const restricted = [
+           '/clients', 
+           '/workflows', 
+           '/publish', 
+           '/knowledge', 
+           '/debug', 
+           '/admin',
+           '/workspace',
+           '/copilot', // Maybe restrict copilot full mode?
+         ];
+         
+         if (restricted.any((r) => path.startsWith(r))) {
+            return '/'; // Redirect to dashboard if trying to access restricted area
+         }
+      }
       
       return null;
     },
