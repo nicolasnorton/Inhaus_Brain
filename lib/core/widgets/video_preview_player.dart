@@ -28,6 +28,10 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if we are showing a fallback image (Storyboard) instead of a video
+    final isFallbackImage = widget.videoUrl.startsWith('IMAGE:');
+    final mediaUrl = isFallbackImage ? widget.videoUrl.substring(6) : widget.videoUrl;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -38,7 +42,45 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
               borderRadius: BorderRadius.circular(16),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: AppVideoPlayer(videoUrl: widget.videoUrl),
+                child: isFallbackImage
+                   ? Stack(
+                       fit: StackFit.expand,
+                       children: [
+                         Image.network(
+                           mediaUrl, 
+                           fit: BoxFit.cover,
+                           loadingBuilder: (ctx, child, loadingProgress) {
+                             if (loadingProgress == null) return child;
+                             return const Center(child: CircularProgressIndicator());
+                           },
+                           errorBuilder: (ctx, err, stack) => Container(
+                             color: Colors.grey[900],
+                             child: const Center(child: Icon(Icons.broken_image, color: Colors.white54)),
+                           ),
+                         ),
+                         Container(
+                           color: Colors.black45,
+                           child: const Center(
+                             child: Column(
+                               mainAxisSize: MainAxisSize.min,
+                               children: [
+                                 Icon(Icons.image, color: Colors.white, size: 48),
+                                 SizedBox(height: 8),
+                                 Text(
+                                   "Static Storyboard",
+                                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                 ),
+                                 Text(
+                                   "(Preview generation timed out)",
+                                   style: TextStyle(color: Colors.white70, fontSize: 12),
+                                 ),
+                               ],
+                             ),
+                           ),
+                         ),
+                       ],
+                     )
+                   : AppVideoPlayer(videoUrl: mediaUrl),
               ),
             ),
             if (!widget.isFinal)
@@ -48,16 +90,23 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.8),
+                    color: isFallbackImage ? Colors.grey : Colors.orange.withOpacity(0.8),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'LITERT PREVIEW',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(isFallbackImage ? Icons.image : Icons.bolt, size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        isFallbackImage ? 'FALLBACK' : 'LITERT FAST',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
