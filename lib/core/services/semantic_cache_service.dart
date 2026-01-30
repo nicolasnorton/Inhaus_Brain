@@ -37,6 +37,12 @@ class SemanticCacheService {
     final bytes = utf8.encode("$intent:$prompt");
     return sha256.convert(bytes).toString();
   }
+
+  /// Clear all cached responses (useful when prompts are updated)
+  void clearCache() {
+    _memoryCache.clear();
+    debugPrint('[SemanticCache] CLEARED all cached responses');
+  }
 }
 
 final semanticCacheServiceProvider = Provider<SemanticCacheService>((ref) {

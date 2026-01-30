@@ -165,6 +165,8 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     console.log('[PROXY] UUID operation detected - using REST API v1beta1');
                     const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
                     console.log(`[PROXY] Polling URL: ${targetUrl}`);
+                    console.log(`[PROXY] Operation ID: ${opId}`);
+                    console.log(`[PROXY] Full operation name: ${operationName}`);
 
                     const response = await fetch(targetUrl, {
                         method: 'GET',
@@ -174,19 +176,25 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                         }
                     });
 
+                    console.log(`[PROXY] Response status: ${response.status}`);
+
                     if (!response.ok) {
+                        const errorBody = await response.text();
                         console.error(`[PROXY] REST API error: ${response.status} ${response.statusText}`);
+                        console.error(`[PROXY] Error body: ${errorBody}`);
                         return res.status(200).json({
                             done: true,
                             error: {
                                 message: `REST API Error: ${response.statusText}`,
-                                code: response.status
+                                code: response.status,
+                                details: errorBody
                             }
                         });
                     }
 
                     const operation = await response.json();
                     console.log('[PROXY] REST API polling successful');
+                    console.log(`[PROXY] Operation response: ${JSON.stringify(operation).substring(0, 200)}`);
                     return res.status(200).json(operation);
                 }
 
