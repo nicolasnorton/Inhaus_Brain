@@ -97,6 +97,10 @@ class AIProxyService {
       );
 
       if (response.statusCode == 200) {
+        if (response.body.isEmpty) {
+           debugPrint('AIProxyService: ⚠️ Empty response body for polling.');
+           return {'done': false}; // Assume still valid or just keep polling
+        }
         return jsonDecode(response.body);
       } else {
         throw Exception('Proxy Poll Error ${response.statusCode}: ${response.body}');

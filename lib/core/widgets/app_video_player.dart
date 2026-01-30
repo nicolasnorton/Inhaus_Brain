@@ -150,13 +150,18 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
                   'Video Error',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.redAccent),
                 ),
+                if (_errorMessage != null)
+                   Text(_errorMessage!, style: const TextStyle(fontSize: 10, color: Colors.white54), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 8),
                 Text(
                   'Tap to download directly', 
                   style: Theme.of(context).textTheme.bodySmall
                 ),
-                TextButton(
+                ElevatedButton.icon(
                   onPressed: _downloadVideo,
-                  child: const Text('Download'),
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text('Download GCS Link'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
                 )
               ],
             ),

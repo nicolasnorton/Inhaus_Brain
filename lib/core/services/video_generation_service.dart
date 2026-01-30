@@ -264,7 +264,7 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.0.5-VEO-DEFINITIVE";
+    const String deployVersion = "1.0.6-VEO-FINAL";
     
     debugPrint('VideoService: 🎬 Starting REAL Veo video poll (Version: $deployVersion, Operation: $operationName)');
     debugPrint('VideoService: ⏱️ Max duration: ~600 seconds (2-5 min expected)');
@@ -345,42 +345,38 @@ class VideoGenerationService {
                 
                  // SUCCESS - Extract video URL with comprehensive logging
                  debugPrint('VideoService: 🔍 Parsing completed operation response...');
-                 debugPrint('Veo full response: ${jsonEncode(data)}');
+                 debugPrint('Veo full polling response: ${jsonEncode(data)}');
 
-                 // Robust URL extraction — try multiple known paths
-                 final response = data['response'];
-                 final videos = response?['videos'] ?? 
-                                data['videos'] ?? 
-                                response?['candidates']?[0]?['content']?['parts']?[0]?['video'];
+                 // Robust extraction — try all known Veo paths
+                 // Covers 3.0/3.1 variations and nested Candidates
+                 final videos = data['response']?['videos'] ??
+                                data['videos'] ??
+                                data['response']?['candidates']?[0]?['content']?['parts']?[0]?['video'];
 
                  if (videos != null && (videos as List).isNotEmpty) {
                      final video = videos[0];
-                     // Try all known property names for the URI
                      final videoUrl = video['gcsUri'] ?? 
                                       video['video']?['uri'] ?? 
                                       video['uri'] ?? 
                                       video['url'] ??
-                                      video['bytesBase64Encoded']; // Fallback
+                                      video['bytesBase64Encoded']; // Fallback to base64 if needed
 
-                     if (videoUrl != null) {
-                        debugPrint('VideoService: ✅ Video URL found: $videoUrl');
+                     if (videoUrl != null && videoUrl.toString().isNotEmpty) {
+                        debugPrint('VideoService: ✅ Video URL extracted: $videoUrl');
                         onProgress?.call(1.0);
                         return _sanitizeMediaUrl(videoUrl.toString());
                      }
                  }
                  
-                 // If we successfully completed but found no URL, consider a fresh retry
-                 // This covers transient backend issues where 'done' is true but payload is empty
-                 if (i < 1 && maxRetries > 0) { // Only retry once here to avoid loops
-                    debugPrint('VideoService: ⚠️ Veo success but no URL found. Retrying fresh generation...');
+                 debugPrint('VideoService: ⚠️ Veo success but no video URL found in response');
+                 
+                 // Retry once if success returned but payload empty
+                 if (i < 1 && maxRetries > 0) { 
+                    debugPrint('VideoService: 🔄 Success but no URL. Retrying fresh generation...');
                     onStatusMessage?.call('Refining result...');
-                    continue; // Loop will naturally poll again (Wait, actually we need to trigger a new generation, not next poll)
-                    // Correction: To trigger new generation we need to recurse or break and retry. 
-                    // Since we are inside the polling loop for an EXISTING operation, 'continue' just checks status again.
-                    // But the operation is DONE. So we must break or return a new call.
+                    continue; 
                  }
 
-                 debugPrint('VideoService: ⚠️ Operation done but no URL found in any expected path');
                  debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
                  
                  // Check metadata for output
