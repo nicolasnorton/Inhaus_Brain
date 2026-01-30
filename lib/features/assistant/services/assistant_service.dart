@@ -464,6 +464,20 @@ $ephemeralMsg
       final codeBlockRegex = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true);
       final matches = codeBlockRegex.allMatches(cleanResponse);
 
+      // 0. Global Clean-up: Strip python print() wrapper if it wraps the whole JSON
+      // Gemini 2.0 has a habit of outputting: print({"tool": ...})
+      if (cleanResponse.startsWith('print(') && cleanResponse.endsWith(')')) {
+          print('DEBUG: Assistant - Stripping global print() wrapper');
+          cleanResponse = cleanResponse.substring(6, cleanResponse.length - 1).trim();
+          // Remove surrounding quotes if it was print("...")
+          if ((cleanResponse.startsWith('"') && cleanResponse.endsWith('"')) || 
+              (cleanResponse.startsWith("'") && cleanResponse.endsWith("'"))) {
+             cleanResponse = cleanResponse.substring(1, cleanResponse.length - 1);
+             // Unescape generic escaped quotes
+             cleanResponse = cleanResponse.replaceAll(r'\"', '"');
+          }
+      }
+
       if (matches.isNotEmpty) {
         bool foundJson = false;
         for (final match in matches) {
@@ -549,14 +563,18 @@ $ephemeralMsg
                  toolName = 'gen_ui_component';
                   toolArgs = Map<String, dynamic>.from(parsed);
                } else {
-                 // Heuristic inference
-                 final prefix = cleanResponse.substring(0, jsonStart).trim();
-                 final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
-                 if (funcMatch != null) {
-                   toolName = funcMatch.group(1);
-                   toolArgs = Map<String, dynamic>.from(parsed);
-                 }
-               }
+                  // Heuristic inference
+                  final prefix = cleanResponse.substring(0, jsonStart).trim();
+                  final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
+                  if (funcMatch != null) {
+                    final inferredName = funcMatch.group(1);
+                    // Explicitly ignore 'print' as a tool name due to Python code confusion
+                    if (inferredName != 'print') {
+                       toolName = inferredName;
+                       toolArgs = Map<String, dynamic>.from(parsed);
+                    }
+                  }
+                }
 
                if (toolName != null && toolArgs != null) {
                  if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {

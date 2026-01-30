@@ -21,6 +21,7 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
   bool _isPlaying = false;
+  bool _isImage = false; // New state for image fallback protection
   String? _errorMessage;
 
   @override
@@ -40,6 +41,21 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
       print('DEBUG: AppVideoPlayer - Original URL: ${widget.videoUrl}');
       print('DEBUG: AppVideoPlayer - Cleaned URL: $cleanUrl');
       
+      // Check if URL is actually an image (fallback from VideoGenerationService)
+      if (widget.videoUrl.toUpperCase().startsWith('IMAGE:') || 
+          cleanUrl.toLowerCase().endsWith('.jpg') || 
+          cleanUrl.toLowerCase().endsWith('.png') ||
+          cleanUrl.toLowerCase().endsWith('.webp') ||
+          cleanUrl.contains('images.unsplash.com')) {
+          
+          print('DEBUG: AppVideoPlayer - Detected IMAGE fallback. Skipping VideoPlayer initialization.');
+          setState(() {
+            _isImage = true;
+            _isInitialized = true;
+          });
+          return;
+      }
+
       if (kIsWeb) {
          // On Web, we might need to handle CORS or specific encoding
          _controller = VideoPlayerController.networkUrl(Uri.parse(cleanUrl));
@@ -89,7 +105,9 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (!_isImage) {
+      _controller.dispose();
+    }
     super.dispose();
   }
 
@@ -183,6 +201,48 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
       );
     }
 
+    // IMAGE FALLBACK UI
+    if (_isImage) {
+      final cleanUrl = widget.videoUrl.replaceAll(RegExp(r'^(image|video):\s*', caseSensitive: false), '').trim();
+      return Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+           Image.network(
+             cleanUrl, 
+             fit: BoxFit.cover,
+             width: double.infinity,
+             height: double.infinity,
+             errorBuilder: (ctx, err, stack) => _buildErrorWidget(context, err.toString()),
+             loadingBuilder: (ctx, child, loadingProgress) {
+               if (loadingProgress == null) return child;
+               return const Center(child: CircularProgressIndicator());
+             },
+           ),
+           Container(
+             decoration: const BoxDecoration(
+               gradient: LinearGradient(
+                 begin: Alignment.topCenter,
+                 end: Alignment.bottomCenter,
+                 colors: [Colors.transparent, Colors.black54],
+                 stops: [0.7, 1.0]
+               )
+             ),
+           ),
+           Positioned(
+             right: 8,
+             bottom: 8,
+             child: ElevatedButton.icon(
+                onPressed: _downloadVideo,
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('Download Image'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.black54, foregroundColor: Colors.white),
+             )
+           ),
+           const Center(child: Icon(Icons.image, color: Colors.white30, size: 48)), // Watermark/Icon
+        ],
+      );
+    }
+
     return AspectRatio(
       aspectRatio: _controller.value.aspectRatio,
       child: Stack(
@@ -198,6 +258,40 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
         ],
       ),
     );
+  }
+
+  Widget _buildErrorWidget(BuildContext context, String error) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.black12,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.redAccent, size: 32),
+                const SizedBox(height: 8),
+                Text(
+                  'Media Error',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.redAccent),
+                ),
+                 Text(error, style: const TextStyle(fontSize: 10, color: Colors.white54), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: _downloadVideo,
+                  icon: const Icon(Icons.download, size: 16),
+                  label: const Text('Download Link'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
   }
 }
 
