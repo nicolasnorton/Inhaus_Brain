@@ -264,7 +264,7 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.0.6-VEO-FINAL";
+    const String deployVersion = "1.0.7-VEO-PARSING-FIX";
     
     debugPrint('VideoService: 🎬 Starting REAL Veo video poll (Version: $deployVersion, Operation: $operationName)');
     debugPrint('VideoService: ⏱️ Max duration: ~600 seconds (2-5 min expected)');
@@ -348,10 +348,18 @@ class VideoGenerationService {
                  debugPrint('Veo full polling response: ${jsonEncode(data)}');
 
                  // Robust extraction — try all known Veo paths
-                 // Covers 3.0/3.1 variations and nested Candidates
-                 final videos = data['response']?['videos'] ??
-                                data['videos'] ??
-                                data['response']?['candidates']?[0]?['content']?['parts']?[0]?['video'];
+                 dynamic videos;
+                 if (data['response']?['videos'] != null) {
+                   videos = data['response']['videos'];
+                 } else if (data['videos'] != null) {
+                   videos = data['videos'];
+                 } else if (data['candidates']?[0]?['content']?['parts']?[0]?['video'] != null) {
+                   // Wrap single video object in list to match structure
+                   videos = [data['candidates'][0]['content']['parts'][0]['video']];
+                 } else if (data['response']?['candidates']?[0]?['content']?['parts']?[0]?['video'] != null) {
+                   // Also check nested candidates just in case
+                   videos = [data['response']['candidates'][0]['content']['parts'][0]['video']];
+                 }
 
                  if (videos != null && (videos as List).isNotEmpty) {
                      final video = videos[0];
