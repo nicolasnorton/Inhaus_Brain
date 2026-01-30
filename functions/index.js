@@ -160,32 +160,33 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const isUUID = opId.includes('-'); // UUIDs contain hyphens, Longs don't
 
                 if (isUUID) {
-                    console.log('[PROXY] UUID operation detected - using OperationsClient (gRPC)');
-                    try {
-                        // Use the official AI Platform SDK's v1 OperationsClient
-                        // This handles gRPC and authentication (ADC) automatically and reliably
-                        const aiplatform = require('@google-cloud/aiplatform');
-                        const operationsClient = new aiplatform.v1.OperationsClient({
-                            apiEndpoint: `${lId}-aiplatform.googleapis.com`,
-                        });
+                    // UUID operations from Veo/Model Garden - use REST API with v1 endpoint
+                    console.log('[PROXY] UUID operation detected - using REST API v1');
+                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1/${operationName}`;
+                    console.log(`[PROXY] Polling URL: ${targetUrl}`);
 
-                        // Get the operation using gRPC
-                        const [operation] = await operationsClient.getOperation({
-                            name: operationName,
-                        });
+                    const response = await fetch(targetUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
 
-                        console.log('[PROXY] gRPC polling successful');
-                        return res.status(200).json(operation);
-                    } catch (sdkError) {
-                        console.error('[PROXY] gRPC polling failed:', sdkError.message);
+                    if (!response.ok) {
+                        console.error(`[PROXY] REST API error: ${response.status} ${response.statusText}`);
                         return res.status(200).json({
                             done: true,
                             error: {
-                                message: `gRPC Error: ${sdkError.message}`,
-                                code: sdkError.code || 500
+                                message: `REST API Error: ${response.statusText}`,
+                                code: response.status
                             }
                         });
                     }
+
+                    const operation = await response.json();
+                    console.log('[PROXY] REST API polling successful');
+                    return res.status(200).json(operation);
                 }
 
                 // For non-UUID operations, use REST API as before
