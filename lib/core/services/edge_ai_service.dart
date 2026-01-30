@@ -573,12 +573,12 @@ class EdgeAIService {
     throw Exception('Image Generation Failed: Please verify Vertex AI credentials or connectivity.');
   }
 
-  static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, String? runwayKey, Ref? ref, Function(double)? onProgress}) async {
+  static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, String? runwayKey, Ref? ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {
     // Phase 95: Telemetry Injection via Ref if available
     final telemetry = ref?.read(telemetryServiceProvider);
     
     if (isFinal) {
-      return await VideoGenerationService.generateFinal(prompt, confirmedByUser: true, onProgress: onProgress, telemetry: telemetry);
+      return await VideoGenerationService.generateFinal(prompt, confirmedByUser: true, onProgress: onProgress, onStatusMessage: onStatusMessage, telemetry: telemetry);
     } else {
       return await VideoGenerationService.generatePreview(prompt, onProgress: onProgress, telemetry: telemetry);
     }

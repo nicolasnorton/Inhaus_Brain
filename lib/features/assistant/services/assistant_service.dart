@@ -192,14 +192,18 @@ class AssistantService {
         blackboard.postFact('artifacts', message.artifacts!.map((a) => a.toJson()).toList());
       }
       
-      try {
-        await _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
+      // FIRE-AND-FORGET: Non-blocking Knowledge Ingestion
+      // Agent 2: Prevent blocking video generation flow
+      // We start this immediately but DO NOT await it, so the UI updates instantly.
+      debugPrint('AssitantService: 🚀 Starting background knowledge ingestion...');
+      unawaited(
+        _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
           "Query: $text\nResponse: ${message.text}",
           attachment: attachment,
-        ).timeout(const Duration(seconds: 60)); 
-      } catch (e) {
-        debugPrint('Knowledge Auto-Ingest Error: ${_safeError(e)}');
-      }
+        ).timeout(const Duration(seconds: 120)) // Increased timeout to 120s
+        .then((_) => debugPrint('AssistantService: ✅ Knowledge Auto-Ingest Complete'))
+        .catchError((e) => debugPrint('AssistantService: ⚠️ Knowledge Auto-Ingest Error (Background): ${_safeError(e)}'))
+      );
       
       return message;
     } catch (e) {

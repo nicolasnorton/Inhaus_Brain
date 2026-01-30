@@ -29,8 +29,27 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
   @override
   Widget build(BuildContext context) {
     // Check if we are showing a fallback image (Storyboard) instead of a video
-    final isFallbackImage = widget.videoUrl.toUpperCase().startsWith('IMAGE:');
-    final mediaUrl = isFallbackImage ? widget.videoUrl.substring(6) : widget.videoUrl;
+    // Use robust trimming and regex to handle potential whitespace or casing issues
+    final cleanUrl = widget.videoUrl.trim();
+    
+    // DEBUG: Print detection logic
+    print('DEBUG: VideoPreviewPlayer input: "$cleanUrl"');
+    
+    bool isFallbackImage = cleanUrl.toUpperCase().startsWith('IMAGE:') || 
+                           RegExp(r'^image:', caseSensitive: false).hasMatch(cleanUrl);
+
+    // FAILSAFE: If it contains 'unsplash' or typical image extensions and isn't marked, force it
+    // This handles cases where the prefix might have been mangled but we know it's an image
+    if (!isFallbackImage && (cleanUrl.contains('unsplash.com') || cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg'))) {
+       print('DEBUG: VideoPreviewPlayer detected image by content (failsafe)');
+       isFallbackImage = true;
+    }
+
+    print('DEBUG: VideoPreviewPlayer isFallbackImage: $isFallbackImage');
+    
+    final mediaUrl = isFallbackImage 
+        ? cleanUrl.replaceAll(RegExp(r'^image:', caseSensitive: false), '') 
+        : cleanUrl;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -74,6 +93,16 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                                    "(Preview generation timed out)",
                                    style: TextStyle(color: Colors.white70, fontSize: 12),
                                  ),
+                                 if (widget.onRefine != null)
+                                   Padding(
+                                     padding: const EdgeInsets.only(top: 8.0),
+                                     child: OutlinedButton.icon(
+                                       onPressed: () => widget.onRefine!(false),
+                                       icon: const Icon(Icons.refresh, size: 16, color: Colors.white70),
+                                       label: const Text('Retry Generation', style: TextStyle(color: Colors.white70)),
+                                       style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24)),
+                                     ),
+                                   ),
                                ],
                              ),
                            ),

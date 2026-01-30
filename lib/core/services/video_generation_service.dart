@@ -243,66 +243,59 @@ class VideoGenerationService {
   }) async {
     int consecutiveErrors = 0;
     int total404Count = 0;
-    const maxConsecutiveErrors = 3;
-    const max404Retries = 6;
+    const maxConsecutiveErrors = 5; // Hardened
+    const max404Retries = 15; // Hardened for slow propagation
     
-    // Enhanced timeout: 600 seconds total (60 polls * 10s)
+    // Enhanced Long Timeout: 600+ seconds (60 polls * 10-15s with backoff)
     const int maxPolls = 60;
     const Duration pollInterval = Duration(seconds: 10);
     
     debugPrint('VideoService: 🎬 Starting REAL video generation poll');
     debugPrint('VideoService: Operation ID: $operationName');
-    debugPrint('VideoService: Max duration: ${maxPolls * pollInterval.inSeconds}s (${maxPolls} polls)');
     
     for (int i = 0; i < maxPolls; i++) {
-        // Exponential backoff on errors (but cap at 10s)
-        final Duration delay = consecutiveErrors > 0 
-            ? Duration(seconds: (pollInterval.inSeconds * (1 << consecutiveErrors)).clamp(5, 10))
-            : pollInterval;
-        
+        // Exponential backoff for errors AND later stages of polling (patience)
+        int backoffSeconds = pollInterval.inSeconds;
+        if (i > 10) backoffSeconds = 15; // Slow down after 100s
+        if (consecutiveErrors > 0) backoffSeconds = (backoffSeconds * (1 << consecutiveErrors)).clamp(5, 20);
+
+        final Duration delay = Duration(seconds: backoffSeconds);
         await Future.delayed(delay);
         
+        // Smoothed progress (don't reach 1.0 until done)
         double simulatedProgress = 0.1 + (i / maxPolls) * 0.85;
         if (simulatedProgress > 0.95) simulatedProgress = 0.95;
         onProgress?.call(simulatedProgress);
         
-        debugPrint('VideoService: Poll ${i + 1}/$maxPolls (${(i * pollInterval.inSeconds)}s elapsed)');
+        final elapsedSeconds = i * backoffSeconds;
+        debugPrint('VideoService: 🔄 Poll ${i + 1}/$maxPolls ($elapsedSeconds s elapsed) - Requesting status...');
         
         try {
+            // Log the request URL for debugging
+            // Note: URL construction happens inside AIProxyService, but we log the attempt here
             final data = await AIProxyService.pollOperation(operationName)
-                .timeout(const Duration(seconds: 30));
+                .timeout(const Duration(seconds: 45)); // Longer request timeout
+            
+            debugPrint('VideoService: 📥 Response: done=${data['done']}, error=${data['error'] != null}');
             
             if (data['done'] == true) {
-                debugPrint('VideoService: ✅ Operation complete!');
-                
+                // ... (Success/Error handling logic remains similar, preserved below) ...
                 if (data['error'] != null) {
                    final errorMsg = data['error']['message'] ?? 'Unknown error';
                    debugPrint('VideoService: ❌ Operation error: $errorMsg');
                    
+                   // Check for Quota or Format errors
                    if (errorMsg.contains('quota') || errorMsg.contains('rate limit')) {
-                      debugPrint('VideoService: Quota/rate limit hit - immediate fallback');
                       final fallback = _getStaticFallbackUrl("API quota exceeded: $errorMsg");
                       return 'IMAGE:$fallback';
                    }
-                   
-                   // [NEW] Handle specific Operation ID structure error
                    if (errorMsg.contains('must be a Long') || errorMsg.contains('INVALID_ARGUMENT')) {
-                      debugPrint('VideoService: 🚨 Operation ID Format Error detected. Cloud Veo 3.1 polling is incompatible with this ID type.');
-                      debugPrint('📊 [Telemetry] video_id_format_error: id=$operationName');
-                      
-                      // Immediate fallback to Tier 2 (Edge/LiteRT) to save the user experience
-                      debugPrint('VideoService: Falling back to Edge Preview (LiteRT) due to structural error.');
+                      debugPrint('VideoService: 🚨 ID Format Error. Fallback to Edge.');
                       try {
                         final edgeResult = await OpenModelService.generatePreviewOnDevice(originalPrompt);
-                        if (edgeResult.isNotEmpty && !edgeResult.startsWith('IMAGE:')) {
-                          debugPrint('VideoService: ✅ Fallback to Edge succeeded after Cloud ID error.');
-                          return edgeResult;
-                        }
-                      } catch (e) {
-                        debugPrint('VideoService: Edge fallback also failed: $e');
-                      }
-                      
-                      final fallback = _getStaticFallbackUrl("Video format error (ID mismatch). Showing storyboard instead.");
+                        if (edgeResult.isNotEmpty && !edgeResult.startsWith('IMAGE:')) return edgeResult;
+                      } catch (e) { /* ignore */ }
+                      final fallback = _getStaticFallbackUrl("Video format error.");
                       return 'IMAGE:$fallback';
                    }
                    
@@ -320,7 +313,6 @@ class VideoGenerationService {
                         if (videoUrl != null) {
                           debugPrint('VideoService: 🎥 REAL video URL found: $videoUrl');
                           onProgress?.call(1.0);
-                          debugPrint('📊 [Telemetry] video_generation_success: duration=${i * pollInterval.inSeconds}s, polls=${i + 1}, source=veo_cloud');
                           return _sanitizeMediaUrl(videoUrl);
                         }
                     }
@@ -330,14 +322,12 @@ class VideoGenerationService {
                  if (metadata != null && metadata['outputUri'] != null) {
                     debugPrint('VideoService: 🎥 Video URL from metadata: ${metadata['outputUri']}');
                     onProgress?.call(1.0);
-                    debugPrint('📊 [Telemetry] video_generation_success: duration=${i * pollInterval.inSeconds}s, polls=${i + 1}, source=veo_cloud_metadata');
                     return _sanitizeMediaUrl(metadata['outputUri']);
                  }
                  
-                 final fallback = _getStaticFallbackUrl('Video generated but URL missing in response.');
-                 return 'IMAGE:$fallback';
+                 return 'IMAGE:${_getStaticFallbackUrl('Video generated but URL missing.')}';
             } else {
-                debugPrint('VideoService: ⏳ Still processing... (done: ${data['done']})');
+                debugPrint('VideoService: ⏳ Processing... (Attempt ${i + 1})');
                 consecutiveErrors = 0; 
             }
             
@@ -345,37 +335,30 @@ class VideoGenerationService {
             consecutiveErrors++;
             final errorStr = e.toString();
             
+            // Special handling for 404 (common during propagation)
             if (errorStr.contains('404') || errorStr.contains('not found')) {
                 total404Count++;
-                debugPrint('VideoService: ⚠️ 404 Operation Not Found (count: $total404Count/$max404Retries)');
-                
+                debugPrint('VideoService: ⚠️ 404 Not Found ($total404Count/$max404Retries) - Waiting for propagation...');
                 if (total404Count >= max404Retries) {
-                    debugPrint('VideoService: ❌ Operation lost after $total404Count attempts');
-                    debugPrint('📊 [Telemetry] video_generation_failed: reason=404_operation_not_found, duration=${i * pollInterval.inSeconds}s, polls=${i + 1}');
-                    final fallback = _getStaticFallbackUrl('Operation not found (404) after $total404Count retries');
+                    final fallback = _getStaticFallbackUrl('Operation lost (404) after $total404Count retries');
                     return 'IMAGE:$fallback';
                 }
-                consecutiveErrors = 0;
+                consecutiveErrors = 0; // Don't count 404 as a "network error" for backoff purposes
                 continue;
             }
             
-            debugPrint('VideoService: ❌ Polling error (attempt ${i + 1}, consecutive: $consecutiveErrors): $e');
+            debugPrint('VideoService: ❌ Network/Poll Error: $e');
             
             if (consecutiveErrors >= maxConsecutiveErrors) {
-               debugPrint('VideoService: 🛑 Too many consecutive errors ($consecutiveErrors)');
-               debugPrint('📊 [Telemetry] video_generation_failed: reason=consecutive_errors, duration=${i * pollInterval.inSeconds}s, polls=${i + 1}, error=$errorStr');
-               final fallback = _getStaticFallbackUrl('Network errors during polling (consecutive failures).');
+               final fallback = _getStaticFallbackUrl('Network errors (consecutive failures).');
                return 'IMAGE:$fallback';
             }
         }
     }
     
-    debugPrint('VideoService: ⏰ Timeout after ${maxPolls * pollInterval.inSeconds}s. Triggering Storyboard Fallback.');
-    debugPrint('📊 [Telemetry] video_generation_timeout: duration=${maxPolls * pollInterval.inSeconds}s, polls=$maxPolls');
-    
-    // Try High-Quality Image Fallback before giving up
-    final result = await _generateImagenFallback(originalPrompt);
-    return result.startsWith('https') ? 'IMAGE:$result' : result;
+    // Timeout Fallback
+    final fallback = await _generateImagenFallback(originalPrompt);
+    return fallback.startsWith('https') ? 'IMAGE:$fallback' : fallback;
   }
 
   static Future<String> _generateImagenFallback(String prompt) async {

@@ -146,51 +146,54 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const client = await auth.getClient();
                 const tokenResponse = await client.getAccessToken();
                 const accessToken = tokenResponse.token;
+                console.log(`[PROXY] Polling operation: ${operationName}`);
 
-                let targetUrl = `https://us-central1-aiplatform.googleapis.com/v1beta1/${operationName}`;
+                // Extract components from operation name
+                const parts = operationName.split('/');
+                const pId = parts[1]; // project
+                const lId = parts[3]; // location
+                const opId = parts[parts.length - 1]; // operation ID (UUID or Long)
 
-                // [PERMANENT FIX] Handle Veo and other models that return UUIDs as Operation IDs.
-                // The standard 'v1' operations endpoint often requires a 'Long' (numeric) ID.
-                // To support UUIDs, we must:
-                // 1. Use the 'v1beta1' endpoint.
-                // 2. Use the location-specific regional host (e.g., us-central1-aiplatform).
-                // 3. Keep the original model-specific path if it exists, as it's often more UUID-friendly.
+                // [CRITICAL FIX] UUID operations (from Veo/Model Garden) CANNOT be polled via REST API
+                // The REST API (both v1 and v1beta1) only supports numeric Long IDs
+                // Solution: Use google-gax OperationsClient which uses gRPC internally
+                const isUUID = opId.includes('-'); // UUIDs contain hyphens, Longs don't
 
-                try {
-                    // Extract location from operationName if present (format: projects/.../locations/{location}/...)
-                    const locationMatch = operationName.match(/locations\/([^/]+)/);
-                    const lId = locationMatch ? locationMatch[1] : 'us-central1';
+                if (isUUID) {
+                    console.log('[PROXY] UUID operation detected - using OperationsClient (gRPC)');
+                    try {
+                        // Use the official AI Platform SDK's v1 OperationsClient
+                        // This handles gRPC and authentication (ADC) automatically and reliably
+                        const aiplatform = require('@google-cloud/aiplatform');
+                        const operationsClient = new aiplatform.v1.OperationsClient({
+                            apiEndpoint: `${lId}-aiplatform.googleapis.com`,
+                        });
 
-                    // Construct targeted URL using regional host and v1beta1
-                    targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
+                        // Get the operation using gRPC
+                        const [operation] = await operationsClient.getOperation({
+                            name: operationName,
+                        });
 
-                    console.log(`[PROXY] Targeted Polling Path: ${targetUrl}`);
-
-                    // If it's the publisher-specific path (Veo), we definitely want to keep it as is.
-                    // If it was already a canonical path, it also works on this URL structure.
-                } catch (rewriteErr) {
-                    console.error('[PROXY] URL Construction Error:', rewriteErr);
+                        console.log('[PROXY] gRPC polling successful');
+                        return res.status(200).json(operation);
+                    } catch (sdkError) {
+                        console.error('[PROXY] gRPC polling failed:', sdkError.message);
+                        return res.status(200).json({
+                            done: true,
+                            error: {
+                                message: `gRPC Error: ${sdkError.message}`,
+                                code: sdkError.code || 500
+                            }
+                        });
+                    }
                 }
 
-                // Retry logic for polling requests (transient network errors)
-                const fetchWithRetry = async (url, options, retries = 3) => {
-                    for (let i = 0; i < retries; i++) {
-                        try {
-                            const response = await fetch(url, options);
-                            if (response.status === 404 && i < retries - 1) {
-                                console.log(`[PROXY] 404 encountered, retrying (${i + 1}/${retries})...`);
-                                await new Promise(r => setTimeout(r, 1000));
-                                continue;
-                            }
-                            return response;
-                        } catch (err) {
-                            if (i === retries - 1) throw err;
-                            await new Promise(r => setTimeout(r, 1000));
-                        }
-                    }
-                };
+                // For non-UUID operations, use REST API as before
+                console.log('[PROXY] Long operation detected - using REST API');
+                const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
+                console.log(`[PROXY] Polling URL: ${targetUrl}`);
 
-                const response = await fetchWithRetry(targetUrl, {
+                const response = await fetch(targetUrl, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
@@ -202,29 +205,47 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     const errorText = await response.text();
                     console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
 
-                    // [RECOVERY] If we got a 400 (Invalid Argument - probably the Long vs UUID error)
-                    // or a 404 (Not Found - sometimes REST API expects canonical path), 
-                    // let's try a canonical rewrite as a last-resort attempt.
+                    // [RECOVERY] Aggressive Operation Recovery
+                    // If the specific publisher path fails (common with Veo/Model Garden), 
+                    // try known canonical permutations until one works.
                     if ((response.status === 400 || response.status === 404) && operationName.includes('/publishers/')) {
-                        console.log(`[PROXY] ${response.status} Detected on publisher path. Attempting canonical path repair...`);
-                        // Extract project, location, and opId using a more robust split
+                        console.log(`[PROXY] ${response.status} on publisher path. Initiating Aggressive Recovery...`);
+
                         const parts = operationName.split('/');
-                        const pId = parts[1];
-                        const lId = parts[3];
-                        const opId = parts[parts.length - 1]; // UUID is always last
+                        const pId = parts[1]; // project
+                        const lId = parts[3]; // location (us-central1)
+                        const opId = parts[parts.length - 1]; // UUID
 
                         if (pId && lId && opId) {
-                            const repairUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`;
-                            console.log(`[PROXY] Retrying with repaired URL: ${repairUrl}`);
-                            const retryResp = await fetch(repairUrl, {
-                                method: 'GET',
-                                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
-                            });
-                            if (retryResp.ok) {
-                                const data = await retryResp.json();
-                                return res.status(200).json(data);
+                            const candidates = [
+                                // 1. Regional Canonical v1beta1 (Most likely)
+                                `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`,
+                                // 2. Regional Canonical v1 (Sometimes operations promote)
+                                `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/operations/${opId}`,
+                                // 3. Global Endpoint (Fallback)
+                                `https://aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`
+                            ];
+
+                            for (const candidateUrl of candidates) {
+                                console.log(`[PROXY] Trying candidates: ${candidateUrl}`);
+                                try {
+                                    const retryResp = await fetch(candidateUrl, {
+                                        method: 'GET',
+                                        headers: {
+                                            'Authorization': `Bearer ${accessToken}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    });
+                                    if (retryResp.ok) {
+                                        console.log(`[PROXY] Recovery SUCCESS with: ${candidateUrl}`);
+                                        const data = await retryResp.json();
+                                        return res.status(200).json(data);
+                                    }
+                                } catch (e) {
+                                    console.log(`[PROXY] Candidate failed: ${e.message}`);
+                                }
                             }
-                            console.warn('[PROXY] Repair attempt also failed.');
+                            console.warn('[PROXY] All recovery candidates failed.');
                         }
                     }
 

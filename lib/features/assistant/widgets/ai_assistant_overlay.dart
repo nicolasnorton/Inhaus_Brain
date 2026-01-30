@@ -942,11 +942,23 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   }
 
   Widget _buildGeneratedAsset(String path, String? type) {
-    // Universal Sanitization: strip known prefixes used for internal routing
-    // Use recursive replacement to handle any accidental double-prefixing
-    String cleanPath = path;
-    while (cleanPath.toUpperCase().startsWith('IMAGE:') || cleanPath.toUpperCase().startsWith('VIDEO:')) {
-      cleanPath = cleanPath.substring(6);
+    // Normalize prefixes to uppercase for consistent handling
+    String normalizedPath = path;
+    
+    // Trim for safety
+    normalizedPath = normalizedPath.trim();
+
+    // FAILSAFE: If a video URL is actually a fallback image (Unsplash, etc), force type to 'image'
+    // This ensures we use the standard Image widget instead of the VideoPlayer which would crash
+    if (type == 'video' && (normalizedPath.toUpperCase().startsWith('IMAGE:') || normalizedPath.contains('unsplash.com'))) {
+      type = 'image';
+      print('DEBUG: Upstream fallback detection switched type to IMAGE: $normalizedPath');
+    }
+    
+    // Only strip prefixes if we are rendering a standard Image widget (type == 'image')
+    // For 'video' type, we preserve the 'IMAGE:' prefix so VideoPreviewPlayer can detect fallbacks (secondary check)
+    if (type == 'image') {
+      normalizedPath = normalizedPath.replaceAll(RegExp(r'^(image|video):', caseSensitive: false), '');
     }
 
     if (type == 'image') {
@@ -963,15 +975,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: cleanPath.startsWith('http') 
+                  child: normalizedPath.startsWith('http') 
                       ? Image.network(
-                          cleanPath, 
+                          normalizedPath, 
                           fit: BoxFit.cover, 
                           width: 300,
                           height: 300,
                           semanticLabel: 'Generated Image',
                           errorBuilder: (c,e,s) {
-                            debugPrint('Image Load Error for $cleanPath: $e');
+                            debugPrint('Image Load Error for $normalizedPath: $e');
                             return const Center(child: Icon(Icons.error, color: Colors.red));
                           },
                           loadingBuilder: (context, child, loadingProgress) {
@@ -1018,7 +1030,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         ),
         clipBehavior: Clip.antiAlias,
         child: VideoPreviewPlayer(
-          videoUrl: path,
+          videoUrl: normalizedPath,
           isFinal: false,
         ),
       );
@@ -1062,7 +1074,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         metadata: {'status': status ?? 'thinking'},
                       ),
                     ),
-                    if (status != null && (status.contains('Using video_generation') || status.contains('polling')))
+                    if (status != null && (status.contains('Using video_generation') || status.contains('polling') || status.contains('Generating')))
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: TextButton.icon(
