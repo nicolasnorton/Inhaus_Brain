@@ -414,7 +414,9 @@ $ephemeralMsg
 
     String responseText = "";
 
-    // 3. Strict Mode Check (Typed Agents)
+    // 3. Strict Mode Check (Typed Agents) - TEMPORARILY DISABLED due to 400 errors
+    // TODO: Fix schema validation issues with Vertex AI
+    /*
     if (intentEnum == RouterIntent.management || intentEnum == RouterIntent.research || intentEnum == RouterIntent.seo || blackboard.state.phase == BlackboardPhase.strategy) {
        debugPrint('Assistant: Strict Mode Active for Strategy.');
        final strictResult = await _runStrictAgent(
@@ -428,6 +430,7 @@ $ephemeralMsg
           return strictResult;
        }
     }
+    */
     
     // DIRECT EDGE AI SERVICE (Primary)
     // CopilotKit bypassed due to protocol errors
