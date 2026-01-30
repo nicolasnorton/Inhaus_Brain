@@ -31,11 +31,20 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
 
   Future<void> _initializeVideo() async {
     try {
+      // CRITICAL: Strip any "image:" or "video:" prefixes before parsing URI
+      // These prefixes are semantic markers and not valid URI schemes
+      final cleanUrl = widget.videoUrl
+          .replaceAll(RegExp(r'^(image|video):\s*', caseSensitive: false), '')
+          .trim();
+      
+      print('DEBUG: AppVideoPlayer - Original URL: ${widget.videoUrl}');
+      print('DEBUG: AppVideoPlayer - Cleaned URL: $cleanUrl');
+      
       if (kIsWeb) {
          // On Web, we might need to handle CORS or specific encoding
-         _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+         _controller = VideoPlayerController.networkUrl(Uri.parse(cleanUrl));
       } else {
-         _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+         _controller = VideoPlayerController.networkUrl(Uri.parse(cleanUrl));
       }
 
       await _controller.initialize();
@@ -86,7 +95,12 @@ class _AppVideoPlayerState extends State<AppVideoPlayer> {
 
   Future<void> _downloadVideo() async {
     try {
-      final Uri? url = Uri.tryParse(widget.videoUrl);
+      // Strip prefixes before parsing URI
+      final cleanUrl = widget.videoUrl
+          .replaceAll(RegExp(r'^(image|video):\s*', caseSensitive: false), '')
+          .trim();
+          
+      final Uri? url = Uri.tryParse(cleanUrl);
       if (url == null) {
          _showError('Invalid video URL');
          return;

@@ -160,43 +160,47 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const isUUID = opId.includes('-'); // UUIDs contain hyphens, Longs don't
 
                 if (isUUID) {
-                    // UUID operations from Veo/Model Garden - use REST API with v1beta1 endpoint
-                    // v1 doesn't support Model Garden operations, must use v1beta1
-                    console.log('[PROXY] UUID operation detected - using REST API v1beta1');
-                    console.log(`[PROXY] Original operation name: ${operationName}`);
+                    // UUID operations from Veo/Model Garden - MUST use :fetchPredictOperation endpoint
+                    // Model Garden operations have full path: projects/X/locations/Y/publishers/google/models/MODEL/operations/UUID
+                    // These CANNOT be polled via standard REST GET - must use :fetchPredictOperation POST
+                    console.log('[PROXY] UUID operation detected - Model Garden operation');
+                    console.log(`[PROXY] Full operation name (preserved): ${operationName}`);
 
-                    // CRITICAL: Strip Model Garden path for REST API compatibility
-                    // SDK returns: projects/X/locations/Y/publishers/google/models/veo-.../operations/UUID
-                    // REST needs: projects/X/locations/Y/operations/UUID
-                    const projectMatch = operationName.match(/projects\/([^\/]+)/);
-                    const locationMatch = operationName.match(/locations\/([^\/]+)/);
-                    const project = projectMatch ? projectMatch[1] : '';
-                    const location = locationMatch ? locationMatch[1] : '';
-                    const simpleOpPath = `projects/${project}/locations/${location}/operations/${opId}`;
+                    // Extract model name from operation path
+                    const modelMatch = operationName.match(/\/models\/([^\/]+)/);
+                    const modelName = modelMatch ? modelMatch[1] : 'veo-3.0-fast-generate-preview';
 
-                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${simpleOpPath}`;
-                    console.log(`[PROXY] Simplified operation path: ${simpleOpPath}`);
-                    console.log(`[PROXY] Operation ID: ${opId}`);
-                    console.log(`[PROXY] Full operation name: ${operationName}`);
+                    // Construct :fetchPredictOperation endpoint
+                    const fetchEndpoint = `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/publishers/google/models/${modelName}:fetchPredictOperation`;
 
-                    const response = await fetch(targetUrl, {
-                        method: 'GET',
+                    console.log(`[PROXY] Model: ${modelName}`);
+                    console.log(`[PROXY] Polling method: fetchPredictOperation (POST)`);
+                    console.log(`[PROXY] Endpoint: ${fetchEndpoint}`);
+
+                    const requestBody = {
+                        operationName: operationName  // Send FULL operation name
+                    };
+                    console.log(`[PROXY] Request body: ${JSON.stringify(requestBody)}`);
+
+                    const response = await fetch(fetchEndpoint, {
+                        method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${accessToken}`,
                             'Content-Type': 'application/json'
-                        }
+                        },
+                        body: JSON.stringify(requestBody)
                     });
 
                     console.log(`[PROXY] Response status: ${response.status}`);
 
                     if (!response.ok) {
                         const errorBody = await response.text();
-                        console.error(`[PROXY] REST API error: ${response.status} ${response.statusText}`);
+                        console.error(`[PROXY] fetchPredictOperation error: ${response.status} ${response.statusText}`);
                         console.error(`[PROXY] Error body: ${errorBody}`);
                         return res.status(200).json({
                             done: true,
                             error: {
-                                message: `REST API Error: ${response.statusText}`,
+                                message: `fetchPredictOperation Error: ${response.statusText}`,
                                 code: response.status,
                                 details: errorBody
                             }
@@ -204,8 +208,8 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     }
 
                     const operation = await response.json();
-                    console.log('[PROXY] REST API polling successful');
-                    console.log(`[PROXY] Operation response: ${JSON.stringify(operation).substring(0, 200)}`);
+                    console.log('[PROXY] fetchPredictOperation successful');
+                    console.log(`[PROXY] Operation response: ${JSON.stringify(operation).substring(0, 300)}`);
                     return res.status(200).json(operation);
                 }
 
