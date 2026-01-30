@@ -964,8 +964,6 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     print('DEBUG: AiAssistantOverlay - Detected Type: $type');
 
     if (type == 'image') {
-
-    if (type == 'image') {
       return ExcludeSemantics(
         child: SizedBox(
           width: 300,
