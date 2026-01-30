@@ -160,9 +160,10 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 const isUUID = opId.includes('-'); // UUIDs contain hyphens, Longs don't
 
                 if (isUUID) {
-                    // UUID operations from Veo/Model Garden - use REST API with v1 endpoint
-                    console.log('[PROXY] UUID operation detected - using REST API v1');
-                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1/${operationName}`;
+                    // UUID operations from Veo/Model Garden - use REST API with v1beta1 endpoint
+                    // v1 doesn't support Model Garden operations, must use v1beta1
+                    console.log('[PROXY] UUID operation detected - using REST API v1beta1');
+                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
                     console.log(`[PROXY] Polling URL: ${targetUrl}`);
 
                     const response = await fetch(targetUrl, {
