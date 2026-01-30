@@ -36,7 +36,17 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
 
-  <script src="flutter_bootstrap.js?v=1.0.8" async></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+          console.log("Forcing Service Worker unregistration to refresh app...");
+          registration.unregister();
+        }
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js?v=1.0.9" async></script>
   </body>
 
 </html>
