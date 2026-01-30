@@ -264,7 +264,9 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.0.7-VEO-PARSING-FIX";
+    const String deployVersion = "1.0.9-CACHE-BUST-FINAL";
+    
+    debugPrint('VideoService: ⚠️ FORCE RELOAD CHECK: Running v$deployVersion');
     
     debugPrint('VideoService: 🎬 Starting REAL Veo video poll (Version: $deployVersion, Operation: $operationName)');
     debugPrint('VideoService: ⏱️ Max duration: ~600 seconds (2-5 min expected)');
@@ -345,7 +347,7 @@ class VideoGenerationService {
                 
                  // SUCCESS - Extract video URL with comprehensive logging
                  debugPrint('VideoService: 🔍 Parsing completed operation response...');
-                 debugPrint('Veo full polling response: ${jsonEncode(data)}');
+                 debugPrint('Veo full response: ${jsonEncode(data)}');
 
                  // Robust extraction — try all known Veo paths
                  dynamic videos;
