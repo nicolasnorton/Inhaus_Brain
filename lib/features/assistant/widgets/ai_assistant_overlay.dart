@@ -941,27 +941,24 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     );
   }
 
-  Widget _buildGeneratedAsset(String path, String? type) {
-    // Normalize prefixes to uppercase for consistent handling
-    String normalizedPath = path;
+  Widget _buildGeneratedAsset(String assetUrl, String? type) {
+    // CRITICAL FIX: Strip prefixes FIRST, before any other logic
+    // The browser's network layer must NEVER see "image:" or "video:" schemes
+    String cleanUrl = assetUrl
+        .replaceAll(RegExp(r'^image:\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'^video:\s*', caseSensitive: false), '')
+        .trim();
     
-    // Trim for safety
-    normalizedPath = normalizedPath.trim();
-
-    // FAILSAFE: If a video URL is actually a fallback image (Unsplash, etc), force type to 'image'
-    // This ensures we use the standard Image widget instead of the VideoPlayer which would crash
-    if (type == 'video' && (normalizedPath.toUpperCase().startsWith('IMAGE:') || normalizedPath.contains('unsplash.com'))) {
+    // FAILSAFE: If URL contains unsplash.com or pollinations, force type to 'image'
+    // This handles cases where video generation falls back to a static image
+    if (type == 'video' && (cleanUrl.contains('unsplash.com') || cleanUrl.contains('pollinations.ai'))) {
       type = 'image';
-      print('DEBUG: Upstream fallback detection switched type to IMAGE: $normalizedPath');
+      print('DEBUG: AiAssistantOverlay - Fallback image detected, switching type to IMAGE');
     }
     
-    // RADICAL STRIP: Always remove prefixes if present, regardless of type
-    // This ensures that even if detection fails downstream, the URL is clean for the network layer
-    String cleanPath = normalizedPath.replaceAll(RegExp(r'^(image|video):', caseSensitive: false), '').trim();
-    
-    print('DEBUG: AiAssistantOverlay - Original: $normalizedPath');
-    print('DEBUG: AiAssistantOverlay - Cleaned: $cleanPath');
-    print('DEBUG: AiAssistantOverlay - Detected Type: $type');
+    print('DEBUG: AiAssistantOverlay - Original: $assetUrl');
+    print('DEBUG: AiAssistantOverlay - Cleaned: $cleanUrl');
+    print('DEBUG: AiAssistantOverlay - Type: $type');
 
     if (type == 'image') {
       return ExcludeSemantics(
@@ -977,15 +974,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: cleanPath.startsWith('http') 
+                  child: cleanUrl.startsWith('http') 
                       ? Image.network(
-                          cleanPath, 
+                          cleanUrl,  // Use cleanUrl NOT assetUrl
                           fit: BoxFit.cover, 
                           width: 300,
                           height: 300,
                           semanticLabel: 'Generated Image',
                           errorBuilder: (c,e,s) {
-                            debugPrint('Image Load Error for $cleanPath: $e');
+                            debugPrint('Image Load Error for $cleanUrl: $e');
                             return const Center(child: Icon(Icons.error, color: Colors.red));
                           },
                           loadingBuilder: (context, child, loadingProgress) {
@@ -993,27 +990,27 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             return const Center(child: CircularProgressIndicator());
                           },
                         )
-                      : (path.startsWith('data:')
+                      : (cleanUrl.startsWith('data:')
                           ? Image.memory(
-                              base64.decode(path.split(',').last),
+                              base64.decode(cleanUrl.split(',').last),
                               fit: BoxFit.cover,
                               width: 300,
                               height: 300,
                             )
-                          : (path.startsWith('assets') 
-                              ? Image.asset(path, fit: BoxFit.cover, width: 300, height: 300) 
+                          : (cleanUrl.startsWith('assets') 
+                              ? Image.asset(cleanUrl, fit: BoxFit.cover, width: 300, height: 300) 
                               : (!kIsWeb 
                                   ? Image.memory(Uint8List.fromList([]), fit: BoxFit.cover, width: 300, height: 300) 
                                   : const Center(child: Icon(Icons.broken_image, color: Colors.white24))))),
                 ),
               ),
-              // Watermark Overlay (Asset Based)
+              // Watermark Overlay
               Positioned(
                 bottom: 12,
                 right: 12,
                 child: Image.asset(
                   'assets/images/watermark.png',
-                  height: 28, // Slightly larger for better prominence
+                  height: 28,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) => const Icon(Icons.auto_awesome, size: 12, color: Colors.white54),
                 ),
@@ -1032,7 +1029,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         ),
         clipBehavior: Clip.antiAlias,
         child: VideoPreviewPlayer(
-          videoUrl: normalizedPath, // Note: We pass original normalizedPath so VideoPreviewPlayer can do its own detection if needed, but we've logged it.
+          videoUrl: cleanUrl,  // Pass cleanUrl NOT assetUrl
           isFinal: false,
         ),
       );
