@@ -955,11 +955,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       print('DEBUG: Upstream fallback detection switched type to IMAGE: $normalizedPath');
     }
     
-    // Only strip prefixes if we are rendering a standard Image widget (type == 'image')
-    // For 'video' type, we preserve the 'IMAGE:' prefix so VideoPreviewPlayer can detect fallbacks (secondary check)
+    // RADICAL STRIP: Always remove prefixes if present, regardless of type
+    // This ensures that even if detection fails downstream, the URL is clean for the network layer
+    String cleanPath = normalizedPath.replaceAll(RegExp(r'^(image|video):', caseSensitive: false), '').trim();
+    
+    print('DEBUG: AiAssistantOverlay - Original: $normalizedPath');
+    print('DEBUG: AiAssistantOverlay - Cleaned: $cleanPath');
+    print('DEBUG: AiAssistantOverlay - Detected Type: $type');
+
     if (type == 'image') {
-      normalizedPath = normalizedPath.replaceAll(RegExp(r'^(image|video):', caseSensitive: false), '');
-    }
 
     if (type == 'image') {
       return ExcludeSemantics(
@@ -975,15 +979,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: normalizedPath.startsWith('http') 
+                  child: cleanPath.startsWith('http') 
                       ? Image.network(
-                          normalizedPath, 
+                          cleanPath, 
                           fit: BoxFit.cover, 
                           width: 300,
                           height: 300,
                           semanticLabel: 'Generated Image',
                           errorBuilder: (c,e,s) {
-                            debugPrint('Image Load Error for $normalizedPath: $e');
+                            debugPrint('Image Load Error for $cleanPath: $e');
                             return const Center(child: Icon(Icons.error, color: Colors.red));
                           },
                           loadingBuilder: (context, child, loadingProgress) {
@@ -1030,7 +1034,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         ),
         clipBehavior: Clip.antiAlias,
         child: VideoPreviewPlayer(
-          videoUrl: normalizedPath,
+          videoUrl: normalizedPath, // Note: We pass original normalizedPath so VideoPreviewPlayer can do its own detection if needed, but we've logged it.
           isFinal: false,
         ),
       );

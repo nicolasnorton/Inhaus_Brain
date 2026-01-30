@@ -31,25 +31,24 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
     // Check if we are showing a fallback image (Storyboard) instead of a video
     // Use robust trimming and regex to handle potential whitespace or casing issues
     final cleanUrl = widget.videoUrl.trim();
+    // RADICAL STRIP: Always remove prefixes if present to avoid scheme errors
+    final mediaUrl = cleanUrl.replaceAll(RegExp(r'^(image|video):', caseSensitive: false), '').trim();
     
     // DEBUG: Print detection logic
     print('DEBUG: VideoPreviewPlayer input: "$cleanUrl"');
+    print('DEBUG: VideoPreviewPlayer target: "$mediaUrl"');
     
     bool isFallbackImage = cleanUrl.toUpperCase().startsWith('IMAGE:') || 
                            RegExp(r'^image:', caseSensitive: false).hasMatch(cleanUrl);
 
     // FAILSAFE: If it contains 'unsplash' or typical image extensions and isn't marked, force it
     // This handles cases where the prefix might have been mangled but we know it's an image
-    if (!isFallbackImage && (cleanUrl.contains('unsplash.com') || cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg'))) {
+    if (!isFallbackImage && (mediaUrl.contains('unsplash.com') || mediaUrl.contains('image.pollinations.ai') || mediaUrl.endsWith('.png') || mediaUrl.endsWith('.jpg'))) {
        print('DEBUG: VideoPreviewPlayer detected image by content (failsafe)');
        isFallbackImage = true;
     }
 
     print('DEBUG: VideoPreviewPlayer isFallbackImage: $isFallbackImage');
-    
-    final mediaUrl = isFallbackImage 
-        ? cleanUrl.replaceAll(RegExp(r'^image:', caseSensitive: false), '') 
-        : cleanUrl;
 
     return Column(
       mainAxisSize: MainAxisSize.min,

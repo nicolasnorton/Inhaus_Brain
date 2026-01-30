@@ -189,10 +189,13 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
 *   **Solution**: The system now strictly uses the **`v1beta1`** regional endpoint (e.g., `us-central1-aiplatform.googleapis.com`) which supports UUIDs. 
 *   **Hardening**: If a 400 error occurs, the proxy now automatically attempts to "repair" the operation name to the canonical format. If cloud polling still fails, the system instantly falls back to the **LiteRT Edge Preview** to ensure a real video is still produced.
 
-### 3. Video Stuck in "Thinking..."
-*   **Symptom**: The generation never completes.
-*   **Cause**: This acts as a timeout. Cloud rendering (Veo 3.1) can take ~5 minutes, but **LiteRT Previews** have a strict 3-second timeout.
-*   **Fallback**: If a Preview takes longer than 3 seconds, the system instantly switches to a **Static Storyboard** image so you aren't left waiting. You can try "Render Final" if you are happy with the static concept.
+### 3. Video Stuck in "Thinking..." or "Generating..."
+*   **Symptom**: The generation indicator persists for a long time.
+*   **Hardening**: Cloud rendering (Veo 3.1) is now supported with a **600-second (10-minute) timeout** and exponential backoff polling. If a generation takes time, it is likely in a queue.
+*   **New Controls**:
+    *   **Cancel**: You can now click "Cancel" next to the typing indicator to abort a stuck generation.
+    *   **Retry**: If a preview times out and falls back to a storyboard, a **"Retry Generation"** button is now available directly on the image to restart the process.
+*   **Background Ingest**: Knowledge ingestion (screencaps) is now **non-blocking**. Even if ingestion takes time, your video results will appear instantly once ready.
 
 ### 4. Mock Video / Storyboard (Big Buck Bunny) Appearing
 *   **Symptom**: You see a cartoon bunny video or a static video placeholder.

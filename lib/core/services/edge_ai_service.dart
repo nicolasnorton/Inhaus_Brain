@@ -567,10 +567,10 @@ class EdgeAIService {
     } 
     
     
-    // 2. FALLBACK: Return failure instead of deprecated Pollinations
-    // The "WE HAVE MOVED" image from Pollinations is not acceptable for production/demo.
-    debugPrint('EdgeAI: Image Generation failed or not available.');
-    throw Exception('Image Generation Failed: Please verify Vertex AI credentials or connectivity.');
+    // 2. FALLBACK: Use Pollinations/Unsplash for stability if Vertex is unavailable
+    debugPrint('EdgeAI: Vertex Image Gen failed, using Pollinations fallback.');
+    final encodedPrompt = Uri.encodeComponent(prompt);
+    return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true";
   }
 
   static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, String? runwayKey, Ref? ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {

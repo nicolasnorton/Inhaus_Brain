@@ -505,6 +505,7 @@ $ephemeralMsg
 
         if (jsonEnd != -1) {
           String candidate = cleanResponse.substring(jsonStart, jsonEnd + 1);
+          debugPrint('Assistant: Found JSON candidate: ${candidate.substring(0, candidate.length > 30 ? 30 : candidate.length)}...');
           // Sanitize formatting
           candidate = candidate.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (match) {
                return match.group(0)?.replaceAll('\n', '\\n') ?? '';
@@ -552,6 +553,7 @@ $ephemeralMsg
                  if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
                    toolArgs = Map<String, dynamic>.from(toolArgs['args']);
                  }
+                 debugPrint('Assistant: Parsed tool JSON: $toolName with ${toolArgs.length} args');
                  debugPrint('Assistant: Found valid tool JSON: $toolName');
                  _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
                  final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
