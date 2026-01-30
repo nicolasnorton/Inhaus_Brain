@@ -163,8 +163,19 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     // UUID operations from Veo/Model Garden - use REST API with v1beta1 endpoint
                     // v1 doesn't support Model Garden operations, must use v1beta1
                     console.log('[PROXY] UUID operation detected - using REST API v1beta1');
-                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
-                    console.log(`[PROXY] Polling URL: ${targetUrl}`);
+                    console.log(`[PROXY] Original operation name: ${operationName}`);
+
+                    // CRITICAL: Strip Model Garden path for REST API compatibility
+                    // SDK returns: projects/X/locations/Y/publishers/google/models/veo-.../operations/UUID
+                    // REST needs: projects/X/locations/Y/operations/UUID
+                    const projectMatch = operationName.match(/projects\/([^\/]+)/);
+                    const locationMatch = operationName.match(/locations\/([^\/]+)/);
+                    const project = projectMatch ? projectMatch[1] : '';
+                    const location = locationMatch ? locationMatch[1] : '';
+                    const simpleOpPath = `projects/${project}/locations/${location}/operations/${opId}`;
+
+                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${simpleOpPath}`;
+                    console.log(`[PROXY] Simplified operation path: ${simpleOpPath}`);
                     console.log(`[PROXY] Operation ID: ${opId}`);
                     console.log(`[PROXY] Full operation name: ${operationName}`);
 
