@@ -515,6 +515,7 @@ $ephemeralMsg
           
           try {
             final dynamic parsed = jsonDecode(candidate);
+            debugPrint('Assistant: JSON decode successful, parsed type: ${parsed.runtimeType}');
             if (parsed is Map) {
                String? toolName;
                Map<String, dynamic>? toolArgs;
@@ -557,10 +558,14 @@ $ephemeralMsg
                  }
                  debugPrint('Assistant: Parsed tool JSON: $toolName with ${toolArgs.length} args');
                  debugPrint('Assistant: Found valid tool JSON: $toolName');
+                 debugPrint('Assistant: Attempting to execute tool: $toolName');
                  _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
                  final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
                  _ref.read(assistantStatusProvider.notifier).state = null;
+                 debugPrint('Assistant: Tool execution completed for: $toolName');
                  return result;
+               } else {
+                  debugPrint('Assistant: JSON parsed but toolName or toolArgs is null. toolName=$toolName, toolArgs=$toolArgs');
                }
 
                // BRIAN ORCHESTRATION EXTRACTION
