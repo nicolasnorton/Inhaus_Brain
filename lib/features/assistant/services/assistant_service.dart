@@ -451,6 +451,8 @@ $ephemeralMsg
       
       // Parse JSON from EdgeAI response if present
       String cleanResponse = responseText.trim();
+      print('DEBUG: Assistant - Raw response length: ${responseText.length}');
+      print('DEBUG: Assistant - Response preview: ${responseText.substring(0, responseText.length > 100 ? 100 : responseText.length)}...');
       
       // 1. Strip Markdown Code Blocks
       final codeBlockRegex = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true);
