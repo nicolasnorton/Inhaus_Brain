@@ -79,7 +79,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                          ),
                          Container(
                            color: Colors.black45,
-                           child: const Center(
+                           child: Center(
                              child: Column(
                                mainAxisSize: MainAxisSize.min,
                                children: [
