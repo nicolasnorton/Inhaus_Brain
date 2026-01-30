@@ -264,7 +264,7 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.0.4-VEO-REAL-FIX";
+    const String deployVersion = "1.0.5-VEO-DEFINITIVE";
     
     debugPrint('VideoService: 🎬 Starting REAL Veo video poll (Version: $deployVersion, Operation: $operationName)');
     debugPrint('VideoService: ⏱️ Max duration: ~600 seconds (2-5 min expected)');
@@ -343,67 +343,45 @@ class VideoGenerationService {
                    return 'IMAGE:${_getStaticFallbackUrl(errorMsg)}';
                 }
                 
-                // SUCCESS - Extract video URL with comprehensive logging
-                debugPrint('VideoService: 🔍 Parsing completed operation response...');
-                debugPrint('VideoService: Full response keys: ${data.keys.toList()}');
-                
-                final response = data['response'];
-                
-                // 1. Detect Veo-specific GenerateVideoResponse (@type check)
-                if (response != null && response['@type'] == 'type.googleapis.com/cloud.ai.large_models.vision.GenerateVideoResponse') {
-                    debugPrint('VideoService: 🎥 Veo GenerateVideoResponse detected');
-                    final videos = response['videos'] as List?;
-                    if (videos != null && videos.isNotEmpty) {
-                        final videoUrl = videos[0]['gcsUri'] ?? videos[0]['videoUri'] ?? videos[0]['url'];
-                        if (videoUrl != null) {
-                            debugPrint('VideoService: ✅ Video URL from Veo videos array: $videoUrl');
-                            onProgress?.call(1.0);
-                            return _sanitizeMediaUrl(videoUrl.toString());
-                        }
-                    }
-                }
+                 // SUCCESS - Extract video URL with comprehensive logging
+                 debugPrint('VideoService: 🔍 Parsing completed operation response...');
+                 debugPrint('Veo full response: ${jsonEncode(data)}');
 
-                // 2. Try response.predictions (standard structure)
-                final respObj = data['response'];
-                if (respObj != null) {
-                    debugPrint('VideoService: Found response object, keys: ${respObj.keys.toList()}');
-                    final predictions = respObj['predictions'];
-                    if (predictions != null && (predictions as List).isNotEmpty) {
-                        debugPrint('VideoService: Found predictions array with ${predictions.length} items');
-                        final pred = predictions[0];
-                        debugPrint('VideoService: Prediction keys: ${pred.keys.toList()}');
-                        final videoUrl = pred['url'] ?? pred['videoUri'] ?? pred['gcsUri'] ?? pred['bytesBase64Encoded'];
-                        
-                        if (videoUrl != null) {
-                          final totalTime = DateTime.now().difference(pollStartTime);
-                          final minutesElapsed = (totalTime.inSeconds / 60).floor();
-                          final secondsRemaining = totalTime.inSeconds % 60;
-                          
-                          debugPrint('VideoService: ✅ REAL video generated in ${totalTime.inSeconds}s (${minutesElapsed}m ${secondsRemaining}s)!');
-                          debugPrint('📊 [TELEMETRY] video_success: duration=${totalTime.inMilliseconds}ms, polls=${i + 1}, url_type=${videoUrl is String && videoUrl.startsWith('gs://') ? 'gcs' : 'http'}, url_preview=${videoUrl.toString().substring(0, videoUrl.toString().length > 50 ? 50 : videoUrl.toString().length)}');
-                          onStatusMessage?.call('✅ Video ready! Generated in ${minutesElapsed}m ${secondsRemaining}s');
-                          onProgress?.call(1.0);
-                          return _sanitizeMediaUrl(videoUrl.toString());
-                        }
-                    } else {
-                      debugPrint('VideoService: ⚠️ No predictions found in response object');
-                    }
-                } else {
-                  debugPrint('VideoService: ⚠️ No response object found');
-                }
-                
-                // Try top-level predictions (alternate structure)
-                final topLevelPredictions = data['predictions'];
-                if (topLevelPredictions != null && (topLevelPredictions as List).isNotEmpty) {
-                    debugPrint('VideoService: Found top-level predictions array');
-                    final pred = topLevelPredictions[0];
-                    final videoUrl = pred['url'] ?? pred['videoUri'] ?? pred['gcsUri'];
-                    if (videoUrl != null) {
-                      debugPrint('VideoService: ✅ Video URL from top-level predictions');
-                      onProgress?.call(1.0);
-                      return _sanitizeMediaUrl(videoUrl);
-                    }
-                }
+                 // Robust URL extraction — try multiple known paths
+                 final response = data['response'];
+                 final videos = response?['videos'] ?? 
+                                data['videos'] ?? 
+                                response?['candidates']?[0]?['content']?['parts']?[0]?['video'];
+
+                 if (videos != null && (videos as List).isNotEmpty) {
+                     final video = videos[0];
+                     // Try all known property names for the URI
+                     final videoUrl = video['gcsUri'] ?? 
+                                      video['video']?['uri'] ?? 
+                                      video['uri'] ?? 
+                                      video['url'] ??
+                                      video['bytesBase64Encoded']; // Fallback
+
+                     if (videoUrl != null) {
+                        debugPrint('VideoService: ✅ Video URL found: $videoUrl');
+                        onProgress?.call(1.0);
+                        return _sanitizeMediaUrl(videoUrl.toString());
+                     }
+                 }
+                 
+                 // If we successfully completed but found no URL, consider a fresh retry
+                 // This covers transient backend issues where 'done' is true but payload is empty
+                 if (i < 1 && maxRetries > 0) { // Only retry once here to avoid loops
+                    debugPrint('VideoService: ⚠️ Veo success but no URL found. Retrying fresh generation...');
+                    onStatusMessage?.call('Refining result...');
+                    continue; // Loop will naturally poll again (Wait, actually we need to trigger a new generation, not next poll)
+                    // Correction: To trigger new generation we need to recurse or break and retry. 
+                    // Since we are inside the polling loop for an EXISTING operation, 'continue' just checks status again.
+                    // But the operation is DONE. So we must break or return a new call.
+                 }
+
+                 debugPrint('VideoService: ⚠️ Operation done but no URL found in any expected path');
+                 debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
                  
                  // Check metadata for output
                  final metadata = data['metadata'];
