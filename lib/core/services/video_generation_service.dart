@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'ai_proxy_service.dart';
 import 'open_model_service.dart';
@@ -72,7 +73,6 @@ class VideoGenerationService {
         }
 
         debugPrint('VideoService: ⚠️ Cloud preview returned fallback or empty, trying next tier...');
-        break; // Break loop to try Edge
       } catch (e) {
         debugPrint('VideoService: Cloud Preview attempt ${attempt + 1} failed: $e');
         if (attempt < maxRetries - 1) {
@@ -103,7 +103,7 @@ class VideoGenerationService {
     debugPrint('VideoService: 🚨 All real video tiers exhausted. Using last-resort storyboards.');
     onStatusMessage?.call('Using static storyboard (video unavailable)');
     final result = await _generateImagenFallback(effectivePrompt);
-    return result.startsWith('https') ? 'IMAGE:$result' : result;
+    return result;
   }
 
   /// Generates the final high-quality video (Veo 3.1).
@@ -234,11 +234,9 @@ class VideoGenerationService {
       } catch (e) {
         debugPrint('VideoService Error: $e');
         if (isPreview) {
-          // Allow caller to handle retry
           rethrow;
         } else {
-          final fallback = _getStaticFallbackUrl("Generation Error: $e");
-          return 'IMAGE:$fallback';
+          return _getStaticFallbackUrl("Generation Error: $e");
         }
       }
     }
@@ -266,10 +264,12 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
+    const String deployVersion = "1.0.4-VEO-REAL-FIX";
     
-    debugPrint('VideoService: 🎬 Starting REAL Veo video poll (Operation: $operationName)');
+    debugPrint('VideoService: 🎬 Starting REAL Veo video poll (Version: $deployVersion, Operation: $operationName)');
     debugPrint('VideoService: ⏱️ Max duration: ~600 seconds (2-5 min expected)');
-    onStatusMessage?.call('Generating your video... This may take 2-5 minutes.');
+    debugPrint('📊 [TELEMETRY] veo_poll_initiated: version=$deployVersion, operation=${operationName.substring(0, 80)}, max_polls=$maxPolls');
+    onStatusMessage?.call('✨ Generating your high-quality video (v$deployVersion)...\n🕐 This typically takes 2-5 minutes\n⏳ Please wait...');
     
     final pollStartTime = DateTime.now();
     
@@ -295,9 +295,25 @@ class VideoGenerationService {
         final elapsed = DateTime.now().difference(pollStartTime);
         final elapsedSec = elapsed.inSeconds;
         
-        // User-friendly status updates every 30s
+        // User-friendly status updates with emojis and context
         if (i > 0 && i % 3 == 0) {
-          onStatusMessage?.call('Still generating... (${elapsedSec}s elapsed)');
+          final minutesElapsed = (elapsedSec / 60).floor();
+          final secondsRemaining = elapsedSec % 60;
+          String timeStr = minutesElapsed > 0 
+              ? '${minutesElapsed}m ${secondsRemaining}s' 
+              : '${elapsedSec}s';
+          
+          // Estimate completion based on typical times
+          String estimateMsg = '';
+          if (elapsedSec < 60) {
+            estimateMsg = '⏳ Usually takes 2-5 minutes...';
+          } else if (elapsedSec < 180) {
+            estimateMsg = '🎬 Video is rendering...';
+          } else {
+            estimateMsg = '⚡ Almost done! Finalizing...';
+          }
+          
+          onStatusMessage?.call('🎥 Still generating... ($timeStr elapsed)\n$estimateMsg\n💡 Tip: You can continue using the app while waiting');
         }
         
         debugPrint('VideoService: 🔄 Poll ${i + 1}/$maxPolls (${elapsedSec}s elapsed, next in ${backoffSeconds}s)');
@@ -318,60 +334,96 @@ class VideoGenerationService {
                    if (errorMsg.contains('quota') || errorMsg.contains('rate limit')) {
                       debugPrint('📊 [Telemetry] video_quota_exceeded: elapsed=${elapsedSec}s');
                       onStatusMessage?.call('Video generation quota exceeded. Using fallback.');
-                      final fallback = _getStaticFallbackUrl("Quota exceeded");
-                      return 'IMAGE:$fallback';
-                   }
-                   
-                   // INVALID_ARGUMENT - Should be fixed now, but handle gracefully
-                   if (errorMsg.contains('must be a Long') || errorMsg.contains('INVALID_ARGUMENT')) {
-                      debugPrint('VideoService: 🚨 CRITICAL: INVALID_ARGUMENT still occurring!');
-                      debugPrint('📊 [Telemetry] video_invalid_argument_error: operation=$operationName');
-                      try {
-                        onStatusMessage?.call('Trying alternative generation method...');
-                        final edgeResult = await OpenModelService.generatePreviewOnDevice(originalPrompt);
-                        if (edgeResult.isNotEmpty && !edgeResult.startsWith('IMAGE:')) return edgeResult;
-                      } catch (e) { /* Edge fallback failed */ }
-                      final fallback = _getStaticFallbackUrl("Operation format error");
-                      return 'IMAGE:$fallback';
+                      return 'IMAGE:${_getStaticFallbackUrl("Quota exceeded")}';
                    }
                    
                    // Generic error fallback
                    debugPrint('📊 [Telemetry] video_generation_error: reason="$errorMsg", elapsed=${elapsedSec}s');
                    onStatusMessage?.call('Generation failed. Using fallback.');
-                   final fallback = _getStaticFallbackUrl(errorMsg);
-                   return 'IMAGE:$fallback';
+                   return 'IMAGE:${_getStaticFallbackUrl(errorMsg)}';
                 }
                 
-                // SUCCESS - Extract video URL
+                // SUCCESS - Extract video URL with comprehensive logging
+                debugPrint('VideoService: 🔍 Parsing completed operation response...');
+                debugPrint('VideoService: Full response keys: ${data.keys.toList()}');
+                
+                final response = data['response'];
+                
+                // 1. Detect Veo-specific GenerateVideoResponse (@type check)
+                if (response != null && response['@type'] == 'type.googleapis.com/cloud.ai.large_models.vision.GenerateVideoResponse') {
+                    debugPrint('VideoService: 🎥 Veo GenerateVideoResponse detected');
+                    final videos = response['videos'] as List?;
+                    if (videos != null && videos.isNotEmpty) {
+                        final videoUrl = videos[0]['gcsUri'] ?? videos[0]['videoUri'] ?? videos[0]['url'];
+                        if (videoUrl != null) {
+                            debugPrint('VideoService: ✅ Video URL from Veo videos array: $videoUrl');
+                            onProgress?.call(1.0);
+                            return _sanitizeMediaUrl(videoUrl.toString());
+                        }
+                    }
+                }
+
+                // 2. Try response.predictions (standard structure)
                 final respObj = data['response'];
                 if (respObj != null) {
+                    debugPrint('VideoService: Found response object, keys: ${respObj.keys.toList()}');
                     final predictions = respObj['predictions'];
                     if (predictions != null && (predictions as List).isNotEmpty) {
+                        debugPrint('VideoService: Found predictions array with ${predictions.length} items');
                         final pred = predictions[0];
-                        final videoUrl = pred['url'] ?? pred['videoUri'] ?? pred['gcsUri'];
+                        debugPrint('VideoService: Prediction keys: ${pred.keys.toList()}');
+                        final videoUrl = pred['url'] ?? pred['videoUri'] ?? pred['gcsUri'] ?? pred['bytesBase64Encoded'];
                         
                         if (videoUrl != null) {
                           final totalTime = DateTime.now().difference(pollStartTime);
-                          debugPrint('VideoService: ✅ REAL video generated in ${totalTime.inSeconds}s!');
-                          debugPrint('📊 [Telemetry] video_success: duration=${totalTime.inMilliseconds}ms, polls=${i + 1}, url_preview=${videoUrl.substring(0, 50)}');
-                          onStatusMessage?.call('Video ready!');
+                          final minutesElapsed = (totalTime.inSeconds / 60).floor();
+                          final secondsRemaining = totalTime.inSeconds % 60;
+                          
+                          debugPrint('VideoService: ✅ REAL video generated in ${totalTime.inSeconds}s (${minutesElapsed}m ${secondsRemaining}s)!');
+                          debugPrint('📊 [TELEMETRY] video_success: duration=${totalTime.inMilliseconds}ms, polls=${i + 1}, url_type=${videoUrl is String && videoUrl.startsWith('gs://') ? 'gcs' : 'http'}, url_preview=${videoUrl.toString().substring(0, videoUrl.toString().length > 50 ? 50 : videoUrl.toString().length)}');
+                          onStatusMessage?.call('✅ Video ready! Generated in ${minutesElapsed}m ${secondsRemaining}s');
                           onProgress?.call(1.0);
-                          return _sanitizeMediaUrl(videoUrl);
+                          return _sanitizeMediaUrl(videoUrl.toString());
                         }
+                    } else {
+                      debugPrint('VideoService: ⚠️ No predictions found in response object');
+                    }
+                } else {
+                  debugPrint('VideoService: ⚠️ No response object found');
+                }
+                
+                // Try top-level predictions (alternate structure)
+                final topLevelPredictions = data['predictions'];
+                if (topLevelPredictions != null && (topLevelPredictions as List).isNotEmpty) {
+                    debugPrint('VideoService: Found top-level predictions array');
+                    final pred = topLevelPredictions[0];
+                    final videoUrl = pred['url'] ?? pred['videoUri'] ?? pred['gcsUri'];
+                    if (videoUrl != null) {
+                      debugPrint('VideoService: ✅ Video URL from top-level predictions');
+                      onProgress?.call(1.0);
+                      return _sanitizeMediaUrl(videoUrl);
                     }
                 }
                  
                  // Check metadata for output
                  final metadata = data['metadata'];
-                 if (metadata != null && metadata['outputUri'] != null) {
-                    debugPrint('VideoService: 🎥 Video from metadata: ${metadata['outputUri']}');
-                    onProgress?.call(1.0);
-                    onStatusMessage?.call('Video ready!');
-                    return _sanitizeMediaUrl(metadata['outputUri']);
+                 if (metadata != null) {
+                    debugPrint('VideoService: checking metadata, keys: ${metadata.keys.toList()}');
+                    final outputUri = metadata['outputUri'] ?? metadata['output_uri'];
+                    if (outputUri != null) {
+                      debugPrint('VideoService: 🎥 Video from metadata: $outputUri');
+                      onProgress?.call(1.0);
+                      onStatusMessage?.call('Video ready!');
+                      return _sanitizeMediaUrl(outputUri);
+                    }
+                 } else {
+                   debugPrint('VideoService: ⚠️ No metadata found');
                  }
                  
                  debugPrint('VideoService: ⚠️ Operation done but no URL found');
-                 debugPrint('📊 [Telemetry] video_missing_url: response=${data.toString().substring(0, 200)}');
+                 debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
+                 debugPrint('📊 [Telemetry] video_missing_url: response=${data.toString()}');
+                 debugPrint('📊 [Telemetry] video_fallback_used: reason="Video generated but URL missing in response.", raw_response_preview=${data.toString().substring(0, data.toString().length > 500 ? 500 : data.toString().length)}');
                  return 'IMAGE:${_getStaticFallbackUrl('Video generated but URL missing')}';
             } else {
                 // Still processing
@@ -393,8 +445,7 @@ class VideoGenerationService {
                 if (total404Count >= max404Retries) {
                     debugPrint('📊 [Telemetry] video_404_timeout: after_retries=$total404Count, elapsed=${elapsedSec}s');
                     onStatusMessage?.call('Operation not found after ${total404Count} retries.');
-                    final fallback = _getStaticFallbackUrl('Operation lost (404)');
-                    return 'IMAGE:$fallback';
+                    return 'IMAGE:${_getStaticFallbackUrl('Operation lost (404)')}';
                 }
                 consecutiveErrors = 0; // Don't penalize 404s
                 continue;
@@ -411,7 +462,6 @@ class VideoGenerationService {
                     debugPrint('📊 [Telemetry] video_fresh_retry: after_400_count=$persistent400Count');
                     onStatusMessage?.call('First attempt failed. Retrying generation...');
                     
-                    // Trigger fresh generation (recursive call with maxRetries-1)
                     try {
                       return await generatePreview(
                         originalPrompt,
@@ -426,10 +476,9 @@ class VideoGenerationService {
             
             // Network errors - Use backoff
             if (consecutiveErrors >= maxConsecutiveErrors) {
-               debugPrint('📊 [Telemetry] video_network_failure: consecutive_errors=$consecutiveErrors');
-               onStatusMessage?.call('Network errors occurred. Using fallback.');
-               final fallback = _getStaticFallbackUrl('Network failures');
-               return 'IMAGE:$fallback';
+                debugPrint('📊 [Telemetry] video_network_failure: consecutive_errors=$consecutiveErrors');
+                onStatusMessage?.call('Network errors occurred. Using fallback.');
+                return 'IMAGE:${_getStaticFallbackUrl('Network failures')}';
             }
         }
     }
@@ -438,10 +487,10 @@ class VideoGenerationService {
     final totalTime = DateTime.now().difference(pollStartTime);
     debugPrint('VideoService: ⏰ Polling timeout after ${totalTime.inSeconds}s (${maxPolls} polls)');
     debugPrint('📊 [Telemetry] video_timeout: duration=${totalTime.inSeconds}s, polls=$maxPolls');
-    onStatusMessage?.call('Video generation timed out. Using fallback image.');
+    onStatusMessage?.call('Video generation timed out. Using fallback.');
     
-    final fallback = await _generateImagenFallback(originalPrompt);
-    return fallback.startsWith('https') ? 'IMAGE:$fallback' : fallback;
+    final imagenRes = await _generateImagenFallback(originalPrompt);
+    return imagenRes.startsWith('http') && !imagenRes.startsWith('IMAGE:') ? 'IMAGE:$imagenRes' : imagenRes;
   }
 
   static Future<String> _generateImagenFallback(String prompt) async {
@@ -473,8 +522,7 @@ class VideoGenerationService {
        debugPrint('VideoService: Imagen fallback also failed: $e');
     }
     
-    final staticUrl = _getStaticFallbackUrl('Video generation timed out and Imagen fallback failed.');
-    return 'IMAGE:$staticUrl';
+    return _getStaticFallbackUrl('Video generation timed out and Imagen fallback failed.');
   }
 
   static String _getStaticFallbackUrl(String reason) {
@@ -484,16 +532,23 @@ class VideoGenerationService {
     
     debugPrint('📊 [Telemetry] video_fallback_used: reason="$reason", timestamp=${DateTime.now().toIso8601String()}');
     
-    // Return clean URL - prefixing is handled at the service boundary
+    // Return clean URL
     return "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop"; 
   }
 
   static String _sanitizeMediaUrl(String url) {
-    if (url.startsWith('gs://')) {
-       final path = url.replaceFirst('gs://', '');
+    // Strip trailing line numbers or browser log noise if present (e.g. ":1")
+    String clean = url.trim();
+    if (clean.contains(':') && RegExp(r':\d+$').hasMatch(clean)) {
+      debugPrint('VideoService: 🧹 Stripping trailing noise from URL: $clean');
+      clean = clean.replaceFirst(RegExp(r':\d+$'), '');
+    }
+
+    if (clean.startsWith('gs://')) {
+       final path = clean.replaceFirst('gs://', '');
        return "https://storage.googleapis.com/$path";
     }
-    return url;
+    return clean;
   }
 
   static String _appendCulturalSafety(String prompt) {

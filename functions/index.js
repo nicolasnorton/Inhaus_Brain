@@ -163,8 +163,23 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     // UUID operations from Veo/Model Garden - MUST use :fetchPredictOperation endpoint
                     // Model Garden operations have full path: projects/X/locations/Y/publishers/google/models/MODEL/operations/UUID
                     // These CANNOT be polled via standard REST GET - must use :fetchPredictOperation POST
-                    console.log('[PROXY] UUID operation detected - Model Garden operation');
-                    console.log(`[PROXY] Full operation name (preserved): ${operationName}`);
+                    const pollStartTime = Date.now();
+                    console.log('[PROXY] 🎬 UUID operation detected - Model Garden operation');
+                    console.log(`[PROXY] 📋 Full operation name (preserved): ${operationName}`);
+                    console.log(`[PROXY] 🔍 Operation ID (UUID): ${opId}`);
+                    console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_start: operation=${operationName.substring(0, 80)}, timestamp=${new Date().toISOString()}`);
+
+                    // Validate operation name format
+                    if (!operationName.includes('/operations/')) {
+                        console.error('[PROXY] ❌ Invalid operation name format - missing /operations/ segment');
+                        return res.status(200).json({
+                            done: true,
+                            error: {
+                                message: 'Invalid operation name format',
+                                code: 400
+                            }
+                        });
+                    }
 
                     // Extract model name from operation path
                     const modelMatch = operationName.match(/\/models\/([^\/]+)/);
@@ -173,14 +188,14 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     // Construct :fetchPredictOperation endpoint
                     const fetchEndpoint = `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/publishers/google/models/${modelName}:fetchPredictOperation`;
 
-                    console.log(`[PROXY] Model: ${modelName}`);
-                    console.log(`[PROXY] Polling method: fetchPredictOperation (POST)`);
-                    console.log(`[PROXY] Endpoint: ${fetchEndpoint}`);
+                    console.log(`[PROXY] 🎯 Model: ${modelName}`);
+                    console.log(`[PROXY] 🔄 Polling method: fetchPredictOperation (POST)`);
+                    console.log(`[PROXY] 🌐 Endpoint: ${fetchEndpoint}`);
 
                     const requestBody = {
-                        operationName: operationName  // Send FULL operation name
+                        operationName: operationName  // Send FULL operation name string
                     };
-                    console.log(`[PROXY] Request body: ${JSON.stringify(requestBody)}`);
+                    console.log(`[PROXY] 📤 Request body: ${JSON.stringify(requestBody)}`);
 
                     const response = await fetch(fetchEndpoint, {
                         method: 'POST',
@@ -191,12 +206,14 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                         body: JSON.stringify(requestBody)
                     });
 
-                    console.log(`[PROXY] Response status: ${response.status}`);
+                    console.log(`[PROXY] 📡 Response status: ${response.status}`);
 
                     if (!response.ok) {
                         const errorBody = await response.text();
-                        console.error(`[PROXY] fetchPredictOperation error: ${response.status} ${response.statusText}`);
-                        console.error(`[PROXY] Error body: ${errorBody}`);
+                        const pollDuration = Date.now() - pollStartTime;
+                        console.error(`[PROXY] ❌ fetchPredictOperation error: ${response.status} ${response.statusText}`);
+                        console.error(`[PROXY] 📄 Error body: ${errorBody}`);
+                        console.error(`[PROXY] 📊 [TELEMETRY] veo_poll_error: status=${response.status}, duration=${pollDuration}ms, operation=${opId}`);
                         return res.status(200).json({
                             done: true,
                             error: {
@@ -208,8 +225,12 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                     }
 
                     const operation = await response.json();
-                    console.log('[PROXY] fetchPredictOperation successful');
-                    console.log(`[PROXY] Operation response: ${JSON.stringify(operation).substring(0, 300)}`);
+                    const pollDuration = Date.now() - pollStartTime;
+                    console.log('[PROXY] ✅ fetchPredictOperation successful');
+                    console.log(`[PROXY] ⏱️ Poll duration: ${pollDuration}ms`);
+                    console.log(`[PROXY] 📋 Operation status: done=${operation.done || false}`);
+                    console.log(`[PROXY] 🔍 Full operation response: ${JSON.stringify(operation, null, 2)}`);
+                    console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_success: duration=${pollDuration}ms, done=${operation.done || false}, operation=${opId}`);
                     return res.status(200).json(operation);
                 }
 
