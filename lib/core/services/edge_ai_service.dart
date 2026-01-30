@@ -272,7 +272,13 @@ class EdgeAIService {
           } else if (part is ExecutableCodePart) {
              // Handle ExecutableCodePart - extract the actual code
              debugPrint('EdgeAI: ExecutableCodePart detected - language: ${part.language}, code length: ${part.code.length}');
-             fullText += part.code;
+             String code = part.code.trim();
+             // Fix for Gemini wrapping JSON in print()
+             if (code.startsWith('print(') && code.endsWith(')')) {
+                debugPrint('EdgeAI: Unwrapping print() statement from tool code...');
+                code = code.substring(6, code.length - 1);
+             }
+             fullText += code;
           } else {
              // Fallback for other unknown types
              debugPrint('EdgeAI Warning: Unknown part type: ${part.runtimeType}');
