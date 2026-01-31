@@ -22,7 +22,8 @@ class OpenModelService {
     
     // Simulating a fast drift for this demo/production build
     await Future.delayed(const Duration(seconds: 3));
-    return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+    // Mock disabled for production consistency
+    return "";
   }
 
   /// Frees resources.

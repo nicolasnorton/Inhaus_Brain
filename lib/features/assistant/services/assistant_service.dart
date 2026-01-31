@@ -573,8 +573,21 @@ $ephemeralMsg
                        toolName = inferredName;
                        toolArgs = Map<String, dynamic>.from(parsed);
                     }
-                  }
-                }
+                  } else {
+                      // Fallback: Check if the root key corresponds to a known tool
+                      // e.g. {"video_generation": {"prompt": "..."}}
+                      for (final tool in combinedTools) {
+                         if (parsed.containsKey(tool.name)) {
+                            toolName = tool.name;
+                            final inner = parsed[tool.name];
+                            if (inner is Map) {
+                               toolArgs = Map<String, dynamic>.from(inner);
+                            }
+                            break;
+                         }
+                      }
+                   }
+                 }
 
                if (toolName != null && toolArgs != null) {
                  if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
