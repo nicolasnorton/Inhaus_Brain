@@ -32,9 +32,9 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
     // Use robust trimming and regex to handle potential whitespace or casing issues
     final cleanUrl = widget.videoUrl.trim();
     
-    // RADICAL STRIP: Always remove prefixes if present to avoid scheme errors
-    // Also strip trailing browser log noise like ":1"
-    String mediaUrl = cleanUrl.replaceAll(RegExp(r'^(image|video):\s*', caseSensitive: false), '').trim();
+    // RADICAL STRIP: Always remove prefixes (recursive) if present to avoid scheme errors
+    // Regex matches one or more occurrences of "image:" or "video:" at the start
+    String mediaUrl = cleanUrl.replaceAll(RegExp(r'^((image|video):\s*)+', caseSensitive: false), '').trim();
     if (mediaUrl.contains(':') && RegExp(r':\d+$').hasMatch(mediaUrl)) {
       print('DEBUG: VideoPreviewPlayer stripping trailing noise from $mediaUrl');
       mediaUrl = mediaUrl.replaceFirst(RegExp(r':\d+$'), '');

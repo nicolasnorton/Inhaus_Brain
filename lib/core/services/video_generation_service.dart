@@ -355,6 +355,10 @@ class VideoGenerationService {
                    videos = data['response']['videos'];
                  } else if (data['videos'] != null) {
                    videos = data['videos'];
+                 } else if (data['result']?['videos'] != null) {
+                   videos = data['result']['videos'];
+                 } else if (data['result']?['response']?['videos'] != null) {
+                   videos = data['result']['response']['videos'];
                  } else if (data['candidates']?[0]?['content']?['parts']?[0]?['video'] != null) {
                    // Wrap single video object in list to match structure
                    videos = [data['candidates'][0]['content']['parts'][0]['video']];
@@ -401,13 +405,22 @@ class VideoGenerationService {
                       return _sanitizeMediaUrl(outputUri);
                     }
                  } else {
-                   debugPrint('VideoService: ⚠️ No metadata found');
+                   debugPrint('VideoService: ⚠️ No metadata found in response');
                  }
                  
                  debugPrint('VideoService: ⚠️ Operation done but no URL found');
-                 debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
-                 debugPrint('📊 [Telemetry] video_missing_url: response=${data.toString()}');
-                 debugPrint('📊 [Telemetry] video_fallback_used: reason="Video generated but URL missing in response.", raw_response_preview=${data.toString().substring(0, data.toString().length > 500 ? 500 : data.toString().length)}');
+                 // Detailed Debug Logging to catch structure layout
+                 try {
+                    debugPrint('VideoService: Keys in root: ${data.keys.toList()}');
+                    if (data['response'] != null) debugPrint('VideoService: Keys in response: ${(data['response'] as Map).keys.toList()}');
+                    if (data['result'] != null) debugPrint('VideoService: Keys in result: ${(data['result'] as Map).keys.toList()}');
+                    debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
+                 } catch (e) {
+                    debugPrint('VideoService: Error logging JSON: $e');
+                    debugPrint('VideoService: Raw data: $data');
+                 }
+                 
+                 debugPrint('📊 [Telemetry] video_missing_url: response_keys=${data.keys.toList()}');
                  return 'IMAGE:${_getStaticFallbackUrl('Video generated but URL missing')}';
             } else {
                 // Still processing

@@ -41,7 +41,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get loading => 'Loading...';
+  String get loading => 'Cargando...';
 
   @override
   String get connectedAccounts => 'Cuentas Conectadas';
@@ -85,7 +85,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get emailChangeWarning =>
-      'Nota: Cambiar el correo puede requerir voverificación';
+      'Nota: Cambiar el correo puede requerir re-verificación';
 
   @override
   String get saveChanges => 'Guardar Cambios';
@@ -1260,16 +1260,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get catProductivity => 'Productivity & CRM';
+  String get catProductivity => 'Productividad y CRM';
 
   @override
-  String get catAdPlatforms => 'Advertising Platforms';
+  String get catAdPlatforms => 'Plataformas Publicitarias';
 
   @override
-  String get catAnalytics => 'Analytics & Insights';
+  String get catAnalytics => 'Analítica y Perspectivas';
 
   @override
-  String get catSocial => 'Social Media (Organic)';
+  String get catSocial => 'Redes Sociales (Orgánico)';
 
   @override
   String get googleAds => 'Google Ads';
@@ -1299,14 +1299,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get searchConsole => 'Search Console';
 
   @override
-  String get googleBusiness => 'Google Business Profile';
+  String get googleBusiness => 'Perfil de Google Business';
 
   @override
-  String get metaOrganic => 'Meta Organic';
+  String get metaOrganic => 'Meta Orgánico';
 
   @override
-  String get tiktokOrganic => 'TikTok Organic';
+  String get tiktokOrganic => 'TikTok Orgánico';
 
   @override
-  String get fromConnectedAccount => 'From Connected Account';
+  String get fromConnectedAccount => 'Desde Cuenta Conectada';
 }

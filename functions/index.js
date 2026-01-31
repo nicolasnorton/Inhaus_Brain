@@ -11,6 +11,67 @@ const project = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
 const location = 'us-central1';
 const vertexAI = new VertexAI({ project: project, location: location });
 
+/**
+ * Helper function to convert GCS URIs (gs://bucket/path) to signed HTTPS URLs
+ * that browsers can play without authentication issues.
+ * 
+ * This recursively searches through the operation response for GCS URIs and converts them.
+ */
+async function convertGcsUrisToSignedUrls(obj) {
+    if (!obj || typeof obj !== 'object') {
+        return obj;
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+        return Promise.all(obj.map(item => convertGcsUrisToSignedUrls(item)));
+    }
+
+    // Handle objects
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === 'string' && value.startsWith('gs://')) {
+            // Convert GCS URI to signed URL
+            try {
+                console.log(`[PROXY] 🔗 Converting GCS URI to signed URL: ${value}`);
+                const bucket = admin.storage().bucket();
+                const filePath = value.replace(/^gs:\/\/[^\/]+\//, ''); // Remove gs://bucket-name/
+                const bucketName = value.match(/^gs:\/\/([^\/]+)\//)?.[1];
+
+                if (!bucketName) {
+                    console.error(`[PROXY] ❌ Invalid GCS URI format: ${value}`);
+                    result[key] = value;
+                    continue;
+                }
+
+                // Get the correct bucket
+                const actualBucket = admin.storage().bucket(bucketName);
+                const file = actualBucket.file(filePath);
+
+                // Generate signed URL valid for 1 hour
+                const [signedUrl] = await file.getSignedUrl({
+                    action: 'read',
+                    expires: Date.now() + 60 * 60 * 1000, // 1 hour from now
+                });
+
+                console.log(`[PROXY] ✅ Generated signed URL: ${signedUrl.substring(0, 100)}...`);
+                result[key] = signedUrl;
+            } catch (error) {
+                console.error(`[PROXY] ⚠️ Failed to generate signed URL for ${value}:`, error);
+                // Fall back to converting gs:// to https://storage.googleapis.com/ format
+                result[key] = value.replace('gs://', 'https://storage.googleapis.com/');
+            }
+        } else if (typeof value === 'object') {
+            // Recursively process nested objects/arrays
+            result[key] = await convertGcsUrisToSignedUrls(value);
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
+
 // Example Function for Research Agent
 exports.onCampaignCreated = functions.firestore
     .document('campaigns/{campaignId}')
@@ -224,14 +285,21 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                         });
                     }
 
-                    const operation = await response.json();
+                    let operation = await response.json();
                     const pollDuration = Date.now() - pollStartTime;
                     console.log('[PROXY] ✅ fetchPredictOperation successful');
                     console.log(`[PROXY] ⏱️ Poll duration: ${pollDuration}ms`);
                     console.log(`[PROXY] 📋 Operation status: done=${operation.done || false}`);
                     console.log(`[PROXY] 🔍 Full operation response: ${JSON.stringify(operation, null, 2)}`);
                     console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_success: duration=${pollDuration}ms, done=${operation.done || false}, operation=${opId}`);
+
+                    // CRITICAL FIX: Convert GCS URIs to signed URLs for browser playback
+                    if (operation.done && !operation.error) {
+                        operation = await convertGcsUrisToSignedUrls(operation);
+                    }
+
                     return res.status(200).json(operation);
+
                 }
 
                 // For non-UUID operations, use REST API as before
@@ -311,12 +379,18 @@ exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
                 // but the client just expects the operation object.
                 // The client (Flutter) expects { done: boolean, response: ... }
 
-                if (operationData.done) {
+                // CRITICAL FIX: Convert GCS URIs to signed URLs for browser playback
+                let finalOperationData = operationData;
+                if (operationData.done && !operationData.error) {
+                    finalOperationData = await convertGcsUrisToSignedUrls(operationData);
+                }
+
+                if (finalOperationData.done) {
                     // Normalize the response for the client
                     // Vertex AI LROs usually have 'response' or 'error' field when done.
-                    return res.status(200).json(operationData);
+                    return res.status(200).json(finalOperationData);
                 } else {
-                    return res.status(200).json(operationData);
+                    return res.status(200).json(finalOperationData);
                 }
             } catch (error) {
                 console.error('[PROXY] Polling Error:', error);

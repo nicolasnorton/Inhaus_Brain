@@ -9,6 +9,7 @@
   "mockAIModels": "Simular Modelos IA",
   "mockAIModelsSubtitle": "Usar respuestas simuladas para pruebas",
   "aiMockMode": "Modo Simulación IA: {status}",
+  "loading": "Cargando...",
   "connectedAccounts": "Cuentas Conectadas",
   "connected": "Conectado",
   "notConnected": "No Conectado",
@@ -21,7 +22,7 @@
   "emailLabel": "Dirección de correo",
   "emailHint": "Ingresa tu correo",
   "emailInvalidError": "Por favor ingresa un correo válido",
-  "emailChangeWarning": "Nota: Cambiar el correo puede requerir voverificación",
+  "emailChangeWarning": "Nota: Cambiar el correo puede requerir re-verificación",
   "saveChanges": "Guardar Cambios",
   "profileUpdated": "Perfil actualizado exitosamente",
   "displayLanguage": "Idioma de visualización",
@@ -516,7 +517,24 @@
   "brandNameConfig": "Configuración de Marca",
   "networkError": "Error de red. Verifique su conexión.",
   "timeoutError": "La IA tardó demasiado. Reintentando...",
-  "thanksForFeedback": "¡Gracias por tus comentarios!"
+  "thanksForFeedback": "¡Gracias por tus comentarios!",
+  "catProductivity": "Productividad y CRM",
+  "catAdPlatforms": "Plataformas Publicitarias",
+  "catAnalytics": "Analítica y Perspectivas",
+  "catSocial": "Redes Sociales (Orgánico)",
+  "googleAds": "Google Ads",
+  "metaAds": "Meta Ads (FB/IG)",
+  "tiktokAds": "TikTok Ads",
+  "twitterAds": "X Ads",
+  "linkedinAds": "LinkedIn Ads",
+  "pinterestAds": "Pinterest Ads",
+  "appleSearchAds": "Apple Search Ads",
+  "googleAnalytics": "Google Analytics 4",
+  "searchConsole": "Search Console",
+  "googleBusiness": "Perfil de Google Business",
+  "metaOrganic": "Meta Orgánico",
+  "tiktokOrganic": "TikTok Orgánico",
+  "fromConnectedAccount": "Desde Cuenta Conectada"
 }
 
 
