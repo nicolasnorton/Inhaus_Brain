@@ -28,8 +28,8 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
   @override
   void initState() {
     super.initState();
-    final clients = ref.read(clientProvider);
-    final client = clients.firstWhere((c) => c.id == widget.clientId);
+    final clientState = ref.read(clientProvider);
+    final client = clientState.clients.firstWhere((c) => c.id == widget.clientId);
     
     _nameController = TextEditingController(text: client.name);
     _industryController = TextEditingController(text: client.industry);
@@ -88,8 +88,8 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
       }
     }
 
-    final clients = ref.read(clientProvider);
-    final client = clients.firstWhere((c) => c.id == widget.clientId);
+    final clientState = ref.read(clientProvider);
+    final client = clientState.clients.firstWhere((c) => c.id == widget.clientId);
     
     final updatedClient = client.copyWith(
       name: _nameController.text.trim(),

@@ -1,9 +1,8 @@
-
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../features/reports/models/source_model.dart';
-import 'ad_platforms_service.dart';
+import 'integration_service.dart';
 import '../../features/connectors/models/connected_account_model.dart';
 import '../../features/connectors/models/unified_campaign_model.dart';
 
@@ -15,7 +14,7 @@ class SourcesService {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'txt', 'csv', 'md'],
-      withData: true, // Ensure we get bytes for web and to avoid dart:io dependency
+      withData: true, 
     );
 
     if (result != null && result.files.single.bytes != null) {
@@ -117,14 +116,14 @@ class SourcesService {
   static Future<ReportSource> fetchAndAddConnectedSource(
       String reportId, 
       ConnectedAccount account, 
-      AdPlatformsService adService,
+      IntegrationService integrationService,
       {DateTime? start, DateTime? end}
   ) async {
       final s = start ?? DateTime.now().subtract(const Duration(days: 30));
       final e = end ?? DateTime.now();
       
       try {
-        final campaigns = await adService.getCampaignsForAccount(account, s, e);
+        final campaigns = await integrationService.getCampaigns(account, s, e);
         
         // Convert campaigns to CSV-like string for the LLM
         final buffer = StringBuffer();
@@ -160,4 +159,3 @@ class SourcesService {
       }
   }
 }
-

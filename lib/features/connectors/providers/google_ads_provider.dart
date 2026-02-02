@@ -1,8 +1,8 @@
-import '../../../core/interfaces/ad_platform_provider.dart';
+import '../../../core/interfaces/integration_connector.dart';
 import '../models/connected_account_model.dart';
 import '../models/unified_campaign_model.dart';
 
-class GoogleAdsProvider implements AdPlatformProvider {
+class GoogleAdsProvider implements AdsConnector {
   @override
   AdPlatform get platform => AdPlatform.googleAds;
 
@@ -43,13 +43,23 @@ class GoogleAdsProvider implements AdPlatformProvider {
   }
 
   @override
-  Future<Map<String, dynamic>> getInsights(
+  Future<Map<String, dynamic>> getAccountInsights(
       ConnectedAccount account, DateTime start, DateTime end) async {
     return {
       'totalSpend': 1750.0,
       'totalConversions': 55,
       'topKeywords': ['inhaus brain', 'ai marketing', 'automation'],
+      'optimizationScore': 0.85,
     };
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getAdPerformance(
+      ConnectedAccount account, String campaignId, DateTime start, DateTime end) async {
+     return [
+       {'adId': 'ad-1', 'headline': 'Best AI Tool', 'clicks': 120, 'cost': 150.00},
+       {'adId': 'ad-2', 'headline': 'Automate Reports', 'clicks': 95, 'cost': 110.00},
+     ]; 
   }
 
   @override

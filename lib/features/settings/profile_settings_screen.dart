@@ -592,13 +592,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               const SizedBox(height: 12),
               Consumer(
                 builder: (context, ref, child) {
-                  final clients = ref.watch(clientProvider);
-                  if (clients.isEmpty) return Text(AppLocalizations.of(context)!.noClientsFound, style: const TextStyle(color: Colors.white24, fontSize: 12));
+                  final clientState = ref.watch(clientProvider);
+                  if (clientState.clients.isEmpty) return Text(AppLocalizations.of(context)!.noClientsFound, style: const TextStyle(color: Colors.white24, fontSize: 12));
                   
                   return Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: clients.map((client) {
+                    children: clientState.clients.map((client) {
                       final isSelected = _selectedClientIds.contains(client.id);
                       return FilterChip(
                         label: Text(client.name, style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : Colors.white)),

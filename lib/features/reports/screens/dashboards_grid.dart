@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../models/dashboard_model.dart';
 import '../services/dashboards_service.dart';
+import '../../clients/providers/client_provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class DashboardsGrid extends ConsumerWidget {
@@ -184,12 +185,17 @@ class DashboardsGrid extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               if (nameController.text.isNotEmpty) {
-                 final newDash = Dashboard.create(title: nameController.text, clientId: 'client_1');
+                 final clientState = ref.read(clientProvider); // Get current state
+                 final String clientId = clientState.selectedClientId ?? 'unknown';
+
+                 final newDash = Dashboard.create(title: nameController.text, clientId: clientId);
                  await ref.read(dashboardsServiceProvider).createDashboard(newDash);
                  
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(content: Text("Created '${newDash.title}'"), backgroundColor: AppTheme.primary),
-                 );
+                 if (context.mounted) {
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text("Created '${newDash.title}'"), backgroundColor: AppTheme.primary),
+                   );
+                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),

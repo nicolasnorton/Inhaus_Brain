@@ -1,45 +1,67 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import 'package:inhaus_brain/features/knowledge/providers/knowledge_service_providers.dart';
-import 'package:inhaus_brain/features/clients/models/client_model.dart';
-import 'package:inhaus_brain/features/clients/models/client_contact_model.dart';
-import 'package:inhaus_brain/core/services/local_persistence_service.dart';
+import '../../clients/models/client_model.dart';
+import '../../clients/models/client_contact_model.dart';
+import '../../clients/services/client_repository.dart';
+import '../../../features/knowledge/providers/knowledge_service_providers.dart';
 
-class ClientNotifier extends StateNotifier<List<Client>> {
-  final LocalPersistenceService _persistenceService;
-  final Ref _ref;
-  
-  ClientNotifier(this._persistenceService, this._ref) : super([]) {
-    _loadClients();
-  }
+// State class to hold list of clients and the currently selected one
+class ClientState {
+  final List<Client> clients;
+  final String? selectedClientId;
+  final bool isLoading;
+  final String? error;
 
-  Future<void> _loadClients() async {
-    final clients = await _persistenceService.getClients();
-    if (clients.isEmpty) {
-      _loadMockClients();
-    } else {
-      state = clients;
+  ClientState({
+    this.clients = const [],
+    this.selectedClientId,
+    this.isLoading = false,
+    this.error,
+  });
+
+  Client? get selectedClient {
+    if (selectedClientId == null) return null;
+    try {
+      return clients.firstWhere((c) => c.id == selectedClientId);
+    } catch (_) {
+      return null;
     }
   }
 
-  void _loadMockClients() {
-    state = [
-      Client(
-        id: 'client-1',
-        name: 'Inhaus Studios',
-        industry: 'Creative Agency',
-        primaryContactEmail: 'studio@inhaus.ai',
-        campaignIds: ['camp-1', 'camp-2'],
-      ),
-      Client(
-        id: 'client-2',
-        name: 'Global Tech Corp',
-        industry: 'Technology',
-        primaryContactEmail: 'marketing@globaltech.com',
-        campaignIds: ['camp-3'],
-      ),
-    ];
-    _persistenceService.saveClients(state);
+  ClientState copyWith({
+    List<Client>? clients,
+    String? selectedClientId,
+    bool? isLoading,
+    String? error,
+  }) {
+    return ClientState(
+      clients: clients ?? this.clients,
+      selectedClientId: selectedClientId ?? this.selectedClientId,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+    );
+  }
+}
+
+class ClientNotifier extends StateNotifier<ClientState> {
+  final ClientRepository _repository;
+  final Ref _ref;
+
+  ClientNotifier(this._repository, this._ref) : super(ClientState()) {
+    _init();
+  }
+
+  void _init() {
+    // Listen to real-time stream of clients
+    _repository.streamClients().listen((clients) {
+      state = state.copyWith(clients: clients, isLoading: false);
+    }, onError: (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+    });
+  }
+
+  void selectClient(String clientId) {
+    state = state.copyWith(selectedClientId: clientId);
   }
 
   Future<void> addClient(String name, String industry, {String? email, String? website, String? address, String? size, String? description}) async {
@@ -53,33 +75,29 @@ class ClientNotifier extends StateNotifier<List<Client>> {
       size: size,
       description: description,
     );
-    state = [...state, newClient];
-    await _persistenceService.saveClients(state);
+    
+    // Optimistic update not strictly needed with stream, but good for responsiveness if stream is slow
+    // state = state.copyWith(isLoading: true); 
+    
+    await _repository.createClient(newClient);
     _ref.read(knowledgeIngestionServiceProvider).ingestClient(newClient);
   }
 
   Future<void> updateClient(Client updatedClient) async {
-    state = [
-      for (final client in state)
-        if (client.id == updatedClient.id) updatedClient else client
-    ];
-    await _persistenceService.saveClients(state);
+    await _repository.updateClient(updatedClient);
   }
   
   Future<void> deleteClient(String clientId) async {
-    state = state.where((client) => client.id != clientId).toList();
-    await _persistenceService.saveClients(state);
+    await _repository.deleteClient(clientId);
+    if (state.selectedClientId == clientId) {
+      state = state.copyWith(selectedClientId: null); // Clear selection if deleted
+    }
   }
 
   Future<void> addCampaignToClient(String clientId, String campaignId) async {
-    state = [
-      for (final client in state)
-        if (client.id == clientId)
-          client.copyWith(campaignIds: [...client.campaignIds, campaignId])
-        else
-          client
-    ];
-    await _persistenceService.saveClients(state);
+    final client = state.clients.firstWhere((c) => c.id == clientId);
+    final updated = client.copyWith(campaignIds: [...client.campaignIds, campaignId]);
+    await _repository.updateClient(updated);
   }
 
   Future<void> addClientContact(String clientId, String firstName, String lastName, String email, String role, {String accessLevel = 'viewer', String? phoneNumber}) async {
@@ -94,26 +112,31 @@ class ClientNotifier extends StateNotifier<List<Client>> {
       phoneNumber: phoneNumber,
     );
     
-    state = [
-      for (final client in state)
-        if (client.id == clientId)
-          client.copyWith(contacts: [...client.contacts, contact])
-        else
-          client
-    ];
-    await _persistenceService.saveClients(state);
+    final client = state.clients.firstWhere((c) => c.id == clientId);
+    final updated = client.copyWith(contacts: [...client.contacts, contact]);
+    await _repository.updateClient(updated);
   }
 
   Client? getClientForCampaign(String campaignId) {
     try {
-      return state.firstWhere((client) => client.campaignIds.contains(campaignId));
+      return state.clients.firstWhere((client) => client.campaignIds.contains(campaignId));
     } catch (_) {
       return null;
     }
   }
 }
 
-final clientProvider = StateNotifierProvider<ClientNotifier, List<Client>>((ref) {
-  final persistence = ref.watch(persistenceServiceProvider);
-  return ClientNotifier(persistence, ref);
+// Provider definition
+final clientRepositoryProvider = Provider<ClientRepository>((ref) {
+  return ClientRepository();
+});
+
+final clientProvider = StateNotifierProvider<ClientNotifier, ClientState>((ref) {
+  final repo = ref.watch(clientRepositoryProvider);
+  return ClientNotifier(repo, ref);
+});
+
+// Helper provider for easier access to the selected client
+final selectedClientProvider = Provider<Client?>((ref) {
+  return ref.watch(clientProvider).selectedClient;
 });

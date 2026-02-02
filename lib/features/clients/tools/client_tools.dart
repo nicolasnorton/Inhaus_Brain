@@ -210,7 +210,8 @@ final clientToolsProvider = Provider<List<AgentTool>>((ref) {
   final projectNotifier = ref.read(projectProvider.notifier);
   final taskNotifier = ref.read(taskProvider.notifier);
   final clientNotifier = ref.read(clientProvider.notifier);
-  final clients = ref.watch(clientProvider);
+  final clientState = ref.watch(clientProvider);
+  final clients = clientState.clients;
   final projects = ref.watch(projectProvider);
   final tasks = ref.watch(taskProvider);
   

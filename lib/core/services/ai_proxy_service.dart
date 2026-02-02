@@ -94,7 +94,7 @@ class AIProxyService {
           'Authorization': 'Bearer $idToken',
         },
         body: jsonEncode(body),
-      );
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         if (response.body.isEmpty) {
@@ -106,6 +106,11 @@ class AIProxyService {
         throw Exception('Proxy Poll Error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
+      if (e is http.ClientException || e.toString().contains('XMLHttpRequest')) {
+        debugPrint('AIProxyService: ⚠️ Network error during poll (likely retriable): $e');
+        // Return a "not done" state to force a retry by the caller instead of crashing
+        return {'done': false, 'error': 'network_transient'};
+      }
       debugPrint('AIProxyService Poll Error: $e');
       rethrow;
     }

@@ -36,6 +36,25 @@ class UnifiedCampaign {
     this.roas = 0.0,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'connectedAccountId': connectedAccountId,
+      'platform': platform.index,
+      'name': name,
+      'status': status,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'budgetAmount': budgetAmount,
+      'spend': spend,
+      'impressions': impressions,
+      'clicks': clicks,
+      'ctr': ctr,
+      'conversions': conversions,
+      'roas': roas,
+    };
+  }
+
   factory UnifiedCampaign.fromJson(Map<String, dynamic> json) {
     // Basic implementation - in reality, platform specific parsers map to this
     return UnifiedCampaign(

@@ -12,7 +12,7 @@ import '../../../../core/services/reports_lm_service.dart';
 import '../providers/reports_provider.dart';
 import '../../../../core/widgets/video_preview_player.dart';
 import '../../connectors/models/connected_account_model.dart';
-import '../../../../core/services/ad_platforms_service.dart';
+import '../../../../core/services/integration_service.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -183,8 +183,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         );
 
         if (type == SourceType.adAccount) {
-           final adService = ref.read(adPlatformsServiceProvider);
-           final source = await SourcesService.fetchAndAddConnectedSource(report.id, account, adService);
+           final integrationService = ref.read(integrationServiceProvider);
+           final source = await SourcesService.fetchAndAddConnectedSource(report.id, account, integrationService);
            _addSource(report, source);
         } else {
            // Fallback for analytics until fully implemented

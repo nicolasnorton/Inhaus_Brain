@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/dashboard_model.dart';
 import '../../../../core/services/edge_ai_service.dart';
 import '../../../../core/tokens/llm_provider.dart';
+import '../../clients/providers/client_provider.dart';
 
 class DashboardsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -77,5 +78,10 @@ final dashboardsServiceProvider = Provider<DashboardsService>((ref) {
 
 final dashboardsStreamProvider = StreamProvider.autoDispose<List<Dashboard>>((ref) {
   final service = ref.watch(dashboardsServiceProvider);
-  return service.getDashboards('client_1');
+  final clientState = ref.watch(clientProvider);
+  final clientId = clientState.selectedClientId;
+  
+  if (clientId == null) return Stream.value([]);
+  
+  return service.getDashboards(clientId);
 });

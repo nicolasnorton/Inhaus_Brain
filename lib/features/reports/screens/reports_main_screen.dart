@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
-import 'reports_dashboard_screen.dart'; // This is now the "Reports" grid
+import 'reports_dashboard_screen.dart';
 import 'dashboards_grid.dart';
+import '../../clients/providers/client_provider.dart';
+import '../../clients/models/client_model.dart';
 
-class ReportsMainScreen extends StatefulWidget {
+class ReportsMainScreen extends ConsumerStatefulWidget {
   const ReportsMainScreen({super.key});
 
   @override
-  State<ReportsMainScreen> createState() => _ReportsMainScreenState();
+  ConsumerState<ReportsMainScreen> createState() => _ReportsMainScreenState();
 }
 
-class _ReportsMainScreenState extends State<ReportsMainScreen> with SingleTickerProviderStateMixin {
+class _ReportsMainScreenState extends ConsumerState<ReportsMainScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -69,15 +72,45 @@ class _ReportsMainScreenState extends State<ReportsMainScreen> with SingleTicker
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final clientState = ref.watch(clientProvider);
+    final selectedClient = ref.watch(selectedClientProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text("Analytics Hub", style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: Row(
+          children: [
+            const Text("Analytics Hub", style: TextStyle(color: Colors.white, fontSize: 18)),
+            const SizedBox(width: 24),
+            // Client Selector Logic
+            if (clientState.clients.isNotEmpty)
+              DropdownButton<String>(
+                value: selectedClient?.id,
+                hint: const Text('Select Client', style: TextStyle(color: Colors.white70)),
+                dropdownColor: AppTheme.surface,
+                style: const TextStyle(color: Colors.white),
+                underline: Container(height: 1, color: Colors.white24),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    ref.read(clientProvider.notifier).selectClient(newValue);
+                  }
+                },
+                items: clientState.clients.map<DropdownMenuItem<String>>((Client client) {
+                  return DropdownMenuItem<String>(
+                    value: client.id,
+                    child: Text(client.name),
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
         backgroundColor: AppTheme.surface,
         centerTitle: false,
         actions: [
+
            IconButton(
              icon: const Icon(Icons.help_outline, color: Colors.white70),
              onPressed: () => _showWalkthrough(context),
@@ -108,13 +141,26 @@ class _ReportsMainScreenState extends State<ReportsMainScreen> with SingleTicker
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          ReportsDashboardScreen(),
-          DashboardsGrid(),
-        ],
-      ),
+      body: selectedClient == null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   const Icon(Icons.domain_disabled, size: 64, color: Colors.white24),
+                   const SizedBox(height: 16),
+                   const Text("No Client Selected", style: TextStyle(color: Colors.white54, fontSize: 20)),
+                   const SizedBox(height: 8),
+                   const Text("Please select a client from the top bar to view reports.", style: TextStyle(color: Colors.white24)),
+                ],
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: const [
+                ReportsDashboardScreen(),
+                DashboardsGrid(),
+              ],
+            ),
     );
   }
 }

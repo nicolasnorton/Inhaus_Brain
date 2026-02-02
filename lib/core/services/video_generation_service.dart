@@ -264,7 +264,7 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.0.9-CACHE-BUST-FINAL";
+    const String deployVersion = "1.2.3-RECURSIVE-VERIFIED";
     
     debugPrint('VideoService: ⚠️ FORCE RELOAD CHECK: Running v$deployVersion');
     
@@ -333,53 +333,40 @@ class VideoGenerationService {
                    debugPrint('VideoService: ❌ Operation failed: $errorMsg (code: $errorCode)');
                    
                    // Quota/Rate Limit - Immediate fallback
-                   if (errorMsg.contains('quota') || errorMsg.contains('rate limit')) {
+                   if (errorMsg.toString().toLowerCase().contains('quota') || 
+                       errorMsg.toString().toLowerCase().contains('rate limit')) {
                       debugPrint('📊 [Telemetry] video_quota_exceeded: elapsed=${elapsedSec}s');
                       onStatusMessage?.call('Video generation quota exceeded. Using fallback.');
-                      return 'IMAGE:${_getStaticFallbackUrl("Quota exceeded")}';
+                      return _getStaticFallbackUrl("Quota exceeded");
                    }
                    
                    // Generic error fallback
                    debugPrint('📊 [Telemetry] video_generation_error: reason="$errorMsg", elapsed=${elapsedSec}s');
                    onStatusMessage?.call('Generation failed. Using fallback.');
-                   return 'IMAGE:${_getStaticFallbackUrl(errorMsg)}';
+                   return _getStaticFallbackUrl(errorMsg);
                 }
                 
                  // SUCCESS - Extract video URL with comprehensive logging
                  debugPrint('VideoService: 🔍 Parsing completed operation response...');
                  debugPrint('Veo full response: ${jsonEncode(data)}');
 
-                 // Robust extraction — try all known Veo paths
-                 dynamic videos;
-                 if (data['response']?['videos'] != null) {
-                   videos = data['response']['videos'];
-                 } else if (data['videos'] != null) {
-                   videos = data['videos'];
-                 } else if (data['result']?['videos'] != null) {
-                   videos = data['result']['videos'];
-                 } else if (data['result']?['response']?['videos'] != null) {
-                   videos = data['result']['response']['videos'];
-                 } else if (data['candidates']?[0]?['content']?['parts']?[0]?['video'] != null) {
-                   // Wrap single video object in list to match structure
-                   videos = [data['candidates'][0]['content']['parts'][0]['video']];
-                 } else if (data['response']?['candidates']?[0]?['content']?['parts']?[0]?['video'] != null) {
-                   // Also check nested candidates just in case
-                   videos = [data['response']['candidates'][0]['content']['parts'][0]['video']];
-                 }
-
-                 if (videos != null && (videos as List).isNotEmpty) {
-                     final video = videos[0];
-                     final videoUrl = video['gcsUri'] ?? 
-                                      video['video']?['uri'] ?? 
-                                      video['uri'] ?? 
-                                      video['url'] ??
-                                      video['bytesBase64Encoded']; // Fallback to base64 if needed
-
-                     if (videoUrl != null && videoUrl.toString().isNotEmpty) {
-                        debugPrint('VideoService: ✅ Video URL extracted: $videoUrl');
+                 // 1. Recursive Search for any known video key
+                 final foundUrl = _findKeyRecursive(data, ['gcsUri', 'uri', 'url', 'videoUri', 'outputUri', 'output_uri', 'video']);
+                 if (foundUrl != null && foundUrl.toString().isNotEmpty) {
+                    // Sometimes 'video' key returns an object, we need to check inside it if it wasn't flattened
+                    if (foundUrl is Map) {
+                       final nestedUrl = _findKeyRecursive(foundUrl, ['uri', 'url', 'gcsUri']);
+                       if (nestedUrl != null) {
+                          debugPrint('VideoService: ✅ Video URL extracted from nested object: $nestedUrl');
+                          onProgress?.call(1.0);
+                          return _sanitizeMediaUrl(nestedUrl.toString());
+                       }
+                    } else if (foundUrl is String) {
+                        debugPrint('VideoService: ✅ Video URL found recursively: $foundUrl');
                         onProgress?.call(1.0);
-                        return _sanitizeMediaUrl(videoUrl.toString());
-                     }
+                        onStatusMessage?.call('Video ready!');
+                        return _sanitizeMediaUrl(foundUrl.toString());
+                    }
                  }
                  
                  debugPrint('VideoService: ⚠️ Veo success but no video URL found in response');
@@ -391,37 +378,11 @@ class VideoGenerationService {
                     continue; 
                  }
 
-                 debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
-                 
-                 // Check metadata for output
-                 final metadata = data['metadata'];
-                 if (metadata != null) {
-                    debugPrint('VideoService: checking metadata, keys: ${metadata.keys.toList()}');
-                    final outputUri = metadata['outputUri'] ?? metadata['output_uri'];
-                    if (outputUri != null) {
-                      debugPrint('VideoService: 🎥 Video from metadata: $outputUri');
-                      onProgress?.call(1.0);
-                      onStatusMessage?.call('Video ready!');
-                      return _sanitizeMediaUrl(outputUri);
-                    }
-                 } else {
-                   debugPrint('VideoService: ⚠️ No metadata found in response');
-                 }
-                 
                  debugPrint('VideoService: ⚠️ Operation done but no URL found');
-                 // Detailed Debug Logging to catch structure layout
-                 try {
-                    debugPrint('VideoService: Keys in root: ${data.keys.toList()}');
-                    if (data['response'] != null) debugPrint('VideoService: Keys in response: ${(data['response'] as Map).keys.toList()}');
-                    if (data['result'] != null) debugPrint('VideoService: Keys in result: ${(data['result'] as Map).keys.toList()}');
-                    debugPrint('VideoService: Full response JSON: ${jsonEncode(data)}');
-                 } catch (e) {
-                    debugPrint('VideoService: Error logging JSON: $e');
-                    debugPrint('VideoService: Raw data: $data');
-                 }
+                 debugPrint('VideoService: Keys in root: ${data.keys.toList()}');
                  
                  debugPrint('📊 [Telemetry] video_missing_url: response_keys=${data.keys.toList()}');
-                 return 'IMAGE:${_getStaticFallbackUrl('Video generated but URL missing')}';
+                 return _getStaticFallbackUrl('Video generated but URL missing');
             } else {
                 // Still processing
                 debugPrint('VideoService: ⏳ Processing... (poll ${i + 1})');
@@ -442,7 +403,7 @@ class VideoGenerationService {
                 if (total404Count >= max404Retries) {
                     debugPrint('📊 [Telemetry] video_404_timeout: after_retries=$total404Count, elapsed=${elapsedSec}s');
                     onStatusMessage?.call('Operation not found after ${total404Count} retries.');
-                    return 'IMAGE:${_getStaticFallbackUrl('Operation lost (404)')}';
+                    return _getStaticFallbackUrl('Operation lost (404)');
                 }
                 consecutiveErrors = 0; // Don't penalize 404s
                 continue;
@@ -453,12 +414,9 @@ class VideoGenerationService {
                 persistent400Count++;
                 debugPrint('VideoService: 400 Error ($persistent400Count/$maxPersistent400)');
                 
-                // After 3 consecutive 400s, try fresh generation (if retries available)
+                // After 3 consecutive 400s, trigger fresh retry
                 if (persistent400Count >= maxPersistent400 && maxRetries > 0) {
-                    debugPrint('VideoService: 🔄 Persistent 400 errors. Attempting fresh generation retry...');
-                    debugPrint('📊 [Telemetry] video_fresh_retry: after_400_count=$persistent400Count');
-                    onStatusMessage?.call('First attempt failed. Retrying generation...');
-                    
+                    onStatusMessage?.call('Retrying generation...');
                     try {
                       return await generatePreview(
                         originalPrompt,
@@ -466,7 +424,7 @@ class VideoGenerationService {
                         maxRetries: maxRetries - 1,
                       );
                     } catch (retryErr) {
-                      debugPrint('VideoService: Fresh retry also failed: $retryErr');
+                      debugPrint('VideoService: Fresh retry failed: $retryErr');
                     }
                 }
             }
@@ -475,7 +433,7 @@ class VideoGenerationService {
             if (consecutiveErrors >= maxConsecutiveErrors) {
                 debugPrint('📊 [Telemetry] video_network_failure: consecutive_errors=$consecutiveErrors');
                 onStatusMessage?.call('Network errors occurred. Using fallback.');
-                return 'IMAGE:${_getStaticFallbackUrl('Network failures')}';
+                return _getStaticFallbackUrl('Network failures');
             }
         }
     }
@@ -487,7 +445,7 @@ class VideoGenerationService {
     onStatusMessage?.call('Video generation timed out. Using fallback.');
     
     final imagenRes = await _generateImagenFallback(originalPrompt);
-    return imagenRes.startsWith('http') && !imagenRes.startsWith('IMAGE:') ? 'IMAGE:$imagenRes' : imagenRes;
+    return imagenRes;
   }
 
   static Future<String> _generateImagenFallback(String prompt) async {
@@ -524,7 +482,7 @@ class VideoGenerationService {
 
   static String _getStaticFallbackUrl(String reason) {
     debugPrint('VideoService: 🚨 [LAST RESORT FALLBACK] Using static storyboard');
-    debugPrint('VideoService: Reason: $reason');
+    debugPrint('VideoService: Reason: $reason (V2)');
     debugPrint('VideoService: This should be rare - investigate if occurring frequently');
     
     debugPrint('📊 [Telemetry] video_fallback_used: reason="$reason", timestamp=${DateTime.now().toIso8601String()}');
@@ -550,5 +508,24 @@ class VideoGenerationService {
 
   static String _appendCulturalSafety(String prompt) {
     return "$prompt. Cultural Context: Ecuador/LatAm neutral. Brand Safe: Yes.";
+  }
+
+  // Recursive helper to find any key in a nested map/list structure
+  static dynamic _findKeyRecursive(dynamic json, List<String> targetKeys) {
+    if (json is Map) {
+      for (final key in json.keys) {
+        if (targetKeys.contains(key) && json[key] != null) {
+          return json[key];
+        }
+        final found = _findKeyRecursive(json[key], targetKeys);
+        if (found != null) return found;
+      }
+    } else if (json is List) {
+      for (final item in json) {
+        final found = _findKeyRecursive(item, targetKeys);
+        if (found != null) return found;
+      }
+    }
+    return null;
   }
 }

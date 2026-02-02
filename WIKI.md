@@ -77,10 +77,26 @@ Generate high-fidelity branded video assets using an exclusive **Google DeepMind
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
 ### 8. 🏢 Client Module (Portfolio Management)
-This module allows you to manage your client relationships and projects:
+This module allows you to manage your client relationships and projects with production-grade data isolation:
 *   **Projects**: Organize work into specific project plans for each client.
-*   **Task Board**: Track task status (Todo, In-Progress, Review, Done) and set due dates.
-*   **Integrations**: Connect client workspaces to **Gmail**, **Slack**, **Notion**, and **GoHighLevel** to automate communication and data syncing.
+*   **Detail Views**: A tabbed interface allows you to switch between **Overview**, **Projects**, **Tasks**, **Integrations**, and **Reports**.
+*   **Integrations**: Connect client workspaces to **Google Ads**, **Meta Ads**, **TikTok**, and **Google Analytics** for automated data syncing.
+*   **Data Ingestion**: The system automatically pulls performance metrics every 24 hours and stores them for historical analysis.
+*   **Client Context**: All reports and dashboards are automatically filtered by the selected client, ensuring no data leakage.
+
+### 9. 📈 Analytics & Reporting Hub
+A centralized command center for data-driven decision making:
+*   **Unified Dashboards**: View across-platform performance (e.g., Facebook vs Google Ads) in a single pane of glass.
+*   **Report Studio**: Generate beautiful PDF/Web reports using **ReportLM**.
+    *   *Sources*: Add files, web URLs, or connected account data via the new **Integration Service**.
+    *   *Formats*: Text summaries, charts, audio executive summaries (podcasts), and video previews.
+*   **Knowledge Integration**: All ingested metrics are automatically added to the Vector Store, allowing you to ask questions like "Why did our CPA increase last week?"
+
+### 10. 🕵️ Specialized Agents
+Inhaus Brain deploys dedicated agents for specific operational tasks, governed by **Bilingual (English/Spanish)** prompts:
+*   **Client Orchestrator**: Manages account health, monitors API connections, and handles client onboarding.
+*   **Knowledge Maintainer**: A background agent that curates the Knowledge Base, identifying gaps (e.g., "Missing Brand Tone") and suggesting web searches to fill them.
+*   **Reports Orchestrator**: An expert analyst that transforms raw data into narrative-driven insights, explaining *why* numbers changed, not just *what* happened.
 
 ---
 

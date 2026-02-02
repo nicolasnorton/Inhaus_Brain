@@ -3,38 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
-import '../../core/auth/auth_service.dart';
-import 'providers/client_provider.dart';
-import 'models/client_model.dart';
-import '../auth/models/user_model.dart';
+import 'package:inhaus_brain/core/auth/auth_service.dart';
+import '../providers/client_provider.dart';
+import '../models/client_model.dart';
+import 'package:inhaus_brain/features/auth/models/user_model.dart';
 
-class ClientManagementScreen extends ConsumerWidget {
-  const ClientManagementScreen({super.key});
+class ClientListScreen extends ConsumerWidget {
+  const ClientListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allClients = ref.watch(clientProvider);
+    final clientState = ref.watch(clientProvider);
     final appUserAsync = ref.watch(appUserProvider);
-    // Since isAdmin is also async in strict logic, we might need a better pattern. 
-    // But for now, we will wait for appUser to be loaded.
-    
+
     return appUserAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
       data: (appUser) {
-         return _buildContent(context, ref, allClients, appUser);
+         return _buildContent(context, ref, clientState.clients, appUser, clientState.isLoading);
       },
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, List<Client> allClients, AppUser? appUser) {
-    // Note: This relies on authServiceProvider.isAdmin which might also need to become AsyncValue if it depends on FS
-    // But currentUser is synchronous if already loaded. 
-    // Let's rely on appUser role check directly since we have the object.
-    
+  Widget _buildContent(BuildContext context, WidgetRef ref, List<Client> allClients, AppUser? appUser, bool isLoading) {
     final isAdmin = appUser?.role == UserRole.admin || appUser?.role == UserRole.superAdmin;
-    debugPrint('ClientManagementScreen: User=${appUser?.email}, Role=${appUser?.role}, IsAdmin=$isAdmin');
-
+    
     final clients = isAdmin 
       ? allClients 
       : allClients.where((c) => appUser?.assignedClientIds.contains(c.id) ?? false).toList();
@@ -86,20 +79,23 @@ class ClientManagementScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 48),
-              Expanded(
-                child: clients.isEmpty
-                    ? _buildEmptyState(context)
-                    : GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 24,
-                          mainAxisSpacing: 24,
-                          childAspectRatio: 1.2,
+              if (isLoading && clients.isEmpty)
+                const Expanded(child: Center(child: CircularProgressIndicator()))
+              else
+                Expanded(
+                  child: clients.isEmpty
+                      ? _buildEmptyState(context)
+                      : GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 24,
+                            mainAxisSpacing: 24,
+                            childAspectRatio: 1.2,
+                          ),
+                          itemCount: clients.length,
+                          itemBuilder: (context, index) => _buildClientCard(context, clients[index], ref),
                         ),
-                        itemCount: clients.length,
-                        itemBuilder: (context, index) => _buildClientCard(context, clients[index], ref),
-                      ),
-              ),
+                ),
             ],
           ),
         ),
@@ -183,6 +179,7 @@ class ClientManagementScreen extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
+                  ref.read(clientProvider.notifier).selectClient(client.id);
                   context.go('/clients/${client.id}');
                 },
                 child: Text(AppLocalizations.of(context)!.manageClient),

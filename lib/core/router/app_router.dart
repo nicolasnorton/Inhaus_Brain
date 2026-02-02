@@ -10,7 +10,7 @@ import '../../features/onboarding/screens/welcome_screen.dart';
 import '../../features/onboarding/providers/onboarding_provider.dart';
 import '../../features/auth/auth_screen.dart';
 import '../../features/creative/creative_studio_screen.dart';
-import '../../features/clients/client_management_screen.dart';
+import '../../features/clients/screens/client_list_screen.dart';
 import '../../features/clients/screens/client_create_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
 import '../../features/clients/screens/client_edit_screen.dart';
@@ -127,21 +127,47 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/clients',
-            builder: (context, state) => const ClientManagementScreen(),
+            builder: (context, state) => const ClientListScreen(),
             routes: [
               GoRoute(
                 path: 'new',
                 builder: (context, state) => const ClientCreateScreen(),
               ),
-              GoRoute(
-                path: ':id',
-                builder: (context, state) => ClientDetailScreen(
-                  clientId: state.pathParameters['id']!,
-                ),
+              ShellRoute(
+                builder: (context, state, child) {
+                  return ClientDetailScreen(
+                    clientId: state.pathParameters['id'] ?? 'unknown',
+                    child: child,
+                  );
+                },
                 routes: [
                   GoRoute(
-                    path: 'edit',
-                    builder: (context, state) => ClientEditScreen(
+                    path: ':id',
+                    redirect: (context, state) => '/clients/${state.pathParameters['id']}/overview',
+                  ),
+                  GoRoute(
+                    path: ':id/overview',
+                    builder: (context, state) => ClientOverviewScreen(clientId: state.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: ':id/projects',
+                    builder: (context, state) => ClientProjectsScreen(clientId: state.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: ':id/tasks',
+                    builder: (context, state) => ClientTasksScreen(clientId: state.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: ':id/integrations',
+                    builder: (context, state) => ClientIntegrationsScreen(clientId: state.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: ':id/reports',
+                    builder: (context, state) => ClientReportsScreen(clientId: state.pathParameters['id']!),
+                  ),
+                  GoRoute(
+                    path: ':id/edit',
+                     builder: (context, state) => ClientEditScreen(
                       clientId: state.pathParameters['id']!,
                     ),
                   ),
