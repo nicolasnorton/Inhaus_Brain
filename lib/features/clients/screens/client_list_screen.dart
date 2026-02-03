@@ -226,13 +226,26 @@ class ClientListScreen extends ConsumerWidget {
             child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
-            onPressed: () {
-              ref.read(clientProvider.notifier).addClient(
-                nameController.text,
-                industryController.text,
-                email: emailController.text,
-              );
-              Navigator.pop(context);
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final industry = industryController.text.trim();
+              if (name.isEmpty || industry.isEmpty) return;
+
+              try {
+                // Show a mini loading state or just await
+                await ref.read(clientProvider.notifier).addClient(
+                  name,
+                  industry,
+                  email: emailController.text.trim(),
+                );
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error creating client: $e")),
+                  );
+                }
+              }
             },
             child: Text(AppLocalizations.of(context)!.addClient),
           ),

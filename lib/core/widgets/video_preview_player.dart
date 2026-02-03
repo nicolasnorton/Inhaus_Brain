@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_video_player.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class VideoPreviewPlayer extends StatefulWidget {
   final String videoUrl;
@@ -25,6 +27,34 @@ class VideoPreviewPlayer extends StatefulWidget {
 
 class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
   bool _includeSubtitles = false;
+
+  void _downloadVideo(String url) {
+    if (!kIsWeb) return;
+    
+    // Ensure we have a valid data URI or URL
+    String downloadUrl = url;
+    if (downloadUrl.startsWith('data:video/mp4;base64,')) {
+      // It's already a data URI
+    } else if (!downloadUrl.startsWith('http') && !downloadUrl.startsWith('gs://')) {
+      // Assume it's raw base64 if not a URL
+      downloadUrl = 'data:video/mp4;base64,$downloadUrl';
+    }
+
+    try {
+      final anchor = html.AnchorElement(href: downloadUrl)
+        ..setAttribute("download", "inhaus_video_${DateTime.now().millisecondsSinceEpoch}.mp4")
+        ..click();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Starting download...')),
+      );
+    } catch (e) {
+      debugPrint('Error downloading video: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Download failed: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,6 +248,22 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
                 ),
             ],
           ),
+          if (!isFallbackImage && (widget.videoUrl.isNotEmpty)) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _downloadVideo(mediaUrl),
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text('Download Original Video'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );

@@ -6,6 +6,9 @@ import '../../features/connectors/models/post_model.dart'; // Will create this
 abstract class BaseConnector {
   AdPlatform get platform;
 
+  /// Initiate the OAuth connection flow (Platform specific implementation)
+  Future<ConnectedAccount?> connect(String clientId);
+
   /// Validate the authentication token. Refresh if necessary.
   /// Returns the updated account (with new token) or throws exception if auth invalid.
   Future<ConnectedAccount> validateOrRefreshAuth(ConnectedAccount account);

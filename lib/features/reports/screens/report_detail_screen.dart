@@ -24,6 +24,45 @@ class ReportDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
+  // Chat State
+  final TextEditingController _chatController = TextEditingController();
+  final List<Map<String, String>> _chatMessages = [];
+  bool _isChatLoading = false;
+
+  void _handleChatSubmit(Report report) async {
+    final query = _chatController.text.trim();
+    if (query.isEmpty) return;
+
+    setState(() {
+      _chatMessages.add({'role': 'user', 'content': query});
+      _chatController.clear();
+      _isChatLoading = true;
+      // Add empty AI bubble to fill
+      _chatMessages.add({'role': 'ai', 'content': ''});
+    });
+
+    try {
+      final stream = ReportsLMService.chatWithReport(report, query, ref);
+      
+      await for (final chunk in stream) {
+        if (!mounted) break;
+        setState(() {
+          // Append to last AI message
+          final lastIdx = _chatMessages.length - 1;
+          _chatMessages[lastIdx]['content'] = _chatMessages[lastIdx]['content']! + chunk;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+         setState(() {
+           final lastIdx = _chatMessages.length - 1;
+           _chatMessages[lastIdx]['content'] = "Error generating response: $e";
+         });
+      }
+    } finally {
+      if (mounted) setState(() => _isChatLoading = false);
+    }
+  }
 
   Future<void> _addSource(Report report, ReportSource source) async {
     // Create updated copy
@@ -154,47 +193,64 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text("Select Connected Account", style: TextStyle(color: Colors.white)),
+        title: const Text("Connect Platform", style: TextStyle(color: Colors.white)),
         backgroundColor: AppTheme.surface,
         children: [
-          _buildConnectedAccountOption(report, "Google Ads", "Inhaus Main (123-456)", SourceType.adAccount),
-          _buildConnectedAccountOption(report, "Meta Ads", "Global Tech FB (789-012)", SourceType.adAccount),
-          _buildConnectedAccountOption(report, "TikTok Ads", "Inhaus Studios TT (555-444)", SourceType.adAccount),
-          _buildConnectedAccountOption(report, "GA4", "Inhaus Website (UA-12345)", SourceType.analytics),
+          _buildPlatformConnectOption(report, "Google Ads", AdPlatform.googleAds),
+          _buildPlatformConnectOption(report, "Meta Ads", AdPlatform.metaAds),
+          _buildPlatformConnectOption(report, "TikTok Ads", AdPlatform.tiktokAds), // Will use Generic (Stub for now)
+          _buildPlatformConnectOption(report, "Google Analytics 4", AdPlatform.googleAnalytics),
         ],
       ),
     );
   }
 
-  Widget _buildConnectedAccountOption(Report report, String platformName, String name, SourceType type) {
+  Widget _buildPlatformConnectOption(Report report, String name, AdPlatform platform) {
     return SimpleDialogOption(
       onPressed: () async {
-        Navigator.pop(context); // Close selection
+        Navigator.pop(context); // Close dialog selection
         
-        // Construct a mock/temporary account object (In real usage this comes from a provider list)
-        final platform = _getPlatformEnum(platformName);
-        final account = ConnectedAccount(
-          id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-          clientId: report.clientId,
-          platform: platform,
-          accountName: name,
-          externalAccountId: 'ext_123',
-          updatedAt: DateTime.now(),
-        );
-
-        if (type == SourceType.adAccount) {
-           final integrationService = ref.read(integrationServiceProvider);
-           final source = await SourcesService.fetchAndAddConnectedSource(report.id, account, integrationService);
-           _addSource(report, source);
-        } else {
-           // Fallback for analytics until fully implemented
-           final source = await SourcesService.addAnalyticsSource(report.id, platformName, name);
-           _addSource(report, source);
+        final integrationService = ref.read(integrationServiceProvider);
+        
+        // Show loading
+        _showLoadingDialog("Connecting to $name...");
+        
+        try {
+          // 1. Initiate OAuth Flow
+          final account = await integrationService.initiateConnection(platform, report.clientId);
+          
+          if (mounted) Navigator.pop(context); // Close loading dialog
+          
+          if (account != null) {
+             // 2. Fetch Data & Add Source
+             if (mounted) _showLoadingDialog("Fetching data from $name...");
+             
+             try {
+                final source = await SourcesService.fetchAndAddConnectedSource(report.id, account, integrationService);
+                if (mounted) Navigator.pop(context); // Close fetching dialog
+                _addSource(report, source);
+             } catch (e) {
+                if (mounted) {
+                   Navigator.pop(context);
+                   _showErrorDialog("Failed to fetch data: $e");
+                }
+             }
+          } else {
+             // Null account usually means user cancelled or auth failed silently
+             if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                 SnackBar(content: Text("Connection cancelled or failed for $name"), backgroundColor: Colors.orange),
+               );
+             }
+          }
+        } catch (e) {
+          if (mounted) Navigator.pop(context);
+          if (mounted) _showErrorDialog("Connection Error: $e");
         }
       },
       child: Row(
         children: [
-          Icon(_getIconForPlatform(platformName), color: Colors.blueAccent, size: 18),
+          Icon(_getIconForPlatform(name), color: Colors.blueAccent, size: 18),
           const SizedBox(width: 12),
           Text(name, style: const TextStyle(color: Colors.white70)),
         ],
@@ -632,7 +688,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: Center(
+                        child: _chatMessages.isEmpty 
+                        ? Center(
                            child: Column(
                              mainAxisAlignment: MainAxisAlignment.center,
                              children: [
@@ -643,6 +700,31 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                                const Text("Ask questions based on your sources.", style: TextStyle(color: Colors.white54)),
                              ],
                            ),
+                        )
+                        : ListView.builder(
+                           padding: const EdgeInsets.all(16),
+                           itemCount: _chatMessages.length,
+                           itemBuilder: (context, index) {
+                             final msg = _chatMessages[index];
+                             final isUser = msg['role'] == 'user';
+                             return Align(
+                               alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                               child: Container(
+                                 margin: const EdgeInsets.only(bottom: 12),
+                                 padding: const EdgeInsets.all(12),
+                                 decoration: BoxDecoration(
+                                   color: isUser ? AppTheme.primary.withOpacity(0.2) : AppTheme.surface,
+                                   borderRadius: BorderRadius.circular(12),
+                                   border: Border.all(color: isUser ? AppTheme.primary.withOpacity(0.5) : Colors.white10),
+                                 ),
+                                 constraints: const BoxConstraints(maxWidth: 600),
+                                 child: SelectableText( // Allow copying text
+                                    msg['content']!, 
+                                    style: const TextStyle(color: Colors.white)
+                                 ),
+                               ),
+                             );
+                           },
                         ),
                       ),
                        Container(
@@ -655,6 +737,8 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                           children: [
                             Expanded(
                               child: TextField(
+                                controller: _chatController,
+                                onSubmitted: (_) => _handleChatSubmit(report),
                                 decoration: InputDecoration(
                                   hintText: "Ask about this notebook...",
                                   hintStyle: const TextStyle(color: Colors.white30),
@@ -669,7 +753,12 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                             const SizedBox(width: 12),
                             CircleAvatar(
                               backgroundColor: AppTheme.primary,
-                              child: IconButton(icon: const Icon(Icons.arrow_upward, color: Colors.white), onPressed: () {}),
+                              child: IconButton(
+                                icon: _isChatLoading 
+                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                   : const Icon(Icons.arrow_upward, color: Colors.white),
+                                onPressed: () => _handleChatSubmit(report),
+                              ),
                             )
                           ],
                         ),

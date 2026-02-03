@@ -122,6 +122,22 @@ class ReportsLMService {
     return result.text;
   }
 
+  static Stream<String> chatWithReport(Report report, String query, dynamic ref) async* {
+     final context = _buildContextFromSources(report);
+     
+     // Stream response for better UX
+     final stream = EdgeAIService.generateTextStream(
+       query,
+       config: AIModelConfig.geminiFlash, // Fast & Capable
+       memoryContext: context,
+       ref: ref
+     );
+
+     await for (final result in stream) {
+        yield result.text;
+     }
+  }
+
   static String _buildContextFromSources(Report report) {
     final buffer = StringBuffer();
     buffer.writeln("REPORT CONTEXT: ${report.title}");

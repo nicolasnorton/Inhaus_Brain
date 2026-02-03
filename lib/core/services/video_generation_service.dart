@@ -264,7 +264,7 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.2.3-RECURSIVE-VERIFIED";
+    const String deployVersion = "1.0.3-CLEAN-BUILD";
     
     debugPrint('VideoService: ⚠️ FORCE RELOAD CHECK: Running v$deployVersion');
     
@@ -351,18 +351,34 @@ class VideoGenerationService {
                  debugPrint('Veo full response: ${jsonEncode(data)}');
 
                  // 1. Recursive Search for any known video key
-                 final foundUrl = _findKeyRecursive(data, ['gcsUri', 'uri', 'url', 'videoUri', 'outputUri', 'output_uri', 'video']);
+                 final foundUrl = _findKeyRecursive(data, [
+                   'gcsUri', 'uri', 'url', 'videoUri', 'outputUri', 'output_uri', 'video', 'bytesBase64Encoded'
+                 ]);
+                 
                  if (foundUrl != null && foundUrl.toString().isNotEmpty) {
-                    // Sometimes 'video' key returns an object, we need to check inside it if it wasn't flattened
+                    // Handle Base64 Binary Response (common in veo-3.0-fast-generate-preview)
+                    if (foundUrl.toString().length > 100 && !foundUrl.toString().startsWith('http') && !foundUrl.toString().startsWith('gs://')) {
+                       debugPrint('VideoService: ✅ Base64 video data detected (${foundUrl.toString().length} chars)');
+                       onProgress?.call(1.0);
+                       onStatusMessage?.call('Video ready!');
+                       return 'data:video/mp4;base64,${foundUrl.toString().trim()}';
+                    }
+
+                    // Handle Nested Objects
                     if (foundUrl is Map) {
-                       final nestedUrl = _findKeyRecursive(foundUrl, ['uri', 'url', 'gcsUri']);
+                       final nestedUrl = _findKeyRecursive(foundUrl, ['uri', 'url', 'gcsUri', 'bytesBase64Encoded']);
                        if (nestedUrl != null) {
+                          if (nestedUrl.toString().length > 100 && !nestedUrl.toString().startsWith('http')) {
+                             debugPrint('VideoService: ✅ Base64 video data extracted from nested object');
+                             onProgress?.call(1.0);
+                             return 'data:video/mp4;base64,${nestedUrl.toString().trim()}';
+                          }
                           debugPrint('VideoService: ✅ Video URL extracted from nested object: $nestedUrl');
                           onProgress?.call(1.0);
                           return _sanitizeMediaUrl(nestedUrl.toString());
                        }
                     } else if (foundUrl is String) {
-                        debugPrint('VideoService: ✅ Video URL found recursively: $foundUrl');
+                        debugPrint('VideoService: ✅ Video found recursively: ${foundUrl.toString().substring(0, 30)}...');
                         onProgress?.call(1.0);
                         onStatusMessage?.call('Video ready!');
                         return _sanitizeMediaUrl(foundUrl.toString());

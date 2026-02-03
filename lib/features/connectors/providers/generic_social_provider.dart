@@ -11,6 +11,12 @@ class GenericSocialProvider implements SocialConnector {
   AdPlatform get platform => _platform;
 
   @override
+  Future<ConnectedAccount?> connect(String clientId) async {
+    // TODO: Implement generic OAuth or manual token entry
+    return null;
+  }
+
+  @override
   Future<List<UnifiedPost>> getPosts(
       ConnectedAccount account, DateTime start, DateTime end) async {
     // START MOCK

@@ -59,11 +59,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final appUser = appUserAsync.value;
 
       if (!isLoggedIn && !isLoggingIn) return '/login';
-      if (isLoggedIn && !onboardingCompleted && !isOnboarding) return '/onboarding';
+      // if (isLoggedIn && !onboardingCompleted && !isOnboarding) return '/onboarding';
       if (isLoggedIn && isLoggingIn) return '/';
       
       // If completed but trying to go to onboarding, redirect home
-      if (isLoggedIn && onboardingCompleted && isOnboarding) return '/';
+      // if (isLoggedIn && onboardingCompleted && isOnboarding) return '/';
 
       // RBAC: Client User Restrictions
       if (isLoggedIn && appUser?.role == UserRole.clientUser) {

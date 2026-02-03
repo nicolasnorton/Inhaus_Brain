@@ -39,6 +39,15 @@ class IntegrationService {
   
   BaseConnector? _getConnector(AdPlatform platform) => _connectors[platform];
 
+  /// Initiate a new connection (Oauth Flow)
+  Future<ConnectedAccount?> initiateConnection(AdPlatform platform, String clientId) async {
+    final connector = _getConnector(platform);
+    if (connector == null) {
+      throw Exception('No connector found for platform: $platform');
+    }
+    return await connector.connect(clientId);
+  }
+
   /// Core Method: Pull Data based on Account Type
   Future<Map<String, dynamic>> syncDataForAccount(
       ConnectedAccount account, DateTime start, DateTime end) async {

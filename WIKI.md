@@ -98,6 +98,15 @@ Inhaus Brain deploys dedicated agents for specific operational tasks, governed b
 *   **Knowledge Maintainer**: A background agent that curates the Knowledge Base, identifying gaps (e.g., "Missing Brand Tone") and suggesting web searches to fill them.
 *   **Reports Orchestrator**: An expert analyst that transforms raw data into narrative-driven insights, explaining *why* numbers changed, not just *what* happened.
 
+### 11. 🧭 Antigravity Agent Skills
+To ensure consistent quality, safety, and cultural relevance, all agents operate using a unified **Skills System**. These reusable modules enforce strict guidelines:
+
+*   **Cultural Safety**: Automatically adapts all content to be Ecuadorian/LatAm neutral, avoiding stereotypes and ensuring regional relevance.
+*   **Privacy Compliance**: Redacts PII (emails, phones, IDs) from logs and external API calls before processing.
+*   **Confidence Gates**: If an agent is less than 85% confident in a fact or code snippet, it will explicitly flag it or refuse the task rather than hallucinating.
+*   **LiteRT Prediction**: Prioritizes fast, on-device models for drafts (text/code/video) to give you instant feedback (<2s) before using expensive cloud resources.
+*   **Bilingual Output**: Enforces strict English/Spanish structural parity for all reports and client-facing text.
+
 ---
 
 ## 🧱 Node Reference (The Building Blocks)

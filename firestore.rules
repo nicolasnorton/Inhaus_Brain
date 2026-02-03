@@ -90,10 +90,16 @@ service cloud.firestore {
       }
     }
     
+    // CLIENTS MODULE RULES
+    match /clients/{clientId} {
+      allow create, update, delete: if isAgencyStaff();
+      allow read: if isAgencyStaff() || (isClient() && clientId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedClientIds);
+    }
+
     // USER PROFILES & USER KNOWLEDGE
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
       allow update, delete: if isOwner(userId);
 
       // User-specific Knowledge (Reference from summary)

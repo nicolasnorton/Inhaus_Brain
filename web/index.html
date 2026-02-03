@@ -41,7 +41,7 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (registrations) {
         for (let registration of registrations) {
-          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.2.3)");
+          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.2.4)");
           registration.unregister().then(function (boolean) {
             console.log("Service Worker unregistered: ", boolean);
             // Optional: force reload if we found one
@@ -51,7 +51,48 @@
       });
     }
   </script>
-  <script src="flutter_bootstrap.js?v=1.2.3" async></script>
+  <!-- Facebook SDK for Meta Ads Auth -->
+  <script>
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId: '1104740131750613',
+        cookie: true,
+        xfbml: true,
+        version: 'v19.0'
+      });
+
+      FB.AppEvents.logPageView();
+
+      FB.getLoginStatus(function (response) {
+        statusChangeCallback(response);
+      });
+    };
+
+    function checkLoginState() {
+      FB.getLoginStatus(function (response) {
+        statusChangeCallback(response);
+      });
+    }
+
+    function statusChangeCallback(response) {
+      console.log('FB Status Change Callback: ', response);
+      if (response.status === 'connected') {
+        console.log("User is successfully connected to Facebook.");
+      } else {
+        console.log("User is not logged in/connected.");
+      }
+    }
+
+    (function (d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) { return; }
+      js = d.createElement(s); js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+  </script>
+
+  <script src="flutter_bootstrap.js?v=1.0.3-FINAL" async></script>
   </body>
 
 </html>
