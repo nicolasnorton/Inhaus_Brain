@@ -66,7 +66,7 @@ class ClientListScreen extends ConsumerWidget {
                   ),
                   if (isAdmin)
                     ElevatedButton.icon(
-                      onPressed: () => _showAddClientDialog(context, ref),
+                      onPressed: () => context.go('/clients/new'),
                       icon: const Icon(Icons.add),
                       label: Text(AppLocalizations.of(context)!.addClient),
                       style: ElevatedButton.styleFrom(
@@ -138,7 +138,11 @@ class ClientListScreen extends ConsumerWidget {
                   color: Colors.blueAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const FaIcon(FontAwesomeIcons.building, color: Colors.blueAccent, size: 20),
+                child: FaIcon(
+                  client.clientType == ClientType.corporate ? FontAwesomeIcons.building : FontAwesomeIcons.userTie,
+                  color: Colors.blueAccent, 
+                  size: 20
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -148,6 +152,8 @@ class ClientListScreen extends ConsumerWidget {
                     Text(
                       client.name,
                       style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       client.industry,
@@ -185,69 +191,6 @@ class ClientListScreen extends ConsumerWidget {
                 child: Text(AppLocalizations.of(context)!.manageClient),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddClientDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final industryController = TextEditingController();
-    final emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).cardColor,
-        title: Text(AppLocalizations.of(context)!.addNewClient),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.clientNameLabel),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: industryController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.industryLabel),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.contactEmail),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              final industry = industryController.text.trim();
-              if (name.isEmpty || industry.isEmpty) return;
-
-              try {
-                // Show a mini loading state or just await
-                await ref.read(clientProvider.notifier).addClient(
-                  name,
-                  industry,
-                  email: emailController.text.trim(),
-                );
-                if (context.mounted) Navigator.pop(context);
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error creating client: $e")),
-                  );
-                }
-              }
-            },
-            child: Text(AppLocalizations.of(context)!.addClient),
           ),
         ],
       ),

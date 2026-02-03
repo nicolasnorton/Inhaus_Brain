@@ -76,13 +76,17 @@ Generate high-fidelity branded video assets using an exclusive **Google DeepMind
 ### 7. 🐛 Debug Tools (The Inspector)
 This area helps you fix problems. You can watch exactly how information moves through your workflow, inspect variables in real-time, and see a step-by-step history of every time your workflow has run.
 
-### 8. 🏢 Client Module (Portfolio Management)
-This module allows you to manage your client relationships and projects with production-grade data isolation:
-*   **Projects**: Organize work into specific project plans for each client.
-*   **Detail Views**: A tabbed interface allows you to switch between **Overview**, **Projects**, **Tasks**, **Integrations**, and **Reports**.
+### 8. 🏢 Client Module (Production Grade)
+This module allows you to manage diverse client portfolios with specialized support for both entities and individuals:
+*   **Dual-Type Support**: 
+    *   **Corporate**: For companies and agencies. Tracks **Legal Name**, **Tax ID (RUC)**, **Company Size**, and **Fiscal Address**.
+    *   **Independent**: For freelancers and consultants. Tracks **Profession**, **Personal ID**, **Portfolio URL**, and **Birth Date**.
+*   **Wizard Onboarding**: A streamlined 2-step creation workflow ensures accurate data entry for each client type.
+*   **Deep Profile Views**: Dedicated overview screens display all legal and contact details at a glance.
+*   **Projects & Tasks**: Organize work into specific project plans for each client.
 *   **Integrations**: Connect client workspaces to **Google Ads**, **Meta Ads**, **TikTok**, and **Google Analytics** for automated data syncing.
-*   **Data Ingestion**: The system automatically pulls performance metrics every 24 hours and stores them for historical analysis.
-*   **Client Context**: All reports and dashboards are automatically filtered by the selected client, ensuring no data leakage.
+*   **Data Ingestion**: The system automatically pulls performance metrics every 24 hours.
+*   **Context Isolation**: All reports and dashboards are automatically filtered by the selected client, ensuring zero data leakage.
 
 ### 9. 📈 Analytics & Reporting Hub
 A centralized command center for data-driven decision making:

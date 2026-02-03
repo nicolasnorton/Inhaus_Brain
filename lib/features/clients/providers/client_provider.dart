@@ -64,16 +64,42 @@ class ClientNotifier extends StateNotifier<ClientState> {
     state = state.copyWith(selectedClientId: clientId);
   }
 
-  Future<void> addClient(String name, String industry, {String? email, String? website, String? address, String? size, String? description}) async {
+  Future<void> addClient({
+    required String name,
+    required ClientType clientType,
+    required String industry,
+    String? email,
+    String? website,
+    String? address,
+    String? fiscalAddress,
+    String? size,
+    String? description,
+    String? legalName,
+    String? taxId,
+    String? profession,
+    String? personalTaxId,
+    String? portfolioUrl,
+    String? linkedinUrl,
+    DateTime? birthDate,
+  }) async {
     final newClient = Client(
       id: const Uuid().v4(),
       name: name,
+      clientType: clientType,
       industry: industry,
       primaryContactEmail: email,
       website: website,
       address: address,
+      fiscalAddress: fiscalAddress,
       size: size,
       description: description,
+      legalName: legalName,
+      taxId: taxId,
+      profession: profession,
+      personalTaxId: personalTaxId,
+      portfolioUrl: portfolioUrl,
+      linkedinUrl: linkedinUrl,
+      birthDate: birthDate,
     );
     
     // Optimistic update not strictly needed with stream, but good for responsiveness if stream is slow

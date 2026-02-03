@@ -14,12 +14,24 @@ class ClientEditScreen extends ConsumerStatefulWidget {
 
 class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
   final _formKey = GlobalKey<FormState>();
+  
+  // Controllers
   late TextEditingController _nameController;
   late TextEditingController _industryController;
   late TextEditingController _emailController;
   late TextEditingController _websiteController;
   late TextEditingController _addressController;
   late TextEditingController _descriptionController;
+
+  // New Fields
+  late TextEditingController _legalNameController;
+  late TextEditingController _taxIdController;
+  late TextEditingController _fiscalAddressController;
+  late TextEditingController _sizeController;
+  late TextEditingController _professionController;
+  late TextEditingController _personalTaxIdController;
+  late TextEditingController _portfolioController;
+  late TextEditingController _linkedinController;
   
   Map<String, dynamic> _customFields = {};
   final List<TextEditingController> _customKeyControllers = [];
@@ -38,6 +50,16 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
     _addressController = TextEditingController(text: client.address ?? '');
     _descriptionController = TextEditingController(text: client.description ?? '');
     
+    // New Fields Init
+    _legalNameController = TextEditingController(text: client.legalName ?? '');
+    _taxIdController = TextEditingController(text: client.taxId ?? '');
+    _fiscalAddressController = TextEditingController(text: client.fiscalAddress ?? '');
+    _sizeController = TextEditingController(text: client.size ?? '');
+    _professionController = TextEditingController(text: client.profession ?? '');
+    _personalTaxIdController = TextEditingController(text: client.personalTaxId ?? '');
+    _portfolioController = TextEditingController(text: client.portfolioUrl ?? '');
+    _linkedinController = TextEditingController(text: client.linkedinUrl ?? '');
+
     _customFields = Map.from(client.customFields);
     _customFields.forEach((key, value) {
       _customKeyControllers.add(TextEditingController(text: key));
@@ -53,6 +75,14 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
     _websiteController.dispose();
     _addressController.dispose();
     _descriptionController.dispose();
+    _legalNameController.dispose();
+    _taxIdController.dispose();
+    _fiscalAddressController.dispose();
+    _sizeController.dispose();
+    _professionController.dispose();
+    _personalTaxIdController.dispose();
+    _portfolioController.dispose();
+    _linkedinController.dispose();
     for (var c in _customKeyControllers) {
       c.dispose();
     }
@@ -98,6 +128,14 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
       website: _websiteController.text.trim(),
       address: _addressController.text.trim(),
       description: _descriptionController.text.trim(),
+      legalName: _legalNameController.text.trim(),
+      taxId: _taxIdController.text.trim(),
+      fiscalAddress: _fiscalAddressController.text.trim(),
+      size: _sizeController.text.trim(),
+      profession: _professionController.text.trim(),
+      personalTaxId: _personalTaxIdController.text.trim(),
+      portfolioUrl: _portfolioController.text.trim(),
+      linkedinUrl: _linkedinController.text.trim(),
       customFields: updatedCustomFields,
     );
 
@@ -107,10 +145,17 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get client type to show relevant fields
+    final clientState = ref.watch(clientProvider);
+    final client = clientState.clients.firstWhere((c) => c.id == widget.clientId, orElse: () => Client(id: 'err', name: 'Error', industry: 'Err'));
+    if (client.id == 'err') return const Scaffold(body: Center(child: Text("Client not found")));
+
+    final isCorporate = client.clientType == ClientType.corporate;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1116),
       appBar: AppBar(
-        title: const Text('Edit Client Company Info'),
+        title: const Text('Edit Client Info'),
         backgroundColor: const Color(0xFF0F1116),
         actions: [
           TextButton(
@@ -127,19 +172,40 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildSectionTitle('Basic Information'),
-              _buildTextField('Client Name', _nameController, isRequired: true),
+              _buildTextField(isCorporate ? 'Company Name' : 'Full Name', _nameController, isRequired: true),
               const SizedBox(height: 16),
-              _buildTextField('Industry', _industryController, isRequired: true),
+              _buildTextField(isCorporate ? 'Industry' : 'Profession/Title', isCorporate ? _industryController : _professionController, isRequired: true),
               const SizedBox(height: 32),
               
-              _buildSectionTitle('Company Details'),
+              _buildSectionTitle('Legal & Fiscal'),
+              if (isCorporate) ...[
+                _buildTextField('Legal Name (Razón Social)', _legalNameController),
+                const SizedBox(height: 16),
+                _buildTextField('Tax ID (RUC)', _taxIdController),
+                const SizedBox(height: 16),
+                _buildTextField('Fiscal Address', _fiscalAddressController),
+                 const SizedBox(height: 16),
+                 _buildTextField('Company Size', _sizeController),
+              ] else ...[
+                 _buildTextField('Personal Tax ID (Cédula/RUC)', _personalTaxIdController),
+                 const SizedBox(height: 16),
+              ],
+              const SizedBox(height: 32),
+
+              _buildSectionTitle('Contact & Profile'),
               _buildTextField('Contact Email', _emailController),
               const SizedBox(height: 16),
-              _buildTextField('Website', _websiteController, hint: 'https://...'),
-              const SizedBox(height: 16),
-              _buildTextField('Office Address', _addressController),
-              const SizedBox(height: 16),
-              _buildTextField('Company Description', _descriptionController, maxLines: 3),
+              if (isCorporate) ...[
+                _buildTextField('Office Address', _addressController),
+                const SizedBox(height: 16),
+                _buildTextField('Website', _websiteController, hint: 'https://...'),
+              ] else ...[
+                _buildTextField('Portfolio URL', _portfolioController),
+                const SizedBox(height: 16),
+                _buildTextField('LinkedIn Profile', _linkedinController),
+              ],
+               const SizedBox(height: 16),
+              _buildTextField('Description / Notes', _descriptionController, maxLines: 3),
               const SizedBox(height: 32),
               
               Row(
@@ -154,7 +220,7 @@ class _ClientEditScreenState extends ConsumerState<ClientEditScreen> {
                 ],
               ),
               const Text(
-                'Add specific attributes like Taxes, Region, or Segment.',
+                'Add specific attributes like specific taxes, region, or segment.',
                 style: TextStyle(color: Colors.white24, fontSize: 12),
               ),
               const SizedBox(height: 16),
