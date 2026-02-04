@@ -335,16 +335,16 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         children: [
           IconButton(
-            onPressed: () {}, // Close flow?
+            onPressed: () => Navigator.of(context).pop(), // Close flow
             icon: const Icon(Icons.close, color: Colors.white38),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           Text(
-            AppLocalizations.of(context)!.createKnowledge.toUpperCase(),
+             AppLocalizations.of(context)!.createKnowledge.toUpperCase(),
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.1),
           ),
           const Spacer(),
@@ -377,7 +377,7 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
@@ -388,9 +388,9 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
 
   Widget _buildStepConnector(bool isActive) {
     return Container(
-      width: 40,
+      width: 24,
       height: 1,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
       color: isActive ? Colors.blueAccent : Colors.white10,
     );
   }

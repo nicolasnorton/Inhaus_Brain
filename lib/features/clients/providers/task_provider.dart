@@ -31,6 +31,8 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
         description: 'Create initial wireframes for the homepage.',
         status: TaskStatus.done,
         dueDate: DateTime.now().subtract(const Duration(days: 2)),
+        createdAt: DateTime.now().subtract(const Duration(days: 5)),
+        updatedAt: DateTime.now().subtract(const Duration(days: 3)),
       ),
       ProjectTask(
         id: 'task-2',
@@ -39,6 +41,8 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
         description: 'Style the wireframes with new brand colors.',
         status: TaskStatus.inProgress,
         dueDate: DateTime.now().add(const Duration(days: 5)),
+        createdAt: DateTime.now().subtract(const Duration(hours: 12)),
+        updatedAt: DateTime.now(),
       ),
       ProjectTask(
         id: 'task-3',
@@ -47,6 +51,8 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
         description: 'Sketch 5 different logo directions.',
         status: TaskStatus.todo,
         dueDate: DateTime.now().add(const Duration(days: 7)),
+        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+        updatedAt: DateTime.now(),
       ),
     ];
     _persistenceService.saveTasks(state);
@@ -57,13 +63,13 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
     String? assigneeId,
     String? priorityStr,
     String? sectionId,
+    String? parentId, // Added this
     List<String>? tags,
   }) async {
     final priority = TaskPriority.values.firstWhere(
       (e) => e.toString() == 'TaskPriority.${priorityStr?.toLowerCase() ?? 'medium'}',
       orElse: () => TaskPriority.medium,
     );
-
     final newTask = ProjectTask(
       id: const Uuid().v4(),
       projectId: projectId,
@@ -73,7 +79,10 @@ class TaskNotifier extends StateNotifier<List<ProjectTask>> {
       assigneeId: assigneeId,
       priority: priority,
       sectionId: sectionId,
+      parentId: parentId, // Added this
       tags: tags ?? [],
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
     state = [...state, newTask];
     await _persistenceService.saveTasks(state);

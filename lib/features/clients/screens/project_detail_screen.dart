@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:inhaus_brain/core/services/project_sync_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/project_model.dart';
@@ -7,6 +8,7 @@ import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../models/task_model.dart';
 import '../providers/project_provider.dart';
 import '../providers/task_provider.dart';
+import 'client_task_detail_pane.dart';
 
 class ProjectDetailScreen extends ConsumerStatefulWidget {
   final String projectId;
@@ -21,6 +23,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   bool _isCalendarView = false;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  String? _selectedTaskId; // To track open detail pane
   
   // Dialog State
   DateTime? _selectedDueDate;
@@ -83,15 +86,29 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
           ),
         ],
       ),
-      body: _isCalendarView 
-          ? _buildCalendarView(project)
-          : (_isBoardView ? _buildKanbanView(project) : _buildListView(project)),
+      body: Row(
+        children: [
+          Expanded(
+            child: _isCalendarView 
+                ? _buildCalendarView(project)
+                : (_isBoardView ? _buildKanbanView(project) : _buildListView(project)),
+          ),
+          if (_selectedTaskId != null && ref.watch(taskProvider).any((t) => t.id == _selectedTaskId)) ...[
+             const VerticalDivider(width: 1, color: Colors.white12),
+             ClientTaskDetailPane(
+               task: ref.watch(taskProvider).firstWhere((t) => t.id == _selectedTaskId),
+               onClose: () => setState(() => _selectedTaskId = null),
+               onTaskSelected: (id) => setState(() => _selectedTaskId = id),
+             ),
+          ],
+        ],
+      ),
     );
   }
 
   Widget _buildKanbanView(Project project) {
     final allTasks = ref.watch(taskProvider);
-    final tasks = allTasks.where((t) => t.projectId == project.id).toList();
+    final tasks = allTasks.where((t) => t.projectId == project.id && t.parentId == null).toList();
 
     return ListView.builder(
       scrollDirection: Axis.horizontal,
@@ -218,7 +235,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   
   Widget _buildListView(Project project) {
     final allTasks = ref.watch(taskProvider);
-    final tasks = allTasks.where((t) => t.projectId == project.id).toList();
+    final tasks = allTasks.where((t) => t.projectId == project.id && t.parentId == null).toList();
     
     // Group by section for list view? Or just flat? Let's do grouped.
     return ListView.builder(
@@ -292,8 +309,18 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
         ),
         childWhenDragging: Opacity(opacity: 0.3, child: card),
         child: GestureDetector(
-          onTap: () => _showEditTaskDialog(task, project),
-          child: card,
+          onTap: () {
+             setState(() {
+               _selectedTaskId = task.id;
+             });
+          },
+          child: Container(
+            decoration: BoxDecoration(
+               border: _selectedTaskId == task.id ? Border.all(color: Colors.blueAccent, width: 2) : null,
+               borderRadius: BorderRadius.circular(8),
+            ),
+            child: card,
+          ),
         ),
      );
   }
@@ -341,7 +368,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
 
   Widget _buildCalendarView(Project project) {
     final allTasks = ref.watch(taskProvider);
-    final tasks = allTasks.where((t) => t.projectId == project.id).toList();
+    final tasks = allTasks.where((t) => t.projectId == project.id && t.parentId == null).toList();
 
     return Column(
       children: [
@@ -441,68 +468,170 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
     final titleController = TextEditingController();
     String selectedSection = initialSection ?? project.sections.first;
     TaskPriority selectedPriority = TaskPriority.medium;
-    _selectedDueDate = null; // Reset for new task
+    _selectedDueDate = null;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF111111),
-          title: Text(AppLocalizations.of(context)!.addTask, style: const TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleController, decoration: InputDecoration(labelText: AppLocalizations.of(context)!.taskTitle), style: const TextStyle(color: Colors.white)),
-              const SizedBox(height: 16),
-              DropdownButton<String>(
-                value: selectedSection,
-                dropdownColor: const Color(0xFF111111),
-                isExpanded: true,
-                items: project.sections.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(color: Colors.white)))).toList(),
-                onChanged: (val) => setDialogState(() => selectedSection = val!),
-              ),
-              const SizedBox(height: 16),
-              DropdownButton<TaskPriority>(
-                value: selectedPriority,
-                dropdownColor: const Color(0xFF111111),
-                isExpanded: true,
-                items: TaskPriority.values.map((p) => DropdownMenuItem(value: p, child: Text(_getPriorityText(context, p).toUpperCase(), style: const TextStyle(color: Colors.white)))).toList(),
-                onChanged: (val) => setDialogState(() => selectedPriority = val!),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_selectedDueDate == null ? 'Set Due Date' : 'Due: ${_selectedDueDate!.toLocal().toString().split(' ')[0]}', style: const TextStyle(color: Colors.white70)),
-                trailing: const Icon(Icons.calendar_today, color: Colors.white38, size: 18),
-                onTap: () async {
-                   final picked = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) setDialogState(() => _selectedDueDate = picked);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel)),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(taskProvider.notifier).addTask(
-                  project.id,
-                  titleController.text,
-                  '',
-                  sectionId: selectedSection,
-                  priorityStr: selectedPriority.name,
-                  dueDate: _selectedDueDate,
-                );
-                Navigator.pop(context);
-              },
-              child: Text(AppLocalizations.of(context)!.addLabel),
+        builder: (context, setDialogState) => Dialog(
+          backgroundColor: const Color(0xFF1E2128),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            width: 500,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                     const Text('New Task', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                     IconButton(icon: const Icon(Icons.close, color: Colors.white54), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // Title Input
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: TextField(
+                    controller: titleController,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Task Title',
+                      hintStyle: TextStyle(color: Colors.white38),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Fields Row
+                Row(
+                  children: [
+                    // Section Selector
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedSection,
+                            dropdownColor: const Color(0xFF2C2F36),
+                            icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
+                            items: project.sections.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 14)))).toList(),
+                            onChanged: (val) => setDialogState(() => selectedSection = val!),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Priority Selector
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<TaskPriority>(
+                            value: selectedPriority,
+                            dropdownColor: const Color(0xFF2C2F36),
+                            icon: const Icon(Icons.flag_outlined, color: Colors.white54),
+                            items: TaskPriority.values.map((p) => DropdownMenuItem(value: p, child: Row(
+                              children: [
+                                Icon(Icons.flag, size: 14, color: p == TaskPriority.urgent ? Colors.red : Colors.white54),
+                                const SizedBox(width: 8),
+                                Text(_getPriorityText(context, p), style: const TextStyle(color: Colors.white, fontSize: 14)),
+                              ],
+                            ))).toList(),
+                            onChanged: (val) => setDialogState(() => selectedPriority = val!),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Due Date Button
+                InkWell(
+                  onTap: () async {
+                     final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2030),
+                      builder: (context, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: Colors.blueAccent)), child: child!),
+                    );
+                    if (picked != null) setDialogState(() => _selectedDueDate = picked);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, color: Colors.white54, size: 16),
+                        const SizedBox(width: 12),
+                        Text(
+                          _selectedDueDate == null ? 'Set Due Date' : DateFormat.yMMMd().format(_selectedDueDate!),
+                          style: TextStyle(color: _selectedDueDate == null ? Colors.white54 : Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Actions
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: Text(AppLocalizations.of(context)!.cancel, style: const TextStyle(color: Colors.white54))),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () {
+                        if (titleController.text.trim().isEmpty) return;
+                        ref.read(taskProvider.notifier).addTask(
+                          project.id,
+                          titleController.text,
+                          '',
+                          sectionId: selectedSection,
+                          priorityStr: selectedPriority.name,
+                          dueDate: _selectedDueDate,
+                        );
+                        Navigator.pop(context);
+                      },
+                      child: Text(AppLocalizations.of(context)!.addLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

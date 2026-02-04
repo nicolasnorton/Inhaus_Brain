@@ -4,6 +4,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inhaus_brain/features/clients/models/client_model.dart';
 import 'package:inhaus_brain/features/clients/providers/client_provider.dart';
+import 'client_projects_screen.dart';
+import 'client_tasks_screen.dart';
+import 'client_integrations_screen.dart';
+import 'client_reports_screen.dart';
 
 class ClientDetailScreen extends ConsumerStatefulWidget {
   final String clientId;
@@ -263,40 +267,4 @@ class _InfoItem extends StatelessWidget {
   }
 }
 
-class ClientProjectsScreen extends StatelessWidget {
-  final String clientId;
-  const ClientProjectsScreen({super.key, required this.clientId});
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Client Projects'));
-  }
-}
-
-class ClientTasksScreen extends StatelessWidget {
-  final String clientId;
-  const ClientTasksScreen({super.key, required this.clientId});
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Client Tasks'));
-  }
-}
-
-// ClientIntegrationsScreen will be beefed up later
-class ClientIntegrationsScreen extends StatelessWidget {
-  final String clientId;
-  const ClientIntegrationsScreen({super.key, required this.clientId});
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Client Integrations Management'));
-  }
-}
-
-// ClientReportsScreen will be beefed up later
-class ClientReportsScreen extends StatelessWidget {
-  final String clientId;
-  const ClientReportsScreen({super.key, required this.clientId});
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Client Reports'));
-  }
-}
+// End of file

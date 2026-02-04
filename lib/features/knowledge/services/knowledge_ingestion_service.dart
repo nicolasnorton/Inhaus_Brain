@@ -36,12 +36,48 @@ Custom Fields: ${client.customFields}
                      platform == AdPlatform.googleAnalytics ? KnowledgeSourceType.ga4 : 
                      KnowledgeSourceType.text;
 
+    // Parse structured data if possible to make it more LLM-friendly
+    final formattedText = _formatStructuredData(rawData, sourceType);
+
     await _knowledgeApi.createDocumentFromText(
       datasetId: 'platform-intelligence-$clientId',
       name: '${platform.name} Sync ${DateTime.now().toIso8601String()}',
-      text: rawData,
-      chunkSize: _calculateChunkSize(sourceType, rawData),
+      text: formattedText,
+      chunkSize: _calculateChunkSize(sourceType, formattedText),
     );
+  }
+
+  String _formatStructuredData(String raw, KnowledgeSourceType type) {
+    // Basic CSV/JSON heuristic to make data more readable for embedding
+    try {
+      if (raw.trim().startsWith('{') || raw.trim().startsWith('[')) {
+        // Pretty print JSON? For now, we rely on the raw structure but we could flatten it.
+        // TODO: Implement proper JSON flattening for RAG
+        return "Source: ${type.name}\nData Type: JSON\nContent:\n$raw";
+      } else if (raw.contains(',')) {
+        // Assume CSV
+        final lines = raw.split('\n');
+        if (lines.isNotEmpty) {
+           final headers = lines.first.split(',');
+           final buffer = StringBuffer();
+           buffer.writeln("Source: ${type.name} (CSV Report)");
+           for (var i = 1; i < lines.length; i++) {
+              final values = lines[i].split(',');
+              if (values.length == headers.length) {
+                 buffer.writeln("Record ${i}:");
+                 for (var j = 0; j < headers.length; j++) {
+                    buffer.writeln(" - ${headers[j].trim()}: ${values[j].trim()}");
+                 }
+                 buffer.writeln("---");
+              }
+           }
+           return buffer.toString();
+        }
+      }
+    } catch (e) {
+      debugPrint('Structured parsing failed: $e');
+    }
+    return raw; // Fallback
   }
 
   Future<void> ingestProject(Project project, List<ProjectTask> tasks) async {

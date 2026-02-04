@@ -101,9 +101,18 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _currentStep == 0 ? _buildTypeSelection() : _buildForm(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width > 800
+                    ? MediaQuery.of(context).size.width * 0.6
+                    : double.infinity,
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _currentStep == 0 ? _buildTypeSelection() : _buildForm(),
+              ),
+            ),
           ),
         ),
       ),
@@ -263,19 +272,24 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, {bool isRequired = false, int maxLines = 1}) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white38),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    return Center(
+      child: FractionallySizedBox(
+        widthFactor: 0.85,
+        child: TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.05),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+          validator: isRequired ? (value) => (value == null || value.isEmpty) ? 'Required' : null : null,
+        ),
       ),
-      validator: isRequired ? (value) => (value == null || value.isEmpty) ? 'Required' : null : null,
     );
   }
 }

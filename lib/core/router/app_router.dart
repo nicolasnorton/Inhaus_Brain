@@ -13,6 +13,10 @@ import '../../features/creative/creative_studio_screen.dart';
 import '../../features/clients/screens/client_list_screen.dart';
 import '../../features/clients/screens/client_create_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
+import '../../features/clients/screens/client_projects_screen.dart'; // Added
+import '../../features/clients/screens/client_tasks_screen.dart';    // Added
+import '../../features/clients/screens/client_integrations_screen.dart'; // Added
+import '../../features/clients/screens/client_reports_screen.dart';      // Added
 import '../../features/clients/screens/client_edit_screen.dart';
 import '../../features/analytics/screens/analytics_monitor_screen.dart'; // Ensure this exists
 import '../../features/adk/screens/pipeline_builder_screen.dart';

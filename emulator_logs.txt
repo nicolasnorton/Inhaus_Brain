@@ -12,7 +12,7 @@ i  functions: Watching "/Users/nicolasnorton/AudioTherapy/audio_therapy_app/Inha
 ✔  functions: Using node@22 from host.
 i  functions: Loaded environment variables from .env.
 i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly
-Serving at port 8013
+Serving at port 8263
 
 ✔  functions: Loaded functions definitions from source: onCampaignCreated, onUserUpdated, generateFinalAssets, proxyVertexAI, copilotRuntime.
 ✔  functions[us-central1-onCampaignCreated]: firestore function initialized.
@@ -62,158 +62,51 @@ i  functions: Beginning execution of "us-central1-onUserUpdated"
 >    },
 >    codePrefix: 'auth'
 >  }
-i  functions: Finished "us-central1-onUserUpdated" in 537.116375ms
+i  functions: Finished "us-central1-onUserUpdated" in 536.808958ms
 i  functions: Loaded environment variables from .env.
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 1.426833ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1.703667ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
 ⚠  Google API requested!
    - URL: "https://oauth2.googleapis.com/token"
    - Be careful, this may be a production service.
-i  functions: Finished "us-central1-proxyVertexAI" in 1568.9059160000002ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1576.1329580000001ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
->  [PROXY] Polling Operation via SDK: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling LRO via REST: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling operation: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🎬 UUID operation detected - Model Garden operation
->  [PROXY] 📋 Full operation name (preserved): projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🔍 Operation ID (UUID): 41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 📊 [TELEMETRY] veo_poll_start: operation=projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast, timestamp=2026-02-03T17:35:31.507Z
->  [PROXY] 🎯 Model: veo-3.0-fast-generate-preview
->  [PROXY] 🔄 Polling method: fetchPredictOperation (POST)
->  [PROXY] 🌐 Endpoint: https://us-central1-aiplatform.googleapis.com/v1/projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview:fetchPredictOperation
->  [PROXY] 📤 Request body: {"operationName":"projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"}
->  [PROXY] 📡 Response status: 200
->  [PROXY] ✅ fetchPredictOperation successful
->  [PROXY] ⏱️ Poll duration: 866ms
->  [PROXY] 📋 Operation status: done=false
->  [PROXY] 🔍 Full operation response: {
->    "name": "projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"
->  }
->  [PROXY] 📊 [TELEMETRY] veo_poll_success: duration=866ms, done=false, operation=41193355-6cc1-4ddd-afe9-b238cdb7d582
-i  functions: Finished "us-central1-proxyVertexAI" in 1181.877833ms
+i  functions: Finished "us-central1-proxyVertexAI" in 7.764791ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
->  [PROXY] Polling Operation via SDK: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling LRO via REST: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling operation: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🎬 UUID operation detected - Model Garden operation
->  [PROXY] 📋 Full operation name (preserved): projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🔍 Operation ID (UUID): 41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 📊 [TELEMETRY] veo_poll_start: operation=projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast, timestamp=2026-02-03T17:35:42.735Z
->  [PROXY] 🎯 Model: veo-3.0-fast-generate-preview
->  [PROXY] 🔄 Polling method: fetchPredictOperation (POST)
->  [PROXY] 🌐 Endpoint: https://us-central1-aiplatform.googleapis.com/v1/projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview:fetchPredictOperation
->  [PROXY] 📤 Request body: {"operationName":"projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"}
->  [PROXY] 📡 Response status: 200
->  [PROXY] ✅ fetchPredictOperation successful
->  [PROXY] ⏱️ Poll duration: 777ms
->  [PROXY] 📋 Operation status: done=false
->  [PROXY] 🔍 Full operation response: {
->    "name": "projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"
->  }
->  [PROXY] 📊 [TELEMETRY] veo_poll_success: duration=777ms, done=false, operation=41193355-6cc1-4ddd-afe9-b238cdb7d582
-i  functions: Finished "us-central1-proxyVertexAI" in 1128.144417ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1421.283625ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
->  [PROXY] Polling Operation via SDK: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling LRO via REST: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling operation: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🎬 UUID operation detected - Model Garden operation
->  [PROXY] 📋 Full operation name (preserved): projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🔍 Operation ID (UUID): 41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 📊 [TELEMETRY] veo_poll_start: operation=projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast, timestamp=2026-02-03T17:35:53.843Z
->  [PROXY] 🎯 Model: veo-3.0-fast-generate-preview
->  [PROXY] 🔄 Polling method: fetchPredictOperation (POST)
->  [PROXY] 🌐 Endpoint: https://us-central1-aiplatform.googleapis.com/v1/projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview:fetchPredictOperation
->  [PROXY] 📤 Request body: {"operationName":"projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"}
->  [PROXY] 📡 Response status: 200
->  [PROXY] ✅ fetchPredictOperation successful
->  [PROXY] ⏱️ Poll duration: 847ms
->  [PROXY] 📋 Operation status: done=false
->  [PROXY] 🔍 Full operation response: {
->    "name": "projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"
->  }
->  [PROXY] 📊 [TELEMETRY] veo_poll_success: duration=847ms, done=false, operation=41193355-6cc1-4ddd-afe9-b238cdb7d582
-i  functions: Finished "us-central1-proxyVertexAI" in 1171.933875ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1158.113459ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
->  [PROXY] Polling Operation via SDK: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling LRO via REST: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling operation: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🎬 UUID operation detected - Model Garden operation
->  [PROXY] 📋 Full operation name (preserved): projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🔍 Operation ID (UUID): 41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 📊 [TELEMETRY] veo_poll_start: operation=projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast, timestamp=2026-02-03T17:36:05.008Z
->  [PROXY] 🎯 Model: veo-3.0-fast-generate-preview
->  [PROXY] 🔄 Polling method: fetchPredictOperation (POST)
->  [PROXY] 🌐 Endpoint: https://us-central1-aiplatform.googleapis.com/v1/projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview:fetchPredictOperation
->  [PROXY] 📤 Request body: {"operationName":"projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"}
->  [PROXY] 📡 Response status: 200
->  [PROXY] ✅ fetchPredictOperation successful
->  [PROXY] ⏱️ Poll duration: 806ms
->  [PROXY] 📋 Operation status: done=false
->  [PROXY] 🔍 Full operation response: {
->    "name": "projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"
->  }
->  [PROXY] 📊 [TELEMETRY] veo_poll_success: duration=806ms, done=false, operation=41193355-6cc1-4ddd-afe9-b238cdb7d582
-i  functions: Finished "us-central1-proxyVertexAI" in 1114.044375ms
+i  functions: Finished "us-central1-proxyVertexAI" in 402.787667ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
->  [PROXY] Polling Operation via SDK: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling LRO via REST: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling operation: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🎬 UUID operation detected - Model Garden operation
->  [PROXY] 📋 Full operation name (preserved): projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🔍 Operation ID (UUID): 41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 📊 [TELEMETRY] veo_poll_start: operation=projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast, timestamp=2026-02-03T17:36:16.203Z
->  [PROXY] 🎯 Model: veo-3.0-fast-generate-preview
->  [PROXY] 🔄 Polling method: fetchPredictOperation (POST)
->  [PROXY] 🌐 Endpoint: https://us-central1-aiplatform.googleapis.com/v1/projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview:fetchPredictOperation
->  [PROXY] 📤 Request body: {"operationName":"projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"}
->  [PROXY] 📡 Response status: 200
->  [PROXY] ✅ fetchPredictOperation successful
->  [PROXY] ⏱️ Poll duration: 809ms
->  [PROXY] 📋 Operation status: done=false
->  [PROXY] 🔍 Full operation response: {
->    "name": "projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"
->  }
->  [PROXY] 📊 [TELEMETRY] veo_poll_success: duration=809ms, done=false, operation=41193355-6cc1-4ddd-afe9-b238cdb7d582
-i  functions: Finished "us-central1-proxyVertexAI" in 1177.995833ms
+i  functions: Finished "us-central1-proxyVertexAI" in 91.191542ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
->  [PROXY] Polling Operation via SDK: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling LRO via REST: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] Polling operation: projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🎬 UUID operation detected - Model Garden operation
->  [PROXY] 📋 Full operation name (preserved): projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 🔍 Operation ID (UUID): 41193355-6cc1-4ddd-afe9-b238cdb7d582
->  [PROXY] 📊 [TELEMETRY] veo_poll_start: operation=projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast, timestamp=2026-02-03T17:36:27.366Z
->  [PROXY] 🎯 Model: veo-3.0-fast-generate-preview
->  [PROXY] 🔄 Polling method: fetchPredictOperation (POST)
->  [PROXY] 🌐 Endpoint: https://us-central1-aiplatform.googleapis.com/v1/projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview:fetchPredictOperation
->  [PROXY] 📤 Request body: {"operationName":"projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582"}
->  [PROXY] 📡 Response status: 200
->  [PROXY] ✅ fetchPredictOperation successful
->  [PROXY] ⏱️ Poll duration: 841ms
->  [PROXY] 📋 Operation status: done=true
->  [PROXY] 🔍 Full operation response: {
->    "name": "projects/inhausbrain/locations/us-central1/publishers/google/models/veo-3.0-fast-generate-preview/operations/41193355-6cc1-4ddd-afe9-b238cdb7d582",
->    "done": true,
->    "response": {
->      "@type": "type.googleapis.com/cloud.ai.large_models.vision.GenerateVideoResponse",
->      "raiMediaFilteredCount": 1,
->      "raiMediaFilteredReasons": [
->        "Veo could not generate 1 videos based on the prompt provided. You will not be charged for this request. Try rephrasing the prompt. If you think this was an error, send feedback. Support codes: 42237218"
->      ]
->    }
->  }
->  [PROXY] 📊 [TELEMETRY] veo_poll_success: duration=841ms, done=true, operation=41193355-6cc1-4ddd-afe9-b238cdb7d582
-i  functions: Finished "us-central1-proxyVertexAI" in 1179.904208ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1332.409917ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 469.381042ms
+i  functions: Finished "us-central1-proxyVertexAI" in 65.469583ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 11515.229334ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1347.401583ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 743.586959ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1249.431083ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 1538.297167ms
+i  functions: Finished "us-central1-proxyVertexAI" in 11.937833ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 1200.083917ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1375.497042ms
 i  functions: Beginning execution of "us-central1-proxyVertexAI"
-i  functions: Finished "us-central1-proxyVertexAI" in 1206.3342499999999ms
+i  functions: Finished "us-central1-proxyVertexAI" in 1182.262041ms
+i  functions: Beginning execution of "us-central1-proxyVertexAI"
+i  functions: Finished "us-central1-proxyVertexAI" in 1139.79225ms
+ 
+i  emulators: Received SIGHUP for the first time. Starting a clean shutdown.
+i  emulators: Please wait for a clean shutdown or send the SIGHUP signal again to stop right now.
+i  emulators: Shutting down emulators.
+i  ui: Stopping Emulator UI
+i  extensions: Stopping Extensions Emulator
+i  functions: Stopping Functions Emulator
+i  hosting: Stopping Hosting Emulator
+i  firestore: Stopping Firestore Emulator
+i  eventarc: Stopping Eventarc Emulator
+i  tasks: Stopping Cloud Tasks Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

@@ -41,7 +41,7 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (registrations) {
         for (let registration of registrations) {
-          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.2.4)");
+          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.0.5)");
           registration.unregister().then(function (boolean) {
             console.log("Service Worker unregistered: ", boolean);
             // Optional: force reload if we found one
@@ -92,7 +92,7 @@
     }(document, 'script', 'facebook-jssdk'));
   </script>
 
-  <script src="flutter_bootstrap.js?v=1.0.3-FINAL" async></script>
+  <script src="flutter_bootstrap.js?v=1.0.5-FINAL" async></script>
   </body>
 
 </html>

@@ -1,6 +1,11 @@
 
 # Inhaus Brain - Changelog
 
+## [1.0.5] - 2026-02-04
+### Fixed
+- **Knowledge Module**: Fixed `ERR_CONNECTION_REFUSED` by binding Firestore Emulator to 127.0.0.1.
+- **UI**: Fixed `RenderFlex overflow` in Quick Create Flow header.
+
 ## [1.0.0] - 2026-01-28
 ### Added
 - **Onboarding Experience**: New welcome screen and campaign setup wizard for first-time users.

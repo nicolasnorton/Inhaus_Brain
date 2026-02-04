@@ -8,6 +8,8 @@ import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
 import '../../../core/services/semantic_cache_service.dart';
 import '../../../core/utils/security_utils.dart';
+import '../../../core/services/pinecone_service.dart'; // Pinecone integration
+import 'package:syncfusion_flutter_pdf/pdf.dart'; // PDF Parsing
 import '../models/knowledge_api_models.dart';
 
 /// Service for Knowledge Base operations (Native Vertex + Firestore)
@@ -16,6 +18,7 @@ class KnowledgeApiService {
   final VertexApiService _vertexService;
   final SecretVaultService _vault;
   final SemanticCacheService? _cache;
+  final PineconeService? _pineconeService; // Added Pinecone
   final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
 
   KnowledgeApiService({
@@ -23,9 +26,10 @@ class KnowledgeApiService {
     required SecretVaultService vault,
     required this.tokenProvider,
     SemanticCacheService? cache,
+    PineconeService? pineconeService, // Added
     String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _vertexService = vertexService, _vault = vault, _cache = cache;
+  }) : _vertexService = vertexService, _vault = vault, _cache = cache, _pineconeService = pineconeService;
 
   static const String _collectionDatasets = 'knowledge_datasets';
   static const String _collectionDocuments = 'documents';
@@ -113,6 +117,34 @@ class KnowledgeApiService {
 
   // ==================== Document Operations ====================
 
+
+// Top-level function for Isolate
+Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
+  final text = args['text'] as String;
+  final chunkSize = args['chunkSize'] as int;
+  final scrub = args['scrub'] as bool;
+  
+  // 1. Scrub PII (if enabled)
+  final processedText = scrub ? SecurityUtils.scrubPII(text) : text;
+  
+  // 2. Split Text
+  if (processedText.isEmpty) {
+     return {'chunks': <String>[], 'wordCount': 0, 'tokenCount': 0};
+  }
+  
+  List<String> chunks = [];
+  for (int i = 0; i < processedText.length; i += chunkSize) {
+    int end = (i + chunkSize < processedText.length) ? i + chunkSize : processedText.length;
+    chunks.add(processedText.substring(i, end));
+  }
+  
+  return {
+    'chunks': chunks,
+    'wordCount': processedText.split(RegExp(r'\s+')).length,
+    'tokenCount': (processedText.length / 4).ceil(),
+  };
+}
+
   /// Create a document from text (Ingestion Pipeline)
   Future<KnowledgeDocument> createDocumentFromText({
     required String datasetId,
@@ -123,9 +155,17 @@ class KnowledgeApiService {
     Map<String, dynamic>? processRule,
     bool scrubPII = true, 
   }) async {
-    // Optional PII Scrubbing
-    final processedText = scrubPII ? SecurityUtils.scrubPII(text) : text;
+    // Run CPU-intensive string processing in an Isolate to prevent UI jank
+    final result = await compute(_processTextInIsolate, {
+      'text': text,
+      'chunkSize': chunkSize,
+      'scrub': scrubPII,
+    });
     
+    final chunks = result['chunks'] as List<String>;
+    final wordCount = result['wordCount'] as int;
+    final totalTokens = result['tokenCount'] as int;
+
     // 1. Create Document Record
     final docRef = _firestore
         .collection(_collectionDatasets)
@@ -135,10 +175,6 @@ class KnowledgeApiService {
     
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final docId = docRef.id;
-
-    // 2. Chunking (Simple Splitter for MVP)
-    final chunks = _splitText(processedText, chunkSize); // Used specified chunkSize
-    int totalTokens = processedText.split(' ').length; // Rough estimate
 
        // 3. Embeddings via Vertex AI
     List<List<double>> embeddings = [];
@@ -199,6 +235,8 @@ class KnowledgeApiService {
 
     // 4. Store Chunks with Vectors
     final batch = _firestore.batch();
+    List<Map<String, dynamic>> pineconeVectors = [];
+
     for (int i = 0; i < chunks.length; i++) {
       final chunkRef = docRef.collection(_collectionChunks).doc();
       final chunkData = DocumentChunk(
@@ -222,10 +260,32 @@ class KnowledgeApiService {
 
       // Add Vector Field (native Firestore vector support requires specific format, usually List<double>)
       if (i < embeddings.length) {
-        chunkData['embedding_vector'] = embeddings[i]; // Vector field
+        chunkData['embedding_vector'] = embeddings[i]; // Vector field for Firestore backup
+        
+        // Prepare for Pinecone
+        pineconeVectors.add({
+          'id': chunkRef.id,
+          'values': embeddings[i],
+          'metadata': {
+            'text': chunks[i],
+            'document_id': docId,
+            'dataset_id': datasetId,
+            'source_name': name,
+          }
+        });
       }
 
       batch.set(chunkRef, chunkData);
+    }
+    
+    // Upsert to Pinecone
+    if (_pineconeService != null && pineconeVectors.isNotEmpty) {
+       try {
+         await _pineconeService!.upsertVectors(vectors: pineconeVectors, namespace: datasetId);
+       } catch (e) {
+         debugPrint('Pinecone Upsert Failed: $e');
+         // We don't fail the whole process, but we warn
+       }
     }
 
     // 5. Save Document Metadata
@@ -242,7 +302,7 @@ class KnowledgeApiService {
       enabled: true,
       archived: false,
       displayStatus: 'normal',
-      wordCount: processedText.split(' ').length,
+      wordCount: wordCount,
       hitCount: 0,
       docForm: 'text_model',
     );
@@ -264,10 +324,23 @@ class KnowledgeApiService {
   }) async {
     String textContent = "File content placeholder for ${filename ?? 'file'}";
     if (bytes != null) {
-      // Try to decode utf8 if text file
+      // 1. Try PDF Extraction
       try {
-        textContent = utf8.decode(bytes, allowMalformed: true);
-      } catch (_) {}
+         if (filename != null && filename.toLowerCase().endsWith('.pdf')) {
+            final PdfDocument document = PdfDocument(inputBytes: bytes);
+            textContent = PdfTextExtractor(document).extractText();
+            document.dispose();
+         } else {
+            // 2. Try UTF8 decode for text files
+            textContent = utf8.decode(bytes, allowMalformed: true);
+         }
+      } catch (e) {
+         debugPrint('Detailed text extraction failed: $e');
+         // Fallback to basic decode
+         try {
+           textContent = utf8.decode(bytes, allowMalformed: true);
+         } catch (_) {}
+      }
     }
     
     return createDocumentFromText(
@@ -277,16 +350,7 @@ class KnowledgeApiService {
     );
   }
 
-  // --- Helpers ---
-  List<String> _splitText(String text, int chunkSize) {
-    if (text.isEmpty) return [];
-    List<String> chunks = [];
-    for (int i = 0; i < text.length; i += chunkSize) {
-      int end = (i + chunkSize < text.length) ? i + chunkSize : text.length;
-      chunks.add(text.substring(i, end));
-    }
-    return chunks;
-  }
+
 
   /// Update a document with text (Re-index)
   Future<KnowledgeDocument> updateDocumentWithText({
@@ -469,6 +533,61 @@ class KnowledgeApiService {
            return jsonDecode(cachedResponse) as Map<String, dynamic>;
          } catch (_) {}
        }
+     }
+
+     // Vector Search Implementation
+     if (_pineconeService != null) {
+        try {
+           // 1. Generate Embedding for Query
+           // We reuse the createDocument logic or explicit embedding call. 
+           // Since getEmbeddings is on VertexService, we use that.
+           
+           // Lookup Vertex/Gemini Key again (duplicated logic from create - ideally refactor to helper)
+           String? apiKey = await _vault.getVertexKey();
+           bool isVertex = true;
+           if (apiKey == null) {
+              apiKey = await _vault.getGeminiKey();
+              isVertex = false;
+           }
+           
+           if (apiKey != null) {
+              final embeddings = await _vertexService.getEmbeddings(
+                 [query], 
+                 accessToken: isVertex && !apiKey.startsWith('AQ.') ? apiKey : null,
+                 apiKey: (!isVertex || apiKey.startsWith('AQ.')) ? apiKey : null
+              );
+              
+              if (embeddings.isNotEmpty) {
+                 final queryVector = embeddings.first;
+                 
+                 // 2. Query Pinecone
+                 final matches = await _pineconeService!.queryVectors(
+                    vector: queryVector,
+                    namespace: datasetId,
+                    topK: 5,
+                    includeMetadata: true,
+                 );
+                 
+                 final result = {
+                    'records': matches.map((m) => {
+                       'score': m['score'],
+                       'segment': {
+                          'content': m['metadata']['text'] ?? '',
+                          'document_id': m['metadata']['document_id'],
+                       }
+                    }).toList()
+                 };
+                 
+                 if (_cache != null && apiKey.isNotEmpty) { // Only cache if we succeeded
+                    await _cache.store('knowledge_retrieval', cacheKey, jsonEncode(result));
+                 }
+                 
+                 return result;
+              }
+           }
+        } catch (e) {
+           debugPrint('Vector Search Failed: $e');
+        }
      }
 
      // TODO: Implement actual Vector Search here

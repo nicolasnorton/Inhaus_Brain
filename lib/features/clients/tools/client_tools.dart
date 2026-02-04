@@ -486,7 +486,7 @@ class CreateClientTool extends AgentTool {
     }
 
     try {
-      await _notifier.addClient(name, industry, email: email, website: website, address: address, size: size, description: description);
+      await _notifier.addClient(name: name, industry: industry, clientType: ClientType.corporate, email: email, website: website, address: address, size: size, description: description);
       return ToolResult.success({'message': 'Client "$name" added successfully.'});
     } catch (e) {
       return ToolResult.failure('Failed to add client: $e');

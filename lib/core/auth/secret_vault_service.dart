@@ -26,6 +26,20 @@ class SecretVaultService {
   static const String _ghlKey = 'ghl_api_key';
   static const String _ghlLocationId = 'ghl_location_id';
 
+  /// Generic secret retrieval
+  Future<String?> getSecret(String key) async {
+    // 1. Environment
+    final envVal = dotenv.maybeGet(key);
+    if (envVal != null && envVal.isNotEmpty) return envVal;
+    
+    // 2. Build-time constants
+    final buildVal = String.fromEnvironment(key);
+    if (buildVal.isNotEmpty) return buildVal;
+
+    // 3. Storage
+    return await _storage.read(key: key.toLowerCase());
+  }
+
   Future<void> saveGeminiKey(String key) async => await _storage.write(key: _geminiKey, value: key);
   
   Future<String?> getGeminiKey() async {
