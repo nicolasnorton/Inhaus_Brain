@@ -9,6 +9,7 @@ import 'screens/knowledge_settings_screen.dart';
 import 'screens/external_knowledge_screen.dart';
 import 'screens/pipeline_orchestrator.dart';
 import 'widgets/knowledge_tour_overlay.dart';
+import 'providers/knowledge_provider.dart';
 
 class KnowledgeManagementScreen extends ConsumerStatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -18,7 +19,6 @@ class KnowledgeManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementScreen> {
-  String _currentView = 'overview';
   String? _selectedKB;
   bool _showTour = true;
 
@@ -152,7 +152,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
             child: TextButton.icon(
               onPressed: () => setState(() {
                 _selectedKB = null;
-                _currentView = 'content';
+                ref.read(knowledgeViewProvider.notifier).state = 'content';
               }),
               icon: const Icon(Icons.chevron_left, size: 18),
               label: Text(AppLocalizations.of(context)!.backLabel, style: const TextStyle(fontSize: 12)),
@@ -200,9 +200,9 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
   }
 
   Widget _buildKBSidebarItem(String title, String viewId, {required IconData icon}) {
-    final isSelected = _currentView == viewId;
+    final isSelected = ref.watch(knowledgeViewProvider) == viewId;
     return InkWell(
-      onTap: () => setState(() => _currentView = viewId),
+      onTap: () => ref.read(knowledgeViewProvider.notifier).state = viewId,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -250,9 +250,9 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
   }
 
   Widget _buildSidebarItem(String title, String viewId, {required IconData icon}) {
-    final isSelected = _currentView == viewId;
+    final isSelected = ref.watch(knowledgeViewProvider) == viewId;
     return InkWell(
-      onTap: () => setState(() => _currentView = viewId),
+      onTap: () => ref.read(knowledgeViewProvider.notifier).state = viewId,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -279,9 +279,10 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
   }
 
   Widget _buildSubSidebarItem(String title, String viewId, {required IconData icon}) {
-    final isSelected = _currentView == viewId || _currentView.startsWith('$viewId-');
+    final currentView = ref.watch(knowledgeViewProvider);
+    final isSelected = currentView == viewId || currentView.startsWith('$viewId-');
     return InkWell(
-      onTap: () => setState(() => _currentView = viewId),
+      onTap: () => ref.read(knowledgeViewProvider.notifier).state = viewId,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
         padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
@@ -345,9 +346,11 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
   }
 
   Widget _buildContent() {
+    final currentView = ref.watch(knowledgeViewProvider);
+    
     // Override content for KB-specific views
     if (_selectedKB != null) {
-      switch (_currentView) {
+      switch (currentView) {
         case 'kb-pipeline':
           return KnowledgePipelineOrchestrator();
         case 'kb-documents':
@@ -359,14 +362,15 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
       }
     }
 
-    switch (_currentView) {
+    switch (currentView) {
+      case 'overview':
       case 'content':
         return KnowledgeLibraryWidget(
           onSelectKB: (kbName) {
             setState(() {
               _selectedKB = kbName;
-              _currentView = 'kb-documents';
             });
+            ref.read(knowledgeViewProvider.notifier).state = 'kb-documents';
           },
         );
       case 'quick-create':
@@ -382,7 +386,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
       case 'api':
         return const ExternalKnowledgeScreen();
       default:
-        return _buildPlaceholder(_currentView.toUpperCase().replaceAll('-', ' '));
+        return _buildPlaceholder(currentView.toUpperCase().replaceAll('-', ' '));
     }
   }
 

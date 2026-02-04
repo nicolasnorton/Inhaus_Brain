@@ -22,12 +22,77 @@ class KnowledgeLibraryWidget extends ConsumerStatefulWidget {
 }
 
 class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget> {
-  void _onSourceAdded(KnowledgeSource source) {
-    ref.read(knowledgeProvider.notifier).addSource(source);
+  Future<void> _onSourceAdded(KnowledgeSource source) async {
+    final selectedDatasetId = ref.read(selectedDatasetIdProvider);
+    final api = ref.read(knowledgeApiServiceProvider);
+    
+    // Show loading indicator
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Source added: ${source.title}')),
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              const SizedBox(width: 12),
+              Text('Indexing ${source.title}...'),
+            ],
+          ),
+          duration: const Duration(seconds: 10),
+        ),
       );
+    }
+
+    try {
+      if (selectedDatasetId != null) {
+        // Add to existing Dataset
+        if (source.bytes != null) {
+          await api.createDocumentFromFile(
+            datasetId: selectedDatasetId,
+            bytes: source.bytes,
+            filename: source.title,
+          );
+        } else {
+          await api.createDocumentFromText(
+            datasetId: selectedDatasetId,
+            name: source.title,
+            text: source.content,
+          );
+        }
+        ref.invalidate(documentsProvider(selectedDatasetId));
+      } else {
+        // Create new Dataset
+        final kbName = source.title.length > 50 ? source.title.substring(0, 47) + '...' : source.title;
+        final kb = await api.createKnowledgeBase(name: kbName);
+        
+        if (source.bytes != null) {
+          await api.createDocumentFromFile(
+            datasetId: kb.id,
+            bytes: source.bytes,
+            filename: source.title,
+          );
+        } else {
+          await api.createDocumentFromText(
+            datasetId: kb.id,
+            name: source.title,
+            text: source.content,
+          );
+        }
+        ref.invalidate(knowledgeBasesProvider);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Successfully indexed: ${source.title}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error indexing source: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 

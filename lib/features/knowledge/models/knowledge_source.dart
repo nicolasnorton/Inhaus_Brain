@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 enum KnowledgeSourceType {
   url,
   text,
@@ -20,6 +22,7 @@ class KnowledgeSource {
   final KnowledgeSourceType type;
   final DateTime createdAt;
   final Map<String, dynamic>? metadata;
+  final Uint8List? bytes;
 
   KnowledgeSource({
     required this.id,
@@ -28,6 +31,7 @@ class KnowledgeSource {
     required this.type,
     required this.createdAt,
     this.metadata,
+    this.bytes,
   });
 
   factory KnowledgeSource.fromJson(Map<String, dynamic> json) {

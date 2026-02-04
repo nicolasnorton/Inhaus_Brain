@@ -4,22 +4,27 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../models/knowledge_source.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/google_drive_service.dart';
+import '../providers/knowledge_service_providers.dart';
 
-class AddSourceDialog extends StatefulWidget {
+class AddSourceDialog extends ConsumerStatefulWidget {
   final Function(KnowledgeSource) onSourceAdded;
 
   const AddSourceDialog({super.key, required this.onSourceAdded});
 
   @override
-  State<AddSourceDialog> createState() => _AddSourceDialogState();
+  ConsumerState<AddSourceDialog> createState() => _AddSourceDialogState();
 }
 
-class _AddSourceDialogState extends State<AddSourceDialog> {
+class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
   
   String? _activeInputMode; // 'url', 'text', 'drive', null (default)
+  List<GoogleDriveFile>? _driveFiles;
+  bool _isLoadingDrive = false;
 
   @override
   void dispose() {
@@ -27,6 +32,60 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
     _urlController.dispose();
     _textController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchDriveFiles() async {
+    setState(() {
+      _isLoadingDrive = true;
+      _activeInputMode = 'drive';
+    });
+    try {
+      final drive = ref.read(googleDriveServiceProvider);
+      final files = await drive.listRecentFiles();
+      setState(() => _driveFiles = files);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        setState(() => _activeInputMode = null);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingDrive = false);
+    }
+  }
+
+  Future<void> _handleDriveSelect(GoogleDriveFile file) async {
+    setState(() => _isLoadingDrive = true);
+    try {
+      final drive = ref.read(googleDriveServiceProvider);
+      final bytes = await drive.downloadFile(file.id);
+      
+      KnowledgeSourceType type = KnowledgeSourceType.file;
+      final m = file.mimeType.toLowerCase();
+      if (m.contains('image')) type = KnowledgeSourceType.image;
+      if (m.contains('audio')) type = KnowledgeSourceType.audio;
+      if (m.contains('pdf') || m.contains('google-apps.document')) type = KnowledgeSourceType.pdf;
+
+      final newSource = KnowledgeSource(
+        id: const Uuid().v4(),
+        title: file.name,
+        content: 'Google Drive: ${file.name}',
+        bytes: bytes,
+        type: type,
+        createdAt: DateTime.now(),
+        metadata: {
+          'source': 'google_drive',
+          'driveId': file.id,
+          'mimeType': file.mimeType,
+        },
+      );
+      
+      widget.onSourceAdded(newSource);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error downloading: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoadingDrive = false);
+    }
   }
 
   Future<void> _handleFileUpload() async {
@@ -39,10 +98,6 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
 
       if (result != null) {
         final file = result.files.single;
-        final String content = file.bytes != null 
-             ? String.fromCharCodes(file.bytes!) // Note: binary files like audio/images won't convert nicely to string here, but for MVP/Source model we hold path/uri or base64. 
-             : 'File path: ${file.path}';
-        
         // Determine type
         KnowledgeSourceType type = KnowledgeSourceType.file;
         final ext = file.extension?.toLowerCase();
@@ -53,7 +108,8 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
         final newSource = KnowledgeSource(
           id: const Uuid().v4(),
           title: file.name,
-          content: content, // Real impl would upload to storage and get URL
+          content: 'File: ${file.name}', // Just a label, real content parsed later
+          bytes: file.bytes,
           type: type,
           createdAt: DateTime.now(),
           metadata: {
@@ -158,7 +214,6 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
                           focusedBorder: InputBorder.none,
                         ),
                         onSubmitted: (val) {
-                          // Implement web search source adding logic
                           final newSource = KnowledgeSource(
                             id: const Uuid().v4(), 
                             title: 'Search: $val',
@@ -186,7 +241,7 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white10, style: BorderStyle.solid), // Dashed border ideal
+                  border: Border.all(color: Colors.white10, style: BorderStyle.solid), 
                   borderRadius: BorderRadius.circular(16),
                   color: Colors.white.withOpacity(0.02),
                 ),
@@ -201,7 +256,7 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
                         const SizedBox(width: 12),
                         _buildOptionButton(FontAwesomeIcons.globe, "Websites", () => setState(() => _activeInputMode = 'url')),
                         const SizedBox(width: 12),
-                        _buildOptionButton(FontAwesomeIcons.googleDrive, "Drive", () {}), // TODO: Drive Integration
+                        _buildOptionButton(FontAwesomeIcons.googleDrive, "Drive", () => _fetchDriveFiles()),
                         const SizedBox(width: 12),
                         _buildOptionButton(Icons.assignment, "Copied text", () => setState(() => _activeInputMode = 'text')),
                       ],
@@ -210,7 +265,6 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Limits info
               const Text(
                 "Limit: 50 sources, 500k words each. Audio/Video supported.",
                 style: TextStyle(color: Colors.white24, fontSize: 12),
@@ -227,7 +281,14 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
   Widget _buildInputModeUI() {
     String title = '';
     Widget content = const SizedBox();
-    VoidCallback onConfirm = () {};
+    VoidCallback? onConfirm;
+
+    if (_isLoadingDrive) {
+       return const Center(child: Padding(
+         padding: EdgeInsets.all(48.0),
+         child: CircularProgressIndicator(),
+       ));
+    }
 
     if (_activeInputMode == 'url') {
       title = 'Add Website / YouTube';
@@ -258,6 +319,29 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
         ),
       );
       onConfirm = _handleAddText;
+    } else if (_activeInputMode == 'drive') {
+      title = 'Select from Google Drive';
+      content = SizedBox(
+        height: 300,
+        child: _driveFiles == null || _driveFiles!.isEmpty 
+          ? const Center(child: Text("No files found in Drive", style: TextStyle(color: Colors.white38)))
+          : ListView.builder(
+              itemCount: _driveFiles!.length,
+              itemBuilder: (context, index) {
+                final file = _driveFiles![index];
+                IconData icon = Icons.insert_drive_file;
+                if (file.mimeType.contains('document')) icon = FontAwesomeIcons.fileLines;
+                if (file.mimeType.contains('pdf')) icon = FontAwesomeIcons.filePdf;
+                if (file.mimeType.contains('image')) icon = FontAwesomeIcons.fileImage;
+                
+                return ListTile(
+                  leading: Icon(icon, color: Colors.blueAccent, size: 20),
+                  title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  onTap: () => _handleDriveSelect(file),
+                );
+              },
+            ),
+      );
     }
 
     return Column(
@@ -273,21 +357,22 @@ class _AddSourceDialogState extends State<AddSourceDialog> {
         const SizedBox(height: 16),
         content,
         const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-             TextButton(
-              onPressed: () => setState(() => _activeInputMode = null),
-              child: const Text("Cancel"),
-            ),
-            const SizedBox(width: 16),
-            ElevatedButton(
-              onPressed: onConfirm,
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-              child: const Text("Add Source", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        )
+        if (onConfirm != null)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+               TextButton(
+                onPressed: () => setState(() => _activeInputMode = null),
+                child: const Text("Cancel"),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton(
+                onPressed: onConfirm,
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                child: const Text("Add Source", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          )
       ],
     );
   }

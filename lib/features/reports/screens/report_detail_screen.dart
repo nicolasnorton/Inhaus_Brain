@@ -6,8 +6,6 @@ import '../../../../core/theme/app_theme.dart';
 import '../models/report_model.dart';
 import '../models/source_model.dart';
 import '../../../../core/services/sources_service.dart';
-import '../widgets/reports_notebook_view.dart';
-import '../widgets/slide_deck_config_dialog.dart';
 import '../../../../core/services/reports_lm_service.dart';
 import '../providers/reports_provider.dart';
 import '../../../../core/widgets/video_preview_player.dart';
@@ -331,19 +329,19 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   }
 
   Future<void> _handleAudioGeneration(Report report, {bool isPreview = true}) async {
-    _showLoadingDialog(isPreview ? "Generating Audio Preview (LiteRT)..." : "Synthesizing Final Audio...");
+    _showLoadingDialog(isPreview ? "Analyzing Themes (LiteRT)..." : "Drafting Full Podcast Script...");
     try {
-      final url = await ReportsLMService.generateAudioOverview(report, ref, isPreview: isPreview);
+      final script = await ReportsLMService.generateAudioOverview(report, ref, isPreview: isPreview);
       if (mounted) Navigator.pop(context); 
       if (mounted) {
         if (isPreview) {
           _showPreviewDialog(
             "Audio Script Preview", 
-            "The generated script is ready. Preview audio is a placeholder.", 
+            script, 
             onGenerateFinal: () => _handleAudioGeneration(report, isPreview: false)
           );
         } else {
-          _showResultDialog("Audio Overview Ready", "Podcast script generated and audio synthesized.", url: url, isAudio: true);
+          _showResultDialog("Audio Overview Script", script);
         }
       }
     } catch (e) {
@@ -388,6 +386,28 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               );
             } else {
               _showResultDialog("Infographic Design", text);
+            }
+        }
+      } catch (e) {
+        if (mounted) Navigator.pop(context);
+        if (mounted) _showErrorDialog(e.toString());
+      }
+  }
+
+  Future<void> _handleReportGeneration(Report report, {bool isPreview = true}) async {
+      _showLoadingDialog(isPreview ? "Analyzing Sources (LiteRT)..." : "Generating Comprehensive Report...");
+      try {
+        final text = await ReportsLMService.generateReport(report, ref, isPreview: isPreview);
+        if (mounted) Navigator.pop(context);
+        if (mounted) {
+            if (isPreview) {
+              _showPreviewDialog(
+                "Report Draft Preview", 
+                text, 
+                onGenerateFinal: () => _handleReportGeneration(report, isPreview: false)
+              );
+            } else {
+              _showResultDialog("Final Report", text);
             }
         }
       } catch (e) {
@@ -443,7 +463,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   }
 
   Future<void> _handleVideoGeneration(Report report, {bool isFinal = false, bool includeSubtitles = false}) async {
-    double progress = 0.0;
     String status = isFinal ? "Rendering Final (HQ)..." : "Generating fast preview (LiteRT)...";
     if (includeSubtitles) status += " (With Subtitles)";
     
@@ -479,25 +498,31 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
 
     try {
-      final url = await ReportsLMService.generateVideoOverview(
+      final text = await ReportsLMService.generateVideoOverview(
         report, 
         ref, 
-        isFinal: isFinal,
-        includeSubtitles: includeSubtitles,
-        onProgress: (p) {
-          progressNotifier.value = p;
-        }
+        isPreview: !isFinal,
       );
       if (mounted) Navigator.pop(context); // Close loading
       
       if (mounted) {
-        _showVideoResultDialog(report, url, isFinal: isFinal);
+        if (!isFinal) {
+           _showPreviewDialog(
+             "Video Structure Preview", 
+             text, 
+             onGenerateFinal: () => _handleVideoGeneration(report, isFinal: true)
+           );
+        } else {
+           _showResultDialog("Final Video Structure", text);
+        }
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
       if (mounted) _showErrorDialog(e.toString());
     }
   }
+
+
 
   void _showVideoResultDialog(Report report, String url, {bool isFinal = false}) {
     showDialog(
@@ -555,30 +580,32 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
         title: Text(title, style: const TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(content, style: const TextStyle(color: Colors.white70), maxLines: 10, overflow: TextOverflow.ellipsis),
-            if (url != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                   padding: const EdgeInsets.all(8),
-                   decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
-                   child: Row(
-                     children: [
-                       Icon(isVideo ? Icons.video_library : (isAudio ? Icons.audiotrack : Icons.link), color: Colors.white),
-                       const SizedBox(width: 8),
-                       Expanded(child: Text(url, style: const TextStyle(color: Colors.blueAccent))),
-                     ],
-                   ),
-                )
-            ]
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(content, style: const TextStyle(color: Colors.white70)),
+              if (url != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                     padding: const EdgeInsets.all(8),
+                     decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
+                     child: Row(
+                       children: [
+                         Icon(isVideo ? Icons.video_library : (isAudio ? Icons.audiotrack : Icons.link), color: Colors.white),
+                         const SizedBox(width: 8),
+                         Expanded(child: Text(url, style: const TextStyle(color: Colors.blueAccent))),
+                       ],
+                     ),
+                  )
+              ]
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
-          if (isVideo || isAudio)
+          if (url != null && (isVideo || isAudio))
              ElevatedButton(
                onPressed: () {
                  // In real app, launch player
@@ -801,7 +828,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                                _buildStudioCard("Audio Overview", FontAwesomeIcons.headphones, Colors.blue, onTap: () => _handleAudioGeneration(report)),
                                _buildStudioCard("Video Overview", FontAwesomeIcons.video, Colors.green, onTap: () => _handleVideoGeneration(report)),
                                _buildStudioCard("Mind Map", FontAwesomeIcons.diagramProject, Colors.purple, onTap: () => _handleMindMapGeneration(report)),
-                               _buildStudioCard("Reports", FontAwesomeIcons.fileLines, Colors.orange),
+                               _buildStudioCard("Reports", FontAwesomeIcons.fileLines, Colors.orange, onTap: () => _handleReportGeneration(report)),
                                _buildStudioCard("Infographic", FontAwesomeIcons.chartPie, Colors.pink, onTap: () => _handleInfographicGeneration(report)),
                                _buildStudioCard(
                                  "Slide Deck", 

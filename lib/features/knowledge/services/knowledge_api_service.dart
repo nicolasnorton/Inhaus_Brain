@@ -19,17 +19,19 @@ class KnowledgeApiService {
   final SecretVaultService _vault;
   final SemanticCacheService? _cache;
   final PineconeService? _pineconeService; // Added Pinecone
+  final String? _userId;
   final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
 
   KnowledgeApiService({
     required VertexApiService vertexService,
     required SecretVaultService vault,
     required this.tokenProvider,
+    String? userId,
     SemanticCacheService? cache,
     PineconeService? pineconeService, // Added
     String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _vertexService = vertexService, _vault = vault, _cache = cache, _pineconeService = pineconeService;
+  }) : _vertexService = vertexService, _vault = vault, _cache = cache, _pineconeService = pineconeService, _userId = userId;
 
   static const String _collectionDatasets = 'knowledge_datasets';
   static const String _collectionDocuments = 'documents';
@@ -57,9 +59,9 @@ class KnowledgeApiService {
       appCount: 0,
       documentCount: 0,
       wordCount: 0,
-      createdBy: 'user', // In real app, get from Auth
+      createdBy: _userId ?? 'system', 
       createdAt: now,
-      updatedBy: 'user',
+      updatedBy: _userId ?? 'system',
       updatedAt: now,
       embeddingModel: 'text-embedding-004',
       embeddingModelProvider: 'google',
@@ -108,11 +110,31 @@ class KnowledgeApiService {
     }).toList();
   }
 
+  Future<void> _deleteCollection(CollectionReference collection) async {
+    final snapshots = await collection.get();
+    final batch = _firestore.batch();
+    for (final doc in snapshots.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
   /// Delete a knowledge base
   Future<void> deleteKnowledgeBase(String datasetId) async {
-    await _firestore.collection(_collectionDatasets).doc(datasetId).delete();
-    // Note: Subcollections (documents) are not auto-deleted in Firestore. 
-    // In a production app, use a Cloud Function to recursive delete.
+    final datasetRef = _firestore.collection(_collectionDatasets).doc(datasetId);
+    
+    // 1. Delete all documents in this dataset
+    final docsSnapshot = await datasetRef.collection(_collectionDocuments).get();
+    final batch = _firestore.batch();
+    for (final doc in docsSnapshot.docs) {
+      // Note: This won't delete chunks subcollections deeper down.
+      // Recursive delete is best done in Cloud Functions.
+      batch.delete(doc.reference);
+    }
+    
+    // 2. Delete the dataset itself
+    batch.delete(datasetRef);
+    await batch.commit();
   }
 
   // ==================== Document Operations ====================
@@ -295,7 +317,7 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
       dataSourceType: 'text',
       name: name,
       createdFrom: 'api',
-      createdBy: 'user',
+      createdBy: _userId ?? 'system',
       createdAt: now,
       tokens: totalTokens,
       indexingStatus: 'completed',
@@ -395,9 +417,16 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
         .doc(datasetId)
         .collection(_collectionDocuments)
         .doc(documentId);
-        
-    await docRef.delete();
-    // In production, delete chunks subcollection too
+    // 1. Delete all chunks in this document
+    final chunksSnapshot = await docRef.collection(_collectionChunks).get();
+    final batch = _firestore.batch();
+    for (final chunk in chunksSnapshot.docs) {
+      batch.delete(chunk.reference);
+    }
+    
+    // 2. Delete the document itself
+    batch.delete(docRef);
+    await batch.commit();
   }
 
   /// Get list of documents in a knowledge base

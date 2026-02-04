@@ -33,8 +33,8 @@ class SecretVaultService {
     if (envVal != null && envVal.isNotEmpty) return envVal;
     
     // 2. Build-time constants
-    final buildVal = String.fromEnvironment(key);
-    if (buildVal.isNotEmpty) return buildVal;
+    // Note: String.fromEnvironment must be const to work, so we can't use dynamic keys here.
+    // Use explicit getters like getGeminiKey() for build-time keys.
 
     // 3. Storage
     return await _storage.read(key: key.toLowerCase());

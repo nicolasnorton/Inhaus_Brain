@@ -55,30 +55,33 @@ final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
   final pinecone = ref.watch(pineconeServiceProvider); // Added
   
   return KnowledgeApiService(
+    userId: authService.currentUser?.uid,
     vertexService: vertex,
     vault: vault,
     cache: cache,
     pineconeService: pinecone, // Injected
     tokenProvider: () async {
-      // 1. Try Vertex Access Token (Saved from Google Sign-In)
+      // 1. Try to get a fresh token from Google account (refreshes if needed)
+      final freshToken = await authService.getFreshVertexToken();
+      if (freshToken != null) return freshToken;
+
+      // 2. Try Vertex Key from Vault
       final vertexKey = await vault.getVertexKey();
       if (vertexKey != null && vertexKey.isNotEmpty) return vertexKey;
-
-      // 2. Try Dify Key (serving as generic key slot)
-      final difyKey = await vault.getDifyKey();
-      if (difyKey != null && difyKey.isNotEmpty) return difyKey;
 
       // 3. Fallback to Gemini Key
       final geminiKey = await vault.getGeminiKey();
       if (geminiKey != null && geminiKey.isNotEmpty) return geminiKey;
       
       // 4. Final fallback to user ID token (Firebase)
-      return (await authService.currentUser)?.getIdToken();
+      return await authService.currentUser?.getIdToken();
     },
   );
 });
 
 final selectedDatasetIdProvider = StateProvider<String?>((ref) => null);
+
+final knowledgeViewProvider = StateProvider<String>((ref) => 'content');
 
 final knowledgeBasesProvider = FutureProvider.autoDispose<List<KnowledgeBase>>((ref) async {
   final service = ref.watch(knowledgeApiServiceProvider);

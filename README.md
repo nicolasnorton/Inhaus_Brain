@@ -71,7 +71,7 @@ Effortless deployment of your AI agents across multiple channels:
 The Inhaus Brain features an **AI Super Admin** (Management Agent) that allows you to operate the entire platform via natural language:
 - **Client & CRM**: Create, list, search, and update client records and project plans.
 - **Campaign Orchestration**: Full CRUD support for marketing campaigns.
-- **Brain Knowledge Management**: Autonomous injection and removal of websites, files, and documents from the system's global knowledge base.
+- **Brain Knowledge Management**: Autonomous injection and removal of websites, files, and documents from the system's global knowledge base. Now supports direct **Google Drive Integration** for seamless document importing.
 - **App/Agent CRUD**: Design and deploy new AI application pipelines directly through chat commands.
 - **Universal Search**: Intelligent retrieval of any platform entity (Tasks, Projects, Apps) across the workspace.
 

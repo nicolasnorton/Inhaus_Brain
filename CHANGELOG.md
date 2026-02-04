@@ -1,10 +1,18 @@
 
 # Inhaus Brain - Changelog
 
-## [1.0.5] - 2026-02-04
+## [1.0.6] - 2026-02-04
+### Added
+- **Knowledge Module**: Full **Google Drive Integration** (browse, select, and import Docs/Sheets/PDFs).
+- **Embeddings**: Implemented **automatic batching** for large documents (respecting Vertex AI limits).
+- **Authentication**: Enhanced **token refresh** logic for seamless AI operations.
+
 ### Fixed
-- **Knowledge Module**: Fixed `ERR_CONNECTION_REFUSED` by binding Firestore Emulator to 127.0.0.1.
-- **UI**: Fixed `RenderFlex overflow` in Quick Create Flow header.
+- **Vertex AI**: Resolved `400 INVALID_ARGUMENT` errors for documents over 250 chunks.
+- **Security**: Hardened token provider to prioritize fresh Google OAuth credentials.
+- **Stability**: Fixed Secret Vault crash related to dynamic environment keys.
+
+## [1.0.5] - 2026-02-04
 
 ## [1.0.0] - 2026-01-28
 ### Added

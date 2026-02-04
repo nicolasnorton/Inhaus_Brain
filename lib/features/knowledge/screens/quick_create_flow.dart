@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../connectors/models/connected_account_model.dart';
-import '../../clients/providers/client_provider.dart';
 import '../providers/knowledge_provider.dart';
 import '../providers/knowledge_service_providers.dart';
 import '../../../core/auth/auth_service.dart';
+import '../../../core/services/google_drive_service.dart';
 
 class QuickCreateFlow extends ConsumerStatefulWidget {
   const QuickCreateFlow({super.key});
@@ -26,7 +26,9 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
   PlatformFile? _pickedFile;
   final TextEditingController _nameController = TextEditingController();
   bool _isUploading = false;
-  String? _uploadError;
+  List<GoogleDriveFile>? _driveFiles;
+  bool _isLoadingDrive = false;
+  GoogleDriveFile? _selectedDriveFile;
 
   // Settings State
   String _indexingTechnique = 'high_quality'; // 'high_quality' or 'economy'
@@ -426,7 +428,9 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
           const SizedBox(height: 32),
           Row(
             children: [
-               _buildSourceCard(AppLocalizations.of(context)!.importFromFile, 'local-file', FontAwesomeIcons.fileLines, Colors.orangeAccent),
+              _buildSourceCard(AppLocalizations.of(context)!.importFromFile, 'local-file', FontAwesomeIcons.fileLines, Colors.orangeAccent),
+              const SizedBox(width: 16),
+              _buildSourceCard('Sync from Drive', 'google-drive', FontAwesomeIcons.googleDrive, Colors.blueAccent),
               const SizedBox(width: 16),
               _buildSourceCard(AppLocalizations.of(context)!.syncFromNotion, 'notion', FontAwesomeIcons.notion, Colors.black),
               const SizedBox(width: 16),
@@ -440,6 +444,10 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
           if (_selectedSourceType == 'local-file') ...[
             const SizedBox(height: 32),
             _buildLocalFileInput(),
+          ],
+          if (_selectedSourceType == 'google-drive') ...[
+            const SizedBox(height: 32),
+            _buildDriveInput(),
           ],
         ],
       ),
@@ -549,6 +557,84 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
         SnackBar(content: Text('Error picking file: $e')),
       );
     }
+  }
+
+  Future<void> _fetchDriveFiles() async {
+    setState(() => _isLoadingDrive = true);
+    try {
+      final drive = ref.read(googleDriveServiceProvider);
+      final files = await drive.listRecentFiles();
+      setState(() => _driveFiles = files);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      setState(() => _isLoadingDrive = false);
+    }
+  }
+
+  Widget _buildDriveInput() {
+    if (_driveFiles == null && !_isLoadingDrive) {
+       _fetchDriveFiles();
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Select from Google Drive',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              if (_isLoadingDrive) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (_driveFiles != null) 
+            SizedBox(
+              height: 300,
+              child: ListView.builder(
+                itemCount: _driveFiles!.length,
+                itemBuilder: (context, index) {
+                  final file = _driveFiles![index];
+                  final isSelected = _selectedDriveFile?.id == file.id;
+                  
+                  return ListTile(
+                    leading: const Icon(FontAwesomeIcons.googleDrive, color: Colors.blueAccent, size: 20),
+                    title: Text(file.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blueAccent) : null,
+                    onTap: () {
+                      setState(() {
+                         _selectedDriveFile = file;
+                         _nameController.text = file.name;
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _nameController,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Knowledge Base Name',
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSourceCard(String title, String type, IconData icon, Color color) {
@@ -715,55 +801,65 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
   }
 
   Future<void> _executeQuickCreate() async {
-    if (_selectedSourceType == 'local-file') {
-      if (_pickedFile == null) {
+    if (_selectedSourceType == 'local-file' || _selectedSourceType == 'google-drive') {
+      if (_selectedSourceType == 'local-file' && _pickedFile == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a file first')));
+        setState(() => _currentStep = 1);
+        return;
+      }
+      if (_selectedSourceType == 'google-drive' && _selectedDriveFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a Drive file first')));
         setState(() => _currentStep = 1);
         return;
       }
       
       setState(() {
         _isUploading = true;
-        _uploadError = null;
+        // _uploadError = null;
       });
 
       try {
         final api = ref.read(knowledgeApiServiceProvider);
         
         // 1. Create Knowledge Base (Dataset)
-        final kbName = _nameController.text.isNotEmpty ? _nameController.text : _pickedFile!.name;
+        final kbName = _nameController.text.isNotEmpty 
+            ? _nameController.text 
+            : (_selectedSourceType == 'local-file' ? _pickedFile!.name : _selectedDriveFile!.name);
+            
         final kb = await api.createKnowledgeBase(name: kbName);
         
-        // 2. Upload File to Dataset
-        if (kIsWeb) {
-            await api.createDocumentFromFile(
-            datasetId: kb.id,
-            bytes: _pickedFile!.bytes,
-            filename: _pickedFile!.name,
-            indexingTechnique: 'high_quality',
-          );
+        // 2. Prepare Bytes
+        Uint8List? fileBytes;
+        String? fileName;
+        
+        if (_selectedSourceType == 'local-file') {
+          fileBytes = _pickedFile!.bytes;
+          fileName = _pickedFile!.name;
         } else {
-          // We use dynamic to avoid direct File type reference if possible, 
-          // or we just trust the runtime if not on web.
-          // Since dart:io is NOT imported, we can't use 'File' type name.
-          await api.createDocumentFromFile(
-            datasetId: kb.id,
-            file: _pickedFile!.path, // Pass path or handle differently
-            filename: _pickedFile!.name,
-            indexingTechnique: 'high_quality',
-          );
+          final drive = ref.read(googleDriveServiceProvider);
+          fileBytes = await drive.downloadFile(_selectedDriveFile!.id);
+          fileName = _selectedDriveFile!.name;
         }
+
+        // 3. Upload File to Dataset
+        await api.createDocumentFromFile(
+          datasetId: kb.id,
+          bytes: fileBytes,
+          filename: fileName,
+          indexingTechnique: 'high_quality',
+        );
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully created knowledge base: $kbName')));
-          Navigator.of(context).pop(); // Or reset flow? Assuming this is a modal or specific screen part
+          ref.invalidate(knowledgeBasesProvider);
+          ref.read(knowledgeViewProvider.notifier).state = 'content';
         }
 
       } catch (e) {
         if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error creating knowledge: $e')));
         }
-        setState(() => _uploadError = e.toString());
+        // setState(() => _uploadError = e.toString());
       } finally {
         if (mounted) setState(() => _isUploading = false);
       }
@@ -771,7 +867,7 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
       // Handle Platform Sync
       setState(() {
         _isUploading = true;
-        _uploadError = null;
+        // _uploadError = null;
       });
 
       try {
@@ -790,7 +886,8 @@ class _QuickCreateFlowState extends ConsumerState<QuickCreateFlow> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully synced ${platform.name} data.')));
-          Navigator.of(context).pop();
+          ref.invalidate(knowledgeBasesProvider);
+          ref.read(knowledgeViewProvider.notifier).state = 'content';
         }
       } catch (e) {
         if (mounted) {

@@ -42,6 +42,7 @@ Inhaus Brain's Knowledge Module is designed for agency-level intelligence with e
 *   **Adaptive Chunking**: Automatically adjusts how it "reads" your documents. Data records (like Google Ads) are kept granular, while long PDFs use larger context windows.
 *   **Semantic Caching**: The system remembers complex RAG queries. Repeat searches are nearly instantaneous and cost-saving.
 *   **Hybrid Search**: Combines literal keyword matching with AI-powered "semantic" understanding for >90% retrieval accuracy.
+*   **Google Drive Integration**: Select files directly from your Google Drive (Docs, Sheets, PDFs) for instant ingestion without manual downloads.
 *   **LiteRT Fallback**: If the cloud is unavailable, the platform automatically switches to local, on-device embedding models to ensure your knowledge is always accessible.
 *   **PII Scrubbing**: Before any data is processed for metadata extraction, names, emails, and phone numbers are automatically masked to ensure privacy compliance.
 
