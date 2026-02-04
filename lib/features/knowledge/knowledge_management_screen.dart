@@ -24,37 +24,77 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: const Color(0xFF0F1116),
-          body: Row(
-            children: [
-              // Sub-sidebar for Knowledge Module
-              _selectedKB != null ? _buildKBSubSidebar() : _buildMainSubSidebar(),
-              
-              const VerticalDivider(width: 1, thickness: 1, color: Colors.white10),
-              
-              // Content Area
-              Expanded(
-                child: _buildContent(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+        // Fix: Pass isMobile to the sidebar builder methods
+        final sidebarContent = _selectedKB != null ? _buildKBSubSidebar(isMobile) : _buildMainSubSidebar(isMobile);
+
+        return Stack(
+          children: [
+            Scaffold(
+              backgroundColor: const Color(0xFF0F1116),
+              drawer: isMobile ? Drawer(
+                width: 280,
+                backgroundColor: const Color(0xFF161B22),
+                child: sidebarContent,
+              ) : null,
+              body: Row(
+                children: [
+                  // Desktop Sidebar
+                  if (!isMobile)
+                    sidebarContent,
+                  
+                  if (!isMobile)
+                    const VerticalDivider(width: 1, thickness: 1, color: Colors.white10),
+                  
+                  // Content Area
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        _buildContent(),
+                        // Local Menu Trigger for Knowledge Sidebar (Mobile Only)
+                        if (isMobile)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: SafeArea(
+                              child: Builder(
+                                builder: (context) => Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.menu_open, color: Colors.white),
+                                    onPressed: () => Scaffold.of(context).openDrawer(),
+                                    tooltip: 'Knowledge Menu',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        if (_showTour)
-          Positioned.fill(
-            child: KnowledgeTourOverlay(
-              onDismiss: () => setState(() => _showTour = false),
             ),
-          ),
-      ],
+            if (_showTour)
+              Positioned.fill(
+                child: KnowledgeTourOverlay(
+                  onDismiss: () => setState(() => _showTour = false),
+                ),
+              ),
+          ],
+        );
+      }
     );
   }
 
-  Widget _buildMainSubSidebar() {
+  Widget _buildMainSubSidebar(bool isMobile) {
     return Container(
-      width: 260,
+      width: isMobile ? double.infinity : 260,
       color: const Color(0xFF161B22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,9 +140,9 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
     );
   }
 
-  Widget _buildKBSubSidebar() {
+  Widget _buildKBSubSidebar(bool isMobile) {
     return Container(
-      width: 260,
+      width: isMobile ? double.infinity : 260,
       color: const Color(0xFF161B22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

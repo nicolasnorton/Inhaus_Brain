@@ -15,95 +15,142 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 800;
+        
+        return Scaffold(
+          drawer: isMobile ? Drawer(
+            width: 280, // Slightly wider for mobile touch targets
+            backgroundColor: Theme.of(context).cardColor,
+            child: _buildSidebarContent(context, ref),
+          ) : null,
+          body: Stack(
             children: [
-            // Custom Scrollable Sidebar
-            Container(
-              width: 80,
-              color: Theme.of(context).brightness == Brightness.light 
-                  ? Colors.black.withValues(alpha: 0.03) 
-                  : Theme.of(context).cardColor.withValues(alpha: 0.3),
-              child: Column(
+              Row(
                 children: [
-                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
-                    child: Image.asset(
-                      Theme.of(context).brightness == Brightness.light 
-                        ? 'assets/images/logo_light.png' 
-                        : 'assets/images/logo.png',
-                      width: 48,
-                      height: 48,
-                      errorBuilder: (context, error, stackTrace) => 
-                          Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+                  // Desktop/Tablet Sidebar
+                  if (!isMobile)
+                    Container(
+                      width: 80,
+                      color: Theme.of(context).brightness == Brightness.light 
+                          ? Colors.black.withValues(alpha: 0.03) 
+                          : Theme.of(context).cardColor.withValues(alpha: 0.3),
+                      child: _buildSidebarContent(context, ref),
                     ),
-                  ),
+                  
+                  if (!isMobile)
+                    const VerticalDivider(thickness: 1, width: 1),
+                  
+                  // Main Content Area
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Consumer(
-                        builder: (context, ref, child) {
-                          final userAsync = ref.watch(appUserProvider);
-                          return userAsync.when(
-                            data: (user) {
-                              final isClient = user?.role == UserRole.clientUser;
-                              return Column(
-                                children: [
-                                  _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
-                                  if (!isClient) _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
-                                  _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
-                                  _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
-                                  if (!isClient) _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
-                                  if (!isClient) _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
-                                  if (!isClient) _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
-                                  _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
-                                  _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
-                                  if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
-                                  if (user?.role == UserRole.superAdmin || user?.role == UserRole.admin)
-                                    _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref),
-                                  const SizedBox(height: 20),
-                                ],
-                              );
-                            },
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Stack(
                       children: [
-                        _buildUserAvatar(context, ref),
-                        const SizedBox(height: 16),
-                        IconButton(
-                          icon: Icon(Icons.logout, color: Theme.of(context).brightness == Brightness.light ? Colors.black54 : Colors.white54),
-                          onPressed: () => ref.read(authServiceProvider).signOut(),
-                          tooltip: AppLocalizations.of(context)!.logout,
-                        ),
+                        child,
+                        // Mobile Menu Trigger
+                        if (isMobile)
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: SafeArea(
+                              child: Builder(
+                                builder: (context) => Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black12, blurRadius: 4)
+                                    ]
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.menu),
+                                    onPressed: () => Scaffold.of(context).openDrawer(),
+                                    tooltip: 'Open Navigation',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 ],
               ),
+              
+              // AI Assistant Overlay (Global)
+              const AiAssistantOverlay(),
+            ],
+          ),
+          floatingActionButton: const AiAssistantButton(),
+        );
+      }
+    );
+  }
+
+  Widget _buildSidebarContent(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+         Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
+          child: Image.asset(
+            Theme.of(context).brightness == Brightness.light 
+              ? 'assets/images/logo_light.png' 
+              : 'assets/images/logo.png',
+            width: 48,
+            height: 48,
+            errorBuilder: (context, error, stackTrace) => 
+                Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Consumer(
+              builder: (context, ref, child) {
+                final userAsync = ref.watch(appUserProvider);
+                return userAsync.when(
+                  data: (user) {
+                    final isClient = user?.role == UserRole.clientUser;
+                    return Column(
+                      children: [
+                        _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
+                        if (!isClient) _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
+                        _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
+                        _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
+                        if (!isClient) _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
+                        if (!isClient) _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
+                        if (!isClient) _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
+                        _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
+                        _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
+                        if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
+                        if (user?.role == UserRole.superAdmin || user?.role == UserRole.admin)
+                          _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref),
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
             ),
-              const VerticalDivider(thickness: 1, width: 1),
-              // Main Content Area
-              Expanded(
-                child: child,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildUserAvatar(context, ref),
+              const SizedBox(height: 16),
+              IconButton(
+                icon: Icon(Icons.logout, color: Theme.of(context).brightness == Brightness.light ? Colors.black54 : Colors.white54),
+                onPressed: () => ref.read(authServiceProvider).signOut(),
+                tooltip: AppLocalizations.of(context)!.logout,
               ),
             ],
           ),
-          
-          // AI Assistant Overlay (Global)
-          const AiAssistantOverlay(),
-        ],
-      ),
-      floatingActionButton: const AiAssistantButton(),
+        ),
+      ],
     );
   }
 
