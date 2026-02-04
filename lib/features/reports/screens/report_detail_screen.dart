@@ -11,6 +11,9 @@ import '../providers/reports_provider.dart';
 import '../../../../core/widgets/video_preview_player.dart';
 import '../../connectors/models/connected_account_model.dart';
 import '../../../../core/services/integration_service.dart';
+import '../../knowledge/widgets/add_source_dialog.dart';
+import '../../knowledge/models/knowledge_source.dart';
+import '../../knowledge/providers/knowledge_service_providers.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -63,18 +66,14 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   }
 
   Future<void> _addSource(Report report, ReportSource source) async {
-    // Create updated copy
-    final updatedReport = Report(
-       id: report.id,
-       title: report.title,
-       clientId: report.clientId,
-       createdAt: report.createdAt,
-       updatedAt: DateTime.now(), // Update timestamp
-       sources: [...report.sources, source],
-    );
-
     try {
+      final updatedReport = report.copyWith(
+         updatedAt: DateTime.now(),
+         sources: [...report.sources, source],
+      );
+
       await ref.read(reportsServiceProvider).updateReport(updatedReport);
+      
       // Invalidate to fetch fresh data
       ref.invalidate(reportProvider(widget.reportId));
       
@@ -95,238 +94,75 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Future<void> _showAddSourceDialog(Report report) async {
     showDialog(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Add Source', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppTheme.surface,
-        children: [
-          SimpleDialogOption(
-            onPressed: () async {
-              Navigator.pop(context);
-              final source = await SourcesService.pickFileAndProcess(report.id);
-              if (source != null) _addSource(report, source);
-            },
-            child: const Row(
-              children: [
-                Icon(Icons.file_upload, color: Colors.blue),
-                SizedBox(width: 12),
-                Text('Upload File (PDF, CSV)', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(context);
-              _showPasteTextDialog(report);
-            },
-            child: const Row(
-              children: [
-                Icon(Icons.content_paste, color: Colors.teal),
-                SizedBox(width: 12),
-                Text('Paste Text', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () async {
-              Navigator.pop(context);
-              // Mock URL input
-              final source = await SourcesService.addWebSource(report.id, "https://example.com/market-trends");
-              _addSource(report, source);
-            },
-            child: const Row(
-              children: [
-                Icon(Icons.link, color: Colors.green),
-                SizedBox(width: 12),
-                Text('Web Source', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () async {
-              Navigator.pop(context);
-              final source = await SourcesService.addConnectorSource(report.id, "BigQuery: Client_Data_Q1");
-              _addSource(report, source);
-            },
-            child: const Row(
-              children: [
-                Icon(FontAwesomeIcons.database, color: Colors.orange, size: 18),
-                SizedBox(width: 12),
-                Text('Data Connector (BigQuery)', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-          const Divider(color: Colors.white10),
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(context);
-              _showConnectedAccountsDialog(report);
-            },
-            child: const Row(
-              children: [
-                Icon(Icons.hub, color: Colors.purpleAccent),
-                SizedBox(width: 12),
-                Text('From Connected Account', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.pop(context);
-              _showConnectedAccountsDialog(report); // Reuse pick, or filter for analytics only
-            },
-            child: const Row(
-              children: [
-                Icon(Icons.insights, color: Colors.orangeAccent),
-                SizedBox(width: 12),
-                Text('Analytics (GA4/GSC)', style: TextStyle(color: Colors.white70)),
-              ],
-            ),
-          ),
-        ],
+      builder: (context) => AddSourceDialog(
+        onSourceAdded: (ks) => _handleKnowledgeSourceAdded(report, ks),
       ),
     );
   }
 
-  Future<void> _showConnectedAccountsDialog(Report report) async {
-    showDialog(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text("Connect Platform", style: TextStyle(color: Colors.white)),
-        backgroundColor: AppTheme.surface,
-        children: [
-          _buildPlatformConnectOption(report, "Google Ads", AdPlatform.googleAds),
-          _buildPlatformConnectOption(report, "Meta Ads", AdPlatform.metaAds),
-          _buildPlatformConnectOption(report, "TikTok Ads", AdPlatform.tiktokAds), // Will use Generic (Stub for now)
-          _buildPlatformConnectOption(report, "Google Analytics 4", AdPlatform.googleAnalytics),
-        ],
-      ),
-    );
+  Future<void> _handleKnowledgeSourceAdded(Report report, KnowledgeSource ks) async {
+    // 1. Ingest into Knowledge Module (if report has datasetId)
+    // Show a small overlay or snackbar for ingestion progress
+    if (mounted) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: Row(
+             children: [
+               const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+               const SizedBox(width: 12),
+               Text("Ingesting ${ks.title} into your Knowledge Base..."),
+             ],
+           ),
+           backgroundColor: AppTheme.primary.withOpacity(0.8),
+           duration: const Duration(seconds: 2),
+         ),
+       );
+    }
+
+    try {
+      if (report.datasetId != null) {
+         final ingestor = ref.read(knowledgeIngestionServiceProvider);
+         await ingestor.ingestSource(report.datasetId!, ks);
+      }
+
+      // 2. Convert to ReportSource
+      final sourceType = _mapKnowledgeSourceTypeToReportSourceType(ks.type);
+      final reportSource = ReportSource(
+        id: ks.id,
+        reportId: report.id,
+        type: sourceType,
+        name: ks.title,
+        content: ks.content,
+        addedAt: ks.createdAt,
+        metadata: ks.metadata ?? {},
+      );
+
+      // 3. Add to Report
+      await _addSource(report, reportSource);
+    } catch (e) {
+      if (mounted) _showErrorDialog("Ingestion Error: $e");
+    }
   }
 
-  Widget _buildPlatformConnectOption(Report report, String name, AdPlatform platform) {
-    return SimpleDialogOption(
-      onPressed: () async {
-        Navigator.pop(context); // Close dialog selection
-        
-        final integrationService = ref.read(integrationServiceProvider);
-        
-        // Show loading
-        _showLoadingDialog("Connecting to $name...");
-        
-        try {
-          // 1. Initiate OAuth Flow
-          final account = await integrationService.initiateConnection(platform, report.clientId);
-          
-          if (mounted) Navigator.pop(context); // Close loading dialog
-          
-          if (account != null) {
-             // 2. Fetch Data & Add Source
-             if (mounted) _showLoadingDialog("Fetching data from $name...");
-             
-             try {
-                final source = await SourcesService.fetchAndAddConnectedSource(report.id, account, integrationService);
-                if (mounted) Navigator.pop(context); // Close fetching dialog
-                _addSource(report, source);
-             } catch (e) {
-                if (mounted) {
-                   Navigator.pop(context);
-                   _showErrorDialog("Failed to fetch data: $e");
-                }
-             }
-          } else {
-             // Null account usually means user cancelled or auth failed silently
-             if (mounted) {
-               ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(content: Text("Connection cancelled or failed for $name"), backgroundColor: Colors.orange),
-               );
-             }
-          }
-        } catch (e) {
-          if (mounted) Navigator.pop(context);
-          if (mounted) _showErrorDialog("Connection Error: $e");
-        }
-      },
-      child: Row(
-        children: [
-          Icon(_getIconForPlatform(name), color: Colors.blueAccent, size: 18),
-          const SizedBox(width: 12),
-          Text(name, style: const TextStyle(color: Colors.white70)),
-        ],
-      ),
-    );
+  SourceType _mapKnowledgeSourceTypeToReportSourceType(KnowledgeSourceType type) {
+    switch (type) {
+      case KnowledgeSourceType.file:
+      case KnowledgeSourceType.pdf:
+        return SourceType.file;
+      case KnowledgeSourceType.url:
+      case KnowledgeSourceType.youtube:
+        return SourceType.web;
+      case KnowledgeSourceType.text:
+        return SourceType.pastedText;
+      case KnowledgeSourceType.googleAds:
+        return SourceType.adAccount;
+      case KnowledgeSourceType.ga4:
+        return SourceType.analytics;
+      default:
+        return SourceType.file;
+    }
   }
 
-  AdPlatform _getPlatformEnum(String name) {
-    if (name.contains("Google Ads")) return AdPlatform.googleAds;
-    if (name.contains("Meta")) return AdPlatform.metaAds;
-    if (name.contains("TikTok")) return AdPlatform.tiktokAds;
-    return AdPlatform.other;
-  }
-
-  IconData _getIconForPlatform(String platform) {
-    if (platform.contains("Google")) return FontAwesomeIcons.google;
-    if (platform.contains("Meta")) return FontAwesomeIcons.meta;
-    if (platform.contains("TikTok")) return FontAwesomeIcons.tiktok;
-    if (platform.contains("GA4")) return Icons.analytics;
-    return Icons.account_circle;
-  }
-
-  Future<void> _showPasteTextDialog(Report report) async {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
-    
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        title: const Text("Paste Text Source", style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                hintText: "Title (e.g. Email from Client)",
-                hintStyle: TextStyle(color: Colors.white30),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: contentController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: "Paste content here...",
-                hintStyle: TextStyle(color: Colors.white30),
-                border: OutlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () async {
-              if (contentController.text.isNotEmpty) {
-                 Navigator.pop(context);
-                 final source = await SourcesService.addTextSource(
-                   report.id, 
-                   contentController.text, 
-                   titleController.text
-                 );
-                 _addSource(report, source);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-            child: const Text("Add"),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _handleAudioGeneration(Report report, {bool isPreview = true}) async {
     _showLoadingDialog(isPreview ? "Analyzing Themes (LiteRT)..." : "Drafting Full Podcast Script...");

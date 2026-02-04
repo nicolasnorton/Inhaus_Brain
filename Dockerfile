@@ -75,4 +75,8 @@ EXPOSE 8080
 RUN echo "server { listen 8080; location / { root /usr/share/nginx/html; index index.html index.htm; try_files \$uri \$uri/ /index.html; } }" > /etc/nginx/conf.d/default.conf
 
 # Start Nginx
+# Security: Run as non-root
+RUN adduser -D nonroot
+USER nonroot
+
 CMD ["nginx", "-g", "daemon off;"]

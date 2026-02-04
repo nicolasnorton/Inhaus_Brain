@@ -7,6 +7,9 @@ import '../models/knowledge_source.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/google_drive_service.dart';
 import '../providers/knowledge_service_providers.dart';
+import '../../../../core/services/integration_service.dart';
+import '../../connectors/models/connected_account_model.dart';
+import '../../../../core/services/sources_service.dart';
 
 class AddSourceDialog extends ConsumerStatefulWidget {
   final Function(KnowledgeSource) onSourceAdded;
@@ -252,13 +255,15 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildOptionButton(Icons.upload_file, "Upload files", () => _handleFileUpload()),
-                        const SizedBox(width: 12),
-                        _buildOptionButton(FontAwesomeIcons.globe, "Websites", () => setState(() => _activeInputMode = 'url')),
-                        const SizedBox(width: 12),
+                        _buildOptionButton(Icons.upload_file, "Upload", () => _handleFileUpload()),
+                        const SizedBox(width: 8),
+                        _buildOptionButton(FontAwesomeIcons.globe, "Web", () => setState(() => _activeInputMode = 'url')),
+                        const SizedBox(width: 8),
                         _buildOptionButton(FontAwesomeIcons.googleDrive, "Drive", () => _fetchDriveFiles()),
-                        const SizedBox(width: 12),
-                        _buildOptionButton(Icons.assignment, "Copied text", () => setState(() => _activeInputMode = 'text')),
+                        const SizedBox(width: 8),
+                        _buildOptionButton(Icons.hub, "Platforms", () => setState(() => _activeInputMode = 'platforms')),
+                        const SizedBox(width: 8),
+                        _buildOptionButton(Icons.assignment, "Text", () => setState(() => _activeInputMode = 'text')),
                       ],
                     ),
                   ],
@@ -319,6 +324,16 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
         ),
       );
       onConfirm = _handleAddText;
+    } else if (_activeInputMode == 'platforms') {
+      title = 'Connect Platform';
+      content = Column(
+        children: [
+          _buildPlatformItem("Google Ads", FontAwesomeIcons.google, AdPlatform.googleAds),
+          _buildPlatformItem("Meta Ads", FontAwesomeIcons.meta, AdPlatform.metaAds),
+          _buildPlatformItem("TikTok Ads", FontAwesomeIcons.tiktok, AdPlatform.tiktokAds),
+          _buildPlatformItem("Google Analytics 4", Icons.analytics, AdPlatform.googleAnalytics),
+        ],
+      );
     } else if (_activeInputMode == 'drive') {
       title = 'Select from Google Drive';
       content = SizedBox(
@@ -377,22 +392,60 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
     );
   }
 
+  Widget _buildPlatformItem(String name, IconData icon, AdPlatform platform) {
+    return ListTile(
+      leading: Icon(icon, color: AppTheme.primary, size: 20),
+      title: Text(name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      trailing: const Icon(Icons.chevron_right, color: Colors.white24, size: 16),
+      onTap: () => _handlePlatformConnect(name, platform),
+    );
+  }
+
+  Future<void> _handlePlatformConnect(String name, AdPlatform platform) async {
+     setState(() => _isLoadingDrive = true); // Reuse loading state
+     try {
+        final integrationService = ref.read(integrationServiceProvider);
+        final account = await integrationService.initiateConnection(platform, 'client_1'); // TODO: Pass clientID
+        
+        if (account != null) {
+           final source = await SourcesService.fetchAndAddConnectedSource('dynamic', account, integrationService);
+           
+           final newSource = KnowledgeSource(
+              id: const Uuid().v4(),
+              title: source.name,
+              content: source.content ?? 'Empty data',
+              type: platform == AdPlatform.googleAnalytics ? KnowledgeSourceType.ga4 : KnowledgeSourceType.googleAds,
+              createdAt: DateTime.now(),
+              metadata: {'platform': platform.name, 'accountId': account.externalAccountId},
+           );
+           
+           widget.onSourceAdded(newSource);
+           if (mounted) Navigator.pop(context);
+        }
+     } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Connection failed: $e')));
+     } finally {
+        if (mounted) setState(() => _isLoadingDrive = false);
+     }
+  }
+
   Widget _buildOptionButton(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(30),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
           border: Border.all(color: Colors.white24),
           color: Colors.transparent,
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+            Icon(icon, size: 14, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
           ],
         ),
       ),

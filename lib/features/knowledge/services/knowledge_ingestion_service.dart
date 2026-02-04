@@ -5,6 +5,7 @@ import '../../clients/models/task_model.dart';
 import '../../connectors/models/connected_account_model.dart';
 import '../models/knowledge_source.dart';
 import 'knowledge_api_service.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 class KnowledgeIngestionService {
   final KnowledgeApiService _knowledgeApi;
@@ -97,6 +98,31 @@ $taskSummary
       name: 'Project: ${project.name}',
       text: content,
       chunkSize: _calculateChunkSize(KnowledgeSourceType.text, content),
+    );
+  }
+
+  Future<void> ingestSource(String datasetId, KnowledgeSource source) async {
+    debugPrint('Ingesting Source: ${source.title} into Dataset $datasetId Type: ${source.type}...');
+    
+    String contentToIngest = source.content;
+
+    // 1. PDF Extraction if we have bytes
+    if (source.type == KnowledgeSourceType.pdf && source.bytes != null) {
+      try {
+        final PdfDocument document = PdfDocument(inputBytes: source.bytes);
+        contentToIngest = PdfTextExtractor(document).extractText();
+        document.dispose();
+      } catch (e) {
+        debugPrint("KnowledgeIngestion: PDF extraction failed: $e. Falling back to title.");
+      }
+    }
+
+    // 2. Index in Knowledge Module
+    await _knowledgeApi.createDocumentFromText(
+      datasetId: datasetId,
+      name: source.title,
+      text: contentToIngest,
+      chunkSize: _calculateChunkSize(source.type, contentToIngest),
     );
   }
 

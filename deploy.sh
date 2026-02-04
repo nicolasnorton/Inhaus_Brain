@@ -65,3 +65,15 @@ gcloud run deploy $SERVICE_NAME \
 
 echo "✅ Deployment Complete!"
 echo "🌍 App available at: https://brain.inhauscorp.com"
+
+# 5. Health Check
+echo "🏥 Running Post-Deploy Health Check..."
+# Simple curl to ensure service is responding (allow brief warmup)
+sleep 10
+if curl -s --head  --request GET https://brain.inhauscorp.com | grep "200 OK" > /dev/null; then 
+   echo "Health Check Passed: 200 OK"
+else
+   echo "⚠️ Health Check Failed (Non-200 Response). Check logs."
+   # ROLLBACK HOOK (Placeholder)
+   # gcloud run services update-traffic $SERVICE_NAME --to-latest --region $REGION --rollback...
+fi

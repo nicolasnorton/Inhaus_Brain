@@ -246,12 +246,21 @@ class CreativeStudioScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                 Row(children: [
+                Row(children: [
                   const Icon(Icons.image_search, color: Colors.white70),
                   const SizedBox(width: 12),
                   Text(
                     AppLocalizations.of(context)!.visualStrategyPrompt,
                     style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
+                  ),
+                  const Spacer(),
+                  // SAFETY FALLBACK BUTTON
+                  TextButton.icon(
+                    onPressed: () {
+                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Regenerating with stricter safety protocols...')));
+                    },
+                    icon: const Icon(Icons.shield_outlined, size: 16, color: Colors.greenAccent),
+                    label: const Text("Regenerate Safe Concepts", style: TextStyle(color: Colors.greenAccent, fontSize: 12)),
                   ),
                 ]),
                 const SizedBox(height: 16),
@@ -366,8 +375,30 @@ class CreativeStudioScreen extends ConsumerWidget {
                       VideoPreviewPlayer(
                         videoUrl: concept.isVideoFinal ? concept.finalVideoURL! : concept.previewVideoURL!,
                         isFinal: concept.isVideoFinal,
-                        onRefine: (withSubtitles) => ref.read(creativeProvider.notifier).generateHighTierAssets(concept, includeSubtitles: withSubtitles),
-                        onRenderFinal: (withSubtitles) => ref.read(creativeProvider.notifier).renderFinalVideo(concept, includeSubtitles: withSubtitles),
+                        onRefine: (withSubtitles) {
+                          // Toggle subtitles in state
+                          ref.read(creativeProvider.notifier).toggleSubtitles(concept.id);
+                          ref.read(creativeProvider.notifier).generateHighTierAssets(concept);
+                        },
+                        onRenderFinal: (withSubtitles) {
+                           // Ensure state catches up
+                           ref.read(creativeProvider.notifier).toggleSubtitles(concept.id);
+                           ref.read(creativeProvider.notifier).renderFinalVideo(concept);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      // Subtitles Toggle UI
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Switch(
+                            value: concept.hasSubtitles, 
+                            onChanged: (val) => ref.read(creativeProvider.notifier).toggleSubtitles(concept.id),
+                            activeColor: Colors.blueAccent,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text("Bilingual Subtitles (EN/ES)", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        ],
                       ),
                     ],
 

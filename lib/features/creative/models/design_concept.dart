@@ -29,6 +29,7 @@ class DesignConcept {
   final bool isVideoFinal;
   final String? finalAudioURL;
   final bool isFinalReady;
+  final bool hasSubtitles;
 
   DesignConcept({
     required this.id,
@@ -45,6 +46,7 @@ class DesignConcept {
     this.isVideoFinal = false,
     this.finalAudioURL,
     this.isFinalReady = false,
+    this.hasSubtitles = false,
   });
 
   DesignConcept copyWith({
@@ -62,6 +64,7 @@ class DesignConcept {
     bool? isVideoFinal,
     String? finalAudioURL,
     bool? isFinalReady,
+    bool? hasSubtitles,
   }) {
     return DesignConcept(
       id: id ?? this.id,
@@ -78,6 +81,7 @@ class DesignConcept {
       isVideoFinal: isVideoFinal ?? this.isVideoFinal,
       finalAudioURL: finalAudioURL ?? this.finalAudioURL,
       isFinalReady: isFinalReady ?? this.isFinalReady,
+      hasSubtitles: hasSubtitles ?? this.hasSubtitles,
     );
   }
 }

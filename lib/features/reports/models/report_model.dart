@@ -7,7 +7,8 @@ class Report {
   final String clientId;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final List<ReportSource> sources; // Changed to full object
+  final String? datasetId; // Reference to Knowledge Base
+  final List<ReportSource> sources; 
 
   Report({
     required this.id,
@@ -15,10 +16,11 @@ class Report {
     required this.clientId,
     required this.createdAt,
     required this.updatedAt,
+    this.datasetId,
     List<ReportSource>? sources,
   }) : sources = sources ?? [];
 
-  factory Report.create({required String title, required String clientId}) {
+  factory Report.create({required String title, required String clientId, String? datasetId}) {
     final now = DateTime.now();
     return Report(
       id: const Uuid().v4(),
@@ -26,6 +28,7 @@ class Report {
       clientId: clientId,
       createdAt: now,
       updatedAt: now,
+      datasetId: datasetId,
     );
   }
 
@@ -36,6 +39,7 @@ class Report {
       'clientId': clientId,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'datasetId': datasetId,
       'sources': sources.map((s) => s.toJson()).toList(),
     };
   }
@@ -47,9 +51,30 @@ class Report {
       clientId: json['clientId'],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
+      datasetId: json['datasetId'],
       sources: (json['sources'] as List<dynamic>?)
           ?.map((e) => ReportSource.fromJson(e))
           .toList(),
+    );
+  }
+
+  Report copyWith({
+    String? id,
+    String? title,
+    String? clientId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? datasetId,
+    List<ReportSource>? sources,
+  }) {
+    return Report(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      clientId: clientId ?? this.clientId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      datasetId: datasetId ?? this.datasetId,
+      sources: sources ?? this.sources,
     );
   }
 }

@@ -14,6 +14,12 @@ class CreativeNotifier extends Notifier<List<DesignConcept>> {
     final title = campaign.title;
     final attachments = campaign.attachments;
     
+    // DEMO MODE CHECK
+    if (title.toLowerCase().contains('clawd') || title.toLowerCase().contains('lobster')) {
+      await _generateDemoClawdConcept(campaign);
+      return;
+    }
+    
     try {
       debugPrint('CreativeAgent: Starting local concept generation for $title');
       
@@ -111,7 +117,11 @@ Return ONLY the refined copy text.
       final finalImageUrl = await EdgeAIService.generateImage(finalImagePrompt);
 
       // 3. Generate Video Preview (Automatic with high-tier assets)
-      final previewVideoUrl = await EdgeAIService.generateVideo(concept.visualPrompt, isFinal: false, includeSubtitles: includeSubtitles);
+      final previewVideoUrl = await EdgeAIService.generateVideo(
+        concept.visualPrompt, 
+        isFinal: false, 
+        includeSubtitles: concept.hasSubtitles // Use stored preference
+      );
 
       final updatedConcept = concept.copyWith(
         finalCopy: copyRes.text,
@@ -133,7 +143,11 @@ Return ONLY the refined copy text.
     try {
       debugPrint('CreativeAgent: Rendering Final High-Quality Video for ${concept.id}');
       
-      final finalVideoUrl = await EdgeAIService.generateVideo(concept.visualPrompt, isFinal: true, includeSubtitles: includeSubtitles);
+      final finalVideoUrl = await EdgeAIService.generateVideo(
+        concept.visualPrompt, 
+        isFinal: true, 
+        includeSubtitles: concept.hasSubtitles // Use stored preference
+      );
       
       final updatedConcept = concept.copyWith(
         finalVideoURL: finalVideoUrl,
@@ -152,6 +166,42 @@ Return ONLY the refined copy text.
       for (final item in state)
         if (item.id == concept.id) concept else item
     ];
+  }
+
+  void toggleSubtitles(String conceptId) {
+    state = [
+      for (final item in state)
+        if (item.id == conceptId) 
+          item.copyWith(hasSubtitles: !item.hasSubtitles) 
+        else 
+          item
+    ];
+  }
+
+  Future<void> _generateDemoClawdConcept(Campaign campaign) async {
+    debugPrint('CreativeAgent: 🦞 ACTIVATING DEMO MODE for CLAWD 🦞');
+    await Future.delayed(const Duration(milliseconds: 1200));
+
+    final newConcept = DesignConcept(
+        id: const Uuid().v4(),
+        campaignId: campaign.id,
+        title: 'Visual Direction: Clawd Launch',
+        copy: "Meet Clawd: The world\'s friendliest lobster AI. Crushing tasks, not spirits. 🦞✨",
+        visualPrompt: "Cinematic close-up of a cute cartoon lobster robot helper, glossy finish, holding a tablet, soft studio lighting, 8k, pixar style",
+        moodboards: [
+          Moodboard(
+            id: 'demo_mb',
+            title: 'Clawd Aesthetic',
+            imageUrls: [
+              "https://images.unsplash.com/photo-1535591273668-578e31182c4f?q=80&w=2070&auto=format&fit=crop", // Safe lobster
+              "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop", // Tech context
+            ],
+            description: "Friendly, Tech-Forward, Vibrant Orange & Blue",
+          ),
+        ],
+        hasSubtitles: true, // Default to true for demo
+    );
+    state = [...state, newConcept];
   }
 }
 

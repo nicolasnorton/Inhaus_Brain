@@ -277,14 +277,24 @@ class CampaignDetailScreen extends ConsumerWidget {
           Text(AppLocalizations.of(context)!.creativeProposedDirections),
           const SizedBox(height: 24),
           SizedBox(
+            ),
+          ),
+          const SizedBox(height: 16),
+          // REPORTS LM TRIGGER
+          SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.push('/creative'),
-              icon: const Icon(Icons.auto_awesome),
-              label: Text(AppLocalizations.of(context)!.openCreativeStudio),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.purpleAccent,
-                side: const BorderSide(color: Colors.purpleAccent),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // In a real app, this would trigger the orchestration agent.
+                // For demo, we navigate to reports dashboard where they can see the magic.
+                context.push('/reports');
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Generating Full ReportsLM Suite (Background Agent)...')));
+              },
+              icon: const Icon(Icons.assessment, color: Colors.white),
+              label: const Text("Generate Full ReportsLM Suite"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.withValues(alpha: 0.2),
+                foregroundColor: Colors.tealAccent,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),

@@ -1,6 +1,8 @@
 import '../../features/reports/models/report_model.dart';
 import '../services/edge_ai_service.dart';
 import '../tokens/llm_provider.dart';
+import '../../features/knowledge/providers/knowledge_provider.dart';
+import 'dart:convert';
 
 class ReportsLMService {
   
@@ -254,7 +256,27 @@ Sources: $sources
   }
 
   static Stream<String> chatWithReport(Report report, String query, dynamic ref) async* {
-     final context = _buildContextFromSources(report);
+     String context = _buildContextFromSources(report);
+     
+     // INTEGRATION: If report has a linked Knowledge Base, perform RAG
+     if (report.datasetId != null && ref != null) {
+        try {
+           final api = ref.read(knowledgeApiServiceProvider);
+           final searchResults = await api.retrieveChunks(
+              datasetId: report.datasetId!,
+              query: query,
+              retrievalModel: {'search_mode': 'semantic'}
+           );
+           
+           final results = searchResults['results'] as List?;
+           if (results != null && results.isNotEmpty) {
+              final ragContext = results.map((c) => c['content']).join('\n\n');
+              context = "--- RELEVANT SEARCH RESULTS ---\n$ragContext\n\n--- FALLBACK CONTEXT ---\n$context";
+           }
+        } catch (e) {
+           print("ReportsLM: RAG Retrieval failed: $e");
+        }
+     }
      
      final stream = EdgeAIService.generateTextStream(
        query,

@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../models/report_model.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/reports_provider.dart';
+import '../../knowledge/providers/knowledge_provider.dart';
 
 class ReportsDashboardScreen extends ConsumerWidget {
   const ReportsDashboardScreen({super.key});
@@ -122,9 +123,22 @@ class ReportsDashboardScreen extends ConsumerWidget {
       ),
       child: InkWell(
         onTap: () async {
-          // Create new report
-          final newReport = Report.create(title: 'New Analysis', clientId: 'client_1');
+          // 1. Create Knowledge Base for this report
+          final api = ref.read(knowledgeApiServiceProvider);
+          final kb = await api.createKnowledgeBase(
+            name: 'Analysis: New Report',
+            description: 'Source library for agentic analysis',
+          );
+
+          // 2. Create new report with dataset link
+          final newReport = Report.create(
+            title: 'New Analysis', 
+            clientId: 'client_1',
+            datasetId: kb.id,
+          );
+          
           await ref.read(reportsServiceProvider).createReport(newReport);
+          
           if (context.mounted) {
              context.go('/reports/${newReport.id}');
           }
