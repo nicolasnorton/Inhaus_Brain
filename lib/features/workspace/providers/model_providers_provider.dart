@@ -143,7 +143,7 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
         ),
         availableModels: [
           ModelConfig(
-            id: 'gemini-1.5-pro',
+            id: 'gemini-1.5-pro-001',
             name: 'Gemini 1.5 Pro',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,

@@ -64,7 +64,7 @@ class AIModelConfig {
   }
 
   // Factory for known heavy hitters
-  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
+  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-001');
   static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash');
   static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', useGoogleSearch: true);
   
