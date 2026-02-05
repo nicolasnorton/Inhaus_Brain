@@ -115,7 +115,39 @@ class MockFirebaseService implements FirebaseService {
         debugPrint('MockFirebase: Loaded ${_mockCampaigns.length} campaigns from storage.');
       } else {
         // Initial Mock Data
+        // Initial Mock Data including Demo Flows
         _mockCampaigns = [
+          Campaign(
+            id: 'demo-bajaj',
+            title: 'Bajaj Pulsar: Real Adventures',
+            description: 'Launch Pulsar campaign targeting young Ecuadorian riders – emphasize real adventures over screens.',
+            clientId: 'client-bajaj',
+            clientName: 'Bajaj Ecuador',
+            industry: 'Automotive / Motorcycles',
+            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+            status: CampaignStatus.designing,
+            insights: [
+              ResearchInsight(id: 'ins-1', content: 'Young riders in Quito and Guayaquil value freedom and ruggedness over digital status.', isApproved: true),
+              ResearchInsight(id: 'ins-2', content: 'Safety is a secondary concern to "adventure potential" for the 18-24 demographic.', isApproved: true),
+            ],
+            attachments: [
+              Attachment(id: 'att-1', type: AttachmentType.video, url: 'assets/videos/bajaj_promo.mp4', name: 'Adventurous Ride.mp4', createdAt: DateTime.now()),
+            ],
+          ),
+          Campaign(
+            id: 'demo-banco',
+            title: 'Banco del Austro: Digital Transformation',
+            description: 'Modernize digital banking image – heritage + innovation for Ecuadorian customers.',
+            clientId: 'client-banco',
+            clientName: 'Banco del Austro',
+            industry: 'Banking / Finance',
+            createdAt: DateTime.now().subtract(const Duration(days: 1)),
+            status: CampaignStatus.designing,
+            insights: [
+              ResearchInsight(id: 'ins-3', content: 'Cuenca heritage is a major trust factor that should be preserved in digital branding.', isApproved: true),
+              ResearchInsight(id: 'ins-4', content: 'Mobile banking adoption is lagging in older demographics due to security fears.', isApproved: true),
+            ],
+          ),
           Campaign(
             id: 'camp-1',
             title: 'Coffee Revolution',
@@ -123,22 +155,6 @@ class MockFirebaseService implements FirebaseService {
             clientId: 'client-1',
             clientName: 'Inhaus Studios',
             createdAt: DateTime.now().subtract(const Duration(days: 5)),
-          ),
-          Campaign(
-            id: 'camp-2',
-            title: 'Sustainable Packaging',
-            description: 'Recycled materials campaign',
-            clientId: 'client-1',
-            clientName: 'Inhaus Studios',
-            createdAt: DateTime.now().subtract(const Duration(days: 2)),
-          ),
-          Campaign(
-            id: 'camp-3',
-            title: 'AI Tech Summit',
-            description: 'Global reach for tech events',
-            clientId: 'client-2',
-            clientName: 'Global Tech Corp',
-            createdAt: DateTime.now().subtract(const Duration(days: 1)),
           ),
         ];
         await _saveToStorage();

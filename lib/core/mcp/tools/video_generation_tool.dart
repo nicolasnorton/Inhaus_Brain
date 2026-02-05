@@ -21,7 +21,7 @@ class VideoGenerationTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final prompt = parameters['prompt'] as String?;
     if (prompt == null || prompt.isEmpty) {
       return ToolResult.failure('Missing required parameter: prompt');

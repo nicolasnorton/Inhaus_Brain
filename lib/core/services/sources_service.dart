@@ -20,14 +20,29 @@ class SourcesService {
 
     if (result != null && result.files.single.bytes != null) {
       final file = result.files.single;
-      final fileName = file.name;
-      String content = "";
+      final content = await extractTextFromFile(file.bytes!, file.name);
 
+      return ReportSource(
+        id: const Uuid().v4(),
+        reportId: reportId,
+        type: SourceType.file,
+        name: file.name,
+        uri: file.path ?? 'memory://${file.name}',
+        content: content,
+        addedAt: DateTime.now(),
+      );
+    }
+    return null;
+  }
+
+  /// Extract text from file bytes (PDF, TXT, CSV, etc.)
+  static Future<String> extractTextFromFile(List<int> bytes, String fileName) async {
+      String content = "";
       try {
         if (fileName.toLowerCase().endsWith('.pdf')) {
           // Robust PDF Extraction
           try {
-            final PdfDocument document = PdfDocument(inputBytes: file.bytes);
+            final PdfDocument document = PdfDocument(inputBytes: bytes);
             content = PdfTextExtractor(document).extractText();
             document.dispose();
             
@@ -41,27 +56,16 @@ class SourcesService {
         } else {
           // Text-based fallback (UTF-8)
           try {
-            content = utf8.decode(file.bytes!);
+            content = utf8.decode(bytes);
           } catch (utfErr) {
             // Try ISO-8859-1 fallback if UTF-8 fails
-            content = latin1.decode(file.bytes!); 
+            content = latin1.decode(bytes); 
           }
         }
       } catch (e) {
         content = "Error reading file format: $e";
       }
-
-      return ReportSource(
-        id: const Uuid().v4(),
-        reportId: reportId,
-        type: SourceType.file,
-        name: fileName,
-        uri: file.path ?? 'memory://${file.name}',
-        content: content,
-        addedAt: DateTime.now(),
-      );
-    }
-    return null;
+      return content;
   }
 
   /// Add a web source using generic CORS reader or Direct Fetch

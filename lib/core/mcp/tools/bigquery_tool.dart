@@ -12,7 +12,8 @@ class BigQueryTool extends AgentTool {
             },
           },
         );
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['query'] as String?;
     if (query == null) return ToolResult.failure("Missing query parameter");
 

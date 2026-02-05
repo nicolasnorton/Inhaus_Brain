@@ -71,7 +71,11 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
           linkedinUrl: _linkedinController.text.trim(),
           birthDate: _birthDate,
         );
-        if (mounted) context.pop();
+        if (mounted) {
+           // Force refresh/invalidate if needed, though stream should handle it.
+           // ref.invalidate(clientProvider); 
+           context.pop(true); // Return true to indicate success
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));

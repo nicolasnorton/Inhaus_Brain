@@ -21,7 +21,8 @@ enum RouterIntent {
   management,  // Client, Project, Task management
   directChat,   // Simple questions, greetings, small talk
   seo,          // SEO optimization
-  aeo           // AEO optimization
+  aeo,          // AEO optimization
+  proposal      // PDF Proposals
 }
 
 class RouterResult {
@@ -52,7 +53,7 @@ class RouterAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     if (ref == null) throw Exception("RouterAgent requires a Ref");
 

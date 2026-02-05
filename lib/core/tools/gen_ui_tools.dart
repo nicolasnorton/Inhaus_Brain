@@ -90,7 +90,7 @@ For "recipe_card" (used for ANY step-by-step process, not just food):
   };
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> args) async {
+  Future<ToolResult> execute(Map<String, dynamic> args, {dynamic ref}) async {
     // This tool is a "UI Trigger". The actual rendering happens in the presentation layer.
     // We just return the data so AssistantService can package it into the message.
     return ToolResult.success({

@@ -39,6 +39,7 @@ enum MessageSender {
   cSuiteAdvisorAgent,
   seoAgent,               // New SEO Agent
   aeoAgent,               // New AEO Agent
+  proposalSpecialistAgent,// New Phase 10: Proposal Specialist
 
   humanAgent,
   system

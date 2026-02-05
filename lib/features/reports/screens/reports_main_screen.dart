@@ -78,67 +78,74 @@ class _ReportsMainScreenState extends ConsumerState<ReportsMainScreen> with Sing
     final clientState = ref.watch(clientProvider);
     final selectedClient = ref.watch(selectedClientProvider);
 
+    final isMobile = MediaQuery.of(context).size.width < 700;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Text("Analytics Hub", style: TextStyle(color: Colors.white, fontSize: 18)),
-            const SizedBox(width: 24),
-            // Client Selector Logic
-            if (clientState.clients.isNotEmpty)
-              DropdownButton<String>(
-                value: selectedClient?.id,
-                hint: const Text('Select Client', style: TextStyle(color: Colors.white70)),
-                dropdownColor: AppTheme.surface,
-                style: const TextStyle(color: Colors.white),
-                underline: Container(height: 1, color: Colors.white24),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    ref.read(clientProvider.notifier).selectClient(newValue);
-                  }
-                },
-                items: clientState.clients.map<DropdownMenuItem<String>>((Client client) {
-                  return DropdownMenuItem<String>(
-                    value: client.id,
-                    child: Text(client.name),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
+        title: isMobile 
+          ? const Text("Analytics Hub", style: TextStyle(color: Colors.white, fontSize: 16))
+          : Row(
+              children: [
+                const Text("Analytics Hub", style: TextStyle(color: Colors.white, fontSize: 18)),
+                const SizedBox(width: 24),
+                // Client Selector Logic
+                if (clientState.clients.isNotEmpty)
+                  _buildClientSelector(selectedClient, clientState),
+              ],
+            ),
         backgroundColor: AppTheme.surface,
         centerTitle: false,
         actions: [
-
-           IconButton(
-             icon: const Icon(Icons.help_outline, color: Colors.white70),
-             onPressed: () => _showWalkthrough(context),
-             tooltip: "User Guide",
-           ),
+           if (!isMobile)
+             IconButton(
+               icon: const Icon(Icons.help_outline, color: Colors.white70),
+               onPressed: () => _showWalkthrough(context),
+               tooltip: "User Guide",
+             ),
            Padding(
-             padding: const EdgeInsets.only(right: 16.0),
+             padding: const EdgeInsets.only(right: 8.0),
              child: OutlinedButton.icon(
-               icon: const Icon(Icons.link, size: 16),
-               label: const Text("Data Connections"),
+               icon: const Icon(Icons.link, size: 14),
+               label: Text(isMobile ? "Data" : "Data Connections", style: const TextStyle(fontSize: 12)),
                style: OutlinedButton.styleFrom(
                  foregroundColor: Colors.white, 
-                 side: const BorderSide(color: Colors.white24)
+                 side: const BorderSide(color: Colors.white24),
+                 padding: const EdgeInsets.symmetric(horizontal: 12),
                ),
                onPressed: () => context.go('/reports/connections'), 
              ),
            )
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.primary,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white54,
-          dividerColor: Colors.transparent,
-          tabs: const [
-            Tab(text: "Reports"),
-            Tab(text: "Dashboards"),
-          ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(isMobile ? 100 : 48),
+          child: Column(
+            children: [
+              if (isMobile && clientState.clients.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: _buildClientSelector(selectedClient, clientState, isFullWidth: true),
+                  ),
+                ),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: AppTheme.primary,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white54,
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: "Reports"),
+                  Tab(text: "Dashboards"),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       body: selectedClient == null
@@ -161,6 +168,28 @@ class _ReportsMainScreenState extends ConsumerState<ReportsMainScreen> with Sing
                 DashboardsGrid(),
               ],
             ),
+    );
+  }
+
+  Widget _buildClientSelector(Client? selectedClient, dynamic clientState, {bool isFullWidth = false}) {
+    return DropdownButton<String>(
+      value: selectedClient?.id,
+      hint: const Text('Select Client', style: TextStyle(color: Colors.white70)),
+      dropdownColor: AppTheme.surface,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      underline: isFullWidth ? const SizedBox.shrink() : Container(height: 1, color: Colors.white24),
+      isExpanded: isFullWidth,
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          ref.read(clientProvider.notifier).selectClient(newValue);
+        }
+      },
+      items: clientState.clients.map<DropdownMenuItem<String>>((Client client) {
+        return DropdownMenuItem<String>(
+          value: client.id,
+          child: Text(client.name),
+        );
+      }).toList(),
     );
   }
 }

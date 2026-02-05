@@ -17,7 +17,7 @@ class KeywordResearcher extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['query'] ?? '';
     final region = parameters['region'] ?? 'Ecuador';
     
@@ -48,7 +48,7 @@ class CompetitorSEOAnalyzer extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final url = parameters['competitor_url'] ?? '';
     final res = await EdgeAIService.generateText(
       "Analyze the likely SEO strategy and backlink profile for competitor: $url. Identify winning patterns and content gaps.",
@@ -68,7 +68,7 @@ class TechnicalAuditor extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     // Simulated technical audit
     return ToolResult.success({
       'url': parameters['url'],
@@ -90,7 +90,7 @@ class LocalSEOOptimizer extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final city = parameters['city'] ?? 'Quito';
     return ToolResult.success({
       'recommendations': [
@@ -113,7 +113,7 @@ class AnswerIntentAnalyzer extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['query'] ?? '';
     final res = await EdgeAIService.generateText(
       "Classify the intent of the query '$query' (Informational, Transactional, Navigational) and provide the 'Best Single Answer' for a featured snippet.",
@@ -133,7 +133,7 @@ class SnippetOptimizer extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
        'status': 'optimized',
        'format_suggestion': 'Paragraph with 40-50 words or Bulleted list',
@@ -153,7 +153,7 @@ class SchemaGenerator extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final type = parameters['type'] ?? 'Article';
     return ToolResult.success({
       'json_ld': {
@@ -175,7 +175,7 @@ class VoiceTester extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'readability_score': 0.88,
       'conversational_naturalness': 'High',

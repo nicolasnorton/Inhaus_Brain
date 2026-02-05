@@ -31,7 +31,7 @@ class ResearchAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(
       type: AdkEventType.agentStarted,
@@ -92,7 +92,7 @@ class CreativeAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     
@@ -131,7 +131,7 @@ class DesignAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
@@ -168,7 +168,7 @@ class VideoProductionAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
@@ -205,7 +205,7 @@ class CustomerServiceAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
@@ -242,7 +242,7 @@ class CRMAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
@@ -279,7 +279,7 @@ class CSuiteAdvisorAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
@@ -316,7 +316,7 @@ class StorytellingAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     
@@ -355,7 +355,7 @@ class CopywriterAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     
@@ -394,7 +394,7 @@ class DeveloperAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     
@@ -433,7 +433,7 @@ class OrchestratorAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
      onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
      onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));

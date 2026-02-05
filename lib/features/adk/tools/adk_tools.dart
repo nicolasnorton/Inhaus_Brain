@@ -28,7 +28,7 @@ class CreateAppTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final name = parameters['name'] as String?;
     final description = parameters['description'] as String? ?? '';
     
@@ -80,7 +80,7 @@ class UpdateAppTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final appId = (parameters['appId'] ?? parameters['id']) as String?;
     if (appId == null) return ToolResult.failure('Missing appId');
 
@@ -114,7 +114,7 @@ class DeleteAppTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final appId = (parameters['appId'] ?? parameters['id']) as String?;
     if (appId == null) return ToolResult.failure('Missing appId');
 
@@ -138,7 +138,7 @@ class ListAppsTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'apps': _pipelines.map((p) => {
         'id': p.id,

@@ -1,4 +1,4 @@
-# Inhaus Brain - Agentic Workflow Management
+# Inhaus Brain v1.1.1 (Demo Ready) - Agentic Workflow Management
 
 **Inhaus Brain** is a premium, agent-led workflow orchestration platform designed for modern agencies. It leverages on-device AI and a human-in-the-loop architecture to automate campaign research, visual strategy, and creative execution.
 
@@ -35,6 +35,8 @@ The Inhaus Brain features a team of 11+ specialized agents, each with a custom m
 - **SEO Agent (New)**: Search engine optimization, keyword research, and regional audits.
 - **AEO Agent (New)**: Answer engine optimization for AI search and voice assistants.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
+- **Proposal Specialist (New)**: Bilingual agent capable of generating structured, service-mapped client proposals (JSON/UI).
+- **Demo Mode**: Special "Easter Egg" triggers for tailored client demos (e.g. Bajaj, Banco del Austro).
 
 ### 🦅 Blackboard 2.0 & Observability
 A robust, event-driven architecture designed for stability and transparency:

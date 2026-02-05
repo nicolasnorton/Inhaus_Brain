@@ -10,7 +10,7 @@ class ListModulesTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'modules': [
         {'name': 'Workspace', 'route': '/dashboard', 'description': 'App management and creation'},
@@ -33,7 +33,7 @@ class GetAppStatusTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'status': 'Online',
       'version': '1.0.0-brain',

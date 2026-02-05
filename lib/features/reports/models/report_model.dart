@@ -1,6 +1,53 @@
 import 'package:uuid/uuid.dart';
 import 'source_model.dart';
 
+
+enum ReportOutputType {
+  audio,
+  video,
+  text,
+  image,
+  pdf
+}
+
+class ReportOutput {
+  final String id;
+  final String title;
+  final ReportOutputType type;
+  final String? content; // For text/markdown
+  final String? uri; // For audio/video/image files
+  final DateTime createdAt;
+
+  ReportOutput({
+    required this.id,
+    required this.title,
+    required this.type,
+    this.content,
+    this.uri,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'type': type.index,
+    'content': content,
+    'uri': uri,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  factory ReportOutput.fromJson(Map<String, dynamic> json) {
+    return ReportOutput(
+      id: json['id'],
+      title: json['title'],
+      type: ReportOutputType.values[json['type'] ?? 0],
+      content: json['content'],
+      uri: json['uri'],
+      createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+}
+
 class Report {
   final String id;
   final String title;
@@ -9,6 +56,7 @@ class Report {
   final DateTime updatedAt;
   final String? datasetId; // Reference to Knowledge Base
   final List<ReportSource> sources; 
+  final List<ReportOutput> outputs;
 
   Report({
     required this.id,
@@ -18,7 +66,8 @@ class Report {
     required this.updatedAt,
     this.datasetId,
     List<ReportSource>? sources,
-  }) : sources = sources ?? [];
+    List<ReportOutput>? outputs,
+  }) : sources = sources ?? [], outputs = outputs ?? [];
 
   factory Report.create({required String title, required String clientId, String? datasetId}) {
     final now = DateTime.now();
@@ -41,6 +90,7 @@ class Report {
       'updatedAt': updatedAt.toIso8601String(),
       'datasetId': datasetId,
       'sources': sources.map((s) => s.toJson()).toList(),
+      'outputs': outputs.map((o) => o.toJson()).toList(),
     };
   }
 
@@ -55,6 +105,9 @@ class Report {
       sources: (json['sources'] as List<dynamic>?)
           ?.map((e) => ReportSource.fromJson(e))
           .toList(),
+      outputs: (json['outputs'] as List<dynamic>?)
+          ?.map((e) => ReportOutput.fromJson(e))
+          .toList(),
     );
   }
 
@@ -66,6 +119,7 @@ class Report {
     DateTime? updatedAt,
     String? datasetId,
     List<ReportSource>? sources,
+    List<ReportOutput>? outputs,
   }) {
     return Report(
       id: id ?? this.id,
@@ -75,6 +129,7 @@ class Report {
       updatedAt: updatedAt ?? this.updatedAt,
       datasetId: datasetId ?? this.datasetId,
       sources: sources ?? this.sources,
+      outputs: outputs ?? this.outputs,
     );
   }
 }
@@ -90,6 +145,9 @@ final List<Report> mockReports = [
     sources: [
        ReportSource(id: 's1', reportId: '1', type: SourceType.dataConnector, name: 'BigQuery: Monthly Stats', addedAt: DateTime.now()),
        ReportSource(id: 's2', reportId: '1', type: SourceType.file, name: 'Strategy Doc.pdf', addedAt: DateTime.now()),
+    ],
+    outputs: [
+       ReportOutput(id: 'o1', title: 'Audio Summary', type: ReportOutputType.audio, uri: 'assets/audio/success_chime.mp3', createdAt: DateTime.now()),
     ],
   ),
   Report(

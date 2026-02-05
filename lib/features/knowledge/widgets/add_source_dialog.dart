@@ -68,10 +68,15 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
       if (m.contains('audio')) type = KnowledgeSourceType.audio;
       if (m.contains('pdf') || m.contains('google-apps.document')) type = KnowledgeSourceType.pdf;
 
+      String content = 'Google Drive: ${file.name}';
+      if (bytes != null && (type == KnowledgeSourceType.file || type == KnowledgeSourceType.pdf)) {
+           content = await SourcesService.extractTextFromFile(bytes, file.name);
+      }
+
       final newSource = KnowledgeSource(
         id: const Uuid().v4(),
         title: file.name,
-        content: 'Google Drive: ${file.name}',
+        content: content,
         bytes: bytes,
         type: type,
         createdAt: DateTime.now(),
@@ -108,10 +113,16 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
         if (['mp3', 'wav', 'm4a', 'ogg'].contains(ext)) type = KnowledgeSourceType.audio;
         if (ext == 'pdf') type = KnowledgeSourceType.pdf;
 
+        // Extract text content if possible
+        String content = 'File: ${file.name}';
+        if (file.bytes != null && (type == KnowledgeSourceType.file || type == KnowledgeSourceType.pdf)) {
+           content = await SourcesService.extractTextFromFile(file.bytes!, file.name);
+        }
+
         final newSource = KnowledgeSource(
           id: const Uuid().v4(),
           title: file.name,
-          content: 'File: ${file.name}', // Just a label, real content parsed later
+          content: content,
           bytes: file.bytes,
           type: type,
           createdAt: DateTime.now(),

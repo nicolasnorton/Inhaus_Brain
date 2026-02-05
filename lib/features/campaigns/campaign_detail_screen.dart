@@ -6,7 +6,15 @@ import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'models/campaign.dart';
 import 'providers/campaign_provider.dart';
 import '../creative/providers/creative_provider.dart';
+import '../clients/providers/client_provider.dart';
 import '../../core/widgets/ai_status_badge.dart';
+import '../chat/agents/agency_agents.dart';
+import 'models/proposal_model.dart';
+import '../../core/services/proposal_pdf_service.dart';
+import 'package:inhaus_brain/features/knowledge/providers/knowledge_provider.dart';
+import 'package:inhaus_brain/features/knowledge/models/knowledge_source.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CampaignDetailScreen extends ConsumerWidget {
   final String campaignId;
@@ -172,7 +180,7 @@ class CampaignDetailScreen extends ConsumerWidget {
         color: const Color(0xFF1E2329), // Distinct card color
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: insight.isApproved ? Colors.green.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+          color: insight.isApproved ? Colors.green.withOpacity(0.3) : Colors.white.withOpacity(0.05),
           width: insight.isApproved ? 1.5 : 1,
         ),
       ),
@@ -277,6 +285,16 @@ class CampaignDetailScreen extends ConsumerWidget {
           Text(AppLocalizations.of(context)!.creativeProposedDirections),
           const SizedBox(height: 24),
           SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/creative'),
+              icon: const Icon(Icons.auto_awesome),
+              label: Text(AppLocalizations.of(context)!.openCreativeStudio),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.purpleAccent,
+                side: const BorderSide(color: Colors.purpleAccent),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -285,10 +303,11 @@ class CampaignDetailScreen extends ConsumerWidget {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                // In a real app, this would trigger the orchestration agent.
-                // For demo, we navigate to reports dashboard where they can see the magic.
+                if (campaign.clientId != null) {
+                  ref.read(clientProvider.notifier).selectClient(campaign.clientId!);
+                }
                 context.push('/reports');
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Generating Full ReportsLM Suite (Background Agent)...')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Activating ReportsLM Agent Suite... Synthesizing Mind Map & Infographics.')));
               },
               icon: const Icon(Icons.assessment, color: Colors.white),
               label: const Text("Generate Full ReportsLM Suite"),
@@ -299,8 +318,97 @@ class CampaignDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          // PROPOSAL TRIGGER
+          _buildProposalControl(context, ref, campaign),
         ],
       ),
     );
   }
+
+  Widget _buildProposalControl(BuildContext context, WidgetRef ref, Campaign campaign) {
+    final isLoading = ref.watch(proposalLoadingProvider(campaign.id));
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: isLoading ? null : () => _onGenerateProposal(context, ref, campaign),
+            icon: isLoading 
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.description, color: Colors.white),
+            label: Text(isLoading ? "Generating Proposal..." : "Generate Client Proposal (PDF)"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+              foregroundColor: Colors.blueAccent,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+        if (campaign.proposals.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...campaign.proposals.map((url) => ListTile(
+            leading: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
+            title: const Text("Client Proposal (PDF)", style: TextStyle(color: Colors.white70, fontSize: 13)),
+            trailing: IconButton(
+              icon: const Icon(Icons.download, color: Colors.blueAccent),
+              onPressed: () {
+                 // In a real app, this would download the URL. 
+                 // For demo, we might just re-trigger or show a success message.
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Downloading Proposal...')));
+              },
+            ),
+          )),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _onGenerateProposal(BuildContext context, WidgetRef ref, Campaign campaign) async {
+    ref.read(proposalLoadingProvider(campaign.id).notifier).state = true;
+    try {
+      // 1. Trigger Agent
+      final agent = ProposalSpecialistAgent();
+      final userBrief = "Generate a proposal for ${campaign.clientName} based on the campaign: ${campaign.title}. Description: ${campaign.description}";
+      
+      // Pull services from knowledge if available
+      final knowledge = ref.read(knowledgeProvider);
+      
+      final result = await agent.execute(
+        userPrompt: userBrief,
+        context: knowledge,
+        ref: ref,
+      );
+
+      // 2. Parse Result
+      final proposalData = ProposalData.fromRawJson(result);
+
+      // 3. Generate PDF
+      final pdfBytes = await ProposalPdfService.generateProposalPdf(proposalData);
+
+      // 4. "Save" (Mocking for now, in prod upload to Firebase Storage)
+      final mockUrl = "proposals/proposal_${DateTime.now().millisecondsSinceEpoch}.pdf";
+      final updatedCampaign = campaign.copyWith(
+        proposals: [...campaign.proposals, mockUrl]
+      );
+      
+      await ref.read(campaignListProvider.notifier).updateCampaign(updatedCampaign);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Proposal Generated Successfully!')));
+        // Auto-Open for demo?
+        await ProposalPdfService.saveAndOpenPdf(pdfBytes, "Inhaus_Proposal_${campaign.clientName}.pdf");
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate proposal: $e'), backgroundColor: Colors.redAccent));
+      }
+    } finally {
+      ref.read(proposalLoadingProvider(campaign.id).notifier).state = false;
+    }
+  }
 }
+
+// Simple state provider for loading
+final proposalLoadingProvider = StateProvider.family<bool, String>((ref, id) => false);

@@ -143,8 +143,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
         ),
         availableModels: [
           ModelConfig(
-            id: 'gemini-pro-latest',
-            name: 'Gemini Pro Latest',
+            id: 'gemini-1.5-pro',
+            name: 'Gemini 1.5 Pro',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
             contextWindow: 2000000,

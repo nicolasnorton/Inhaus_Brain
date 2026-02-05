@@ -13,21 +13,26 @@ class KnowledgeIngestionService {
   KnowledgeIngestionService(this._knowledgeApi);
 
   Future<void> ingestClient(Client client) async {
-    debugPrint('Autonomous Ingestion: Processing Client ${client.name}...');
-    final content = """
+    try {
+      debugPrint('Autonomous Ingestion: Processing Client ${client.name}...');
+      final content = """
 Client: ${client.name}
 Industry: ${client.industry}
 Contact: ${client.primaryContactEmail}
 Summary: ${client.description}
 Custom Fields: ${client.customFields}
 """;
-    
-    await _knowledgeApi.createDocumentFromText(
-      datasetId: 'clients-intelligence', // Assuming a default intelligence dataset
-      name: 'Client: ${client.name}',
-      text: content,
-      chunkSize: _calculateChunkSize(KnowledgeSourceType.text, content),
-    );
+      
+      await _knowledgeApi.createDocumentFromText(
+        datasetId: 'clients-intelligence', // Assuming a default intelligence dataset
+        name: 'Client: ${client.name}',
+        text: content,
+        chunkSize: _calculateChunkSize(KnowledgeSourceType.text, content),
+      );
+    } catch (e) {
+      debugPrint('⚠️ Autonomous Ingestion Failed for Client ${client.name}: $e');
+      // Do not rethrow; finding/fixing this shouldn't block user flow
+    }
   }
 
   Future<void> ingestPlatformData(AdPlatform platform, String clientId, String rawData) async {

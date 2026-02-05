@@ -28,7 +28,7 @@ class CreateAppTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final name = parameters['name'] as String?;
     final typeStr = parameters['type'] as String?;
     final description = parameters['description'] as String?;
@@ -83,7 +83,7 @@ class ListAppsTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final appList = _apps.map((a) => {
       'id': a.id,
       'name': a.name,

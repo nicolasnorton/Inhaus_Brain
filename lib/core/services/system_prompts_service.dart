@@ -37,6 +37,7 @@ class SystemPromptsService {
   static const String _servicePromptKey = 'service_prompt';
   static const String _crmPromptKey = 'crm_prompt';
   static const String _csuitePromptKey = 'csuite_prompt';
+  static const String _proposalSpecialistPromptKey = 'proposal_specialist_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -237,6 +238,28 @@ Input: [REPORT]. Output: Recommendations, Risks, ROI Projections.
 Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level aggregates.
 """;
 
+  static const String originalProposalSpecialistPrompt = """
+You are the Bilingual Client Proposal Specialist for Inhaus Brain. Generate a professional, stunning proposal based on the input. 
+Pull agency services/products from the provided context.
+
+Output MUST be a structured JSON following this format:
+{
+  "title": "Proposal Title",
+  "client": "Client Name",
+  "cover": {"title": "...", "subtitle": "..."},
+  "sections": [
+    {"type": "intro", "content_en": "...", "content_es": "..."},
+    {"type": "services", "items": [{"name": "...", "description_en": "...", "description_es": "...", "benefits": "..."}]},
+    {"type": "pricing", "table": [...], "notes_en": "...", "notes_es": "..."},
+    {"type": "timeline", "milestones": [...]},
+    {"type": "cta", "content_en": "...", "content_es": "..."}
+  ],
+  "visuals": ["image_url1"] 
+}
+
+Tone: Professional, confident, concise. Bilingual EN/ES.
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
@@ -308,6 +331,9 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
   Future<void> saveCSuitePrompt(String prompt) async => await _storage.write(key: _csuitePromptKey, value: prompt);
   Future<String> getCSuitePrompt() async => await _getPrompt(_csuitePromptKey, 'assets/prompts/csuite.md', originalCSuitePrompt);
 
+  Future<void> saveProposalSpecialistPrompt(String prompt) async => await _storage.write(key: _proposalSpecialistPromptKey, value: prompt);
+  Future<String> getProposalSpecialistPrompt() async => await _getPrompt(_proposalSpecialistPromptKey, 'assets/prompts/proposal_specialist.md', originalProposalSpecialistPrompt);
+
   Future<String> getPromptForSender(MessageSender sender) async {
     String basePrompt = "";
     switch (sender) {
@@ -334,6 +360,7 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
       case MessageSender.cSuiteAdvisorAgent: basePrompt = await getCSuitePrompt(); break;
       case MessageSender.seoAgent: basePrompt = await getSEOPrompt(); break;
       case MessageSender.aeoAgent: basePrompt = await getAEOPrompt(); break;
+      case MessageSender.proposalSpecialistAgent: basePrompt = await getProposalSpecialistPrompt(); break;
       case MessageSender.system: basePrompt = await getBrianPrompt(); break;
       default: basePrompt = "";
     }
@@ -373,6 +400,7 @@ Precision: Data-backed. Speed: Executive summaries only. Privacy: High-level agg
       case MessageSender.cSuiteAdvisorAgent: await saveCSuitePrompt(prompt); break;
       case MessageSender.seoAgent: await saveSEOPrompt(prompt); break;
       case MessageSender.aeoAgent: await saveAEOPrompt(prompt); break;
+      case MessageSender.proposalSpecialistAgent: await saveProposalSpecialistPrompt(prompt); break;
       default: break;
     }
   }

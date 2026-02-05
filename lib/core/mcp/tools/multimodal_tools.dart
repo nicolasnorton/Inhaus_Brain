@@ -23,7 +23,7 @@ final multimodalToolsProvider = FutureProvider<List<AgentTool>>((ref) async {
   final vertexKey = await vault.getVertexKey();
 
   return [
-    ImageGenerationTool(ref, imagenKey: imagenKey, vertexKey: vertexKey, bananaKey: bananaKey),
+    ImageGenerationTool(ref, imagenKey: imagenKey, vertexKey: vertexKey),
     VideoGenerationTool(ref, veoKey: veoKey, vertexKey: vertexKey),
     AudioGenerationTool(lyriaKey: lyriaKey),
     NotionTool(NotionService(apiKey: await vault.getNotionKey())),

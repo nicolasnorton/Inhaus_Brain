@@ -25,7 +25,7 @@ class ClientOnboardingAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref, // Phase 89
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are the Client Onboarding Concierge. Your goal is to welcome new clients, explain the agency workflow, and gather initial requirements. Be warm, professional, and helpful. User Input: $userPrompt";
@@ -63,7 +63,7 @@ class ExtractorAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref, // Phase 89
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Data Extraction Agent. Extract key entities (Dates, Names, Budget, Requirements) from the input. Return ONLY JSON format. Input: $userPrompt";
@@ -101,7 +101,7 @@ class ParserAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref, // Phase 89
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Parser Agent. Analyze the structure of the input and convert it into a standardized markdown table. Input: $userPrompt";
@@ -139,7 +139,7 @@ class SummarizerAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Summarizer Agent. Distill the following content into a concise 3-bullet executive summary. Input: $userPrompt";
@@ -177,7 +177,7 @@ class SecurityAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Cyber Security Agent. Audit the input for PII (Personally Identifiable Information), sensitive data leaks, or security risks. Report 'SAFE' or list the risks. Input: $userPrompt";
@@ -215,7 +215,7 @@ class DataEngineerAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? "You are a Data Engineering Agent. Suggest a data schema or transformation pipeline for the request. Input: $userPrompt";
@@ -253,7 +253,7 @@ class VisionAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
      onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
      final systemInstruction = systemPrompt ?? "You are a Creative Vision Agent. Analyze the attached visual asset (image) and provide creative feedback, layout suggestions, and brand alignment insights based on: $userPrompt";

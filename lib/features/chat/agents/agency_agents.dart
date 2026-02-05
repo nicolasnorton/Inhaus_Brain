@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
@@ -27,7 +28,7 @@ Future<String> _simpleExecute({
   String? imageMimeType,
   Function(AdkEvent)? onEvent,
   AIModelConfig? modelConfig,
-  Ref? ref, // Phase 89: Required for CopilotKit
+  dynamic ref, // Phase 89: Required for CopilotKit
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
   
@@ -120,7 +121,7 @@ class TrendScoutAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -160,7 +161,7 @@ class AccountDirectorAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -199,7 +200,7 @@ class StrategistAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
@@ -244,7 +245,7 @@ class EditorialManagerAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -283,7 +284,7 @@ class MediaBuyerAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -322,7 +323,7 @@ class PerformanceAnalystAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) {
     return _simpleExecute(
       agentName: name,
@@ -361,7 +362,7 @@ class SEOAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getSEOPrompt();
@@ -404,7 +405,7 @@ class AEOAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getAEOPrompt();
@@ -423,5 +424,83 @@ class AEOAgent extends BaseAgent {
       onEvent: onEvent,
       ref: ref,
     );
+  }
+}
+
+/// 9. Proposal Specialist Agent
+class ProposalSpecialistAgent extends BaseAgent {
+  @override
+  String get name => "Proposal Specialist";
+  
+  @override
+  MessageSender get type => MessageSender.proposalSpecialistAgent;
+
+  @override
+  String get systemPromptKey => "proposal_specialist.md";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    dynamic ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    
+    // Custom logic to ensure we get JSON back as requested in the system prompt
+    String? prompt = systemPrompt;
+    if (prompt == null && ref != null) {
+       try {
+         final service = ref.read(systemPromptsProvider);
+         prompt = await service.getProposalSpecialistPrompt();
+       } catch (e) {
+         debugPrint("Failed to load proposal specialist prompt: $e");
+       }
+    }
+    
+    prompt ??= """
+You are the Bilingual Client Proposal Specialist for Inhaus Brain. Generate a professional, stunning proposal based on the input. 
+Pull agency services/products from the provided context.
+
+Output MUST be a structured JSON following this format:
+{
+  "title": "Proposal Title",
+  "client": "Client Name",
+  "cover": {"title": "...", "subtitle": "..."},
+  "sections": [
+    {"type": "intro", "content_en": "...", "content_es": "..."},
+    {"type": "services", "items": [{"name": "...", "description_en": "...", "description_es": "...", "benefits": "..."}]},
+    {"type": "pricing", "table": [...], "notes_en": "...", "notes_es": "..."},
+    {"type": "timeline", "milestones": [...]},
+    {"type": "cta", "content_en": "...", "content_es": "..."}
+  ],
+  "visuals": ["image_url1"] 
+}
+
+Tone: Professional, confident, concise. Bilingual EN/ES.
+""";
+
+    final result = await _simpleExecute(
+      agentName: name,
+      systemPromptKey: systemPromptKey,
+      systemPrompt: prompt,
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiPro, // Use Pro for complex synthesis
+      ref: ref,
+    );
+    
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
   }
 }

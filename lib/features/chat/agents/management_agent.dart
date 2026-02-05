@@ -15,6 +15,8 @@ import 'package:inhaus_brain/features/chat/services/skill_discovery_service.dart
 import 'package:inhaus_brain/features/admin/tools/admin_tools.dart';
 import 'package:inhaus_brain/core/ucp/services/ucp_mcp_tool.dart';
 import 'package:inhaus_brain/core/mcp/tools/multimodal_tools.dart';
+import 'package:inhaus_brain/features/chat/agents/agent_tool_adapter.dart';
+import 'package:inhaus_brain/features/chat/agents/agency_agents.dart';
 
 class ManagementAgent extends BaseAgent {
   @override
@@ -34,7 +36,7 @@ class ManagementAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     
@@ -104,6 +106,8 @@ You can Create, Read (List), Update, and Delete the following resources:
 - ghl_tool(action, contactData, limit): Manage Go High Level contacts and opportunities.
 - gmail_tool(query): Search recent emails for client communications.
 - drive_tool(fileId, query): Read content from Google Drive files or search for them.
+- proposal_specialist_agent(query): Specialized agent for generating bilingual client proposals. Input should be the details of what to include in the proposal.
+- generate_client_proposal(clientName, campaignId, proposalJson): Generates a professional PDF proposal for a client based on structured JSON data.
 
 If the user request is a direct command to perform one of these actions, return a JSON object representing the tool call.
 Use this EXACT format:
@@ -144,7 +148,7 @@ Use this EXACT format:
     return text;
   }
   
-  Future<String> _processToolCall(String text, Ref? ref) async {
+  Future<String> _processToolCall(String text, dynamic ref) async {
     if (ref == null) return "Error: No context provided for tool execution.";
     
     try {
@@ -169,7 +173,7 @@ Use this EXACT format:
         orElse: () => throw Exception("Tool '$toolName' not found."),
       );
       
-      final result = await tool.execute(parameters);
+      final result = await tool.execute(parameters, ref: ref);
       
       if (result.isSuccess) {
         // If it's a list tool, we might want to format it nicely, but returning raw string/json is OK for now.
@@ -222,5 +226,6 @@ final allManagementToolsProvider = FutureProvider<List<AgentTool>>((ref) async {
     ...ref.watch(adminToolsProvider),
     ...ref.watch(ucpToolsProvider),
     ...multimodal,
+    AgentToolAdapter(agent: ProposalSpecialistAgent()),
   ];
 });

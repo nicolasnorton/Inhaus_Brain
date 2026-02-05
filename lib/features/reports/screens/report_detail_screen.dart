@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,7 @@ import '../../../../core/services/integration_service.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../knowledge/providers/knowledge_service_providers.dart';
+import '../../../../core/services/edge_ai_service.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
   final String reportId;
@@ -29,6 +31,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   final TextEditingController _chatController = TextEditingController();
   final List<Map<String, String>> _chatMessages = [];
   bool _isChatLoading = false;
+  int _mobileTabIndex = 1; // Default to Chat on mobile
 
   void _handleChatSubmit(Report report) async {
     final query = _chatController.text.trim();
@@ -132,9 +135,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         reportId: report.id,
         type: sourceType,
         name: ks.title,
-        content: ks.content,
+        content: ks.content.isNotEmpty ? ks.content : "No extracted text", 
         addedAt: ks.createdAt,
         metadata: ks.metadata ?? {},
+        uri: ks.type == KnowledgeSourceType.url || ks.type == KnowledgeSourceType.youtube ? ks.content : null,
       );
 
       // 3. Add to Report
@@ -164,6 +168,31 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   }
 
 
+
+  Future<void> _addOutput(Report report, ReportOutput output) async {
+    try {
+      final updatedReport = report.copyWith(
+         updatedAt: DateTime.now(),
+         outputs: [...report.outputs, output],
+      );
+
+      await ref.read(reportsServiceProvider).updateReport(updatedReport);
+      ref.invalidate(reportProvider(widget.reportId));
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Saved ${output.title}"), backgroundColor: AppTheme.primary),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text("Error saving output: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _handleAudioGeneration(Report report, {bool isPreview = true}) async {
     _showLoadingDialog(isPreview ? "Analyzing Themes (LiteRT)..." : "Drafting Full Podcast Script...");
     try {
@@ -177,11 +206,29 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
             onGenerateFinal: () => _handleAudioGeneration(report, isPreview: false)
           );
         } else {
-          _showResultDialog("Audio Overview Script", script);
+          // Generate actual audio file (Simulated)
+          _showLoadingDialog("Synthesizing Audio (DeepMind Lyria)...");
+          final audioUrl = await ReportsLMService.generateAudioOverview(report, ref, isPreview: false); // Re-using for script, but need audio gen
+          // NOTE: ReportsLMService currently returns text. We need a way to get audio. 
+          // For now, assuming mock audio injection or using EdgeAIService.generateAudio
+          final realAudioUrl = await EdgeAIService.generateAudio("Podcast based on: $script");
+          if (mounted) Navigator.pop(context);
+
+          final output = ReportOutput(
+            id: const Uuid().v4(),
+            title: "Audio Overview (${DateTime.now().hour}:${DateTime.now().minute})",
+            type: ReportOutputType.audio,
+            content: script,
+            uri: realAudioUrl,
+            createdAt: DateTime.now(),
+          );
+          await _addOutput(report, output);
+
+          _showResultDialog("Audio Overview Ready", script, url: realAudioUrl, isAudio: true);
         }
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context); 
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context); 
       if (mounted) _showErrorDialog(e.toString());
     }
   }
@@ -199,11 +246,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                onGenerateFinal: () => _handleMindMapGeneration(report, isPreview: false)
              );
            } else {
+             // Save Final
+             final output = ReportOutput(
+                id: const Uuid().v4(),
+                title: "Mind Map (${DateTime.now().hour}:${DateTime.now().minute})",
+                type: ReportOutputType.text, // JSON text for now, could be rendered
+                content: json,
+                createdAt: DateTime.now(),
+             );
+             await _addOutput(report, output);
              _showResultDialog("Final Mind Map", json); 
            }
         }
       } catch (e) {
-        if (mounted) Navigator.pop(context);
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
         if (mounted) _showErrorDialog(e.toString());
       }
   }
@@ -221,11 +277,26 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                 onGenerateFinal: () => _handleInfographicGeneration(report, isPreview: false)
               );
             } else {
-              _showResultDialog("Infographic Design", text);
+               // Generate Image
+               _showLoadingDialog("Rendering Design (Imagen 3)...");
+               final imageUrl = await EdgeAIService.generateImage(text, ref: ref);
+               if (mounted) Navigator.pop(context);
+
+               final output = ReportOutput(
+                  id: const Uuid().v4(),
+                  title: "Infographic (${DateTime.now().hour}:${DateTime.now().minute})",
+                  type: ReportOutputType.image,
+                  content: text,
+                  uri: imageUrl,
+                  createdAt: DateTime.now(),
+               );
+               await _addOutput(report, output);
+
+              _showResultDialog("Infographic Design", text, url: imageUrl);
             }
         }
       } catch (e) {
-        if (mounted) Navigator.pop(context);
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
         if (mounted) _showErrorDialog(e.toString());
       }
   }
@@ -243,11 +314,19 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                 onGenerateFinal: () => _handleReportGeneration(report, isPreview: false)
               );
             } else {
+              final output = ReportOutput(
+                  id: const Uuid().v4(),
+                  title: "Deep Dive Report (${DateTime.now().hour}:${DateTime.now().minute})",
+                  type: ReportOutputType.text,
+                  content: text,
+                  createdAt: DateTime.now(),
+               );
+               await _addOutput(report, output);
               _showResultDialog("Final Report", text);
             }
         }
       } catch (e) {
-        if (mounted) Navigator.pop(context);
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
         if (mounted) _showErrorDialog(e.toString());
       }
   }
@@ -265,11 +344,19 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                 onGenerateFinal: () => _handleSlideDeckGeneration(report, isPreview: false)
               );
             } else {
+              final output = ReportOutput(
+                  id: const Uuid().v4(),
+                  title: "Slide Deck Outline (${DateTime.now().hour}:${DateTime.now().minute})",
+                  type: ReportOutputType.text, // Markdown outline
+                  content: text,
+                  createdAt: DateTime.now(),
+               );
+               await _addOutput(report, output);
               _showResultDialog("Final Slide Deck", text);
             }
         }
       } catch (e) {
-        if (mounted) Navigator.pop(context);
+        if (mounted && Navigator.canPop(context)) Navigator.pop(context);
         if (mounted) _showErrorDialog(e.toString());
       }
   }
@@ -334,26 +421,45 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
 
     try {
-      final text = await ReportsLMService.generateVideoOverview(
-        report, 
-        ref, 
-        isPreview: !isFinal,
-      );
-      if (mounted) Navigator.pop(context); // Close loading
-      
-      if (mounted) {
-        if (!isFinal) {
-           _showPreviewDialog(
-             "Video Structure Preview", 
-             text, 
-             onGenerateFinal: () => _handleVideoGeneration(report, isFinal: true)
-           );
-        } else {
-           _showResultDialog("Final Video Structure", text);
-        }
+      if (!isFinal) {
+         final text = await ReportsLMService.generateVideoOverview(
+            report, 
+            ref, 
+            isPreview: true,
+         );
+         if (mounted) Navigator.pop(context); // Close loading
+         
+         if (mounted) {
+            _showPreviewDialog(
+              "Video Structure Preview", 
+              text, 
+              onGenerateFinal: () => _handleVideoGeneration(report, isFinal: true)
+            );
+         }
+      } else {
+         // Final Generation
+         final videoUrl = await EdgeAIService.generateVideo(
+            "Video overview for: ${report.title}", 
+            isFinal: true, 
+            ref: ref,
+            onProgress: (p) => progressNotifier.value = p
+         );
+         
+         if (mounted) Navigator.pop(context);
+
+         final output = ReportOutput(
+            id: const Uuid().v4(),
+            title: "Video Overview (${DateTime.now().hour}:${DateTime.now().minute})",
+            type: ReportOutputType.video,
+            uri: videoUrl,
+            createdAt: DateTime.now(),
+         );
+         await _addOutput(report, output);
+
+         if (mounted) _showVideoResultDialog(report, videoUrl, isFinal: true);
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
       if (mounted) _showErrorDialog(e.toString());
     }
   }
@@ -424,16 +530,21 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               SelectableText(content, style: const TextStyle(color: Colors.white70)),
               if (url != null) ...[
                   const SizedBox(height: 16),
-                  Container(
-                     padding: const EdgeInsets.all(8),
-                     decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
-                     child: Row(
-                       children: [
-                         Icon(isVideo ? Icons.video_library : (isAudio ? Icons.audiotrack : Icons.link), color: Colors.white),
-                         const SizedBox(width: 8),
-                         Expanded(child: Text(url, style: const TextStyle(color: Colors.blueAccent))),
-                       ],
-                     ),
+                  InkWell(
+                    onTap: () {
+                       // Could launch URL
+                    },
+                    child: Container(
+                       padding: const EdgeInsets.all(8),
+                       decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
+                       child: Row(
+                         children: [
+                           Icon(isVideo ? Icons.video_library : (isAudio ? Icons.audiotrack : Icons.image), color: Colors.white),
+                           const SizedBox(width: 8),
+                           Expanded(child: Text(url, style: const TextStyle(color: Colors.blueAccent))),
+                         ],
+                       ),
+                    ),
                   )
               ]
             ],
@@ -441,15 +552,6 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
-          if (url != null && (isVideo || isAudio))
-             ElevatedButton(
-               onPressed: () {
-                 // In real app, launch player
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Launching Media Player...")));
-               }, 
-               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-               child: const Text("Play")
-             ),
         ],
       ),
     );
@@ -472,6 +574,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final reportAsync = ref.watch(reportProvider(widget.reportId));
+    final isMobile = MediaQuery.of(context).size.width < 900;
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -482,18 +585,31 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           onPressed: () => context.go('/reports'),
         ),
         title: reportAsync.when(
-            data: (report) => Text(report?.title ?? "Report Not Found", style: const TextStyle(color: Colors.white)),
+            data: (report) => Text(report?.title ?? "Report Not Found", style: const TextStyle(color: Colors.white, fontSize: 16)),
             loading: () => const Text("Loading...", style: TextStyle(color: Colors.white)),
             error: (_, __) => const Text("Error", style: TextStyle(color: Colors.red))
         ),
         actions: [
            IconButton(
-             icon: const Icon(Icons.share, color: Colors.white70),
+             icon: const Icon(Icons.share_outlined, color: Colors.white70, size: 20),
              onPressed: () {},
            ),
-           const SizedBox(width: 16),
+           const SizedBox(width: 8),
         ],
       ),
+      bottomNavigationBar: isMobile ? BottomNavigationBar(
+        backgroundColor: AppTheme.surface,
+        selectedItemColor: AppTheme.primary,
+        unselectedItemColor: Colors.white38,
+        currentIndex: _mobileTabIndex,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) => setState(() => _mobileTabIndex = index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.source_outlined), label: "Sources"),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Explorer"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_suggest_outlined), label: "Studio"),
+        ],
+      ) : null,
       body: reportAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
         error: (err, stack) => Center(child: Text("Error loading report: $err", style: const TextStyle(color: Colors.red))),
@@ -501,44 +617,24 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
           if (report == null) {
             return const Center(child: Text("Report not found.", style: TextStyle(color: Colors.white)));
           }
+
+          if (isMobile) {
+            return IndexedStack(
+              index: _mobileTabIndex,
+              children: [
+                _buildSourcesPane(report),
+                _buildChatPane(report),
+                _buildStudioPane(report),
+              ],
+            );
+          }
+
           return Row(
             children: [
               // PANE 1: SOURCES
               Expanded(
                 flex: 2,
-                child: Container(
-                  color: AppTheme.background,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Sources", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 14)),
-                      const SizedBox(height: 16),
-                      InkWell(
-                        onTap: () => _showAddSourceDialog(report),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white24),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Center(child: Text("+ Add Source", style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold))),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: report.sources.length,
-                          itemBuilder: (context, index) {
-                            return _buildSourceItem(report.sources[index]);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child: _buildSourcesPane(report),
               ),
               
               const VerticalDivider(width: 1, color: Colors.white10),
@@ -546,89 +642,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               // PANE 2: CHAT
               Expanded(
                 flex: 4,
-                child: Container(
-                  color: AppTheme.background,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: _chatMessages.isEmpty 
-                        ? Center(
-                           child: Column(
-                             mainAxisAlignment: MainAxisAlignment.center,
-                             children: [
-                               const Icon(Icons.auto_awesome, color: AppTheme.primary, size: 48),
-                               const SizedBox(height: 16),
-                               Text("Explore ${report.title}", style: const TextStyle(color: Colors.white, fontSize: 20)),
-                               const SizedBox(height: 8),
-                               const Text("Ask questions based on your sources.", style: TextStyle(color: Colors.white54)),
-                             ],
-                           ),
-                        )
-                        : ListView.builder(
-                           padding: const EdgeInsets.all(16),
-                           itemCount: _chatMessages.length,
-                           itemBuilder: (context, index) {
-                             final msg = _chatMessages[index];
-                             final isUser = msg['role'] == 'user';
-                             return Align(
-                               alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                               child: Container(
-                                 margin: const EdgeInsets.only(bottom: 12),
-                                 padding: const EdgeInsets.all(12),
-                                 decoration: BoxDecoration(
-                                   color: isUser ? AppTheme.primary.withOpacity(0.2) : AppTheme.surface,
-                                   borderRadius: BorderRadius.circular(12),
-                                   border: Border.all(color: isUser ? AppTheme.primary.withOpacity(0.5) : Colors.white10),
-                                 ),
-                                 constraints: const BoxConstraints(maxWidth: 600),
-                                 child: SelectableText( // Allow copying text
-                                    msg['content']!, 
-                                    style: const TextStyle(color: Colors.white)
-                                 ),
-                               ),
-                             );
-                           },
-                        ),
-                      ),
-                       Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.surface,
-                          border: Border(top: BorderSide(color: Colors.white10)),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _chatController,
-                                onSubmitted: (_) => _handleChatSubmit(report),
-                                decoration: InputDecoration(
-                                  hintText: "Ask about this notebook...",
-                                  hintStyle: const TextStyle(color: Colors.white30),
-                                  filled: true,
-                                  fillColor: AppTheme.background,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                ),
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            CircleAvatar(
-                              backgroundColor: AppTheme.primary,
-                              child: IconButton(
-                                icon: _isChatLoading 
-                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                   : const Icon(Icons.arrow_upward, color: Colors.white),
-                                onPressed: () => _handleChatSubmit(report),
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child: _buildChatPane(report),
               ),
 
               const VerticalDivider(width: 1, color: Colors.white10),
@@ -636,53 +650,260 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
               // PANE 3: STUDIO
               Expanded(
                 flex: 4,
-                child: Container(
-                  color: AppTheme.surface,
-                  child: Column(
-                    children: [
-                       Padding(
-                         padding: const EdgeInsets.all(16.0),
-                         child: Row(
-                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                           children: [
-                             const Text("Studio", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                             const Icon(Icons.more_horiz, color: Colors.white54),
-                           ],
-                         ),
-                       ),
-                       const Divider(height: 1, color: Colors.white10),
-                       
-                       Expanded(
-                         child: Padding(
-                           padding: const EdgeInsets.all(16.0),
-                           child: GridView.count(
-                             crossAxisCount: 2,
-                             mainAxisSpacing: 12,
-                             crossAxisSpacing: 12,
-                             childAspectRatio: 2.5,
-                             children: [
-                               _buildStudioCard("Audio Overview", FontAwesomeIcons.headphones, Colors.blue, onTap: () => _handleAudioGeneration(report)),
-                               _buildStudioCard("Video Overview", FontAwesomeIcons.video, Colors.green, onTap: () => _handleVideoGeneration(report)),
-                               _buildStudioCard("Mind Map", FontAwesomeIcons.diagramProject, Colors.purple, onTap: () => _handleMindMapGeneration(report)),
-                               _buildStudioCard("Reports", FontAwesomeIcons.fileLines, Colors.orange, onTap: () => _handleReportGeneration(report)),
-                               _buildStudioCard("Infographic", FontAwesomeIcons.chartPie, Colors.pink, onTap: () => _handleInfographicGeneration(report)),
-                               _buildStudioCard(
-                                 "Slide Deck", 
-                                 FontAwesomeIcons.layerGroup, 
-                                 Colors.amber,
-                                 onTap: () => _handleSlideDeckGeneration(report),
-                               ),
-                             ],
-                           ),
-                         ),
-                       ),
-                    ],
-                  ),
-                ),
+                child: _buildStudioPane(report),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+  Widget _buildSourcesPane(Report report) {
+    return Container(
+      color: AppTheme.background,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Sources", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: () => _showAddSourceDialog(report),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(child: Text("+ Add Source", style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold))),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView.builder(
+              itemCount: report.sources.length,
+              itemBuilder: (context, index) {
+                return _buildSourceItem(report.sources[index]);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatPane(Report report) {
+    return Container(
+      color: AppTheme.background,
+      child: Column(
+        children: [
+          Expanded(
+            child: _chatMessages.isEmpty 
+            ? Center(
+               child: Column(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: [
+                   const Icon(Icons.auto_awesome, color: AppTheme.primary, size: 48),
+                   const SizedBox(height: 16),
+                   Text("Explore ${report.title}", style: const TextStyle(color: Colors.white, fontSize: 20), textAlign: TextAlign.center),
+                   const SizedBox(height: 8),
+                   const Text("Ask questions based on your sources.", style: TextStyle(color: Colors.white54)),
+                 ],
+               ),
+            )
+            : ListView.builder(
+               padding: const EdgeInsets.all(16),
+               itemCount: _chatMessages.length,
+               itemBuilder: (context, index) {
+                 final msg = _chatMessages[index];
+                 final isUser = msg['role'] == 'user';
+                 return Align(
+                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                   child: Container(
+                     margin: const EdgeInsets.only(bottom: 12),
+                     padding: const EdgeInsets.all(12),
+                     decoration: BoxDecoration(
+                       color: isUser ? AppTheme.primary.withOpacity(0.2) : AppTheme.surface,
+                       borderRadius: BorderRadius.circular(12),
+                       border: Border.all(color: isUser ? AppTheme.primary.withOpacity(0.5) : Colors.white10),
+                     ),
+                     constraints: const BoxConstraints(maxWidth: 600),
+                     child: SelectableText(
+                        msg['content']!, 
+                        style: const TextStyle(color: Colors.white)
+                     ),
+                   ),
+                 );
+               },
+            ),
+          ),
+           Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: AppTheme.surface,
+              border: Border(top: BorderSide(color: Colors.white10)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _chatController,
+                    onSubmitted: (_) => _handleChatSubmit(report),
+                    decoration: InputDecoration(
+                      hintText: "Ask about this notebook...",
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      filled: true,
+                      fillColor: AppTheme.background,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                CircleAvatar(
+                  backgroundColor: AppTheme.primary,
+                  child: IconButton(
+                    icon: _isChatLoading 
+                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                       : const Icon(Icons.arrow_upward, color: Colors.white),
+                    onPressed: () => _handleChatSubmit(report),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStudioPane(Report report) {
+     return Container(
+      color: AppTheme.surface,
+      child: Column(
+        children: [
+           Padding(
+             padding: const EdgeInsets.all(16.0),
+             child: Row(
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               children: [
+                 const Text("Studio", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                 const Icon(Icons.more_horiz, color: Colors.white54),
+               ],
+             ),
+           ),
+           const Divider(height: 1, color: Colors.white10),
+           
+           // Studio Options
+           SingleChildScrollView(
+             child: Padding(
+               padding: const EdgeInsets.all(16.0),
+               child: GridView.count(
+                 crossAxisCount: MediaQuery.of(context).size.width < 500 ? 1 : 2,
+                 mainAxisSpacing: 12,
+                 crossAxisSpacing: 12,
+                 childAspectRatio: 2.2,
+                 primary: false,
+                 shrinkWrap: true,
+                 children: [
+                   _buildStudioCard("Audio Overview", FontAwesomeIcons.headphones, Colors.blue, onTap: () => _handleAudioGeneration(report)),
+                   _buildStudioCard("Video Overview", FontAwesomeIcons.video, Colors.green, onTap: () => _handleVideoGeneration(report)),
+                   _buildStudioCard("Mind Map", FontAwesomeIcons.diagramProject, Colors.purple, onTap: () => _handleMindMapGeneration(report)),
+                   _buildStudioCard("Reports", FontAwesomeIcons.fileLines, Colors.orange, onTap: () => _handleReportGeneration(report)),
+                   _buildStudioCard("Infographic", FontAwesomeIcons.chartPie, Colors.pink, onTap: () => _handleInfographicGeneration(report)),
+                   _buildStudioCard(
+                     "Slide Deck", 
+                     FontAwesomeIcons.layerGroup, 
+                     Colors.amber,
+                     onTap: () => _handleSlideDeckGeneration(report),
+                   ),
+                 ],
+               ),
+             ),
+           ),
+
+           const Divider(height: 1, color: Colors.white10),
+           Padding(
+             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+             child: Row(
+               children: [
+                 const Text("Generated Assets", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 14)),
+                 const Spacer(),
+                 if (report.outputs.isNotEmpty)
+                    Text("${report.outputs.length} items", style: const TextStyle(color: Colors.white30, fontSize: 12)),
+               ],
+             ),
+           ),
+
+           // Generated Output List
+           Expanded(
+             child: report.outputs.isEmpty 
+               ? const Center(child: Text("No assets generated yet.", style: TextStyle(color: Colors.white30)))
+               : ListView.builder(
+                   itemCount: report.outputs.length,
+                   itemBuilder: (context, index) {
+                     final output = report.outputs[index];
+                     return _buildOutputItem(output);
+                   },
+                 ),
+           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutputItem(ReportOutput output) {
+    IconData icon = Icons.insert_drive_file;
+    Color color = Colors.white;
+    
+    switch (output.type) {
+      case ReportOutputType.audio:
+        icon = Icons.headphones;
+        color = Colors.blueAccent;
+        break;
+      case ReportOutputType.video:
+        icon = Icons.video_library;
+        color = Colors.greenAccent;
+        break;
+      case ReportOutputType.image:
+        icon = Icons.image;
+        color = Colors.pinkAccent;
+        break;
+      case ReportOutputType.text:
+      case ReportOutputType.pdf:
+        icon = Icons.description;
+        color = Colors.orangeAccent;
+        break;
+    }
+
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: color.withOpacity(0.1),
+        child: Icon(icon, color: color, size: 18),
+      ),
+      title: Text(output.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      subtitle: Text(
+        "${output.type.name.toUpperCase()} • ${output.createdAt.hour}:${output.createdAt.minute}", 
+        style: const TextStyle(color: Colors.white38, fontSize: 11)
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.play_circle_fill, color: Colors.white70),
+            onPressed: () {
+               // Play or View
+               if (output.uri != null) {
+                  _showResultDialog(output.title, output.content ?? '', url: output.uri, isVideo: output.type == ReportOutputType.video, isAudio: output.type == ReportOutputType.audio);
+               } else {
+                  _showResultDialog(output.title, output.content ?? '');
+               }
+            },
+          ),
+        ],
       ),
     );
   }

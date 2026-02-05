@@ -8,7 +8,7 @@ import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
 import '../../../core/services/semantic_cache_service.dart';
 import '../../../core/utils/security_utils.dart';
-import '../../../core/services/pinecone_service.dart'; // Pinecone integration
+import '../../../core/utils/security_utils.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart'; // PDF Parsing
 import '../models/knowledge_api_models.dart';
 
@@ -18,7 +18,6 @@ class KnowledgeApiService {
   final VertexApiService _vertexService;
   final SecretVaultService _vault;
   final SemanticCacheService? _cache;
-  final PineconeService? _pineconeService; // Added Pinecone
   final String? _userId;
   final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
 
@@ -28,10 +27,9 @@ class KnowledgeApiService {
     required this.tokenProvider,
     String? userId,
     SemanticCacheService? cache,
-    PineconeService? pineconeService, // Added
     String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _vertexService = vertexService, _vault = vault, _cache = cache, _pineconeService = pineconeService, _userId = userId;
+  }) : _vertexService = vertexService, _vault = vault, _cache = cache, _userId = userId;
 
   static const String _collectionDatasets = 'knowledge_datasets';
   static const String _collectionDocuments = 'documents';
@@ -280,34 +278,12 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
         completedAt: now,
       ).toJson();
 
-      // Add Vector Field (native Firestore vector support requires specific format, usually List<double>)
-      if (i < embeddings.length) {
-        chunkData['embedding_vector'] = embeddings[i]; // Vector field for Firestore backup
-        
-        // Prepare for Pinecone
-        pineconeVectors.add({
-          'id': chunkRef.id,
-          'values': embeddings[i],
-          'metadata': {
-            'text': chunks[i],
-            'document_id': docId,
-            'dataset_id': datasetId,
-            'source_name': name,
-          }
-        });
-      }
+      // Add Vector Field (native Firestore vector support requires upgrade)
+      // if (i < embeddings.length) {
+      //   chunkData['embedding_vector'] = FieldValue.vector(embeddings[i]); 
+      // }
 
       batch.set(chunkRef, chunkData);
-    }
-    
-    // Upsert to Pinecone
-    if (_pineconeService != null && pineconeVectors.isNotEmpty) {
-       try {
-         await _pineconeService!.upsertVectors(vectors: pineconeVectors, namespace: datasetId);
-       } catch (e) {
-         debugPrint('Pinecone Upsert Failed: $e');
-         // We don't fail the whole process, but we warn
-       }
     }
 
     // 5. Save Document Metadata
@@ -564,59 +540,77 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
        }
      }
 
-     // Vector Search Implementation
-     if (_pineconeService != null) {
-        try {
-           // 1. Generate Embedding for Query
-           // We reuse the createDocument logic or explicit embedding call. 
-           // Since getEmbeddings is on VertexService, we use that.
-           
-           // Lookup Vertex/Gemini Key again (duplicated logic from create - ideally refactor to helper)
-           String? apiKey = await _vault.getVertexKey();
-           bool isVertex = true;
-           if (apiKey == null) {
-              apiKey = await _vault.getGeminiKey();
-              isVertex = false;
-           }
-           
-           if (apiKey != null) {
-              final embeddings = await _vertexService.getEmbeddings(
-                 [query], 
-                 accessToken: isVertex && !apiKey.startsWith('AQ.') ? apiKey : null,
-                 apiKey: (!isVertex || apiKey.startsWith('AQ.')) ? apiKey : null
-              );
-              
-              if (embeddings.isNotEmpty) {
-                 final queryVector = embeddings.first;
-                 
-                 // 2. Query Pinecone
-                 final matches = await _pineconeService!.queryVectors(
-                    vector: queryVector,
-                    namespace: datasetId,
-                    topK: 5,
-                    includeMetadata: true,
-                 );
-                 
-                 final result = {
-                    'records': matches.map((m) => {
-                       'score': m['score'],
-                       'segment': {
-                          'content': m['metadata']['text'] ?? '',
-                          'document_id': m['metadata']['document_id'],
-                       }
-                    }).toList()
-                 };
-                 
-                 if (_cache != null && apiKey.isNotEmpty) { // Only cache if we succeeded
-                    await _cache.store('knowledge_retrieval', cacheKey, jsonEncode(result));
-                 }
-                 
-                 return result;
-              }
-           }
-        } catch (e) {
-           debugPrint('Vector Search Failed: $e');
+     // Vector Search Implementation (Firestore Native)
+     try {
+        // 1. Generate Embedding for Query
+        String? apiKey = await _vault.getVertexKey();
+        bool isVertex = true;
+        
+        // Check local token provider first (often has fresh OAuth)
+        if (apiKey == null) {
+            apiKey = await tokenProvider();
+             if (apiKey != null && (apiKey.startsWith('ya29.') || apiKey.startsWith('AQ.'))) {
+               // Good info
+             } else {
+               apiKey = null;
+             }
         }
+
+        if (apiKey == null) {
+            apiKey = await _vault.getGeminiKey();
+            isVertex = false;
+        }
+        
+        if (apiKey != null) {
+           final embeddings = await _vertexService.getEmbeddings(
+              [query], 
+              accessToken: isVertex && !apiKey.startsWith('AQ.') ? apiKey : null,
+              apiKey: (!isVertex || apiKey.startsWith('AQ.')) ? apiKey : null
+           );
+           
+           if (embeddings.isNotEmpty) {
+              final queryVector = embeddings.first;
+              
+               // 2. Query Firestore Vector Search
+               debugPrint('KnowledgeApi: Performing Firestore Vector Search for "$query"...');
+               
+               // TODO: Upgrade cloud_firestore to support native Vector Search
+               /*
+               final collection = _firestore.collectionGroup(_collectionChunks);
+               
+               // Note: This requires a Vector Index on 'embedding_vector' in chunks collection group
+               final querySnapshot = await collection.findNearest(
+                  vectorField: 'embedding_vector',
+                  queryVector: queryVector,
+                  limit: 5,
+                  distanceMeasure: DistanceMeasure.cosine,
+               ).get();
+
+              final records = querySnapshot.docs.map((doc) {
+                  final data = doc.data();
+                  // We need to fetch the document metadata or at least return what we have
+                  // The chunk contains 'content' directly.
+                  return {
+                     'score': 0.0, // Firestore doesn't return score in client SDK yet easily, or needs different handling
+                     'segment': {
+                        'content': data['content'] ?? '',
+                        'document_id': data['document_id'],
+                     }
+                  };
+               }).toList();
+               
+               final result = {'records': records};
+               
+               if (_cache != null && records.isNotEmpty) { 
+                  await _cache.store('knowledge_retrieval', cacheKey, jsonEncode(result));
+               }
+               
+               return result;
+               */
+           }
+        }
+     } catch (e) {
+        debugPrint('Vector Search Failed: $e');
      }
 
      // TODO: Implement actual Vector Search here

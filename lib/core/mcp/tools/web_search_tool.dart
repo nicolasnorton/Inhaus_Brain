@@ -14,7 +14,7 @@ class WebSearchTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['query'] as String?;
     if (query == null || query.isEmpty) {
       return ToolResult.failure('Missing required parameter: query');

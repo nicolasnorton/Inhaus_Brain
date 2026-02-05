@@ -1,6 +1,7 @@
 import '../../../core/mcp/agent_tool.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import 'base_agent.dart';
+import '../../knowledge/models/knowledge_source.dart';
 
 /// Adapter that allows any [BaseAgent] to be used as an [AgentTool]
 /// This enables the "Agent-as-a-Tool" pattern from the Google ADK maturity roadmap.
@@ -27,19 +28,23 @@ class AgentToolAdapter extends AgentTool {
        );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['query'] as String?;
     if (query == null || query.isEmpty) {
       return ToolResult.failure('Missing required parameter: query');
     }
+    
+    // Attempt to extract context if provided in parameters (optional)
+    final context = (parameters['context'] as List?)?.map((c) => c as KnowledgeSource).toList() ?? [];
 
     try {
       final result = await agent.execute(
         userPrompt: query,
-        context: [], // Tools usually operate on local context passed in query
+        context: context,
         apiKey: apiKey,
         gemmaKey: gemmaKey,
         onEvent: (e) => AdkEventBus().publish(e), // Relay events to the bus
+        ref: ref,
       );
       return ToolResult.success({'response': result});
     } catch (e) {

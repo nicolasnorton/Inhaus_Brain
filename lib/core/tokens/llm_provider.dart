@@ -53,10 +53,10 @@ class AIModelConfig {
     switch (provider) {
       case AIProvider.gemini: return 'Google Gemini ($modelId)';
       case AIProvider.vertex: return 'Google Vertex AI ($modelId)';
-      case AIProvider.openai: return 'OpenAI ($modelId)';
-      case AIProvider.claude: return 'Anthropic Claude ($modelId)';
-      case AIProvider.grok: return 'xAI Grok ($modelId)';
-      case AIProvider.mistral: return 'Mistral AI ($modelId)';
+      case AIProvider.openai: return 'Google Gemini (Compatible Mode)';
+      case AIProvider.claude: return 'Google Gemini (Compatible Mode)';
+      case AIProvider.grok: return 'Google Gemini (Compatible Mode)';
+      case AIProvider.mistral: return 'Google Gemini (Compatible Mode)';
       case AIProvider.runway: return 'Runway Gen-2';
       case AIProvider.midjourney: return 'Midjourney v6';
       case AIProvider.litert: return 'LiteRT On-Device ($modelId)';
@@ -64,18 +64,19 @@ class AIModelConfig {
   }
 
   // Factory for known heavy hitters
-  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-pro-latest');
+  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
   static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash');
   static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', useGoogleSearch: true);
   
-  static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4o');
-  static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-4-turbo');
-  static AIModelConfig get gpt35 => const AIModelConfig(provider: AIProvider.openai, modelId: 'gpt-3.5-turbo');
+  // Re-mapped Legacy Presets (All route to Gemini)
+  static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
+  static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
+  static AIModelConfig get gpt35 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash');
 
-  static AIModelConfig get claude3Opus => const AIModelConfig(provider: AIProvider.claude, modelId: 'claude-3-opus-20240229');
-  static AIModelConfig get claude3Sonnet => const AIModelConfig(provider: AIProvider.claude, modelId: 'claude-3-5-sonnet-20240620');
+  static AIModelConfig get claude3Opus => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
+  static AIModelConfig get claude3Sonnet => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
   
-  static AIModelConfig get grok1 => const AIModelConfig(provider: AIProvider.grok, modelId: 'grok-1');
+  static AIModelConfig get grok1 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro');
 
   // LiteRT Models
   static AIModelConfig get gemma2n => const AIModelConfig(provider: AIProvider.litert, modelId: 'gemma-2b-it-gpu');

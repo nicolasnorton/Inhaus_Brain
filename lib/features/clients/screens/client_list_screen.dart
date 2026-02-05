@@ -40,8 +40,11 @@ class ClientListScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 16,
+                runSpacing: 16,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,13 +63,19 @@ class ClientListScreen extends ConsumerWidget {
                         AppLocalizations.of(context)!.portfolioManagement,
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
+                          fontSize: MediaQuery.of(context).size.width < 600 ? 24 : null,
                         ),
                       ),
                     ],
                   ),
                   if (isAdmin)
                     ElevatedButton.icon(
-                      onPressed: () => context.go('/clients/new'),
+                      onPressed: () async {
+                        final result = await context.push<bool>('/clients/new');
+                        if (result == true) {
+                          // Optional: Manually refresh
+                        }
+                      },
                       icon: const Icon(Icons.add),
                       label: Text(AppLocalizations.of(context)!.addClient),
                       style: ElevatedButton.styleFrom(
@@ -83,18 +92,23 @@ class ClientListScreen extends ConsumerWidget {
                 const Expanded(child: Center(child: CircularProgressIndicator()))
               else
                 Expanded(
-                  child: clients.isEmpty
-                      ? _buildEmptyState(context)
-                      : GridView.builder(
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 24,
-                            mainAxisSpacing: 24,
-                            childAspectRatio: 1.2,
-                          ),
-                          itemCount: clients.length,
-                          itemBuilder: (context, index) => _buildClientCard(context, clients[index], ref),
-                        ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = constraints.maxWidth < 600 ? 1 : (constraints.maxWidth < 1100 ? 2 : 3);
+                      return clients.isEmpty
+                          ? _buildEmptyState(context)
+                          : GridView.builder(
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 24,
+                                mainAxisSpacing: 24,
+                                childAspectRatio: crossAxisCount == 1 ? 1.5 : 1.2,
+                              ),
+                              itemCount: clients.length,
+                              itemBuilder: (context, index) => _buildClientCard(context, clients[index], ref),
+                            );
+                    },
+                  ),
                 ),
             ],
           ),

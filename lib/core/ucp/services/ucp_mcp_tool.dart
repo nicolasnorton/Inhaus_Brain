@@ -19,7 +19,7 @@ class UCPDiscoverTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['query'] as String?;
     if (query == null) {
       return ToolResult.failure('Missing required parameter: query');
@@ -62,7 +62,7 @@ class UCPCheckoutTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final businessId = parameters['businessId'] as String?;
     final itemIds = (parameters['itemIds'] as List?)?.cast<String>() ?? [];
 
@@ -90,7 +90,7 @@ class UCPListCategoriesTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'categories': [
         'Retail', 'Electronics', 'Fashion', 'Grocery', 'Services', 'Healthcare', 'Entertainment'
@@ -110,7 +110,7 @@ class UCPListParticipantsTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     try {
       final participants = await _service.getParticipants();
       return ToolResult.success({

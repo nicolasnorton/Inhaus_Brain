@@ -26,7 +26,7 @@ class GHLTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final action = parameters['action'] as String?;
     if (action == null) return ToolResult.failure('Missing required parameter: action');
 

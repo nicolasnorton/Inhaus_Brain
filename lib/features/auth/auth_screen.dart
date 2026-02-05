@@ -7,6 +7,8 @@ import 'package:google_sign_in_web/google_sign_in_web.dart' as web;
 import 'package:inhaus_brain/l10n/app_localizations.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/router/app_router.dart';
+import '../../core/providers/demo_provider.dart';
+import '../../features/knowledge/providers/knowledge_provider.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -68,7 +70,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+            padding: const EdgeInsets.symmetric(vertical: 36),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -102,7 +104,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                 ),
                 const Text(
-                  'v1.0.5-CLEAN',
+                  'v1.1.1-DEMO-READY',
                   style: TextStyle(color: Colors.white24, fontSize: 8),
                 ),
                 const SizedBox(height: 54),
@@ -128,9 +130,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   constraints: const BoxConstraints(maxWidth: 400),
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Column(
                     children: [
@@ -177,27 +179,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Text(AppLocalizations.of(context)!.orLabel, style: const TextStyle(color: Colors.white24, fontSize: 10)),
                 const SizedBox(height: 16),
                 
-                // Google Sign In - Handled by GIS on Web
-                if (kIsWeb)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 300, minHeight: 40),
-                    child: Focus(
-                      skipTraversal: true,
-                      child: _buildGoogleSignInButton(),
-                    ),
-                  )
-                else
-                  OutlinedButton.icon(
-                    onPressed: () => ref.read(authServiceProvider).signInWithGoogle(),
-                    icon: const FaIcon(FontAwesomeIcons.google, size: 14),
-                    label: Text(AppLocalizations.of(context)!.googleLogin, style: const TextStyle(fontSize: 12, letterSpacing: 1.0)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white54,
-                      side: const BorderSide(color: Colors.white12),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    ),
-                  ),
+                const SizedBox(height: 32),
+                const SizedBox(height: 16),
+                _buildGoogleSignInButton(),
               ],
             ),
           ),

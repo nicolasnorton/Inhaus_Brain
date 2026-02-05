@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/agency/screens/agency_screen.dart'; // Added
+import '../../features/agency/screens/sales_screen.dart'; // Added
+import '../../features/agency/screens/finances_screen.dart'; // Added
+import '../../features/agency/screens/hr_screen.dart'; // Added
 
 import '../../features/campaigns/campaign_list_screen.dart';
 import '../../features/campaigns/campaign_wizard_screen.dart';
@@ -232,6 +236,24 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => ReportDetailScreen(
                   reportId: state.pathParameters['id']!,
                 ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/agency',
+            builder: (context, state) => const AgencyScreen(),
+            routes: [
+              GoRoute(
+                path: 'sales',
+                builder: (context, state) => const SalesScreen(),
+              ),
+              GoRoute(
+                path: 'finances',
+                builder: (context, state) => const FinancesScreen(),
+              ),
+              GoRoute(
+                path: 'hr',
+                builder: (context, state) => const HRScreen(),
               ),
             ],
           ),

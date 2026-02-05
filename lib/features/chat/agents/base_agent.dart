@@ -26,6 +26,6 @@ abstract class BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref, // Phase 89
+    dynamic ref, // Phase 89
   });
 }

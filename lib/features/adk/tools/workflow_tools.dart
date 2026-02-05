@@ -19,7 +19,7 @@ class AddWorkflowNodeTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final type = parameters['type'] ?? 'action';
     final label = parameters['label'] ?? 'New Node';
     
@@ -40,7 +40,7 @@ class ConnectNodesTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({'message': 'Nodes connected successfully.'});
   }
 }

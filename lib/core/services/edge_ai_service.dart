@@ -13,21 +13,10 @@ import 'ai_proxy_service.dart';
 import 'video_generation_service.dart';
 import 'telemetry_service.dart';
 
-// --- JS Interop for Chrome Prompt API ---
-// These will only work on Chrome with experimental flags enabled.
-/*
-import 'dart:js_interop';
-
-@JS('getAISystemStatus')
-external JSPromise getAISystemStatus();
-
-@JS('promptBuiltInAI')
-external JSPromise promptBuiltInAI(String query);
-*/
 
 enum AIProximity {
   local,     // Chrome Prompt API or Gemini Nano
-  cloud,     // Vertex AI, OpenAI, Claude, Grok
+  cloud,     // Vertex AI
   simulated  // Dynamic Edge Mock
 }
 
@@ -69,11 +58,8 @@ class EdgeAIService {
     AIModelConfig? modelConfig,
     String? apiKey,
     String? gemmaKey,
-    String? openAIKey,
-    String? anthropicKey,
-    String? xaiKey,
     String? vertexKey,
-    Ref? ref, // Phase 89: Optional Ref for proximity sync
+    dynamic ref, // Phase 89: Support both WidgetRef and Ref for proximity sync
   }) async {
     final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
     
@@ -153,39 +139,22 @@ class EdgeAIService {
              }
           }
           break;
-        case AIProvider.openai:
-          final key = openAIKey ?? await _vault.getOpenAIKey();
-          _logger.d('EdgeAI: OpenAI Key found: ${key != null && key.isNotEmpty}');
-          if (key == null || key.isEmpty) {
-             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-          } else {
-             result = await _generateOpenAI(effectivePrompt, config, key, imageBytes, imageMimeType);
-          }
-          break;
-        case AIProvider.claude:
-          final key = anthropicKey ?? await _vault.getAnthropicKey();
-          _logger.d('EdgeAI: Claude Key found: ${key != null && key.isNotEmpty}');
-          if (key == null || key.isEmpty) {
-             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-          } else {
-             result = await _generateClaude(effectivePrompt, config, key, imageBytes, imageMimeType);
-          }
-          break;
-        case AIProvider.grok:
-          final key = xaiKey ?? await _vault.getXAIKey();
-          _logger.d('EdgeAI: Grok Key found: ${key != null && key.isNotEmpty}');
-          if (key == null || key.isEmpty) {
-             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-          } else {
-             result = await _generateGrok(effectivePrompt, config, key);
-          }
-          break;
         case AIProvider.litert:
           result = await _generateLiteRT(effectivePrompt, config);
           break;
         default:
-          _logger.w('EdgeAI: Unknown provider ${config.provider}. Returning mock.');
-          result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+          // Fallback to FirebaseAI for everything else (using consolidated Key routing)
+             // Prefer Vertex if we have a token/key for it
+             result = await _generateFirebaseAI(
+               effectivePrompt, 
+               config, 
+               vertexKeyOverride: vertexKey,
+               apiKeyOverride: apiKey,
+               imageBytes: imageBytes, 
+               imageMimeType: imageMimeType,
+               audioBytes: audioBytes,
+               audioMimeType: audioMimeType
+             );
       }
       
       // Phase 89: Global Proximity Sync (Only if ref is provided)
@@ -344,7 +313,7 @@ class EdgeAIService {
     String? audioMimeType,
     AIModelConfig? config,
     String? apiKey,
-    Ref? ref, 
+    dynamic ref, 
   }) async* {
     final effectiveConfig = config ?? AIModelConfig.geminiFlash;
      
@@ -406,148 +375,8 @@ class EdgeAIService {
      }
   }
 
-  // --- NON-GEMINI PROVIDERS ---
 
-  static Future<EdgeAIResult> _generateOpenAI(
-    String prompt, 
-    AIModelConfig config, 
-    String? apiKey, 
-    Uint8List? imageBytes, 
-    String? mimeType
-  ) async {
-    if (apiKey == null || apiKey.isEmpty) throw Exception("OpenAI API Key missing");
-
-    final messages = <Map<String, dynamic>>[];
-    
-    if (imageBytes != null) {
-      final base64Image = base64Encode(imageBytes);
-      messages.add({
-        "role": "user",
-        "content": [
-          {"type": "text", "text": prompt},
-          {
-            "type": "image_url",
-            "image_url": {
-              "url": "data:${mimeType ?? 'image/jpeg'};base64,$base64Image"
-            }
-          }
-        ]
-      });
-    } else {
-      messages.add({"role": "user", "content": prompt});
-    }
-
-    final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/chat/completions'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        "model": config.modelId,
-        "messages": messages,
-        "temperature": config.temperature,
-        "max_tokens": config.maxTokens ?? 2048,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final content = data['choices'][0]['message']['content'];
-      return EdgeAIResult(content, AIProximity.cloud, modelUsed: config.modelId);
-    } else {
-      throw Exception('OpenAI Error: ${response.body}');
-    }
-  }
-
-  static Future<EdgeAIResult> _generateClaude(
-    String prompt, 
-    AIModelConfig config, 
-    String? apiKey, 
-    Uint8List? imageBytes, 
-    String? mimeType
-  ) async {
-    if (apiKey == null || apiKey.isEmpty) throw Exception("Anthropic API Key missing");
-
-    final messages = <Map<String, dynamic>>[];
-    
-    if (imageBytes != null) {
-      final base64Image = base64Encode(imageBytes);
-      messages.add({
-        "role": "user",
-        "content": [
-          {
-            "type": "image",
-            "source": {
-              "type": "base64",
-              "media_type": mimeType ?? 'image/jpeg',
-              "data": base64Image
-            }
-          },
-          {"type": "text", "text": prompt}
-        ]
-      });
-    } else {
-       messages.add({"role": "user", "content": prompt});
-    }
-
-    final response = await http.post(
-      Uri.parse('https://api.anthropic.com/v1/messages'),
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: jsonEncode({
-        "model": config.modelId,
-        "max_tokens": config.maxTokens ?? 2048,
-        "messages": messages,
-        "temperature": config.temperature,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final content = data['content'][0]['text'];
-      return EdgeAIResult(content, AIProximity.cloud, modelUsed: config.modelId);
-    } else {
-      throw Exception('Anthropic Error: ${response.body}');
-    }
-  }
-
-  static Future<EdgeAIResult> _generateGrok(
-    String prompt, 
-    AIModelConfig config, 
-    String? apiKey
-  ) async {
-    if (apiKey == null || apiKey.isEmpty) throw Exception("xAI API Key missing");
-
-    final response = await http.post(
-      Uri.parse('https://api.x.ai/v1/chat/completions'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        "model": config.modelId,
-        "messages": [
-          {"role": "system", "content": "You are Grok, a conversational AI developed by xAI."},
-          {"role": "user", "content": prompt}
-        ],
-        "temperature": config.temperature,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final content = data['choices'][0]['message']['content'];
-      return EdgeAIResult(content, AIProximity.cloud, modelUsed: config.modelId);
-    } else {
-      throw Exception('Grok Error: ${response.body}');
-    }
-  }
-
-  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, String? bananaKey, String? midjourneyKey, String? runwayKey, Ref? ref}) async {
+  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref}) async {
     // 1. WEB PROXY PATH (Vertex Imagen - Primary)
     if (kIsWeb) {
        try {
@@ -572,19 +401,7 @@ class EdgeAIService {
        }
     } 
     
-    // 2. GROK FLUX (xAI Integration)
-    // Checking for xAI key availability (Implementation Stub)
-    // if (await _vault.getXAIKey() != null) ...
-    debugPrint('EdgeAI: Attempting Grok Flux (simulated)...');
-    
-    // 3. REPLICATE / POLLINATIONS (SDXL Fallback)
-    debugPrint('EdgeAI: Using Pollinations (SDXL) as robust fallback.');
-    try {
-      final encodedPrompt = Uri.encodeComponent("$prompt, safe, friendly, cute, tech");
-      return "https://image.pollinations.ai/prompt/$encodedPrompt?width=1024&height=1024&nologo=true&seed=${DateTime.now().millisecondsSinceEpoch}";
-    } catch (e) {
-      debugPrint('EdgeAI: Pollinations failed: $e');
-    }
+    // 2. SAFE MOCKS (Fallback)
 
     // 4. SAFE MOCKS (Clawd / Lobster Mock Fallback)
     debugPrint('EdgeAI: 🚨 ALL Image/AI services failed. Providing SAFE MOCK asset.');
@@ -593,7 +410,7 @@ class EdgeAIService {
     return "https://images.unsplash.com/photo-1535591273668-578e31182c4f?q=80&w=2070&auto=format&fit=crop"; 
   }
 
-  static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, String? runwayKey, Ref? ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {
+  static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, dynamic ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {
     // Phase 95: Telemetry Injection via Ref if available
     final telemetry = ref?.read(telemetryServiceProvider);
     

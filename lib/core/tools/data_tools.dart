@@ -22,7 +22,7 @@ class DataAnalysisTool extends AgentTool {
   );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final query = parameters['data_query'] as String?;
     if (query == null) return ToolResult.failure('data_query is required');
 

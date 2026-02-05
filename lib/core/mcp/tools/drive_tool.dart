@@ -16,7 +16,8 @@ class DriveTool extends AgentTool {
             },
           },
         );
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final fileId = parameters['fileId'] as String?;
     final query = parameters['query'] as String?; // Search query
     

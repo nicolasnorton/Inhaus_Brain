@@ -36,7 +36,7 @@ class AddKnowledgeSourceTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     // Aggressive parameter extraction: check common keys
     final contentFinal = (parameters['content'] ?? 
                            parameters['url'] ?? 
@@ -102,7 +102,7 @@ class DeleteKnowledgeSourceTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final sourceId = (parameters['sourceId'] ?? parameters['id']) as String?;
     if (sourceId == null) return ToolResult.failure('Missing sourceId.');
 
@@ -126,7 +126,7 @@ class ListKnowledgeSourcesTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'sources': _sources.map((s) => {
         'id': s.id,

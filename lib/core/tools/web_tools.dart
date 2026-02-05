@@ -19,7 +19,7 @@ class ReadUrlTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final url = parameters['url'] as String?;
     if (url == null || url.isEmpty) {
       return ToolResult.failure('url parameter is required');
@@ -76,7 +76,7 @@ class WebSearchTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     print('DEBUG: EXECUTING UPDATED WEB SEARCH TOOL WITH GROUNDING');
     final query = parameters['query'] as String?;
     if (query == null) return ToolResult.failure('query is required');

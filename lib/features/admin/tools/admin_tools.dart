@@ -19,7 +19,7 @@ class ReadGlobalMemoryTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     try {
       final memories = await _memoryService.getSuperAdminMemories();
 
@@ -62,7 +62,7 @@ class ReadSystemLogsTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     try {
       final limit = parameters['limit'] as int? ?? 20;
       final levelStr = parameters['level'] as String?;

@@ -6,8 +6,6 @@ import '../../../core/auth/auth_service.dart';
 import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
 import '../../../core/services/semantic_cache_service.dart';
-import '../../../core/services/pinecone_service.dart'; // Added
-
 
 // --- Legacy Source Management ---
 
@@ -32,6 +30,31 @@ class KnowledgeNotifier extends StateNotifier<List<KnowledgeSource>> {
   void clearSources() {
     state = [];
   }
+
+  void initDemoData() {
+    state = [
+      KnowledgeSource(
+        id: 'ks-services',
+        title: 'Agency Services Catalog 2024',
+        content: """
+        /knowledge/services
+        Service: AI Social Media Suite
+        Description: High-frequency social content generated using Veo and Gemini.
+        Pricing: \$2,500 / month
+        
+        Service: Strategic Research Deep Dive
+        Description: Comprehensive market and competitive analysis using Google Search grounding.
+        Pricing: \$1,500 / report
+        
+        Service: Brand Identity Refresh
+        Description: Modern visual concepts using Imagen 3 and Design Agents.
+        Pricing: \$3,000 / project
+        """,
+        type: KnowledgeSourceType.text,
+        createdAt: DateTime.now(),
+      )
+    ];
+  }
 }
 
 final knowledgeProvider = StateNotifierProvider<KnowledgeNotifier, List<KnowledgeSource>>((ref) {
@@ -42,24 +65,15 @@ final knowledgeProvider = StateNotifierProvider<KnowledgeNotifier, List<Knowledg
 
 final vertexApiServiceProvider = Provider<VertexApiService>((ref) => VertexApiService());
 
-final pineconeServiceProvider = Provider<PineconeService>((ref) {
-  final vault = ref.watch(secretVaultProvider);
-  return PineconeService(vault);
-});
-
 final knowledgeApiServiceProvider = Provider<KnowledgeApiService>((ref) {
   final authService = ref.watch(authServiceProvider);
   final vault = ref.watch(secretVaultProvider);
   final vertex = ref.watch(vertexApiServiceProvider);
   final cache = ref.watch(semanticCacheServiceProvider);
-  final pinecone = ref.watch(pineconeServiceProvider); // Added
-  
   return KnowledgeApiService(
-    userId: authService.currentUser?.uid,
     vertexService: vertex,
     vault: vault,
     cache: cache,
-    pineconeService: pinecone, // Injected
     tokenProvider: () async {
       // 1. Try to get a fresh token from Google account (refreshes if needed)
       final freshToken = await authService.getFreshVertexToken();

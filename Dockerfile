@@ -37,6 +37,7 @@ ARG LYRIA_API_KEY
 ARG XAI_API_KEY
 ARG RUNWAY_API_KEY
 ARG MIDJOURNEY_API_KEY
+ARG PINECONE_API_KEY
 
 # Build the web application
 # Note: Cleaning before build ensures no stale artifacts are included
@@ -60,7 +61,8 @@ RUN flutter clean && \
     --dart-define=LYRIA_API_KEY=$LYRIA_API_KEY \
     --dart-define=XAI_API_KEY=$XAI_API_KEY \
     --dart-define=RUNWAY_API_KEY=$RUNWAY_API_KEY \
-    --dart-define=MIDJOURNEY_API_KEY=$MIDJOURNEY_API_KEY
+    --dart-define=MIDJOURNEY_API_KEY=$MIDJOURNEY_API_KEY \
+    --dart-define=PINECONE_API_KEY=$PINECONE_API_KEY
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine
@@ -75,8 +77,4 @@ EXPOSE 8080
 RUN echo "server { listen 8080; location / { root /usr/share/nginx/html; index index.html index.htm; try_files \$uri \$uri/ /index.html; } }" > /etc/nginx/conf.d/default.conf
 
 # Start Nginx
-# Security: Run as non-root
-RUN adduser -D nonroot
-USER nonroot
-
 CMD ["nginx", "-g", "daemon off;"]

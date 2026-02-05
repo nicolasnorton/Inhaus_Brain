@@ -21,6 +21,7 @@ steps:
       '--build-arg', 'XAI_API_KEY=$_XAI_API_KEY',
       '--build-arg', 'RUNWAY_API_KEY=$_RUNWAY_API_KEY',
       '--build-arg', 'MIDJOURNEY_API_KEY=$_MIDJOURNEY_API_KEY',
+      '--build-arg', 'PINECONE_API_KEY=$_PINECONE_API_KEY',
       '.'
     ]
 
@@ -58,3 +59,4 @@ substitutions:
   _XAI_API_KEY: ''
   _RUNWAY_API_KEY: ''
   _MIDJOURNEY_API_KEY: ''
+  _PINECONE_API_KEY: ''

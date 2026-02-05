@@ -25,7 +25,7 @@ class PerformanceAnalystAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? """
@@ -61,7 +61,7 @@ class DataScientistAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? """
@@ -97,7 +97,7 @@ class DigitalStrategyAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final systemInstruction = systemPrompt ?? """

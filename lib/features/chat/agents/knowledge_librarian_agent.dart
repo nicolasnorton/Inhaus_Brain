@@ -26,7 +26,7 @@ class KnowledgeLibrarianAgent extends BaseAgent {
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     

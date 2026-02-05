@@ -18,18 +18,24 @@ class DashboardScreen extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 800;
+        final String location = GoRouterState.of(context).uri.toString();
         
+        // Modules that have their own sidebar/navigation and should hide the global hamburger
+        final bool hideGlobalHamburger = location.startsWith('/reports/') || 
+                                       location.startsWith('/app-editor') ||
+                                       location.startsWith('/workflow-canvas');
+
         return Scaffold(
           drawer: isMobile ? Drawer(
-            width: 280, // Slightly wider for mobile touch targets
+            width: 250,
             backgroundColor: Theme.of(context).cardColor,
-            child: _buildSidebarContent(context, ref),
+            child: _buildSidebarContent(context, ref, isMobile: true),
           ) : null,
           body: Stack(
             children: [
               Row(
                 children: [
-                  // Desktop/Tablet Sidebar
+                  // Desktop Sidebar
                   if (!isMobile)
                     Container(
                       width: 80,
@@ -42,30 +48,51 @@ class DashboardScreen extends ConsumerWidget {
                   if (!isMobile)
                     const VerticalDivider(thickness: 1, width: 1),
                   
+                  // Mobile Discrete Sidebar (Vertical Strip)
+                  if (isMobile && !hideGlobalHamburger)
+                    GestureDetector(
+                      onTap: () => Scaffold.of(context).openDrawer(),
+                      child: Container(
+                        width: 12,
+                        color: Colors.blueAccent.withValues(alpha: 0.1),
+                        child: Center(
+                          child: Container(
+                            width: 2,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent.withValues(alpha: 0.3),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
                   // Main Content Area
                   Expanded(
                     child: Stack(
                       children: [
                         child,
-                        // Mobile Menu Trigger
-                        if (isMobile)
+                        // Mobile Menu Trigger (Only if not hiding and not in a special module)
+                        if (isMobile && !hideGlobalHamburger)
                           Positioned(
-                            top: 8,
-                            left: 8,
+                            top: 12,
+                            left: 16, // More breathing room
                             child: SafeArea(
                               child: Builder(
                                 builder: (context) => Container(
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.8),
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: [
-                                      BoxShadow(color: Colors.black12, blurRadius: 4)
+                                    color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2))
                                     ]
                                   ),
                                   child: IconButton(
-                                    icon: const Icon(Icons.menu),
+                                    icon: const Icon(Icons.menu, size: 20),
                                     onPressed: () => Scaffold.of(context).openDrawer(),
                                     tooltip: 'Open Navigation',
+                                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                                   ),
                                 ),
                               ),
@@ -87,7 +114,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSidebarContent(BuildContext context, WidgetRef ref) {
+  Widget _buildSidebarContent(BuildContext context, WidgetRef ref, {bool isMobile = false}) {
     return Column(
       children: [
          Padding(
@@ -120,6 +147,7 @@ class DashboardScreen extends ConsumerWidget {
                         if (!isClient) _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
                         if (!isClient) _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
                         _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
+                        _buildNavItem(context, 11, FontAwesomeIcons.building, "Agency", ref), // Added
                         _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
                         if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
                         if (user?.role == UserRole.superAdmin || user?.role == UserRole.admin)
@@ -198,6 +226,7 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/debug')) return 8;
     if (location.startsWith('/admin')) return 9;
     if (location.startsWith('/reports')) return 10;
+    if (location.startsWith('/agency')) return 11; // Added
     return 0;
   }
 
@@ -270,6 +299,9 @@ class DashboardScreen extends ConsumerWidget {
       case 10:
         context.go('/reports');
         break;
+      case 11: // Added
+        context.go('/agency');
+        break;
     }
   }
 }
@@ -313,14 +345,15 @@ class DashboardHome extends ConsumerWidget {
             data: (appUser) {
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 1200 ? 4 : 3;
+                  final crossAxisCount = constraints.maxWidth < 600 ? 2 : (constraints.maxWidth < 900 ? 3 : 4);
+                  final childAspectRatio = constraints.maxWidth < 600 ? 1.5 : 1.1;
                   return GridView.count(
                     crossAxisCount: crossAxisCount,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 1.1,
+                    childAspectRatio: childAspectRatio,
                     children: [
                       if (appUser?.role != UserRole.clientUser) ...[
                         _buildNavCard(
@@ -334,6 +367,12 @@ class DashboardHome extends ConsumerWidget {
                           icon: FontAwesomeIcons.bullhorn,
                           label: AppLocalizations.of(context)!.navCampaigns,
                           onTap: () => context.go('/campaigns'),
+                        ),
+                        _buildNavCard(
+                          context,
+                          icon: FontAwesomeIcons.building, // Added
+                          label: "Agency",
+                          onTap: () => context.go('/agency'),
                         ),
                         _buildNavCard(
                           context,

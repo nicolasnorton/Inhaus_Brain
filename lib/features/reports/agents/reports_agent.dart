@@ -38,7 +38,7 @@ class ReportsAgent extends BaseAgent {
     Uint8List? imageBytes,
     String? imageMimeType,
     Function(AdkEvent)? onEvent,
-    Ref? ref,
+    dynamic ref,
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
 
@@ -62,7 +62,7 @@ Output your findings in a structured format suitable for a "Notebook" view (Mark
        final tool = tools.firstWhere((t) => t.name == 'bigquery_tool');
        final startMsg = "Fetching data from BigQuery...";
        onEvent?.call(AdkEvent(type: AdkEventType.toolStarted, source: name, message: startMsg));
-       final result = await tool.execute({'query': userPrompt});
+       final result = await tool.execute({'query': userPrompt}, ref: ref);
        toolOutput += "\nBigQuery Data: ${result.data}";
     }
     
@@ -70,7 +70,7 @@ Output your findings in a structured format suitable for a "Notebook" view (Mark
        final tool = tools.firstWhere((t) => t.name == 'gmail_tool');
        final startMsg = "Searching emails...";
        onEvent?.call(AdkEvent(type: AdkEventType.toolStarted, source: name, message: startMsg));
-       final result = await tool.execute({'query': userPrompt});
+       final result = await tool.execute({'query': userPrompt}, ref: ref);
        toolOutput += "\nGmail Data: ${result.data}";
     }
     

@@ -35,7 +35,7 @@ class CreateProjectTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final clientId = (parameters['clientId'] ?? parameters['client_id']) as String?;
     final name = (parameters['name'] ?? parameters['project_name']) as String?;
     final description = parameters['description'] as String? ?? 'No description provided.';
@@ -102,7 +102,7 @@ class CreateTaskTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final projectId = parameters['projectId'] as String?;
     final title = parameters['title'] as String?;
     final description = parameters['description'] as String?;
@@ -146,7 +146,7 @@ class UpdateTaskTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final taskId = (parameters['taskId'] ?? parameters['id']) as String?;
     final newTitle = (parameters['title'] ?? parameters['task_title']) as String?;
     final newDescription = parameters['description'] as String?;
@@ -190,7 +190,7 @@ class DeleteTaskTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final taskId = (parameters['taskId'] ?? parameters['id']) as String?;
 
     if (taskId == null) {
@@ -257,7 +257,7 @@ class UpdateProjectTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final projectId = (parameters['projectId'] ?? parameters['id']) as String?;
     final newName = (parameters['name'] ?? parameters['project_name']) as String?;
     final newDescription = parameters['description'] as String?;
@@ -301,7 +301,7 @@ class DeleteProjectTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final projectId = (parameters['projectId'] ?? parameters['id']) as String?;
 
     if (projectId == null) {
@@ -362,7 +362,7 @@ class UpdateClientTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final clientId = (parameters['clientId'] ?? parameters['id']) as String?;
     final newName = (parameters['name'] ?? parameters['client_name']) as String?;
     final newIndustry = (parameters['industry'] ?? parameters['sector']) as String?;
@@ -416,7 +416,7 @@ class DeleteClientTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final clientId = (parameters['clientId'] ?? parameters['id']) as String?;
 
     if (clientId == null) {
@@ -472,7 +472,7 @@ class CreateClientTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final name = (parameters['name'] ?? parameters['client_name']) as String?;
     final industry = (parameters['industry'] ?? parameters['sector']) as String? ?? 'General';
     final email = (parameters['email'] ?? parameters['contact']) as String?;
@@ -505,7 +505,7 @@ class ListClientsTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     return ToolResult.success({
       'clients': _clients.map((c) => {
         'id': c.id,
@@ -556,7 +556,7 @@ class AddClientContactTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final clientId = (parameters['clientId'] ?? parameters['client_id']) as String?;
     final firstName = parameters['firstName'] as String?;
     final lastName = parameters['lastName'] as String?;

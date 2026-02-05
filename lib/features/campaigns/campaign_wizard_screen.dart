@@ -11,6 +11,8 @@ import 'package:inhaus_brain/core/widgets/research_workbench.dart';
 import '../chat/providers/chat_provider.dart';
 import '../chat/agentic_chat_view.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/providers/demo_provider.dart';
+import '../../features/knowledge/providers/knowledge_provider.dart';
 
 class CampaignWizardScreen extends ConsumerStatefulWidget {
   const CampaignWizardScreen({super.key});
@@ -40,6 +42,25 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
+      
+      // Easter Egg / Demo Trigger
+      final descriptionLower = _descriptionController.text.toLowerCase();
+      if (descriptionLower.contains('bajaj')) {
+         ref.read(demoModeProvider.notifier).state = true;
+         ref.read(knowledgeProvider.notifier).initDemoData();
+         _clientController.text = "Bajaj Auto";
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('🚀 Bajaj Demo Mode Activated!'), backgroundColor: Colors.blueAccent),
+         );
+      } else if (descriptionLower.contains('banco del austro')) {
+         ref.read(demoModeProvider.notifier).state = true;
+         ref.read(knowledgeProvider.notifier).initDemoData();
+         _clientController.text = "Banco del Austro";
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('🏦 Banco del Austro Demo Mode Activated!'), backgroundColor: Colors.orange),
+         );
+      }
+
       setState(() {
         _isSubmitting = true;
         _currentCampaignId = const Uuid().v4();

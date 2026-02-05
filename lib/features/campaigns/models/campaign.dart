@@ -98,6 +98,7 @@ class Campaign {
   final DateTime createdAt;
   final List<ResearchInsight> insights;
   final List<Attachment> attachments;
+  final List<String> proposals; // URLs or IDs of generated proposals
 
   Campaign({
     required this.id,
@@ -110,6 +111,7 @@ class Campaign {
     required this.createdAt,
     this.insights = const [],
     this.attachments = const [],
+    this.proposals = const [],
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
@@ -143,6 +145,7 @@ class Campaign {
       attachments: (json['attachments'] as List? ?? [])
           .map((a) => Attachment.fromJson(Map<String, dynamic>.from(a as Map? ?? {})))
           .toList(),
+      proposals: List<String>.from(json['proposals'] ?? []),
     );
   }
 
@@ -157,6 +160,7 @@ class Campaign {
     'createdAt': createdAt.toIso8601String(),
     'insights': insights.map((i) => i.toJson()).toList(),
     'attachments': attachments.map((a) => a.toJson()).toList(),
+    'proposals': proposals,
   };
 
   Campaign copyWith({
@@ -170,6 +174,7 @@ class Campaign {
     DateTime? createdAt,
     List<ResearchInsight>? insights,
     List<Attachment>? attachments,
+    List<String>? proposals,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -182,6 +187,7 @@ class Campaign {
       createdAt: createdAt ?? this.createdAt,
       insights: insights ?? this.insights,
       attachments: attachments ?? this.attachments,
+      proposals: proposals ?? this.proposals,
     );
   }
 }

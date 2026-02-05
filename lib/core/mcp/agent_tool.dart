@@ -29,7 +29,7 @@ abstract class AgentTool {
   });
 
   /// Executes the tool with the given parameters
-  Future<ToolResult> execute(Map<String, dynamic> parameters);
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref});
 
   /// Returns the JSON schema for this tool (for LLM function calling)
   Map<String, dynamic> toFunctionSchema() {

@@ -19,7 +19,7 @@ class NavigateTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final route = parameters['route'] as String?;
     if (route == null) {
       return ToolResult.failure('Missing required parameter: route');

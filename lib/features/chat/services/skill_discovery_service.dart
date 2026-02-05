@@ -70,7 +70,7 @@ class ActivateSkillTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final name = parameters['skillName'] as String?;
     if (name == null) return ToolResult.failure('Missing skillName parameter.');
 
@@ -112,7 +112,7 @@ class LoadSkillResourceTool extends AgentTool {
         );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final name = parameters['skillName'] as String?;
     final resourcePath = parameters['resourcePath'] as String?;
     

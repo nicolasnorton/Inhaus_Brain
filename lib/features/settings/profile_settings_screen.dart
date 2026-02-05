@@ -25,13 +25,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _lyriaController = TextEditingController();
   final _gemmaController = TextEditingController();
   
-  // Phase 35: Multi-Model Keys
-  final _openaiController = TextEditingController();
-  final _anthropicController = TextEditingController();
-  final _xaiController = TextEditingController();
-  final _midjourneyController = TextEditingController();
-  final _runwayController = TextEditingController();
-  final _elevenLabsController = TextEditingController();
 
   final _researchPromptController = TextEditingController();
   final _creativePromptController = TextEditingController();
@@ -74,14 +67,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _imagenController.text = await vault.getImagenKey() ?? '';
     _lyriaController.text = await vault.getLyriaKey() ?? '';
     _gemmaController.text = await vault.getGemmaKey() ?? '';
-    
-    // Phase 35
-    _openaiController.text = await vault.getOpenAIKey() ?? '';
-    _anthropicController.text = await vault.getAnthropicKey() ?? '';
-    _xaiController.text = await vault.getXAIKey() ?? '';
-    _midjourneyController.text = await vault.getMidjourneyKey() ?? '';
-    _runwayController.text = await vault.getRunwayKey() ?? '';
-    _elevenLabsController.text = await vault.getElevenLabsKey() ?? '';
 
     _researchPromptController.text = await prompts.getResearchPrompt();
     _creativePromptController.text = await prompts.getCreativePrompt();
@@ -122,13 +107,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     await vault.saveLyriaKey(_lyriaController.text);
     await vault.saveGemmaKey(_gemmaController.text);
     
-    // Phase 35
-    await vault.saveOpenAIKey(_openaiController.text);
-    await vault.saveAnthropicKey(_anthropicController.text);
-    await vault.saveXAIKey(_xaiController.text);
-    await vault.saveMidjourneyKey(_midjourneyController.text);
-    await vault.saveRunwayKey(_runwayController.text);
-    await vault.saveElevenLabsKey(_elevenLabsController.text);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -345,18 +323,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
            child: Column(
              children: [
                 _buildKeyField('Gemini Pro / Flash API Key', _geminiController, FontAwesomeIcons.google),
-                const SizedBox(height: 16),
-                _buildKeyField('OpenAI API Key (GPT-4o)', _openaiController, FontAwesomeIcons.microchip),
-                const SizedBox(height: 16),
-                _buildKeyField('Anthropic API Key (Claude 3.5)', _anthropicController, FontAwesomeIcons.brain),
-                const SizedBox(height: 16),
-                _buildKeyField('xAI / Grok API Key', _xaiController, FontAwesomeIcons.x),
-                const SizedBox(height: 16),
-                _buildKeyField('Runway API Key (Gen-3)', _runwayController, FontAwesomeIcons.film),
-                const SizedBox(height: 16),
-                _buildKeyField('Midjourney Auth Token', _midjourneyController, FontAwesomeIcons.palette),
-                const SizedBox(height: 16),
-                _buildKeyField('Eleven Labs API Key', _elevenLabsController, FontAwesomeIcons.microphone),
                 const SizedBox(height: 24),
                 SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _saveKeys, child: const Text('Save Keys')))
              ],

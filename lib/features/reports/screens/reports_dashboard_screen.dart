@@ -26,8 +26,11 @@ class ReportsDashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 16,
+                    runSpacing: 16,
                     children: [
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,7 +47,7 @@ class ReportsDashboardScreen extends ConsumerWidget {
                         ],
                       ),
                       Container(
-                        width: 400,
+                        width: MediaQuery.of(context).size.width < 600 ? double.infinity : 400,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
                           color: AppTheme.surface,
@@ -64,14 +67,17 @@ class ReportsDashboardScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 32),
-                  const Row(
-                    children: [
-                       _FilterChip(label: "All Reports", isSelected: true),
-                       SizedBox(width: 8),
-                       _FilterChip(label: "Recent"),
-                       SizedBox(width: 8),
-                       _FilterChip(label: "Pinned"),
-                    ],
+                  const SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                         _FilterChip(label: "All Reports", isSelected: true),
+                         SizedBox(width: 8),
+                         _FilterChip(label: "Recent"),
+                         SizedBox(width: 8),
+                         _FilterChip(label: "Pinned"),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -80,14 +86,14 @@ class ReportsDashboardScreen extends ConsumerWidget {
           
           // Grid
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 600 ? 16 : 32),
             sliver: reportsAsync.when(
               data: (reports) => SliverGrid(
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 300,
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: MediaQuery.of(context).size.width < 600 ? 200 : 300,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: 0.8,
+                  childAspectRatio: MediaQuery.of(context).size.width < 600 ? 1.0 : 0.8,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
