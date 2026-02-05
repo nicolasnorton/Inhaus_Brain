@@ -20,6 +20,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  <meta name="app-version" content="1.1.6">
   <meta name="google-signin-client_id"
     content="1096509611056-ap6oqqrm7k9ed69ctoea3dup38eoc3fc.apps.googleusercontent.com">
 
@@ -38,15 +39,24 @@
 
   <script>
 
+    // Force clear all service workers for v1.1.6
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (registrations) {
         for (let registration of registrations) {
-          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.1.0)");
+          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.1.6)");
           registration.unregister().then(function (boolean) {
             console.log("Service Worker unregistered: ", boolean);
-            // Optional: force reload if we found one
-            // window.location.reload(); 
           });
+        }
+      });
+    }
+
+    // Clear all caches
+    if ('caches' in window) {
+      caches.keys().then(function (names) {
+        for (let name of names) {
+          console.log("🗑️ Clearing cache: ", name);
+          caches.delete(name);
         }
       });
     }
@@ -92,7 +102,7 @@
     }(document, 'script', 'facebook-jssdk'));
   </script>
 
-  <script src="flutter_bootstrap.js?v=1.1.0" async></script>
+  <script src="flutter_bootstrap.js?v=1.1.6" async></script>
   </body>
 
 </html>

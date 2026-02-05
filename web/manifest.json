@@ -1,6 +1,7 @@
 {
     "name": "Inhaus Brain",
     "short_name": "Inhaus Brain",
+    "version": "1.1.6",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",

@@ -1,6 +1,33 @@
 
 # Inhaus Brain - Changelog
 
+## [1.1.6] - 2026-02-05
+### Added
+- **Proposal Template System**: Comprehensive templating for PDF proposals
+  - Support for one-pager and multi-page PDF layouts
+  - Brian Premium Gold/Dark template as default
+  - Template configuration for colors, typography, layout, and branding
+  - Multiple pre-built templates (Brian, Classic, Minimal)
+  - Template provider with state management
+  - Templated PDF generator with dynamic styling
+- **Cache Busting**: Enhanced cache control for forced updates
+  - Service worker auto-unregistration
+  - Cache API clearing on load
+  - Version tracking in manifest and meta tags
+
+### Fixed
+- **PDF Generation**: Resolved `PdfColor.withOpacity()` compatibility issues
+  - Added custom `_withOpacity()` helper function across all PDF generators
+  - Fixed opacity handling in proposal_pdf_generator.dart
+  - Fixed opacity handling in proposal_slides_generator.dart
+  - Fixed opacity handling in templated_proposal_pdf_generator.dart
+- **Build System**: Corrected import paths for ProposalData and ProposalSection classes
+
+### Changed
+- **ProposalService**: Updated to support optional template parameter in PDF generation
+- **Version**: Bumped to 1.1.6+6
+
+
 ## [1.0.6] - 2026-02-04
 ### Added
 - **Knowledge Module**: Full **Google Drive Integration** (browse, select, and import Docs/Sheets/PDFs).
