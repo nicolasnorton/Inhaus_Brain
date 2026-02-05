@@ -9,7 +9,9 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../agency/models/proposal_model.dart';
 import '../../agency/providers/proposal_provider.dart';
+import '../../agency/providers/proposal_template_provider.dart';
 import '../../agency/services/proposal_service.dart';
+// import '../../agency/widgets/template_manager_dialog.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
 import '../../knowledge/providers/knowledge_service_providers.dart';
@@ -159,7 +161,8 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
         Navigator.pop(context);
         _showPreviewDialog("Proposal Text Preview", text, () => _handlePdfGeneration(proposal, isPreview: false));
       } else {
-        final bytes = await ProposalService.generateProposalPdfBytes(proposal, ref);
+        final template = ref.read(currentTemplateProvider);
+        final bytes = await ProposalService.generateProposalPdfBytes(proposal, ref, template: template);
         if (!mounted) return;
         Navigator.pop(context);
         
@@ -314,88 +317,136 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
 
     if (proposal == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Error")),
-        body: const Center(child: Text("Proposal Not Found")),
+        backgroundColor: AppTheme.background,
+        body: const Center(child: CircularProgressIndicator(color: Color(0xFFE5B15D))),
       );
     }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text(proposal.title),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(proposal.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text("PROPOSAL GENERATOR STUDIO", style: TextStyle(fontSize: 10, color: Color(0xFFE5B15D), letterSpacing: 1.5)),
+          ],
+        ),
         backgroundColor: AppTheme.surface,
+        elevation: 0,
+        actions: [
+           IconButton(
+             icon: const Icon(Icons.share_outlined, color: Colors.white70),
+             onPressed: () {},
+           ),
+           const SizedBox(width: 8),
+        ],
       ),
       bottomNavigationBar: isMobile ? BottomNavigationBar(
         backgroundColor: AppTheme.surface,
-        selectedItemColor: AppTheme.primary,
+        selectedItemColor: const Color(0xFFE5B15D),
         unselectedItemColor: Colors.white38,
         currentIndex: _mobileTabIndex,
         type: BottomNavigationBarType.fixed,
         onTap: (index) => setState(() => _mobileTabIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.source_outlined), label: "Sources"),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: "Explorer"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_suggest_outlined), label: "Studio"),
+          BottomNavigationBarItem(icon: Icon(Icons.auto_awesome_outlined), label: "Explorer"),
+          BottomNavigationBarItem(icon: Icon(Icons.design_services_outlined), label: "Studio"),
         ],
       ) : null,
-      body: isMobile
-        ? IndexedStack(
-            index: _mobileTabIndex,
-            children: [
-              _buildSourcesPane(proposal),
-              _buildChatPane(proposal),
-              _buildStudioPane(proposal),
-            ],
-          )
-        : Row(
-            children: [
-              Expanded(flex: 3, child: _buildSourcesPane(proposal)),
-              const VerticalDivider(width: 1, color: Colors.white10),
-              Expanded(flex: 5, child: _buildChatPane(proposal)),
-              const VerticalDivider(width: 1, color: Colors.white10),
-              Expanded(flex: 3, child: _buildStudioPane(proposal)),
-            ],
-          ),
+      body: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
+        ),
+        child: isMobile
+          ? IndexedStack(
+              index: _mobileTabIndex,
+              children: [
+                _buildSourcesPane(proposal),
+                _buildChatPane(proposal),
+                _buildStudioPane(proposal),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(flex: 3, child: _buildSourcesPane(proposal)),
+                VerticalDivider(width: 1, color: Colors.white.withOpacity(0.05)),
+                Expanded(flex: 6, child: _buildChatPane(proposal)),
+                VerticalDivider(width: 1, color: Colors.white.withOpacity(0.05)),
+                Expanded(flex: 3, child: _buildStudioPane(proposal)),
+              ],
+            ),
+      ),
     );
   }
 
   Widget _buildSourcesPane(Proposal proposal) {
     return Container(
       color: AppTheme.background,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Sources", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("SOURCES", style: TextStyle(color: Color(0xFFE5B15D), fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+              Text("${proposal.sources.length} active", style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 20),
           InkWell(
             onTap: () {
               if (mounted) _showAddSourceDialog(proposal);
             },
+            borderRadius: BorderRadius.circular(12),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(vertical: 20),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white24),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.white.withOpacity(0.02),
+                border: Border.all(color: Colors.white10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(child: Text("+ Add Source", style: TextStyle(color: AppTheme.primary))),
+              child: Column(
+                children: const [
+                  Icon(Icons.add_circle_outline, color: Color(0xFFE5B15D)),
+                  SizedBox(height: 8),
+                  Text("Add Knowledge Source", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Expanded(
-            child: ListView.builder(
-              itemCount: proposal.sources.length,
-              itemBuilder: (_, index) {
-                final s = proposal.sources[index];
-                return ListTile(
-                  leading: const Icon(Icons.description, color: Colors.white54, size: 20),
-                  title: Text(s.name, style: const TextStyle(color: Colors.white)),
-                  subtitle: Text(s.type.name.toUpperCase(), style: const TextStyle(color: Colors.white30, fontSize: 10)),
-                  dense: true,
-                );
-              },
-            ),
+            child: proposal.sources.isEmpty 
+              ? const Center(child: Text("No sources added yet", style: TextStyle(color: Colors.white24, fontSize: 12)))
+              : ListView.builder(
+                  itemCount: proposal.sources.length,
+                  itemBuilder: (_, index) {
+                    final s = proposal.sources[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white.withOpacity(0.03)),
+                      ),
+                      child: ListTile(
+                        leading: Icon(
+                          s.type == ProposalSourceType.file ? Icons.description_outlined : Icons.link,
+                          color: const Color(0xFFE5B15D).withOpacity(0.7),
+                          size: 18
+                        ),
+                        title: Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                        subtitle: Text(s.type.name.toUpperCase(), style: const TextStyle(color: Colors.white24, fontSize: 9)),
+                        dense: true,
+                        trailing: const Icon(Icons.more_vert, color: Colors.white24, size: 16),
+                      ),
+                    );
+                  },
+                ),
           ),
         ],
       ),
@@ -407,19 +458,28 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
        children: [
          Expanded(
            child: _chatMessages.isEmpty
-             ? const Center(
+             ? Center(
                  child: Column(
                    mainAxisAlignment: MainAxisAlignment.center,
                    children: [
-                     Icon(FontAwesomeIcons.robot, size: 48, color: Colors.white24),
-                     SizedBox(height: 16),
-                     Text("Proposal Specialist", style: TextStyle(color: Colors.white54, fontSize: 18)),
-                     Text("Ask me to analyze sources or draft sections.", style: TextStyle(color: Colors.white30)),
+                     Container(
+                       padding: const EdgeInsets.all(24),
+                       decoration: BoxDecoration(
+                         color: const Color(0xFFE5B15D).withOpacity(0.05),
+                         shape: BoxShape.circle,
+                         border: Border.all(color: const Color(0xFFE5B15D).withOpacity(0.1)),
+                       ),
+                       child: const Icon(Icons.auto_awesome, size: 40, color: Color(0xFFE5B15D)),
+                     ),
+                     const SizedBox(height: 24),
+                     const Text("Propuesta de Servicios AI", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w300)),
+                     const SizedBox(height: 8),
+                     const Text("Ask me to analyze sources or draft sections based on your catalog.", style: TextStyle(color: Colors.white30, fontSize: 13)),
                    ],
                  ),
                )
              : ListView.builder(
-                 padding: const EdgeInsets.all(16),
+                 padding: const EdgeInsets.all(20),
                  itemCount: _chatMessages.length,
                  itemBuilder: (_, index) {
                    final msg = _chatMessages[index];
@@ -429,10 +489,10 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
                ),
          ),
          Container(
-           padding: const EdgeInsets.all(16),
-           decoration: const BoxDecoration(
+           padding: const EdgeInsets.all(20),
+           decoration: BoxDecoration(
              color: AppTheme.surface,
-             border: Border(top: BorderSide(color: Colors.white10)),
+             border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
            ),
            child: Row(
              children: [
@@ -440,22 +500,27 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
                  child: TextField(
                    controller: _chatController,
                    onSubmitted: (_) => _handleChatSubmit(proposal),
-                   style: const TextStyle(color: Colors.white),
+                   style: const TextStyle(color: Colors.white, fontSize: 14),
                    decoration: InputDecoration(
-                     hintText: "Ask about the proposal...",
-                     hintStyle: const TextStyle(color: Colors.white30),
+                     hintText: "Escribe tu petición aquí...",
+                     hintStyle: const TextStyle(color: Colors.white24),
                      filled: true,
                      fillColor: AppTheme.background,
+                     contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                    ),
                  ),
                ),
-               const SizedBox(width: 8),
-               IconButton(
-                 onPressed: _isChatLoading ? null : () => _handleChatSubmit(proposal),
-                 icon: _isChatLoading 
-                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                   : const Icon(Icons.send, color: AppTheme.primary),
+               const SizedBox(width: 12),
+               Material(
+                 color: const Color(0xFFE5B15D),
+                 borderRadius: BorderRadius.circular(30),
+                 child: IconButton(
+                   onPressed: _isChatLoading ? null : () => _handleChatSubmit(proposal),
+                   icon: _isChatLoading 
+                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black87))
+                     : const Icon(Icons.send_rounded, color: Colors.black87, size: 20),
+                 ),
                ),
              ],
            ),
@@ -467,51 +532,105 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
   Widget _buildStudioPane(Proposal proposal) {
     return Container(
       color: AppTheme.surface,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Studio", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-          const Divider(color: Colors.white10, height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("STUDIO", style: TextStyle(color: Color(0xFFE5B15D), fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+              // IconButton(
+              //   icon: const Icon(Icons.palette_outlined, color: Color(0xFFE5B15D), size: 18),
+              //   onPressed: () {
+              //     showDialog(
+              //       context: context,
+              //       builder: (ctx) => const TemplateManagerDialog(),
+              //     );
+              //   },
+              //   tooltip: 'Manage Templates',
+              // ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Template Indicator
+          Consumer(
+            builder: (context, ref, _) {
+              final template = ref.watch(currentTemplateProvider);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE5B15D).withOpacity(0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.style_outlined, color: Color(0xFFE5B15D), size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        template.name,
+                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
           _buildActionCard(
             title: "Generate PDF Proposal",
             subtitle: "Executive summary, solution & pricing",
-            icon: FontAwesomeIcons.filePdf,
-            color: Colors.redAccent,
+            icon: Icons.picture_as_pdf_outlined,
+            color: const Color(0xFFE5B15D),
             onTap: () {
               if (mounted) _handlePdfGeneration(proposal);
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildActionCard(
             title: "Generate Slide Deck",
-            subtitle: "Outline for Google Slides",
-            icon: FontAwesomeIcons.filePowerpoint,
-            color: Colors.orangeAccent,
+            subtitle: "Structured outline for pitch deck",
+            icon: Icons.slideshow_outlined,
+            color: const Color(0xFFE5B15D),
             onTap: () {
               if (mounted) _handleSlideGeneration(proposal);
             },
           ),
-          const SizedBox(height: 24),
-          const Text("Outputs", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 32),
+          const Text("ALL OUTPUTS", style: TextStyle(color: Colors.white38, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1.2)),
+          const SizedBox(height: 12),
           Expanded(
-            child: ListView.builder(
-              itemCount: proposal.outputs.length,
-              itemBuilder: (_, index) {
-                final o = proposal.outputs[index];
-                return ListTile(
-                  leading: Icon(
-                    o.type == ProposalOutputType.pdf ? FontAwesomeIcons.filePdf : FontAwesomeIcons.filePowerpoint,
-                    color: Colors.white54,
-                    size: 16,
-                  ),
-                  title: Text(o.title, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                  subtitle: Text(o.createdAt.toIso8601String().substring(0, 16), style: const TextStyle(color: Colors.white24, fontSize: 10)),
-                  onTap: () => _showResultDialog(o.title, o.content ?? "No content."),
-                );
-              },
-            ),
+            child: proposal.outputs.isEmpty 
+              ? const Center(child: Text("No outputs generated yet", style: TextStyle(color: Colors.white12, fontSize: 11)))
+              : ListView.builder(
+                  itemCount: proposal.outputs.length,
+                  itemBuilder: (_, index) {
+                    final o = proposal.outputs[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListTile(
+                        leading: Icon(
+                          o.type == ProposalOutputType.pdf ? Icons.file_present : Icons.data_usage,
+                          color: Colors.white30,
+                          size: 16,
+                        ),
+                        title: Text(o.title, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        subtitle: Text(o.createdAt.toString().substring(0, 16), style: const TextStyle(color: Colors.white12, fontSize: 9)),
+                        dense: true,
+                        onTap: () => _showResultDialog(o.title, o.content ?? "No content."),
+                      ),
+                    );
+                  },
+                ),
           ),
         ],
       ),
@@ -531,9 +650,9 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.background,
+          color: Colors.white.withOpacity(0.03),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
@@ -541,17 +660,18 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 11)),
                 ],
               ),
             ),
@@ -573,17 +693,41 @@ class MessageBubble extends StatelessWidget {
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: isUser ? AppTheme.primary.withOpacity(0.2) : AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isUser ? AppTheme.primary.withOpacity(0.5) : Colors.white10),
+          color: isUser ? const Color(0xFFE5B15D).withOpacity(0.15) : AppTheme.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isUser ? 18 : 0),
+            bottomRight: Radius.circular(isUser ? 0 : 18),
+          ),
+          border: Border.all(color: isUser ? const Color(0xFFE5B15D).withOpacity(0.3) : Colors.white.withOpacity(0.05)),
         ),
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: SelectableText(
-           content,
-           style: const TextStyle(color: Colors.white),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isUser ? "YOU" : "BRIAN",
+              style: TextStyle(
+                color: isUser ? const Color(0xFFE5B15D) : Colors.white38,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2
+              ),
+            ),
+            const SizedBox(height: 6),
+            SelectableText(
+               content,
+               style: TextStyle(
+                 color: isUser ? Colors.white : Colors.white.withOpacity(0.9),
+                 fontSize: 14,
+                 height: 1.4
+               ),
+            ),
+          ],
         ),
       ),
     );

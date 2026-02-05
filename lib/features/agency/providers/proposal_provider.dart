@@ -76,6 +76,16 @@ final proposalDetailProvider = Provider.family<Proposal?, String>((ref, id) {
   try {
     return proposals.firstWhere((p) => p.id == id);
   } catch (_) {
+    if (id == 'active-proposal') {
+      return Proposal(
+        id: 'active-proposal',
+        title: 'New Proposal Draft',
+        clientId: 'draft',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        sources: [],
+      );
+    }
     return null;
   }
 });

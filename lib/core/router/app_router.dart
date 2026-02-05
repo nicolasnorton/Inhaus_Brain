@@ -244,6 +244,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: '/proposals/generator',
+            redirect: (context, state) => '/agency/sales/proposals/active-proposal',
+          ),
+          GoRoute(
             path: '/agency',
             builder: (context, state) => const AgencyScreen(),
             routes: [

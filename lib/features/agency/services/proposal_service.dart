@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import '../../agency/models/proposal_model.dart';
+import '../../agency/models/proposal_template.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../../features/knowledge/providers/knowledge_provider.dart';
 import 'proposal_pdf_generator.dart';
 import 'proposal_slides_generator.dart';
+import 'templated_proposal_pdf_generator.dart';
 
 
 class ProposalService {
@@ -112,8 +114,8 @@ $sources
       ).then((res) => res.text);
   }
 
-  /// Generates the PDF binary data.
-  static Future<List<int>> generateProposalPdfBytes(Proposal proposal, dynamic ref) async {
+  /// Generates the PDF binary data using a template.
+  static Future<List<int>> generateProposalPdfBytes(Proposal proposal, dynamic ref, {ProposalTemplate? template}) async {
     final sources = _buildContextFromSources(proposal);
     final config = AIModelConfig.geminiPro;
 
@@ -147,8 +149,12 @@ $sources
              clientLogo = await _fetchClientLogo(proposalData.clientName, domain: proposalData.clientDomain);
         }
 
-        // 4. Render PDF
-        return await ProposalPdfGenerator.generate(proposalData, agencyLogo: agencyLogo, clientLogo: clientLogo);
+        // 4. Render PDF (use template if provided, otherwise use default generator)
+        if (template != null) {
+          return await TemplatedProposalPdfGenerator.generate(proposalData, template, agencyLogo: agencyLogo, clientLogo: clientLogo);
+        } else {
+          return await ProposalPdfGenerator.generate(proposalData, agencyLogo: agencyLogo, clientLogo: clientLogo);
+        }
     } catch (e) {
         print("PDF Gen Error: $e");
         throw Exception("Failed to generate PDF: $e");
@@ -246,9 +252,19 @@ $sources
         }
      }
      
+     final String systemPrompt = """
+You are the BRIAN Lead Strategist at Inhaus. Your goal is to help the user build a winning proposal.
+1.  **Analyze Sources**: Use the provided context to justify every recommendation.
+2.  **Creative Thinking**: Don't just list services; describe the 'Why' and the 'Value'.
+3.  **Visual Language**: When the user asks 'how it should look', describe a premium, dark-themed aesthetic with gold accents.
+4.  **Tone**: Professional, confident, LatAm-focused (Ecuador/Colombia).
+5.  **Direct Action**: If the user is satisfied, suggest generating the PDF or Slide Deck using the Studio buttons.
+""";
+
      final stream = EdgeAIService.generateTextStream(
        query,
        config: AIModelConfig.geminiFlash,
+       systemInstruction: systemPrompt,
        memoryContext: context,
        ref: ref
      );

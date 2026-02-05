@@ -6,11 +6,16 @@ import 'package:inhaus_brain/features/agency/models/proposal_model.dart';
 
 class ProposalPdfGenerator {
   
-  static const PdfColor _darkBackground = PdfColor.fromInt(0xFF1E1B2E); // Dark Navy/Purple
-  static const PdfColor _cardBackground = PdfColor.fromInt(0xFF252238); // Slightly lighter
-  static const PdfColor _accentPink = PdfColor.fromInt(0xFFD6335C); // INHAUS Pink/Red
+  /// Helper to create a PdfColor with opacity
+  static PdfColor _withOpacity(PdfColor color, double opacity) {
+    return PdfColor(color.red, color.green, color.blue, opacity);
+  }
+  
+  static const PdfColor _darkBackground = PdfColor.fromInt(0xFF0F0F12); // Near Black
+  static const PdfColor _cardBackground = PdfColor.fromInt(0xFF16161A); // Dark Grey
+  static const PdfColor _accentGold = PdfColor.fromInt(0xFFE5B15D); // Premium Gold
   static const PdfColor _textWhite = PdfColors.white;
-  static const PdfColor _textGrey = PdfColor.fromInt(0xFFAAAAAA);
+  static const PdfColor _textGrey = PdfColor.fromInt(0xFF94A3B8); // Slate-ish grey
 
   static Future<Uint8List> generate(ProposalData data, {Uint8List? agencyLogo, Uint8List? clientLogo}) async {
     final pdf = pw.Document();
@@ -18,22 +23,35 @@ class ProposalPdfGenerator {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(0),
         theme: pw.ThemeData.withFont(
           base: pw.Font.helvetica(),
           bold: pw.Font.helveticaBold(),
         ),
         build: (pw.Context context) {
-          return pw.Container(
-            color: _darkBackground,
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(data, agencyLogo: agencyLogo, clientLogo: clientLogo),
-                pw.SizedBox(height: 30),
-                ...data.sections.map((s) => _buildSection(s)),
-                pw.Spacer(),
-                _buildFooter(data),
-              ],
+          return pw.FullPage(
+            ignoreMargins: true,
+            child: pw.Container(
+              color: _darkBackground,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(data, agencyLogo: agencyLogo, clientLogo: clientLogo),
+                  pw.SizedBox(height: 20),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 40),
+                    child: pw.Text("PROPUESTA DE SERVICIOS", style: pw.TextStyle(color: _accentGold, fontSize: 10, letterSpacing: 2, fontWeight: pw.FontWeight.bold)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 40),
+                    child: pw.Divider(color: _withOpacity(_accentGold, 0.3), thickness: 0.5),
+                  ),
+                  pw.SizedBox(height: 10),
+                  ...data.sections.map((s) => _buildSection(s)),
+                  pw.Spacer(),
+                  _buildFooter(data),
+                ],
+              ),
             ),
           );
         },
@@ -45,13 +63,10 @@ class ProposalPdfGenerator {
 
   static pw.Widget _buildHeader(ProposalData data, {Uint8List? agencyLogo, Uint8List? clientLogo}) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(40),
-      decoration: const pw.BoxDecoration(
-        color: _accentPink,
-        borderRadius: pw.BorderRadius.vertical(bottom: pw.Radius.circular(0)), // Top bar
-      ),
+      padding: const pw.EdgeInsets.only(top: 50, left: 40, right: 40, bottom: 40),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -62,8 +77,8 @@ class ProposalPdfGenerator {
                   child: pw.Image(pw.MemoryImage(agencyLogo)),
                 )
               else ...[
-                pw.Text('INHAUS', style: pw.TextStyle(color: _textWhite, fontSize: 32, fontWeight: pw.FontWeight.bold, letterSpacing: 5)),
-                pw.Text('ESTUDIO CREATIVO', style: pw.TextStyle(color: _textWhite, fontSize: 10, letterSpacing: 2)),
+                pw.Text('INHAUS', style: pw.TextStyle(color: _textWhite, fontSize: 24, fontWeight: pw.FontWeight.bold, letterSpacing: 4)),
+                pw.Text('BRAIN - CORE SYSTEMS', style: pw.TextStyle(color: _accentGold, fontSize: 8, letterSpacing: 2)),
               ],
             ],
           ),
@@ -72,26 +87,14 @@ class ProposalPdfGenerator {
             children: [
               if (clientLogo != null)
                  pw.Container(
-                   height: 40,
+                   height: 30,
                    margin: const pw.EdgeInsets.only(bottom: 10),
                    child: pw.Image(pw.MemoryImage(clientLogo)),
                  ),
-              pw.Text('Cliente:', style: const pw.TextStyle(color: PdfColors.white, fontSize: 10)),
-              pw.Text(data.clientName, style: pw.TextStyle(color: _textWhite, fontSize: 24, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
-              pw.Row(
-                children: [
-                  pw.Container(width: 1, height: 20, color: _textWhite),
-                  pw.SizedBox(width: 10),
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('Fecha:', style: const pw.TextStyle(color: PdfColors.white, fontSize: 8)),
-                      pw.Text(data.date, style: pw.TextStyle(color: _textWhite, fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                ],
-              ),
+              pw.Text('CLIENTE', style: const pw.TextStyle(color: _textGrey, fontSize: 8, letterSpacing: 1.5)),
+              pw.Text(data.clientName.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              pw.Text(data.date, style: pw.TextStyle(color: _accentGold, fontSize: 10)),
             ],
           ),
         ],
@@ -101,49 +104,53 @@ class ProposalPdfGenerator {
 
   static pw.Widget _buildSection(ProposalSection section) {
     return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+      margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 8),
       padding: const pw.EdgeInsets.all(20),
       decoration: pw.BoxDecoration(
         color: _cardBackground,
-        borderRadius: pw.BorderRadius.circular(10),
+        borderRadius: pw.BorderRadius.circular(4),
+        border: pw.Border.all(color: _withOpacity(_accentGold, 0.1)),
       ),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Expanded(
-            flex: 3,
+            flex: 4,
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text(section.title.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                pw.Row(
+                  children: [
+                    pw.Container(width: 3, height: 14, color: _accentGold),
+                    pw.SizedBox(width: 10),
+                    pw.Text(section.title.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  ]
+                ),
                 pw.SizedBox(height: 10),
-                pw.Text(section.description, style: pw.TextStyle(color: _textGrey, fontSize: 10)),
-                pw.SizedBox(height: 10),
-                ...section.items.map((item) => pw.Bullet(
-                  text: item,
-                  style: const pw.TextStyle(color: _textWhite, fontSize: 10),
-                  bulletColor: _textWhite,
+                pw.Text(section.description, style: pw.TextStyle(color: _textGrey, fontSize: 9)),
+                pw.SizedBox(height: 12),
+                ...section.items.map((item) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 4),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('• ', style: pw.TextStyle(color: _accentGold, fontSize: 10)),
+                      pw.Expanded(child: pw.Text(item, style: const pw.TextStyle(color: _textWhite, fontSize: 9))),
+                    ]
+                  ),
                 )),
               ],
             ),
           ),
           pw.SizedBox(width: 20),
-          pw.Container(
-            width: 120,
-            padding: const pw.EdgeInsets.all(15),
-            decoration: pw.BoxDecoration(
-              color: _accentPink,
-              borderRadius: pw.BorderRadius.circular(8),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text('TOTAL', style: pw.TextStyle(color: _textWhite, fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                 pw.Spacer(),
-                pw.Text(section.price, style: pw.TextStyle(color: _textWhite, fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                pw.Text(section.frequency, style: pw.TextStyle(color: _textWhite, fontSize: 8, fontStyle: pw.FontStyle.italic)),
-              ],
-            ),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text('INVERSIÓN', style: pw.TextStyle(color: _accentGold, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              pw.Text(section.price, style: pw.TextStyle(color: _textWhite, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text(section.frequency.toUpperCase(), style: pw.TextStyle(color: _textGrey, fontSize: 7)),
+            ],
           ),
         ],
       ),
