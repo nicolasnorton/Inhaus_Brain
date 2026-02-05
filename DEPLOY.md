@@ -102,6 +102,8 @@ The hardened Knowledge Module requires specific Firestore configurations:
 - **Bilingual SEO/AEO Workforce**: New agents for search and answer engine optimization integrated.
 - **Agentic Tooling**: Deployment now includes the latest `KeywordResearcher`, `TechnicalAuditor`, and `SchemaGenerator` tool configurations.
 - **Orchestration Hardening**: Updated `RouterAgent` logic for more accurate intent detection across marketing domains.
+- **Proposal Generation**: Production-ready PDF and Slide Deck generation for agency sales.
+
 
 ---
 *Built with ❤️ to make AI automation accessible for everyone.*

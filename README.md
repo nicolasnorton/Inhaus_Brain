@@ -35,7 +35,8 @@ The Inhaus Brain features a team of 11+ specialized agents, each with a custom m
 - **SEO Agent (New)**: Search engine optimization, keyword research, and regional audits.
 - **AEO Agent (New)**: Answer engine optimization for AI search and voice assistants.
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
-- **Proposal Specialist (New)**: Bilingual agent capable of generating structured, service-mapped client proposals (JSON/UI).
+- **Proposal Specialist (New)**: Bilingual agent capable of generating structured, service-mapped client proposals. Now supports high-fidelity **PDF Document** (Portrait) and **Slide Deck** (Landscape) generation with dynamic branding integration.
+
 - **Demo Mode**: Special "Easter Egg" triggers for tailored client demos (e.g. Bajaj, Banco del Austro).
 
 ### 🦅 Blackboard 2.0 & Observability

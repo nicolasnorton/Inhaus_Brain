@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/dashboard/dashboard_screen.dart';
-import '../../features/agency/screens/agency_screen.dart'; // Added
-import '../../features/agency/screens/sales_screen.dart'; // Added
-import '../../features/agency/screens/finances_screen.dart'; // Added
-import '../../features/agency/screens/hr_screen.dart'; // Added
+import '../../features/agency/screens/agency_screen.dart';
+import '../../features/agency/screens/sales_screen.dart';
+import '../../features/finance/screens/finance_dashboard_screen.dart'; // Updated
+import '../../features/hr/screens/hr_dashboard_screen.dart'; // Updated
 
 import '../../features/campaigns/campaign_list_screen.dart';
+import '../../features/agency/screens/proposal_generator_screen.dart';
+// ... (imports continue)
+
+
 import '../../features/campaigns/campaign_wizard_screen.dart';
 import '../../features/campaigns/campaign_detail_screen.dart'; // Added
 import '../../features/onboarding/screens/welcome_screen.dart';
@@ -246,14 +250,22 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'sales',
                 builder: (context, state) => const SalesScreen(),
+                routes: [
+                   GoRoute(
+                    path: 'proposals/:id',
+                    builder: (context, state) => ProposalGeneratorScreen(
+                      proposalId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
               ),
               GoRoute(
                 path: 'finances',
-                builder: (context, state) => const FinancesScreen(),
+                builder: (context, state) => const FinanceDashboardScreen(),
               ),
               GoRoute(
                 path: 'hr',
-                builder: (context, state) => const HRScreen(),
+                builder: (context, state) => const HRDashboardScreen(),
               ),
             ],
           ),

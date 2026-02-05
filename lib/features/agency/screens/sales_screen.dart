@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inhaus_brain/features/campaigns/campaign_list_screen.dart';
 import 'package:inhaus_brain/features/agency/models/agency_models.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../agency/models/proposal_model.dart';
+import '../../agency/providers/proposal_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -62,29 +65,56 @@ class _ProposalsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(FontAwesomeIcons.filePdf, size: 64, color: Colors.redAccent.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          const Text('Proposal Generator', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text('Ask the "Proposal Specialist" agent to generate a proposal.'),
-          const SizedBox(height: 16),
-          // In a real implementation, this would call the agent or tool directly
-          FilledButton.icon(
-            onPressed: () {
-               // Placeholder for triggering the specialist
-               ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('Please use the chat assistant to Generate a Proposal for now.')),
-               );
-            },
-            icon: const Icon(Icons.chat),
-            label: const Text('Open Assistant to Generate'),
-          ),
-        ],
+    final proposals = ref.watch(proposalsProvider);
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Create a new proposal
+          final newProposal = Proposal.create(
+            title: 'New Proposal ${DateTime.now().minute}',
+            clientId: '1', // Mock Client ID
+          );
+          ref.read(proposalsProvider.notifier).addProposal(newProposal);
+          context.push('/agency/sales/proposals/\${newProposal.id}');
+        },
+        label: const Text("New Proposal"),
+        icon: const Icon(Icons.add),
+        backgroundColor: Colors.redAccent,
       ),
+      body: proposals.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   Icon(FontAwesomeIcons.filePdf, size: 64, color: Colors.redAccent.withValues(alpha: 0.3)),
+                   const SizedBox(height: 16),
+                   const Text("No Proposals Yet", style: TextStyle(color: Colors.white54)),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: proposals.length,
+              itemBuilder: (context, index) {
+                final proposal = proposals[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.redAccent,
+                      child: Icon(FontAwesomeIcons.filePdf, size: 18, color: Colors.white),
+                    ),
+                    title: Text(proposal.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text("Updated: ${proposal.updatedAt.toIso8601String().substring(0, 10)}"),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      context.push('/agency/sales/proposals/\${proposal.id}');
+                    },
+                  ),
+                );
+              },
+            ),
     );
   }
 }

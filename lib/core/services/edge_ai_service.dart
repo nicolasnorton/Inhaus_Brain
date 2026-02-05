@@ -51,6 +51,8 @@ class EdgeAIService {
     String prompt, {
     List<KnowledgeSource> context = const [],
     String? memoryContext,
+    String? systemInstruction, // Alias for memoryContext
+    String? outputMode,       // Alias for JSON response
     Uint8List? imageBytes,
     String? imageMimeType,
     Uint8List? audioBytes,
@@ -61,9 +63,14 @@ class EdgeAIService {
     String? vertexKey,
     dynamic ref, // Phase 89: Support both WidgetRef and Ref for proximity sync
   }) async {
-    final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
+    final effectiveMemory = memoryContext ?? systemInstruction;
+    var config = modelConfig ?? AIModelConfig.geminiFlash;
     
-    final config = modelConfig ?? AIModelConfig.geminiFlash;
+    if (outputMode == 'json') {
+      config = config.copyWith(responseMimeType: 'application/json');
+    }
+
+    final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: effectiveMemory);
     
     _logger.d('EdgeAI: Generating text via ${config.provider} (${config.modelId})');
 
@@ -307,6 +314,7 @@ class EdgeAIService {
     String prompt, {
     List<KnowledgeSource> context = const [],
     String? memoryContext,
+    String? systemInstruction, // ADDED
     Uint8List? imageBytes,
     String? imageMimeType,
     Uint8List? audioBytes,
@@ -315,6 +323,7 @@ class EdgeAIService {
     String? apiKey,
     dynamic ref, 
   }) async* {
+    final effectiveMemory = memoryContext ?? systemInstruction;
     final effectiveConfig = config ?? AIModelConfig.geminiFlash;
      
      if (effectiveConfig.provider != AIProvider.gemini) {
@@ -322,7 +331,7 @@ class EdgeAIService {
         yield await generateText(
            prompt, 
            context: context, 
-           memoryContext: memoryContext, 
+           memoryContext: effectiveMemory, 
            imageBytes: imageBytes, 
            imageMimeType: imageMimeType, 
            modelConfig: effectiveConfig, 
@@ -333,7 +342,7 @@ class EdgeAIService {
      }
 
      try {
-       final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: memoryContext);
+       final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: effectiveMemory);
        final ai = FirebaseAI.vertexAI();
        
        final model = ai.generativeModel(
