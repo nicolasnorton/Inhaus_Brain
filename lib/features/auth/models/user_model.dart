@@ -29,7 +29,7 @@ class AppUser {
       id: json['id'] as String,
       email: json['email'] as String,
       displayName: json['displayName'] as String?,
-      role: UserRole.values.firstWhere((e) => e.name == json['role']),
+      role: UserRole.values.firstWhere((e) => e.toString().split('.').last == json['role']),
       assignedClientIds: List<String>.from(json['assignedClientIds'] ?? []),
     );
   }
@@ -38,7 +38,7 @@ class AppUser {
     'id': id,
     'email': email,
     'displayName': displayName,
-    'role': role.name,
+    'role': role.toString().split('.').last,
     'assignedClientIds': assignedClientIds,
   };
 

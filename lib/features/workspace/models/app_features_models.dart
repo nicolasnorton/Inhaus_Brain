@@ -77,7 +77,7 @@ class UploadedFile {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'type': type.name,
+        'type': type.toString().split('.').last,
         'size': size,
         'url': url,
         'uploaded_at': uploadedAt.toIso8601String(),
@@ -88,7 +88,10 @@ class UploadedFile {
     return UploadedFile(
       id: json['id'] as String,
       name: json['name'] as String,
-      type: FileType.values.byName(json['type'] as String),
+      type: FileType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['type'],
+        orElse: () => FileType.document,
+      ),
       size: json['size'] as int,
       url: json['url'] as String,
       uploadedAt: DateTime.parse(json['uploaded_at'] as String),
@@ -127,7 +130,7 @@ class FileUploadConfig {
 
   Map<String, dynamic> toJson() => {
         'enabled': enabled,
-        'allowed_types': allowedTypes.map((t) => t.name).toList(),
+        'allowed_types': allowedTypes.map((t) => t.toString().split('.').last).toList(),
         'max_file_size': maxFileSize,
         'max_files': maxFiles,
       };
@@ -136,7 +139,10 @@ class FileUploadConfig {
     return FileUploadConfig(
       enabled: json['enabled'] as bool? ?? false,
       allowedTypes: (json['allowed_types'] as List?)
-              ?.map((t) => FileType.values.byName(t as String))
+              ?.map((t) => FileType.values.firstWhere(
+                    (e) => e.toString().split('.').last == t,
+                    orElse: () => FileType.document,
+                  ))
               .toList() ??
           [FileType.image, FileType.document],
       maxFileSize: json['max_file_size'] as int? ?? 15 * 1024 * 1024,
@@ -262,7 +268,7 @@ class TextToSpeechConfig {
 
   Map<String, dynamic> toJson() => {
         'enabled': enabled,
-        'provider': provider.name,
+        'provider': provider.toString().split('.').last,
         'voice': voice,
         'speed': speed,
       };
@@ -270,7 +276,10 @@ class TextToSpeechConfig {
   factory TextToSpeechConfig.fromJson(Map<String, dynamic> json) {
     return TextToSpeechConfig(
       enabled: json['enabled'] as bool? ?? false,
-      provider: TTSProvider.values.byName(json['provider'] as String? ?? 'openai'),
+      provider: TTSProvider.values.firstWhere(
+        (e) => e.toString().split('.').last == (json['provider'] ?? 'openai'),
+        orElse: () => TTSProvider.openai,
+      ),
       voice: json['voice'] as String? ?? 'alloy',
       speed: (json['speed'] as num?)?.toDouble() ?? 1.0,
     );
@@ -366,7 +375,7 @@ class ContentModerationConfig {
 
   Map<String, dynamic> toJson() => {
         'enabled': enabled,
-        'blocked_categories': blockedCategories.map((c) => c.name).toList(),
+        'blocked_categories': blockedCategories.map((c) => c.toString().split('.').last).toList(),
         'custom_rules': customRules,
       };
 
@@ -374,7 +383,10 @@ class ContentModerationConfig {
     return ContentModerationConfig(
       enabled: json['enabled'] as bool? ?? false,
       blockedCategories: (json['blocked_categories'] as List?)
-              ?.map((c) => ModerationCategory.values.byName(c as String))
+              ?.map((c) => ModerationCategory.values.firstWhere(
+                    (e) => e.toString().split('.').last == c,
+                    orElse: () => ModerationCategory.hateSpeech,
+                  ))
               .toList() ??
           [],
       customRules: json['custom_rules'] as String? ?? '',

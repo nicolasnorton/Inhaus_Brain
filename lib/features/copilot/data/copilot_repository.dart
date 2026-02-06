@@ -22,7 +22,7 @@ class CopilotRepository {
     for (final msg in history) {
       messages.add({
         'id': msg.id,
-        'role': msg.role.name.toLowerCase(),
+        'role': msg.role.toString().split('.').last.toLowerCase(),
         'content': msg.content,
       });
     }
@@ -38,6 +38,7 @@ class CopilotRepository {
       final request = http.Request('POST', Uri.parse(_endpoint));
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
+        'method': 'POST',
         'messages': messages,
       });
 

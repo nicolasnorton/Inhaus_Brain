@@ -427,7 +427,7 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
               content: source.content ?? 'Empty data',
               type: platform == AdPlatform.googleAnalytics ? KnowledgeSourceType.ga4 : KnowledgeSourceType.googleAds,
               createdAt: DateTime.now(),
-              metadata: {'platform': platform.name, 'accountId': account.externalAccountId},
+              metadata: {'platform': platform.toString().split('.').last, 'accountId': account.externalAccountId},
            );
            
            widget.onSourceAdded(newSource);

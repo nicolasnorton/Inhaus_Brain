@@ -194,37 +194,29 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   }
 
   Future<void> _handleAudioGeneration(Report report, {bool isPreview = true}) async {
-    _showLoadingDialog(isPreview ? "Analyzing Themes (LiteRT)..." : "Drafting Full Podcast Script...");
+    _showLoadingDialog(isPreview ? "Analyzing Themes (LiteRT)..." : "Drafting & Synthesizing Podcast...");
     try {
-      final script = await ReportsLMService.generateAudioOverview(report, ref, isPreview: isPreview);
+      final result = await ReportsLMService.generateAudioOverview(report, ref, isPreview: isPreview);
       if (mounted) Navigator.pop(context); 
       if (mounted) {
         if (isPreview) {
           _showPreviewDialog(
             "Audio Script Preview", 
-            script, 
+            result.content, 
             onGenerateFinal: () => _handleAudioGeneration(report, isPreview: false)
           );
         } else {
-          // Generate actual audio file (Simulated)
-          _showLoadingDialog("Synthesizing Audio (DeepMind Lyria)...");
-          final audioUrl = await ReportsLMService.generateAudioOverview(report, ref, isPreview: false); // Re-using for script, but need audio gen
-          // NOTE: ReportsLMService currently returns text. We need a way to get audio. 
-          // For now, assuming mock audio injection or using EdgeAIService.generateAudio
-          final realAudioUrl = await EdgeAIService.generateAudio("Podcast based on: $script");
-          if (mounted) Navigator.pop(context);
-
           final output = ReportOutput(
             id: const Uuid().v4(),
             title: "Audio Overview (${DateTime.now().hour}:${DateTime.now().minute})",
             type: ReportOutputType.audio,
-            content: script,
-            uri: realAudioUrl,
+            content: result.content,
+            uri: result.uri,
             createdAt: DateTime.now(),
           );
           await _addOutput(report, output);
 
-          _showResultDialog("Audio Overview Ready", script, url: realAudioUrl, isAudio: true);
+          _showResultDialog("Audio Overview Ready", result.content, url: result.uri, isAudio: true);
         }
       }
     } catch (e) {
@@ -236,26 +228,25 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Future<void> _handleMindMapGeneration(Report report, {bool isPreview = true}) async {
       _showLoadingDialog(isPreview ? "Generating Mind Map Preview (LiteRT)..." : "Generating Final Mind Map...");
       try {
-        final json = await ReportsLMService.generateMindMap(report, ref, isPreview: isPreview);
+        final result = await ReportsLMService.generateMindMap(report, ref, isPreview: isPreview);
         if (mounted) Navigator.pop(context);
         if (mounted) {
            if (isPreview) {
              _showPreviewDialog(
                "Mind Map Preview", 
-               "JSON Structure:\n$json", 
+               "JSON Structure:\n${result.content}", 
                onGenerateFinal: () => _handleMindMapGeneration(report, isPreview: false)
              );
            } else {
-             // Save Final
              final output = ReportOutput(
                 id: const Uuid().v4(),
                 title: "Mind Map (${DateTime.now().hour}:${DateTime.now().minute})",
-                type: ReportOutputType.text, // JSON text for now, could be rendered
-                content: json,
+                type: ReportOutputType.text,
+                content: result.content,
                 createdAt: DateTime.now(),
              );
              await _addOutput(report, output);
-             _showResultDialog("Final Mind Map", json); 
+             _showResultDialog("Final Mind Map", result.content); 
            }
         }
       } catch (e) {
@@ -267,32 +258,27 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Future<void> _handleInfographicGeneration(Report report, {bool isPreview = true}) async {
       _showLoadingDialog(isPreview ? "Generating Infographic Concept (LiteRT)..." : "Designing Final Infographic...");
       try {
-        final text = await ReportsLMService.generateInfographic(report, ref, isPreview: isPreview);
+        final result = await ReportsLMService.generateInfographic(report, ref, isPreview: isPreview);
         if (mounted) Navigator.pop(context);
         if (mounted) {
             if (isPreview) {
               _showPreviewDialog(
                 "Infographic Concept Preview", 
-                text, 
+                result.content, 
                 onGenerateFinal: () => _handleInfographicGeneration(report, isPreview: false)
               );
             } else {
-               // Generate Image
-               _showLoadingDialog("Rendering Design (Imagen 3)...");
-               final imageUrl = await EdgeAIService.generateImage(text, ref: ref);
-               if (mounted) Navigator.pop(context);
-
                final output = ReportOutput(
                   id: const Uuid().v4(),
                   title: "Infographic (${DateTime.now().hour}:${DateTime.now().minute})",
                   type: ReportOutputType.image,
-                  content: text,
-                  uri: imageUrl,
+                  content: result.content,
+                  uri: result.uri,
                   createdAt: DateTime.now(),
                );
                await _addOutput(report, output);
 
-              _showResultDialog("Infographic Design", text, url: imageUrl);
+              _showResultDialog("Infographic Design", result.content, url: result.uri);
             }
         }
       } catch (e) {
@@ -304,13 +290,13 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Future<void> _handleReportGeneration(Report report, {bool isPreview = true}) async {
       _showLoadingDialog(isPreview ? "Analyzing Sources (LiteRT)..." : "Generating Comprehensive Report...");
       try {
-        final text = await ReportsLMService.generateReport(report, ref, isPreview: isPreview);
+        final result = await ReportsLMService.generateReport(report, ref, isPreview: isPreview);
         if (mounted) Navigator.pop(context);
         if (mounted) {
             if (isPreview) {
               _showPreviewDialog(
                 "Report Draft Preview", 
-                text, 
+                result.content, 
                 onGenerateFinal: () => _handleReportGeneration(report, isPreview: false)
               );
             } else {
@@ -318,11 +304,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   id: const Uuid().v4(),
                   title: "Deep Dive Report (${DateTime.now().hour}:${DateTime.now().minute})",
                   type: ReportOutputType.text,
-                  content: text,
+                  content: result.content,
                   createdAt: DateTime.now(),
                );
                await _addOutput(report, output);
-              _showResultDialog("Final Report", text);
+              _showResultDialog("Final Report", result.content);
             }
         }
       } catch (e) {
@@ -334,25 +320,25 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   Future<void> _handleSlideDeckGeneration(Report report, {bool isPreview = true}) async {
       _showLoadingDialog(isPreview ? "Drafting Slide Deck (LiteRT)..." : "Building Final Deck...");
       try {
-        final text = await ReportsLMService.generateSlideDeck(report, ref, isPreview: isPreview);
+        final result = await ReportsLMService.generateSlideDeck(report, ref, isPreview: isPreview);
         if (mounted) Navigator.pop(context);
         if (mounted) {
             if (isPreview) {
               _showPreviewDialog(
                 "Deck Outline Preview", 
-                text, 
+                result.content, 
                 onGenerateFinal: () => _handleSlideDeckGeneration(report, isPreview: false)
               );
             } else {
               final output = ReportOutput(
                   id: const Uuid().v4(),
                   title: "Slide Deck Outline (${DateTime.now().hour}:${DateTime.now().minute})",
-                  type: ReportOutputType.text, // Markdown outline
-                  content: text,
+                  type: ReportOutputType.text,
+                  content: result.content,
                   createdAt: DateTime.now(),
                );
                await _addOutput(report, output);
-              _showResultDialog("Final Slide Deck", text);
+              _showResultDialog("Final Slide Deck", result.content);
             }
         }
       } catch (e) {
@@ -389,60 +375,29 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     String status = isFinal ? "Rendering Final (HQ)..." : "Generating fast preview (LiteRT)...";
     if (includeSubtitles) status += " (With Subtitles)";
     
-    // To allow setDialogState to be called from the async task, we need a way to capture it.
-    final progressNotifier = ValueNotifier<double>(0.0);
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => ValueListenableBuilder<double>(
-        valueListenable: progressNotifier,
-        builder: (context, val, _) {
-          return Dialog(
-            backgroundColor: AppTheme.surface,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   const CircularProgressIndicator(color: AppTheme.primary),
-                   const SizedBox(height: 24),
-                   Text(status, style: const TextStyle(color: Colors.white)),
-                   const SizedBox(height: 8),
-                   LinearProgressIndicator(value: val, backgroundColor: Colors.white10),
-                   const SizedBox(height: 4),
-                   Text("${(val * 100).toInt()}%", style: const TextStyle(color: Colors.white54, fontSize: 10)),
-                ],
-              ),
-            ),
-          );
-        }
-      ),
-    );
+    _showLoadingDialog(status);
 
     try {
       if (!isFinal) {
-         final text = await ReportsLMService.generateVideoOverview(
+         final result = await ReportsLMService.generateVideoOverview(
             report, 
             ref, 
             isPreview: true,
          );
-         if (mounted) Navigator.pop(context); // Close loading
+         if (mounted) Navigator.pop(context);
          
          if (mounted) {
             _showPreviewDialog(
               "Video Structure Preview", 
-              text, 
+              result.content, 
               onGenerateFinal: () => _handleVideoGeneration(report, isFinal: true)
             );
          }
       } else {
-         // Final Generation
-         final videoUrl = await EdgeAIService.generateVideo(
-            "Video overview for: ${report.title}", 
-            isFinal: true, 
-            ref: ref,
-            onProgress: (p) => progressNotifier.value = p
+         final result = await ReportsLMService.generateVideoOverview(
+            report, 
+            ref, 
+            isPreview: false,
          );
          
          if (mounted) Navigator.pop(context);
@@ -451,12 +406,13 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
             id: const Uuid().v4(),
             title: "Video Overview (${DateTime.now().hour}:${DateTime.now().minute})",
             type: ReportOutputType.video,
-            uri: videoUrl,
+            content: result.content,
+            uri: result.uri,
             createdAt: DateTime.now(),
          );
          await _addOutput(report, output);
 
-         if (mounted) _showVideoResultDialog(report, videoUrl, isFinal: true);
+         if (mounted && result.uri != null) _showVideoResultDialog(report, result.uri!, isFinal: true);
       }
     } catch (e) {
       if (mounted && Navigator.canPop(context)) Navigator.pop(context);
@@ -886,7 +842,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       ),
       title: Text(output.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
       subtitle: Text(
-        "${output.type.name.toUpperCase()} • ${output.createdAt.hour}:${output.createdAt.minute}", 
+        "${output.type.toString().split('.').last.toUpperCase()} • ${output.createdAt.hour}:${output.createdAt.minute}", 
         style: const TextStyle(color: Colors.white38, fontSize: 11)
       ),
       trailing: Row(

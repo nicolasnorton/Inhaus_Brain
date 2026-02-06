@@ -3,8 +3,6 @@ import 'package:inhaus_brain/core/mcp/agent_tool.dart';
 import 'package:inhaus_brain/features/campaigns/models/campaign.dart';
 import 'package:inhaus_brain/features/campaigns/providers/campaign_provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:inhaus_brain/core/services/proposal_pdf_service.dart';
-import 'package:inhaus_brain/features/campaigns/models/proposal_model.dart';
 
 class CreateCampaignTool extends AgentTool {
   final CampaignListNotifier _notifier;
@@ -182,52 +180,6 @@ class ListCampaignsTool extends AgentTool {
   }
 }
 
-class GenerateProposalTool extends AgentTool {
-  final Ref _ref;
-
-  GenerateProposalTool(this._ref)
-      : super(
-          name: 'generate_client_proposal',
-          description: 'Generates a professional PDF proposal for a client. Use this for SEO plans, setup fees, and monthly maintenance proposals. Ensure the proposalJson follows the mandatory schema with title, client, cover, and sections.',
-          inputSchema: {
-            'clientName': {'type': 'string', 'description': 'The name of the client.'},
-            'campaignId': {'type': 'string', 'description': 'Optional campaign ID.'},
-            'proposalJson': {
-              'type': 'string',
-              'description': 'The structured JSON for the proposal (must include intro, services, pricing with setup/monthly, timeline, and cta).'
-            },
-          },
-        );
-
-  @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
-    final clientName = parameters['clientName'] as String?;
-    final proposalJson = parameters['proposalJson'] as String?;
-    
-    if (clientName == null || proposalJson == null) {
-      return ToolResult.failure('Missing clientName or proposalJson.');
-    }
-
-    try {
-      // 1. Parse JSON
-      final data = ProposalData.fromRawJson(proposalJson);
-      
-      // 2. Generate PDF
-      final pdfBytes = await ProposalPdfService.generateProposalPdf(data);
-      
-      // 3. Save/Open (Mock)
-      await ProposalPdfService.saveAndOpenPdf(pdfBytes, "Proposal_${clientName.replaceAll(' ', '_')}.pdf");
-
-      return ToolResult.success({
-        'message': 'Proposal PDF for $clientName has been generated and opened for review.',
-        'status': 'success'
-      });
-    } catch (e) {
-      return ToolResult.failure('Failed to generate proposal PDF: $e');
-    }
-  }
-}
-
 final campaignToolsProvider = Provider<List<AgentTool>>((ref) {
   final notifier = ref.read(campaignListProvider.notifier);
   final campaigns = ref.watch(campaignListProvider);
@@ -237,6 +189,5 @@ final campaignToolsProvider = Provider<List<AgentTool>>((ref) {
     UpdateCampaignTool(notifier, campaigns),
     DeleteCampaignTool(notifier),
     ListCampaignsTool(campaigns),
-    GenerateProposalTool(ref),
   ];
 });

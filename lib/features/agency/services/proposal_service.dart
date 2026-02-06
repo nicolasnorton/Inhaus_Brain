@@ -1,20 +1,30 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart'; // Add Intl for date formatting
+
 import '../../agency/models/proposal_model.dart';
 import '../../agency/models/proposal_template.dart';
+import '../../agency/models/inhaus_proposal_models.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../../features/knowledge/providers/knowledge_provider.dart';
 import 'proposal_pdf_generator.dart';
 import 'proposal_slides_generator.dart';
 import 'templated_proposal_pdf_generator.dart';
+import 'inhaus_proposal_pdf_generator.dart';
+import 'inhaus_proposal_slides_generator.dart';
+import 'service_catalog_repository.dart';
+import '../models/agency_service_model.dart';
 
 
 class ProposalService {
+  static final ServiceCatalogRepository _catalogRepository = ServiceCatalogRepository();
   
   // --- SYSTEM PROMPTS ---
+
+
 
 
   static String _proposalJsonPrompt(String sources) => """
@@ -84,6 +94,207 @@ Sources:
 $sources
 """;
 
+  // --- INHAUS PROPOSAL GENERATION (NEW) ---
+
+  /// Generate INHAUS-style PDF (One Page Quote or Detailed)
+  static Future<Uint8List> generateInhausProposalPdf(
+    Proposal proposal,
+    dynamic ref, {
+    required ProposalType type,
+    required ProposalLanguage language,
+  }) async {
+    final sources = _buildContextFromSources(proposal);
+    final catalog = await _catalogRepository.getCatalog();
+    final catalogContext = catalog != null ? _buildCatalogContext(catalog) : "";
+    
+    // Inject Date & Language Context
+    final now = DateTime.now();
+    final dateFormat = DateFormat('MMMM, d - yyyy', 'es'); // Always Spanish format for "Febrero, 4 - 2026" style, or adapt if needed
+    final dateStr = dateFormat.format(now);
+    final dateContext = "CURRENT DATE: ${dateStr[0].toUpperCase()}${dateStr.substring(1)}"; // Capitalize first letter
+    
+    final fullSources = "$catalogContext\n\n$dateContext\n\n$sources";
+    
+    final config = AIModelConfig.geminiPro;
+
+    // 1. Generate INHAUS JSON
+    final result = await EdgeAIService.generateText(
+      _inhausProposalPrompt(fullSources, type, language),
+      modelConfig: config,
+      ref: ref,
+    );
+
+    // 2. Parse JSON
+    String cleanJson = result.text.replaceAll('```json', '').replaceAll('```', '').trim();
+    final Map<String, dynamic> jsonData = jsonDecode(cleanJson);
+
+    // 3. Load logos
+    Uint8List? agencyLogo;
+    Uint8List? clientLogo;
+
+    try {
+      // FIX: Use logo_light.png instead of missing logo_inhaus_white.png
+      final logoBytes = await rootBundle.load('assets/images/logo_light.png');
+      agencyLogo = logoBytes.buffer.asUint8List();
+    } catch (e) {
+      debugPrint("Error loading agency logo: $e");
+    }
+
+    final clientName = jsonData['header']?['client_name'] ?? '';
+    if (clientName.isNotEmpty) {
+      clientLogo = await _fetchClientLogo(clientName);
+    }
+
+    // Fetch embedded images (NEW)
+    List<Uint8List> additionalImages = [];
+    final imageList = jsonData['embedded_images'] as List<dynamic>?;
+    if (imageList != null && imageList.isNotEmpty) {
+      for (var url in imageList) {
+        if (url is String && url.isNotEmpty) {
+          final img = await InhausProposalPdfGenerator.fetchImage(url);
+          if (img != null) additionalImages.add(img);
+        }
+      }
+    }
+
+    // 4. Generate PDF based on type
+    if (type == ProposalType.onePageQuote) {
+      final quote = InhausOnePageQuote.fromJson(jsonData);
+      return InhausProposalPdfGenerator.generateOnePageQuote(
+        quote,
+        agencyLogo: agencyLogo,
+        clientLogo: clientLogo,
+        additionalImages: additionalImages,
+      );
+    } else {
+      final detailed = InhausDetailedProposal.fromJson(jsonData);
+      return InhausProposalPdfGenerator.generateDetailedProposal(
+        detailed,
+        agencyLogo: agencyLogo,
+        clientLogo: clientLogo,
+        additionalImages: additionalImages,
+      );
+    }
+  }
+
+  /// Generate INHAUS-style Slides (One Page Quote or Detailed)
+  static Future<Uint8List> generateInhausProposalSlides(
+    Proposal proposal,
+    dynamic ref, {
+    required ProposalType type,
+    required ProposalLanguage language,
+  }) async {
+    final sources = _buildContextFromSources(proposal);
+    final catalog = await _catalogRepository.getCatalog();
+    final catalogContext = catalog != null ? _buildCatalogContext(catalog) : "";
+    
+    // Inject Date & Language Context
+    final now = DateTime.now();
+    final dateFormat = DateFormat('MMMM, d - yyyy', 'es'); 
+    final dateStr = dateFormat.format(now);
+    final dateContext = "CURRENT DATE: ${dateStr[0].toUpperCase()}${dateStr.substring(1)}";
+
+    final fullSources = "$catalogContext\n\n$dateContext\n\n$sources";
+
+    final config = AIModelConfig.geminiPro;
+
+    // 1. Generate INHAUS JSON
+    final result = await EdgeAIService.generateText(
+      _inhausProposalPrompt(fullSources, type, language),
+      modelConfig: config,
+      ref: ref,
+    );
+
+    // 2. Parse JSON
+    String cleanJson = result.text.replaceAll('```json', '').replaceAll('```', '').trim();
+    final Map<String, dynamic> jsonData = jsonDecode(cleanJson);
+
+    // 3. Load logos
+    Uint8List? agencyLogo;
+    Uint8List? clientLogo;
+
+    try {
+      // FIX: Use logo_light.png
+      final logoBytes = await rootBundle.load('assets/images/logo_light.png');
+      agencyLogo = logoBytes.buffer.asUint8List();
+    } catch (e) {
+      debugPrint("Error loading agency logo: $e");
+    }
+
+    final clientName = jsonData['header']?['client_name'] ?? '';
+    if (clientName.isNotEmpty) {
+      clientLogo = await _fetchClientLogo(clientName);
+    }
+
+    // Fetch embedded images (NEW)
+    List<Uint8List> additionalImages = [];
+    final imageList = jsonData['embedded_images'] as List<dynamic>?;
+    if (imageList != null && imageList.isNotEmpty) {
+      for (var url in imageList) {
+        if (url is String && url.isNotEmpty) {
+          final img = await InhausProposalSlidesGenerator.fetchImage(url);
+          if (img != null) additionalImages.add(img);
+        }
+      }
+    }
+
+    // 4. Generate Slides based on type
+    if (type == ProposalType.onePageQuote) {
+      final quote = InhausOnePageQuote.fromJson(jsonData);
+      return InhausProposalSlidesGenerator.generateOnePageQuote(
+        quote,
+        agencyLogo: agencyLogo,
+        clientLogo: clientLogo,
+        additionalImages: additionalImages,
+      );
+    } else {
+      final detailed = InhausDetailedProposal.fromJson(jsonData);
+      return InhausProposalSlidesGenerator.generateDetailedProposal(
+        detailed,
+        agencyLogo: agencyLogo,
+        clientLogo: clientLogo,
+        additionalImages: additionalImages,
+      );
+    }
+  }
+
+  /// System prompt for building INHAUS style JSON
+  static String _inhausProposalPrompt(String sources, ProposalType type, ProposalLanguage language) {
+    final targetLang = language == ProposalLanguage.spanish ? "SPANISH (Ecuador/LatAm)" : "ENGLISH (Professional)";
+    
+    return '''
+You are the Bilingual Client Proposal Specialist for Inhaus Brain.
+Your goal is to generate professional, stunning, and conversion-focused business proposals in the **INHAUS style**.
+
+OUTPUT STRICT JSON ONLY.
+
+SOURCES FOR CONTEXT:
+$sources
+
+PROPOSAL CONFIGURATION:
+- TYPE: ${type == ProposalType.onePageQuote ? "ONE PAGE QUOTE" : "DETAILED MULTI-PAGE"}
+- TARGET LANGUAGE: $targetLang
+
+GUIDELINES:
+1. **Language**: Translate ALL content (descriptions, services, bullets) to $targetLang.
+   - If Spanish: Use natural, professional LatAm Spanish.
+   - If English: Use professional business English.
+2. **Visual Style**: Use the INHAUS visual style (dark purple theme).
+3. **Pricing**: Ensure pricing is realistic based on the Service Catalog if provided.
+4. **Date**: Use the "CURRENT DATE" provided in the sources for the "date" field.
+5. ${type == ProposalType.onePageQuote ? 
+    "Focus on a high-level summary with key services and total price." : 
+    "Provide detailed sections for each major service area with bullets, includes, and excludes."}
+
+JSON SCHEMA:
+${type == ProposalType.onePageQuote ? 
+    "Return JSON matching InhausOnePageQuote model: {header, summary, footer}" : 
+    "Return JSON matching InhausDetailedProposal model: {header, sections, footer}"}
+''';
+  }
+
+  // --- LEGACY PROPOSAL GENERATION (PRESERVED) ---
+
   /// UI Entry point for PDF Generation (returns Markdown summary).
   static Future<String> generateProposalPdf(Proposal proposal, dynamic ref, {bool isPreview = true}) async {
       return generateProposalContent(proposal, ref, isPreview: isPreview);
@@ -110,6 +321,7 @@ $sources
       return await EdgeAIService.generateText(
           "Summarize the proposal ${proposal.title} based on these sources. Use Markdown.", 
           modelConfig: config, 
+          memoryContext: sources,
           ref: ref
       ).then((res) => res.text);
   }
@@ -141,7 +353,7 @@ $sources
            final byteData = await rootBundle.load('assets/images/logo_light.png');
            agencyLogo = byteData.buffer.asUint8List();
         } catch (e) {
-           print("Error loading agency logo: $e");
+           debugPrint("Error loading agency logo: $e");
         }
         
         // Fetch Client Logo
@@ -156,7 +368,7 @@ $sources
           return await ProposalPdfGenerator.generate(proposalData, agencyLogo: agencyLogo, clientLogo: clientLogo);
         }
     } catch (e) {
-        print("PDF Gen Error: $e");
+        debugPrint("PDF Gen Error: $e");
         throw Exception("Failed to generate PDF: $e");
     }
   }
@@ -186,13 +398,13 @@ $sources
            final byteData = await rootBundle.load('assets/images/logo_light.png');
            agencyLogo = byteData.buffer.asUint8List();
         } catch (e) {
-           print("Error loading agency logo for slides: $e");
+           debugPrint("Error loading agency logo for slides: $e");
         }
 
         // 4. Render Slides
         return await ProposalSlidesGenerator.generate(proposalData, agencyLogo: agencyLogo);
     } catch (e) {
-        print("Slides Gen Error: $e");
+        debugPrint("Slides Gen Error: $e");
         throw Exception("Failed to generate Slides: $e");
     }
   }
@@ -248,7 +460,7 @@ $sources
               context = "--- RELEVANT SEARCH RESULTS ---\n$ragContext\n\n--- FALLBACK CONTEXT ---\n$context";
            }
         } catch (e) {
-           print("ProposalService: RAG Retrieval failed: $e");
+           debugPrint("ProposalService: RAG Retrieval failed: $e");
         }
      }
      
@@ -260,6 +472,10 @@ You are the BRIAN Lead Strategist at Inhaus. Your goal is to help the user build
 4.  **Tone**: Professional, confident, LatAm-focused (Ecuador/Colombia).
 5.  **Direct Action**: If the user is satisfied, suggest generating the PDF or Slide Deck using the Studio buttons.
 """;
+
+     final catalog = await _catalogRepository.getCatalog();
+     final catalogContext = catalog != null ? _buildCatalogContext(catalog) : "";
+     context = "$catalogContext\n\n$context";
 
      final stream = EdgeAIService.generateTextStream(
        query,
@@ -285,12 +501,30 @@ You are the BRIAN Lead Strategist at Inhaus. Your goal is to help the user build
       buffer.writeln("\n--- SOURCE: ${source.name} (${source.type.name}) ---");
       if (source.content != null && source.content!.isNotEmpty) {
         buffer.writeln(source.content!.length > 15000 
-            ? source.content!.substring(0, 15000) + "...[TRUNCATED]" 
+            ? "${source.content!.substring(0, 15000)}...[TRUNCATED]" 
             : source.content);
       } else {
         buffer.writeln("[Source exists but has no extracted text content]");
       }
     }
+    return buffer.toString();
+  }
+
+  static String _buildCatalogContext(ServiceCatalog catalog) {
+    final buffer = StringBuffer();
+    buffer.writeln("--- AGENCY SERVICE CATALOG (Use these for pricing and details) ---");
+    for (var service in catalog.services) {
+      buffer.writeln("\nID: ${service.id}");
+      buffer.writeln("Name: ${service.name}");
+      buffer.writeln("Description: ${service.description}");
+      buffer.writeln("Price: ${service.price} (${service.frequency})");
+      if (service.details.isNotEmpty) buffer.writeln("Details: ${service.details.join(', ')}");
+      if (service.includes.isNotEmpty) buffer.writeln("Includes: ${service.includes.join(', ')}");
+      if (service.excludes.isNotEmpty) buffer.writeln("Excludes: ${service.excludes.join(', ')}");
+      if (service.timeEstimate != null) buffer.writeln("Time Estimate: ${service.timeEstimate}");
+      if (service.minAdSpend != null) buffer.writeln("Min Ad Spend: ${service.minAdSpend}");
+    }
+    buffer.writeln("\n--- END OF CATALOG ---");
     return buffer.toString();
   }
 }

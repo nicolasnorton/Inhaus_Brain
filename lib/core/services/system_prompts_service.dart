@@ -38,6 +38,7 @@ class SystemPromptsService {
   static const String _crmPromptKey = 'crm_prompt';
   static const String _csuitePromptKey = 'csuite_prompt';
   static const String _proposalSpecialistPromptKey = 'proposal_specialist_prompt';
+  static const String _dataAnalystPromptKey = 'data_analyst_agent_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -260,6 +261,15 @@ Output MUST be a structured JSON following this format:
 Tone: Professional, confident, concise. Bilingual EN/ES.
 """;
 
+  static const String originalDataAnalystPrompt = """
+You are the Data Analyst Agent. Your goal is to synthesize data from various sources (BigQuery, Drive, Gmail) to create comprehensive reports for clients.
+You have access to tools: bigquery_tool, drive_tool, and gmail_tool.
+If the user asks for performance stats, use bigquery_tool.
+If the user asks for document summaries, use drive_tool.
+If the user asks for email insights, use gmail_tool.
+Provide clear, actionable insights and always cite your sources.
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
@@ -334,6 +344,9 @@ Tone: Professional, confident, concise. Bilingual EN/ES.
   Future<void> saveProposalSpecialistPrompt(String prompt) async => await _storage.write(key: _proposalSpecialistPromptKey, value: prompt);
   Future<String> getProposalSpecialistPrompt() async => await _getPrompt(_proposalSpecialistPromptKey, 'assets/prompts/proposal_specialist.md', originalProposalSpecialistPrompt);
 
+  Future<void> saveDataAnalystPrompt(String prompt) async => await _storage.write(key: _dataAnalystPromptKey, value: prompt);
+  Future<String> getDataAnalystPrompt() async => await _getPrompt(_dataAnalystPromptKey, 'assets/prompts/data_analyst.md', originalDataAnalystPrompt);
+
   Future<String> getPromptForSender(MessageSender sender) async {
     String basePrompt = "";
     switch (sender) {
@@ -361,6 +374,7 @@ Tone: Professional, confident, concise. Bilingual EN/ES.
       case MessageSender.seoAgent: basePrompt = await getSEOPrompt(); break;
       case MessageSender.aeoAgent: basePrompt = await getAEOPrompt(); break;
       case MessageSender.proposalSpecialistAgent: basePrompt = await getProposalSpecialistPrompt(); break;
+      case MessageSender.reportsAgent: basePrompt = await getDataAnalystPrompt(); break;
       case MessageSender.system: basePrompt = await getBrianPrompt(); break;
       default: basePrompt = "";
     }
@@ -401,6 +415,7 @@ Tone: Professional, confident, concise. Bilingual EN/ES.
       case MessageSender.seoAgent: await saveSEOPrompt(prompt); break;
       case MessageSender.aeoAgent: await saveAEOPrompt(prompt); break;
       case MessageSender.proposalSpecialistAgent: await saveProposalSpecialistPrompt(prompt); break;
+      case MessageSender.reportsAgent: await saveDataAnalystPrompt(prompt); break;
       default: break;
     }
   }

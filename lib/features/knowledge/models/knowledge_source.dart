@@ -39,7 +39,7 @@ class KnowledgeSource {
       id: json['id'] as String,
       title: json['title'] as String,
       content: json['content'] as String,
-      type: KnowledgeSourceType.values.firstWhere((e) => e.name == json['type']),
+      type: KnowledgeSourceType.values.firstWhere((e) => e.toString().split('.').last == json['type']),
       createdAt: DateTime.parse(json['createdAt'] as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
@@ -49,7 +49,7 @@ class KnowledgeSource {
     'id': id,
     'title': title,
     'content': content,
-    'type': type.name,
+    'type': type.toString().split('.').last,
     'createdAt': createdAt.toIso8601String(),
     'metadata': metadata,
   };

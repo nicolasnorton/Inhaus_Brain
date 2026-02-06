@@ -157,10 +157,10 @@ class App {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'type': type.name,
+        'type': type.toString().split('.').last,
         'description': description,
         'icon': icon,
-        'status': status.name,
+        'status': status.toString().split('.').last,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
         'run_count': runCount,
@@ -191,7 +191,10 @@ class App {
   static AppType _parseAppType(dynamic value) {
     if (value is! String) return AppType.workflow;
     try {
-      return AppType.values.byName(value);
+      return AppType.values.firstWhere(
+        (e) => e.toString().split('.').last == value,
+        orElse: () => AppType.workflow,
+      );
     } catch (_) {
       return AppType.workflow;
     }
@@ -200,7 +203,10 @@ class App {
   static AppStatus _parseAppStatus(dynamic value) {
     if (value is! String) return AppStatus.draft;
     try {
-      return AppStatus.values.byName(value);
+      return AppStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == value,
+        orElse: () => AppStatus.draft,
+      );
     } catch (_) {
       return AppStatus.draft;
     }

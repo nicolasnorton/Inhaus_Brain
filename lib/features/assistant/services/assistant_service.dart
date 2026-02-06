@@ -285,7 +285,7 @@ Return ONLY a JSON object:
           final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
           
           intentEnum = RouterIntent.values.firstWhere(
-            (e) => e.name.toUpperCase() == intentStr, 
+            (e) => e.toString().split('.').last.toUpperCase() == intentStr, 
             orElse: () => RouterIntent.directChat
           );
           
@@ -359,8 +359,8 @@ Return ONLY a JSON object:
 $brianPersona
 
 Context:
-- Current Mode: ${currentMode.name.toUpperCase()}
-- Detected Intent: ${intentEnum.name.toUpperCase()}
+- Current Mode: ${currentMode.toString().split('.').last.toUpperCase()}
+- Detected Intent: ${intentEnum.toString().split('.').last.toUpperCase()}
 - System Memory: $longTermMemory
 
 CONVERSATION HISTORY:
@@ -402,7 +402,7 @@ $ephemeralMsg
 
     // Semantic Cache Check
     final semanticCache = _ref.read(semanticCacheServiceProvider);
-    final cachedResponse = await semanticCache.lookup(intentEnum.name, mainPrompt);
+    final cachedResponse = await semanticCache.lookup(intentEnum.toString().split('.').last, mainPrompt);
     if (cachedResponse != null) {
       debugPrint('Assistant: Cache Hit! Returning cached response.');
       // Update blackboard to reflect "fast" path
@@ -657,7 +657,7 @@ $ephemeralMsg
        blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
        
        // Store in Cache
-       await semanticCache.store(intentEnum.name, mainPrompt, verifiedResponse);
+       await semanticCache.store(intentEnum.toString().split('.').last, mainPrompt, verifiedResponse);
        
        return ToolExecutionSummary(text: verifiedResponse);
     }
@@ -671,7 +671,7 @@ $ephemeralMsg
     if (!responseText.contains("No content generated") && 
         !responseText.contains("I encountered an error") &&
         responseText.length > 20) {
-      await semanticCache.store(intentEnum.name, mainPrompt, responseText);
+      await semanticCache.store(intentEnum.toString().split('.').last, mainPrompt, responseText);
     }
 
     return ToolExecutionSummary(
@@ -773,7 +773,7 @@ $ephemeralMsg
              final artifact = Artifact(
                id: DateTime.now().toString(),
                title: args['title'] ?? 'Untitled',
-               type: ArtifactType.values.firstWhere((e) => e.name == args['type'], orElse: () => ArtifactType.markdown),
+               type: ArtifactType.values.firstWhere((e) => e.toString().split('.').last == args['type'], orElse: () => ArtifactType.markdown),
                content: args['content'] ?? '',
                updatedAt: DateTime.now(),
              );

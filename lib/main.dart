@@ -7,6 +7,7 @@
 // by the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -29,7 +30,7 @@ import 'core/globals.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.1.6 STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.1.7 STARTED');
   
   // Load environment variables
   try {
@@ -44,11 +45,12 @@ void main() async {
 
   if (kDebugMode) {
     try {
-      // Use IPv4 loopback to align with browser origin and avoid IPv6 issues
-      FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
-      FirebaseFunctions.instance.useFunctionsEmulator('127.0.0.1', 5005);
-      print('🔥 Using Firestore Emulator on 127.0.0.1:8080');
-      print('🔥 Using Functions Emulator on 127.0.0.1:5005');
+      // Use 10.0.2.2 for Android Emulator, 127.0.0.1 for others
+      final String host = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+      FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
+      FirebaseFunctions.instance.useFunctionsEmulator(host, 5005);
+      print('🔥 Using Firestore Emulator on $host:8080');
+      print('🔥 Using Functions Emulator on $host:5005');
     } catch (e) {
       print('⚠️ Failed to connect to Firebase Emulators: $e');
     }

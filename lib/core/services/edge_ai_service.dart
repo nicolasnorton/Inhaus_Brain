@@ -305,8 +305,6 @@ class EdgeAIService {
   }
 
   static String _sanitizeModelName(String modelId) {
-    if (modelId.contains('-001')) return modelId.replaceAll('-001', '');
-    if (modelId.contains('-002')) return modelId.replaceAll('-002', '');
     return modelId;
   }
 

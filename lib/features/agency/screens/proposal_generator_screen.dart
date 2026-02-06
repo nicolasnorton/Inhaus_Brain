@@ -2,15 +2,16 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:go_router/go_router.dart';
+
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../agency/models/proposal_model.dart';
+import '../../agency/models/inhaus_proposal_models.dart';
 import '../../agency/providers/proposal_provider.dart';
 import '../../agency/providers/proposal_template_provider.dart';
 import '../../agency/services/proposal_service.dart';
+import '../../agency/widgets/proposal_type_selection_dialog.dart';
 // import '../../agency/widgets/template_manager_dialog.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
@@ -220,6 +221,75 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
       if (mounted) {
         if (Navigator.canPop(context)) Navigator.pop(context);
         _showErrorDialog(e.toString());
+      }
+    }
+  }
+
+  // --- INHAUS PROPOSAL GENERATION ---
+
+  Future<void> _handleInhausProposalGeneration(Proposal proposal) async {
+    if (!mounted) return;
+    if (proposal.sources.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please add at least one source first (e.g., Services Catalog, Client Info)."),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show type/format selection dialog
+    showDialog(
+      context: context,
+      builder: (ctx) => ProposalTypeSelectionDialog(
+        onGenerate: (type, format, language) => _generateInhausProposal(proposal, type, format, language),
+      ),
+    );
+  }
+
+  Future<void> _generateInhausProposal(
+    Proposal proposal,
+    ProposalType type,
+    ProposalFormat format,
+    ProposalLanguage language,
+  ) async {
+    if (!mounted) return;
+
+    final typeLabel = type == ProposalType.onePageQuote ? 'One Page Quote' : 'Detailed Proposal';
+    final formatLabel = format == ProposalFormat.pdf ? 'PDF' : 'Slides';
+    final langLabel = language == ProposalLanguage.spanish ? 'ES' : 'EN';
+    
+    _showLoadingDialog("Generating $typeLabel ($formatLabel) [$langLabel]...");
+
+    try {
+      final Uint8List bytes;
+      
+      if (format == ProposalFormat.pdf) {
+        bytes = await ProposalService.generateInhausProposalPdf(proposal, ref, type: type, language: language);
+      } else {
+        bytes = await ProposalService.generateInhausProposalSlides(proposal, ref, type: type, language: language);
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Save output
+      final output = ProposalOutput(
+        id: const Uuid().v4(),
+        title: "$typeLabel - $formatLabel (${DateTime.now().minute})",
+        type: format == ProposalFormat.pdf ? ProposalOutputType.pdf : ProposalOutputType.slides,
+        createdAt: DateTime.now(),
+      );
+      _addOutput(proposal, output);
+
+      // Show PDF viewer
+      await Printing.layoutPdf(onLayout: (pdfFormat) async => bytes);
+
+    } catch (e) {
+      if (mounted) {
+        if (Navigator.canPop(context)) Navigator.pop(context);
+        _showErrorDialog("Failed to generate proposal: $e");
       }
     }
   }
@@ -582,6 +652,36 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
             },
           ),
           const SizedBox(height: 20),
+          
+          // INHAUS Proposal Generation (NEW - Primary)
+          _buildActionCard(
+            title: "INHAUS Proposal (NEW)",
+            subtitle: "One Page Quote or Detailed Multi-Page",
+            icon: Icons.auto_awesome,
+            color: const Color(0xFF6B46C1), // Purple to match INHAUS theme
+            onTap: () {
+              if (mounted) _handleInhausProposalGeneration(proposal);
+            },
+          ),
+          const SizedBox(height: 20),
+          
+          // Divider
+          Container(
+            height: 1,
+            color: Colors.white.withOpacity(0.05),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            "LEGACY GENERATORS",
+            style: TextStyle(
+              color: Colors.white24,
+              fontWeight: FontWeight.bold,
+              fontSize: 9,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
           _buildActionCard(
             title: "Generate PDF Proposal",
             subtitle: "Executive summary, solution & pricing",

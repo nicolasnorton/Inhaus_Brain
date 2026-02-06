@@ -45,7 +45,7 @@ $context
     buffer.writeln("ACTIVE TEAM ROSTER:");
     
     for (var e in employees) {
-      buffer.writeln("- ${e.fullName} (${e.role}) | Dept: ${e.department.name} | Status: ${e.status.name} | Hired: ${e.hireDate.toString().substring(0,10)}");
+      buffer.writeln("- ${e.fullName} (${e.role}) | Dept: ${e.department.toString().split('.').last} | Status: ${e.status.toString().split('.').last} | Hired: ${e.hireDate.toString().substring(0,10)}");
     }
     
     return buffer.toString();

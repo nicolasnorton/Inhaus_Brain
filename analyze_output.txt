@@ -2,6 +2,8 @@ Resolving dependencies...
 Downloading packages...
   _fe_analyzer_shared 93.0.0 (94.0.0 available)
   analyzer 10.0.1 (10.0.2 available)
+  build_runner 2.10.5 (2.11.0 available)
+  camera_avfoundation 0.9.22+9 (0.9.23 available)
   characters 1.4.0 (1.4.1 available)
   file_picker 8.3.7 (10.3.10 available)
   flutter_dotenv 5.2.1 (6.0.0 available)
@@ -10,27 +12,34 @@ Downloading packages...
   flutter_facebook_auth_web 5.0.1 (6.1.2 available)
   flutter_launcher_icons 0.13.1 (0.14.4 available)
   flutter_markdown 0.7.7+1 (discontinued replaced by flutter_markdown_plus)
-  flutter_riverpod 2.6.1 (3.2.0 available)
-  google_fonts 6.3.3 (8.0.0 available)
+  flutter_riverpod 2.6.1 (3.2.1 available)
+  go_router 17.0.1 (17.1.0 available)
+  google_fonts 6.3.3 (8.0.1 available)
   google_sign_in 6.3.0 (7.2.0 available)
   google_sign_in_android 6.2.1 (7.2.7 available)
   google_sign_in_ios 5.9.0 (6.2.5 available)
   google_sign_in_platform_interface 2.5.0 (3.1.0 available)
   google_sign_in_web 0.12.4+4 (1.1.0 available)
+  hooks 1.0.0 (1.0.1 available)
+  image 4.5.4 (4.7.2 available)
   matcher 0.12.17 (0.12.18 available)
   material_color_utilities 0.11.1 (0.13.0 available)
   meta 1.17.0 (1.18.1 available)
   record 5.2.1 (6.2.0 available)
   record_linux 0.7.2 (1.3.0 available)
-  riverpod 2.6.1 (3.2.0 available)
-  sentry 8.14.2 (9.10.0 available)
-  sentry_flutter 8.14.2 (9.10.0 available)
+  riverpod 2.6.1 (3.2.1 available)
+  sentry 8.14.2 (9.12.0 available)
+  sentry_flutter 8.14.2 (9.12.0 available)
   share_plus 10.1.4 (12.0.1 available)
   share_plus_platform_interface 5.0.2 (6.1.0 available)
+  source_span 1.10.1 (1.10.2 available)
+  syncfusion_flutter_core 32.1.25 (32.2.3 available)
+  syncfusion_flutter_pdf 32.1.25 (32.2.3 available)
   test_api 0.7.7 (0.7.9 available)
+  video_player_avfoundation 2.9.0 (2.9.1 available)
 Got dependencies!
 1 package is discontinued.
-27 packages have newer versions incompatible with dependency constraints.
+36 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Analyzing InhausBrain...                                        
 
@@ -44,16 +53,13 @@ warning • Unused import: 'package:flutter/foundation.dart' • lib/core/archit
    info • 'isShiftPressed' is deprecated and shouldn't be used. Use HardwareKeyboard.instance.isShiftPressed instead. This feature was deprecated after v3.18.0-2.0.pre • lib/core/hotkeys/models/hotkey_models.dart:65:24 • deprecated_member_use
    info • 'isAltPressed' is deprecated and shouldn't be used. Use HardwareKeyboard.instance.isAltPressed instead. This feature was deprecated after v3.18.0-2.0.pre • lib/core/hotkeys/models/hotkey_models.dart:66:22 • deprecated_member_use
    info • 'isMetaPressed' is deprecated and shouldn't be used. Use HardwareKeyboard.instance.isMetaPressed instead. This feature was deprecated after v3.18.0-2.0.pre • lib/core/hotkeys/models/hotkey_models.dart:67:23 • deprecated_member_use
-   info • The member 'execute' overrides an inherited member but isn't annotated with '@override' • lib/core/mcp/tools/bigquery_tool.dart:15:22 • annotate_overrides
-   info • The member 'execute' overrides an inherited member but isn't annotated with '@override' • lib/core/mcp/tools/drive_tool.dart:19:22 • annotate_overrides
-   info • The member 'execute' overrides an inherited member but isn't annotated with '@override' • lib/core/mcp/tools/gmail_tool.dart:15:22 • annotate_overrides
-  error • The named parameter 'bananaKey' isn't defined • lib/core/mcp/tools/multimodal_tools.dart:26:74 • undefined_named_parameter
-warning • The value of the local variable 'onboardingCompleted' isn't used • lib/core/router/app_router.dart:53:9 • unused_local_variable
-warning • The value of the local variable 'isOnboarding' isn't used • lib/core/router/app_router.dart:60:13 • unused_local_variable
+warning • The value of the local variable 'bananaKey' isn't used • lib/core/mcp/tools/multimodal_tools.dart:20:9 • unused_local_variable
+warning • The value of the local variable 'onboardingCompleted' isn't used • lib/core/router/app_router.dart:61:9 • unused_local_variable
+warning • The value of the local variable 'isOnboarding' isn't used • lib/core/router/app_router.dart:68:13 • unused_local_variable
    info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/services/ai_proxy_service.dart:50:7 • use_null_aware_elements
 warning • Unused import: 'package:http/http.dart' • lib/core/services/edge_ai_service.dart:7:8 • unused_import
 warning • The value of the field '_vault' isn't used • lib/core/services/edge_ai_service.dart:46:16 • unused_field
-warning • The declaration '_pollProxyVeoOperation' isn't referenced • lib/core/services/edge_ai_service.dart:424:25 • unused_element
+warning • The declaration '_pollProxyVeoOperation' isn't referenced • lib/core/services/edge_ai_service.dart:433:25 • unused_element
 warning • Unused import: 'package:flutter/material.dart' • lib/core/services/error_recovery_service.dart:3:8 • unused_import
 warning • The stack trace variable 'stack' isn't used and can be removed • lib/core/services/error_recovery_service.dart:19:19 • unused_catch_stack
    info • 'RawKeyEvent' is deprecated and shouldn't be used. Use KeyEvent instead. This feature was deprecated after v3.18.0-2.0.pre • lib/core/services/hotkey_service.dart:28:16 • deprecated_member_use
@@ -80,6 +86,7 @@ warning • The value of the field '_isModelLoading' isn't used • lib/core/ser
 warning • The value of the local variable 'stopwatch' isn't used • lib/core/services/open_model_service.dart:20:11 • unused_local_variable
 warning • The declaration '_getLocalModelPath' isn't referenced • lib/core/services/open_model_service.dart:34:25 • unused_element
 warning • The value of the field '_gmail' isn't used • lib/core/services/project_sync_service.dart:9:22 • unused_field
+warning • Unused import: 'dart:io' • lib/core/services/proposal_pdf_service.dart:1:8 • unused_import
 warning • Unused import: 'dart:convert' • lib/core/services/reports_lm_service.dart:5:8 • unused_import
    info • Use interpolation to compose strings and values • lib/core/services/reports_lm_service.dart:158:7 • prefer_interpolation_to_compose_strings
    info • Use interpolation to compose strings and values • lib/core/services/reports_lm_service.dart:185:7 • prefer_interpolation_to_compose_strings
@@ -93,8 +100,8 @@ warning • The value of the field '_ref' isn't used • lib/core/services/seman
    info • Don't invoke 'print' in production code • lib/core/services/sources_service.dart:80:7 • avoid_print
    info • Don't invoke 'print' in production code • lib/core/services/sources_service.dart:96:10 • avoid_print
    info • Use 'isNotEmpty' instead of 'length' to test whether the collection is empty • lib/core/services/sources_service.dart:231:33 • prefer_is_empty
-warning • This case is covered by the previous cases • lib/core/services/system_prompts_service.dart:322:7 • unreachable_switch_case
-warning • This case is covered by the previous cases • lib/core/services/system_prompts_service.dart:361:7 • unreachable_switch_case
+warning • This case is covered by the previous cases • lib/core/services/system_prompts_service.dart:348:7 • unreachable_switch_case
+warning • This case is covered by the previous cases • lib/core/services/system_prompts_service.dart:388:7 • unreachable_switch_case
 warning • Unused import: 'package:flutter/foundation.dart' • lib/core/services/telemetry_service.dart:3:8 • unused_import
 warning • The declaration '_safeError' isn't referenced • lib/core/services/vertex_ai_service.dart:200:17 • unused_element
 warning • Unused import: 'telemetry_service.dart' • lib/core/services/video_generation_service.dart:7:8 • unused_import
@@ -154,7 +161,78 @@ warning • Unused import: '../../monitor/services/monitor_api_service.dart' •
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/admin/screens/user_management_screen.dart:123:44 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/admin/screens/user_management_screen.dart:133:55 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/admin/screens/user_management_screen.dart:134:62 • deprecated_member_use
+   info • Dangling library doc comment • lib/features/agency/models/inhaus_proposal_models.dart:1:1 • dangling_library_doc_comments
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:33:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:52:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:66:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:79:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:92:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:104:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/providers/service_catalog_provider.dart:136:7 • avoid_print
+warning • Unused import: 'package:font_awesome_flutter/font_awesome_flutter.dart' • lib/features/agency/screens/proposal_generator_screen.dart:5:8 • unused_import
+warning • Unused import: 'package:go_router/go_router.dart' • lib/features/agency/screens/proposal_generator_screen.dart:6:8 • unused_import
+   info • Don't invoke 'print' in production code • lib/features/agency/screens/proposal_generator_screen.dart:109:14 • avoid_print
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:429:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:443:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:445:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:477:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:503:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:508:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:537:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:539:76 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:564:65 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:632:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:634:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:670:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:716:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:752:31 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:754:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:761:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:798:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:805:70 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:805:102 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/screens/proposal_generator_screen.dart:824:62 • deprecated_member_use
+warning • Unused import: '../services/service_catalog_repository.dart' • lib/features/agency/screens/service_catalog_screen.dart:5:8 • unused_import
+   info • Don't invoke 'print' in production code • lib/features/agency/services/maintenance_agent.dart:32:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/maintenance_agent.dart:48:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/maintenance_agent.dart:57:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/maintenance_agent.dart:60:7 • avoid_print
+warning • Unused import: 'package:inhaus_brain/features/agency/models/proposal_model.dart' • lib/features/agency/services/proposal_pdf_generator.dart:5:8 • unused_import
+warning • Unused import: 'package:intl/intl.dart' • lib/features/agency/services/proposal_service.dart:5:8 • unused_import
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_catalog_repository.dart:32:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_catalog_repository.dart:42:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_catalog_repository.dart:51:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_catalog_repository.dart:71:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:15:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:32:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:48:13 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:49:13 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:54:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:57:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:65:7 • avoid_print
+   info • Use interpolation to compose strings and values • lib/features/agency/services/service_pdf_parser_service.dart:67:22 • prefer_interpolation_to_compose_strings
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:92:13 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:97:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/agency/services/service_pdf_parser_service.dart:100:7 • avoid_print
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:40:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:193:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:194:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:199:32 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:209:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:210:36 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:269:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:270:30 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/proposal_type_selection_dialog.dart:275:32 • deprecated_member_use
+warning • The value of the local variable 'file' isn't used • lib/features/agency/widgets/template_manager_dialog.dart:26:15 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/template_manager_dialog.dart:99:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/template_manager_dialog.dart:101:69 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/template_manager_dialog.dart:220:72 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/template_manager_dialog.dart:251:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/template_manager_dialog.dart:260:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/agency/widgets/template_manager_dialog.dart:294:60 • deprecated_member_use
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/analytics/agents/analytics_agents.dart:2:8 • unused_import
 warning • Unused import: 'dart:convert' • lib/features/analytics/agents/dashboard_agent.dart:1:8 • unused_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/analytics/agents/dashboard_agent.dart:3:8 • unused_import
    info • Unnecessary use of 'toList' in a spread • lib/features/analytics/screens/analytics_monitor_screen.dart:97:84 • unnecessary_to_list_in_spreads
    info • Unnecessary use of multiple underscores • lib/features/analytics/screens/analytics_monitor_screen.dart:184:33 • unnecessary_underscores
    info • Unnecessary use of multiple underscores • lib/features/analytics/screens/analytics_monitor_screen.dart:184:37 • unnecessary_underscores
@@ -224,7 +302,6 @@ warning • The declaration '_runStrictAgent' isn't referenced • lib/features/
    info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:805:9 • avoid_print
    info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:810:14 • avoid_print
 warning • The declaration '_planningModeInstructions' isn't referenced • lib/features/assistant/services/assistant_service.dart:842:14 • unused_element
-  error • The named parameter 'bananaKey' isn't defined • lib/features/assistant/services/assistant_tool_registry.dart:39:84 • undefined_named_parameter
    info • The imported package 'web' isn't a dependency of the importing package • lib/features/assistant/widgets/ai_assistant_overlay.dart:4:8 • depend_on_referenced_packages
 warning • Unused import: '../../../core/widgets/app_video_player.dart' • lib/features/assistant/widgets/ai_assistant_overlay.dart:28:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/assistant/widgets/ai_assistant_overlay.dart:366:75 • deprecated_member_use
@@ -237,18 +314,35 @@ warning • Unused import: '../../../core/widgets/app_video_player.dart' • lib
    info • Parameter 'key' could be a super parameter • lib/features/assistant/widgets/artifact_renderer.dart:7:9 • use_super_parameters
 warning • This default clause is covered by the previous cases • lib/features/assistant/widgets/artifact_renderer.dart:124:7 • unreachable_switch_default
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/assistant/widgets/artifact_renderer.dart:132:22 • deprecated_member_use
+warning • Unused import: 'package:font_awesome_flutter/font_awesome_flutter.dart' • lib/features/auth/auth_screen.dart:3:8 • unused_import
    info • The imported package 'google_sign_in_platform_interface' isn't a dependency of the importing package • lib/features/auth/auth_screen.dart:5:8 • depend_on_referenced_packages
+warning • Unused import: '../../core/providers/demo_provider.dart' • lib/features/auth/auth_screen.dart:10:8 • unused_import
+warning • Unused import: '../../features/knowledge/providers/knowledge_provider.dart' • lib/features/auth/auth_screen.dart:11:8 • unused_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/auth_screen.dart:133:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/auth_screen.dart:135:60 • deprecated_member_use
+warning • Unused import: 'package:inhaus_brain/features/knowledge/models/knowledge_source.dart' • lib/features/campaigns/campaign_detail_screen.dart:15:8 • unused_import
+warning • Unused import: 'package:pdf/widgets.dart' • lib/features/campaigns/campaign_detail_screen.dart:16:8 • unused_import
+warning • Duplicate import • lib/features/campaigns/campaign_detail_screen.dart:17:8 • duplicate_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/campaigns/campaign_detail_screen.dart:183:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/campaigns/campaign_detail_screen.dart:183:84 • deprecated_member_use
+warning • The value of the field '_ref' isn't used • lib/features/campaigns/tools/campaign_tools.dart:186:13 • unused_field
 warning • Duplicate import • lib/features/chat/agentic_chat_view.dart:7:8 • duplicate_import
    info • 'imageBuilder' is deprecated and shouldn't be used. Use sizedImageBuilder instead • lib/features/chat/agentic_chat_view.dart:254:25 • deprecated_member_use
-warning • Unused import: 'package:inhaus_brain/features/copilot/data/copilot_repository.dart' • lib/features/chat/agents/agency_agents.dart:13:8 • unused_import
-   info • Don't invoke 'print' in production code • lib/features/chat/agents/agency_agents.dart:80:11 • avoid_print
+   info • The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/foundation.dart' • lib/features/chat/agents/agency_agents.dart:2:8 • unnecessary_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/chat/agents/agency_agents.dart:3:8 • unused_import
+warning • Unused import: 'package:inhaus_brain/features/copilot/data/copilot_repository.dart' • lib/features/chat/agents/agency_agents.dart:14:8 • unused_import
+   info • Don't invoke 'print' in production code • lib/features/chat/agents/agency_agents.dart:81:11 • avoid_print
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/chat/agents/base_agent.dart:2:8 • unused_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/chat/agents/core_agents.dart:2:8 • unused_import
 warning • Unused import: '../../../core/mcp/tools/web_search_tool.dart' • lib/features/chat/agents/core_agents.dart:8:8 • unused_import
    info • Use interpolation to compose strings and values • lib/features/chat/agents/core_agents.dart:70:24 • prefer_interpolation_to_compose_strings
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/chat/agents/knowledge_librarian_agent.dart:2:8 • unused_import
    info • The import of 'dart:typed_data' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/foundation.dart' • lib/features/chat/agents/router_agent.dart:1:8 • unnecessary_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/chat/agents/router_agent.dart:4:8 • unused_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/chat/agents/utility_agents.dart:2:8 • unused_import
 warning • Unused import: '../../../core/mcp/tools/web_search_tool.dart' • lib/features/chat/providers/chat_provider.dart:14:8 • unused_import
 warning • Duplicate import • lib/features/chat/providers/chat_provider.dart:21:8 • duplicate_import
    info • Unnecessary use of multiple underscores • lib/features/chat/providers/chat_provider.dart:39:48 • unnecessary_underscores
-  error • The named parameter 'bananaKey' isn't defined • lib/features/chat/providers/chat_provider.dart:606:72 • undefined_named_parameter
 warning • Unused import: 'package:flutter/foundation.dart' • lib/features/chat/services/memory_ops_base.dart:1:8 • unused_import
 warning • Unused import: 'package:yaml/yaml.dart' • lib/features/chat/services/skill_discovery_io.dart:3:8 • unused_import
 warning • Unused import: 'package:ag_ui/ag_ui.dart' • lib/features/chat/widgets/approval_card.dart:3:8 • unused_import
@@ -316,9 +410,33 @@ warning • Unused import: 'package:uuid/uuid.dart' • lib/features/creative/mo
    info • Use interpolation to compose strings and values • lib/features/creative/providers/creative_provider.dart:68:37 • prefer_interpolation_to_compose_strings
    info • Use interpolation to compose strings and values • lib/features/creative/providers/creative_provider.dart:69:37 • prefer_interpolation_to_compose_strings
    info • Unnecessary escape in string literal • lib/features/creative/providers/creative_provider.dart:189:37 • unnecessary_string_escapes
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dashboard/dashboard_screen.dart:59:86 • deprecated_member_use
-   info • Unnecessary use of multiple underscores • lib/features/dashboard/dashboard_screen.dart:132:30 • unnecessary_underscores
-   info • Unnecessary use of multiple underscores • lib/features/dashboard/dashboard_screen.dart:419:24 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/dashboard/dashboard_screen.dart:160:30 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/dashboard/dashboard_screen.dart:458:24 • unnecessary_underscores
+   info • The constant name 'tax_payment' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:6:3 • constant_identifier_names
+   info • The constant name 'internal_transfer' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:7:3 • constant_identifier_names
+   info • The constant name 'ad_spend' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:11:3 • constant_identifier_names
+   info • The constant name 'software_subscription' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:12:3 • constant_identifier_names
+   info • The constant name 'office_supplies' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:16:3 • constant_identifier_names
+   info • The constant name 'taxes_sri' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:18:3 • constant_identifier_names
+   info • The constant name 'pl_statement' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:23:3 • constant_identifier_names
+   info • The constant name 'tax_projection_sri' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:24:3 • constant_identifier_names
+   info • The constant name 'burn_rate_analysis' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:25:3 • constant_identifier_names
+   info • The constant name 'ad_spend_breakdown' isn't a lowerCamelCase identifier • lib/features/finance/models/finance_model.dart:26:3 • constant_identifier_names
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/finance/screens/finance_dashboard_screen.dart:160:73 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/finance/screens/finance_dashboard_screen.dart:160:103 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/finance/screens/finance_dashboard_screen.dart:188:85 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/finance/screens/finance_dashboard_screen.dart:255:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/finance/screens/finance_dashboard_screen.dart:257:63 • deprecated_member_use
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/finance/services/finance_service.dart:1:8 • unused_import
+warning • The value of the local variable 'cleanJson' isn't used • lib/features/finance/services/finance_service.dart:70:13 • unused_local_variable
+   info • Don't invoke 'print' in production code • lib/features/finance/services/finance_service.dart:76:7 • avoid_print
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/hr/screens/hr_dashboard_screen.dart:103:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/hr/screens/hr_dashboard_screen.dart:110:78 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/hr/screens/hr_dashboard_screen.dart:110:110 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/hr/screens/hr_dashboard_screen.dart:127:87 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/hr/screens/hr_dashboard_screen.dart:194:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/hr/screens/hr_dashboard_screen.dart:196:63 • deprecated_member_use
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/hr/services/hr_service.dart:1:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/knowledge/screens/document_detail_screen.dart:59:49 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/knowledge/screens/document_detail_screen.dart:69:49 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/knowledge/screens/document_detail_screen.dart:171:29 • deprecated_member_use
@@ -358,22 +476,23 @@ warning • The value of the field '_uuid' isn't used • lib/features/monitor/s
 warning • The declaration '_getMockMessage' isn't referenced • lib/features/monitor/services/monitor_api_service.dart:119:10 • unused_element
 warning • Unused import: 'package:flutter_animate/flutter_animate.dart' • lib/features/onboarding/screens/campaign_wizard_screen.dart:7:8 • unused_import
 warning • Unused import: 'package:font_awesome_flutter/font_awesome_flutter.dart' • lib/features/onboarding/screens/welcome_screen.dart:4:8 • unused_import
+warning • Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' • lib/features/reports/agents/reports_agent.dart:2:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/dashboards_grid.dart:227:67 • deprecated_member_use
 warning • Unused import: '../../../../core/services/sources_service.dart' • lib/features/reports/screens/report_detail_screen.dart:9:8 • unused_import
 warning • Unused import: '../../connectors/models/connected_account_model.dart' • lib/features/reports/screens/report_detail_screen.dart:13:8 • unused_import
 warning • Unused import: '../../../../core/services/integration_service.dart' • lib/features/reports/screens/report_detail_screen.dart:14:8 • unused_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:118:46 • deprecated_member_use
-warning • The value of the local variable 'audioUrl' isn't used • lib/features/reports/screens/report_detail_screen.dart:210:17 • unused_local_variable
-   info • Unnecessary use of multiple underscores • lib/features/reports/screens/report_detail_screen.dart:588:24 • unnecessary_underscores
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:680:69 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:682:88 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:847:32 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:877:22 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:879:41 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:895:51 • deprecated_member_use
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:898:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:119:46 • deprecated_member_use
+warning • The value of the local variable 'audioUrl' isn't used • lib/features/reports/screens/report_detail_screen.dart:211:17 • unused_local_variable
+   info • Unnecessary use of multiple underscores • lib/features/reports/screens/report_detail_screen.dart:590:24 • unnecessary_underscores
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:728:57 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:730:76 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:884:32 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:914:22 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:916:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:932:51 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/report_detail_screen.dart:935:60 • deprecated_member_use
 warning • Unused import: '../../../../l10n/app_localizations.dart' • lib/features/reports/screens/reports_dashboard_screen.dart:7:8 • unused_import
-   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/reports_dashboard_screen.dart:232:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/screens/reports_dashboard_screen.dart:238:46 • deprecated_member_use
 warning • Unused import: 'dart:convert' • lib/features/reports/services/data_ingestion_service.dart:4:8 • unused_import
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/widgets/reports_notebook_view.dart:22:37 • deprecated_member_use
    info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/reports/widgets/reports_notebook_view.dart:104:60 • deprecated_member_use

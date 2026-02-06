@@ -77,7 +77,7 @@ class DataIngestionService {
     
     // 2. Store Raw Metrics in Firestore
     // Collection: clients/{clientId}/metrics/{timestamp}_{platform}_{accountId}
-    final docId = '${end.millisecondsSinceEpoch}_${account.platform.name}_${account.id}';
+    final docId = '${end.millisecondsSinceEpoch}_${account.platform.toString().split('.').last}_${account.id}';
     
     await _firestore
         .collection('clients')
@@ -100,7 +100,7 @@ class DataIngestionService {
   String _generateSummary(ConnectedAccount account, Map<String, dynamic> data) {
     // Create a natural language friendly summary for RAG
     final buffer = StringBuffer();
-    buffer.writeln('Platform: ${account.platform.name}');
+    buffer.writeln('Platform: ${account.platform.toString().split('.').last}');
     buffer.writeln('Account: ${account.accountName}');
     buffer.writeln('Date Range: Last 30 Days');
     

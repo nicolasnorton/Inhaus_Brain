@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../clients/models/client_model.dart';
 import '../../clients/models/project_model.dart';
@@ -30,17 +31,17 @@ Custom Fields: ${client.customFields}
         chunkSize: _calculateChunkSize(KnowledgeSourceType.text, content),
       );
     } catch (e) {
-      debugPrint('⚠️ Autonomous Ingestion Failed for Client ${client.name}: $e');
+      debugPrint('⚠️ Autonomous Ingestion Failed for Client ${client.name}: ${_safeError(e)}');
       // Do not rethrow; finding/fixing this shouldn't block user flow
     }
   }
 
   Future<void> ingestPlatformData(AdPlatform platform, String clientId, String rawData) async {
-    debugPrint('Dynamic Ingestion: Processing ${platform.name} for Client $clientId...');
-    
     final sourceType = platform == AdPlatform.googleAds ? KnowledgeSourceType.googleAds : 
                      platform == AdPlatform.googleAnalytics ? KnowledgeSourceType.ga4 : 
                      KnowledgeSourceType.text;
+
+    debugPrint('Dynamic Ingestion: Processing ${platform.toString().split('.').last} for Client $clientId...');
 
     // Parse structured data if possible to make it more LLM-friendly
     final formattedText = _formatStructuredData(rawData, sourceType);
@@ -57,16 +58,22 @@ Custom Fields: ${client.customFields}
     // Basic CSV/JSON heuristic to make data more readable for embedding
     try {
       if (raw.trim().startsWith('{') || raw.trim().startsWith('[')) {
-        // Pretty print JSON? For now, we rely on the raw structure but we could flatten it.
-        // TODO: Implement proper JSON flattening for RAG
-        return "Source: ${type.name}\nData Type: JSON\nContent:\n$raw";
+        // Parse and flatten JSON for better RAG retrieval
+        try {
+          final dynamic parsed = jsonDecode(raw);
+          final flattened = _flattenJson(parsed);
+          return "Source: ${type.toString().split('.').last}\nData Type: JSON\nContent:\n$flattened";
+        } catch (e) {
+          debugPrint('JSON decode failed, using raw: $e');
+          return "Source: ${type.toString().split('.').last}\nData Type: JSON (Raw)\nContent:\n$raw";
+        }
       } else if (raw.contains(',')) {
         // Assume CSV
         final lines = raw.split('\n');
         if (lines.isNotEmpty) {
            final headers = lines.first.split(',');
            final buffer = StringBuffer();
-           buffer.writeln("Source: ${type.name} (CSV Report)");
+           buffer.writeln("Source: ${type.toString().split('.').last} (CSV Report)");
            for (var i = 1; i < lines.length; i++) {
               final values = lines[i].split(',');
               if (values.length == headers.length) {
@@ -88,11 +95,11 @@ Custom Fields: ${client.customFields}
 
   Future<void> ingestProject(Project project, List<ProjectTask> tasks) async {
     debugPrint('Autonomous Ingestion: Processing Project ${project.name}...');
-    final taskSummary = tasks.map((t) => "- ${t.title} (${t.status.name})").join('\n');
+    final taskSummary = tasks.map((t) => "- ${t.title} (${t.status.toString().split('.').last})").join('\n');
     final content = """
 Project: ${project.name}
 Description: ${project.description}
-Status: ${project.status.name}
+Status: ${project.status.toString().split('.').last}
 Timeline: ${project.startDate} to ${project.endDate}
 Tasks:
 $taskSummary
@@ -107,7 +114,7 @@ $taskSummary
   }
 
   Future<void> ingestSource(String datasetId, KnowledgeSource source) async {
-    debugPrint('Ingesting Source: ${source.title} into Dataset $datasetId Type: ${source.type}...');
+    debugPrint('Ingesting Source: ${source.title} into Dataset $datasetId Type: ${source.type.toString().split('.').last}...');
     
     String contentToIngest = source.content;
 
@@ -196,5 +203,34 @@ $taskSummary
     } catch (_) {
       return "Error parsing exception";
     }
+  }
+
+  String _flattenJson(dynamic data, [String prefix = '']) {
+    final buffer = StringBuffer();
+    
+    if (data is Map) {
+      data.forEach((key, value) {
+        final newKey = prefix.isEmpty ? key : '$prefix.$key';
+        if (value is Map || value is List) {
+          buffer.write(_flattenJson(value, newKey));
+        } else {
+          buffer.writeln('$newKey: $value');
+        }
+      });
+    } else if (data is List) {
+      for (var i = 0; i < data.length; i++) {
+        final newKey = '$prefix[$i]';
+        final value = data[i];
+        if (value is Map || value is List) {
+          buffer.write(_flattenJson(value, newKey));
+        } else {
+          buffer.writeln('$newKey: $value');
+        }
+      }
+    } else {
+      buffer.writeln('$prefix: $data');
+    }
+    
+    return buffer.toString();
   }
 }

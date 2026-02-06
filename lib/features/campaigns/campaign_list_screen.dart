@@ -107,7 +107,7 @@ class CampaignListScreen extends ConsumerWidget {
         break;
       default:
         color = Colors.grey;
-        label = status.name;
+        label = status.toString().split('.').last;
     }
 
     return Container(

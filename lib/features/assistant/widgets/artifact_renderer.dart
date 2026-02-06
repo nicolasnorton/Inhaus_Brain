@@ -85,7 +85,7 @@ class _ArtifactCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  artifact.type.name.toUpperCase(),
+                  artifact.type.toString().split('.').last.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 10,

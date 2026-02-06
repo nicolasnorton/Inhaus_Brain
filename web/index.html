@@ -20,7 +20,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
-  <meta name="app-version" content="1.1.6">
+  <meta name="app-version" content="v1.1.7">
   <meta name="google-signin-client_id"
     content="1096509611056-ap6oqqrm7k9ed69ctoea3dup38eoc3fc.apps.googleusercontent.com">
 
@@ -43,7 +43,7 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (registrations) {
         for (let registration of registrations) {
-          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.1.6)");
+          console.log("🔥🔥 SUPER NUCLEAR: Unregistering Service Worker (v1.1.7)");
           registration.unregister().then(function (boolean) {
             console.log("Service Worker unregistered: ", boolean);
           });
@@ -72,26 +72,7 @@
       });
 
       FB.AppEvents.logPageView();
-
-      FB.getLoginStatus(function (response) {
-        statusChangeCallback(response);
-      });
     };
-
-    function checkLoginState() {
-      FB.getLoginStatus(function (response) {
-        statusChangeCallback(response);
-      });
-    }
-
-    function statusChangeCallback(response) {
-      console.log('FB Status Change Callback: ', response);
-      if (response.status === 'connected') {
-        console.log("User is successfully connected to Facebook.");
-      } else {
-        console.log("User is not logged in/connected.");
-      }
-    }
 
     (function (d, s, id) {
       var js, fjs = d.getElementsByTagName(s)[0];
@@ -102,7 +83,7 @@
     }(document, 'script', 'facebook-jssdk'));
   </script>
 
-  <script src="flutter_bootstrap.js?v=1.1.6" async></script>
+  <script src="flutter_bootstrap.js?v=1.1.7" async></script>
   </body>
 
 </html>

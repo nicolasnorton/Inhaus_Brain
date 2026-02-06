@@ -99,8 +99,8 @@ class Member {
         'name': name,
         'email': email,
         if (avatarUrl != null) 'avatar_url': avatarUrl,
-        'role': role.name,
-        'status': status.name,
+        'role': role.toString().split('.').last,
+        'status': status.toString().split('.').last,
         'joined_at': joinedAt.toIso8601String(),
         if (lastActive != null) 'last_active': lastActive!.toIso8601String(),
       };
@@ -111,8 +111,14 @@ class Member {
       name: json['name'] as String,
       email: json['email'] as String,
       avatarUrl: json['avatar_url'] as String?,
-      role: MemberRole.values.byName(json['role'] as String),
-      status: MemberStatus.values.byName(json['status'] as String),
+      role: MemberRole.values.firstWhere(
+        (e) => e.toString().split('.').last == json['role'],
+        orElse: () => MemberRole.viewer,
+      ),
+      status: MemberStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == json['status'],
+        orElse: () => MemberStatus.active,
+      ),
       joinedAt: DateTime.parse(json['joined_at'] as String),
       lastActive: json['last_active'] != null
           ? DateTime.parse(json['last_active'] as String)

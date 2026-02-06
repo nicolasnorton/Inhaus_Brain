@@ -11,15 +11,15 @@ import '../../../core/mcp/tools/drive_tool.dart';
 import '../../../core/mcp/tools/gmail_tool.dart';
 import '../../chat/agents/agency_agents.dart';
 
-class ReportsAgent extends BaseAgent {
+class DataAnalystAgent extends BaseAgent {
   @override
-  String get name => "Reports Agent";
+  String get name => "Data Analyst Agent";
   
   @override
   MessageSender get type => MessageSender.reportsAgent;
 
   @override
-  String get systemPromptKey => "reports_agent_prompt";
+  String get systemPromptKey => "data_analyst_agent_prompt";
 
   @override
   List<AgentTool> get tools => [
@@ -44,7 +44,7 @@ class ReportsAgent extends BaseAgent {
 
     // Default system prompt
     final systemInstruction = systemPrompt ?? """
-You are the Reports Agent. Your goal is to synthesize data from various sources (BigQuery, Drive, Gmail) to create comprehensive reports for clients.
+You are the Data Analyst Agent. Your goal is to synthesize data from various sources (BigQuery, Drive, Gmail) to create comprehensive reports for clients.
 You have access to tools: bigquery_tool, drive_tool, and gmail_tool.
 If the user asks for performance stats, use bigquery_tool.
 If the user asks for document summaries, use drive_tool.

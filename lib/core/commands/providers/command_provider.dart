@@ -22,10 +22,29 @@ final commandsProvider = Provider<List<Command>>((ref) {
       description: 'Open the dialog to create a new application',
       category: CommandCategory.actions,
       icon: '➕',
+      action: () {},
+    ),
+    Command(
+      id: 'go-agency-catalog',
+      name: 'Manage Agency Services',
+      description: 'Open the agency product and services catalog',
+      category: CommandCategory.navigation,
+      icon: '📋',
       action: () {
-        // This will need access to a BuildContext or a global navigation service.
-        // For now, we'll assume the command palette handler handles navigation.
+        ref.read(routerProvider).go('/knowledge');
       },
+      keywords: ['agency', 'services', 'catalog', 'pricing', 'products'],
+    ),
+    Command(
+      id: 'update-agency-catalog',
+      name: 'Update Services from PDF',
+      description: 'Upload a proposal PDF to extract and update services',
+      category: CommandCategory.actions,
+      icon: '📤',
+      action: () {
+        ref.read(routerProvider).go('/knowledge');
+      },
+      keywords: ['update', 'pdf', 'extract', 'catalog', 'services'],
     ),
   ];
 

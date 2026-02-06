@@ -355,9 +355,9 @@ class EmbedConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'type': type.name,
+        'type': type.toString().split('.').last,
         'embed_code': embedCode,
-        if (position != null) 'position': position!.name,
+        if (position != null) 'position': position!.toString().split('.').last,
         if (customCSS != null) 'custom_css': customCSS,
         if (width != null) 'width': width,
         if (height != null) 'height': height,
@@ -365,10 +365,16 @@ class EmbedConfig {
 
   factory EmbedConfig.fromJson(Map<String, dynamic> json) {
     return EmbedConfig(
-      type: EmbedType.values.byName(json['type'] as String),
+      type: EmbedType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['type'],
+        orElse: () => EmbedType.chatWidget,
+      ),
       embedCode: json['embed_code'] as String,
       position: json['position'] != null
-          ? WidgetPosition.values.byName(json['position'] as String)
+          ? WidgetPosition.values.firstWhere(
+              (e) => e.toString().split('.').last == json['position'],
+              orElse: () => WidgetPosition.bottomRight,
+            )
           : null,
       customCSS: json['custom_css'] as String?,
       width: json['width'] as int?,
@@ -477,8 +483,8 @@ class PublishConfig {
         'app_name': appName,
         'description': description,
         if (iconUrl != null) 'icon_url': iconUrl,
-        'app_type': appType.name,
-        'enabled_methods': enabledMethods.map((m) => m.name).toList(),
+        'app_type': appType.toString().split('.').last,
+        'enabled_methods': enabledMethods.map((m) => m.toString().split('.').last).toList(),
         'web_app': webApp.toJson(),
         'api': api.toJson(),
         if (embed != null) 'embed': embed!.toJson(),
@@ -493,9 +499,15 @@ class PublishConfig {
       appName: json['app_name'] as String,
       description: json['description'] as String,
       iconUrl: json['icon_url'] as String?,
-      appType: PublishAppType.values.byName(json['app_type'] as String),
+      appType: PublishAppType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['app_type'],
+        orElse: () => PublishAppType.workflow,
+      ),
       enabledMethods: (json['enabled_methods'] as List)
-          .map((m) => PublishMethod.values.byName(m as String))
+          .map((m) => PublishMethod.values.firstWhere(
+                (e) => e.toString().split('.').last == m,
+                orElse: () => PublishMethod.webApp,
+              ))
           .toList(),
       webApp: WebAppConfig.fromJson(json['web_app'] as Map<String, dynamic>),
       api: APIConfig.fromJson(json['api'] as Map<String, dynamic>),

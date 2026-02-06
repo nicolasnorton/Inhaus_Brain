@@ -20,7 +20,7 @@ import '../agents/base_agent.dart';
 import '../agents/router_agent.dart';
 import '../agents/router_agent.dart';
 import '../agents/agency_agents.dart';
-import '../../reports/agents/reports_agent.dart';
+import '../../reports/agents/data_analyst_agent.dart';
 import '../agents/management_agent.dart';
 import '../../../core/services/memory_service.dart';
 import '../models/memory_models.dart';
@@ -269,7 +269,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
           await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
         }
       } else if (lowerOut.contains('"reports"') || lowerOut.contains('report') || lowerOut.contains('notebook') || lowerOut.contains('dashboard')) {
-        await _handleUtilityAgent(ReportsAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
+        await _handleUtilityAgent(DataAnalystAgent(), text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else if (lowerOut.contains('"proposal"') || lowerOut.contains('proposal')) {
         await _handleManagementAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
       } else {

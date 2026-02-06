@@ -82,7 +82,7 @@ class Artifact {
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: json['title']?.toString() ?? 'Untitled',
       type: ArtifactType.values.firstWhere(
-        (e) => e.name == json['type'], 
+        (e) => e.toString().split('.').last == json['type'], 
         orElse: () => ArtifactType.markdown
       ),
       content: json['content']?.toString() ?? '',
@@ -96,7 +96,7 @@ class Artifact {
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
-    'type': type.name,
+    'type': type.toString().split('.').last,
     'content': content,
     'version': version,
     'updatedAt': updatedAt.toIso8601String(),
@@ -129,11 +129,11 @@ class ChatMessage {
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       content: json['content']?.toString() ?? '',
       sender: MessageSender.values.firstWhere(
-        (e) => e.name == json['sender'],
+        (e) => e.toString().split('.').last == json['sender'],
         orElse: () => MessageSender.system,
       ),
       type: MessageType.values.firstWhere(
-        (e) => e.name == json['type'],
+        (e) => e.toString().split('.').last == json['type'],
         orElse: () => MessageType.text,
       ),
       createdAt: json['createdAt'] != null 
@@ -153,8 +153,8 @@ class ChatMessage {
   Map<String, dynamic> toJson() => {
     'id': id,
     'content': content,
-    'sender': sender.name,
-    'type': type.name,
+    'sender': sender.toString().split('.').last,
+    'type': type.toString().split('.').last,
     'createdAt': createdAt.toIso8601String(),
     'attachments': attachments.map((a) => a.toJson()).toList(),
     'metadata': metadata,

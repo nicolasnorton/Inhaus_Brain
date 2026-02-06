@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,7 +13,10 @@ class AIProxyService {
   // Enable Firebase App Check in console for abuse protection
   static String get _functionUrl {
     if (kDebugMode) {
-      // Use IPv4 loopback to avoid IPv6 resolution issues on macOS
+      // Use 10.0.2.2 for Android Emulator, 127.0.0.1 for others
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:5005/inhausbrain/us-central1/proxyVertexAI';
+      }
       return 'http://127.0.0.1:5005/inhausbrain/us-central1/proxyVertexAI';
     }
     return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';

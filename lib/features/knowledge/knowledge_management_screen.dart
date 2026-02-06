@@ -10,6 +10,7 @@ import 'screens/external_knowledge_screen.dart';
 import 'screens/pipeline_orchestrator.dart';
 import 'widgets/knowledge_tour_overlay.dart';
 import 'providers/knowledge_provider.dart';
+import '../agency/screens/service_catalog_screen.dart';
 
 class KnowledgeManagementScreen extends ConsumerStatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -126,6 +127,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
                 ]),
                 _buildSidebarSection(AppLocalizations.of(context)!.manageKnowledge, [
                   _buildSubSidebarItem(AppLocalizations.of(context)!.contentLabel, 'content', icon: Icons.description_outlined),
+                  _buildSubSidebarItem('Agency Services', 'agency-services', icon: Icons.inventory_2_outlined),
                   _buildSubSidebarItem(AppLocalizations.of(context)!.navSettings, 'settings', icon: Icons.settings_outlined),
                   _buildSubSidebarItem(AppLocalizations.of(context)!.metadataLabel, 'metadata', icon: Icons.label_important_outline),
                 ]),
@@ -385,6 +387,8 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
       case 'external-base':
       case 'api':
         return const ExternalKnowledgeScreen();
+      case 'agency-services':
+        return const ServiceCatalogScreen();
       default:
         return _buildPlaceholder(currentView.toUpperCase().replaceAll('-', ' '));
     }

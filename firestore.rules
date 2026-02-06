@@ -89,6 +89,19 @@ service cloud.firestore {
         }
       }
     }
+
+    // AGENCY SERVICES CATALOG RULES
+    match /knowledge/{knowledgeDoc} {
+      // Allow read access to agency_services for all authenticated users
+      allow read: if isAuthenticated();
+      // Only agency staff can write to the catalog
+      allow write: if isAgencyStaff();
+      
+      match /data/{dataDoc} {
+        allow read: if isAuthenticated();
+        allow write: if isAgencyStaff();
+      }
+    }
     
     // CLIENTS MODULE RULES
     match /clients/{clientId} {

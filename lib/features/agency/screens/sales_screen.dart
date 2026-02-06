@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inhaus_brain/features/campaigns/campaign_list_screen.dart';
-import 'package:inhaus_brain/features/agency/models/agency_models.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../agency/models/proposal_model.dart';
-import '../../agency/providers/proposal_provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../proposals/screens/proposals_main_screen.dart';
+import '../models/agency_models.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -38,7 +37,7 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
           controller: _tabController,
           tabs: const [
             Tab(icon: Icon(Icons.campaign), text: 'Marketing'),
-            Tab(icon: Icon(Icons.request_quote), text: 'Proposals'),
+            Tab(icon: Icon(Icons.description), text: 'Proposals'),
             Tab(icon: Icon(Icons.people), text: 'CRM'),
           ],
         ),
@@ -49,72 +48,13 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
           // Reuse existing Campaign List for Marketing
           CampaignListScreen(),
           
-          // New Proposals Tab
-          _ProposalsTab(),
+          // ProposalsLM Module
+          ProposalsMainScreen(),
 
-          // New CRM Tab
+          // CRM Tab
           _CrmTab(),
         ],
       ),
-    );
-  }
-}
-
-class _ProposalsTab extends ConsumerWidget {
-  const _ProposalsTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final proposals = ref.watch(proposalsProvider);
-
-    return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Create a new proposal
-          final newProposal = Proposal.create(
-            title: 'New Proposal ${DateTime.now().minute}',
-            clientId: '1', // Mock Client ID
-          );
-          ref.read(proposalsProvider.notifier).addProposal(newProposal);
-          context.push('/agency/sales/proposals/\${newProposal.id}');
-        },
-        label: const Text("New Proposal"),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.redAccent,
-      ),
-      body: proposals.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                   Icon(FontAwesomeIcons.filePdf, size: 64, color: Colors.redAccent.withValues(alpha: 0.3)),
-                   const SizedBox(height: 16),
-                   const Text("No Proposals Yet", style: TextStyle(color: Colors.white54)),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: proposals.length,
-              itemBuilder: (context, index) {
-                final proposal = proposals[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.redAccent,
-                      child: Icon(FontAwesomeIcons.filePdf, size: 18, color: Colors.white),
-                    ),
-                    title: Text(proposal.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text("Updated: ${proposal.updatedAt.toIso8601String().substring(0, 10)}"),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      context.push('/agency/sales/proposals/\${proposal.id}');
-                    },
-                  ),
-                );
-              },
-            ),
     );
   }
 }

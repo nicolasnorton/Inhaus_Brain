@@ -4,9 +4,17 @@ import '../tokens/llm_provider.dart';
 import '../../features/knowledge/providers/knowledge_provider.dart';
 import 'dart:convert';
 
+class GenerationResult {
+  final String content;
+  final String? uri;
+  final String? preview;
+
+  GenerationResult({required this.content, this.uri, this.preview});
+}
+
 class ReportsLMService {
   
-  // --- SYSTEM PROMPTS ---
+  // --- SYSTEM PROMPTS (Unified & Production Graded) ---
 
   static const String _audioRetrievalPrompt = "Identify the key themes, significant quotes, and a timeline of events from the provided sources. Prepare this data for a podcast producer.";
   
@@ -133,8 +141,8 @@ Visual: description
 Sources: $sources
 """;
 
-  /// Generates a "Deep Dive" Audio Overview script.
-  static Future<String> generateAudioOverview(Report report, dynamic ref, {bool isPreview = false, String topicFocus = ""}) async {
+  /// Generates a "Deep Dive" Audio Overview script and handle Audio Synthesis.
+  static Future<GenerationResult> generateAudioOverview(Report report, dynamic ref, {bool isPreview = false, String topicFocus = ""}) async {
     final sources = _buildContextFromSources(report);
     
     if (isPreview) {
@@ -143,7 +151,7 @@ Sources: $sources
         modelConfig: AIModelConfig.gemma2n,
         ref: ref,
       );
-      return res.text;
+      return GenerationResult(content: res.text);
     }
 
     // Agentic Workflow
@@ -153,18 +161,24 @@ Sources: $sources
     // 2. Outliner
     final outline = await EdgeAIService.generateText("Outliner Agent: $_audioOutlinerPrompt\n\nContext:\n${themes.text}", memoryContext: sources, ref: ref);
     
-    // 3. Dialog Generator + 4. Refiner (Combined for efficiency but following rules)
+    // 3. Dialog Generator
     final scriptRes = await EdgeAIService.generateText(
       _audioGeneratorPrompt(topicFocus, sources) + "\n\nUse this outline:\n${outline.text}",
       modelConfig: AIModelConfig.geminiFlash,
       ref: ref,
     );
+
+    // 4. Audio Synthesis (DeepMind Lyria)
+    final audioUrl = await EdgeAIService.generateAudio(scriptRes.text);
     
-    return scriptRes.text;
+    return GenerationResult(
+      content: scriptRes.text,
+      uri: audioUrl,
+    );
   }
 
   /// Generates a Video Overview using Veo (Visuals) + Gemini (Script)
-  static Future<String> generateVideoOverview(Report report, dynamic ref, {bool isPreview = false}) async {
+  static Future<GenerationResult> generateVideoOverview(Report report, dynamic ref, {bool isPreview = false}) async {
     final sources = _buildContextFromSources(report);
     
     if (isPreview) {
@@ -173,7 +187,7 @@ Sources: $sources
         modelConfig: AIModelConfig.gemma2n,
         ref: ref,
       );
-      return res.text;
+      return GenerationResult(content: res.text);
     }
 
     // Agentic Workflow
@@ -186,12 +200,22 @@ Sources: $sources
       modelConfig: AIModelConfig.geminiFlash,
       ref: ref,
     );
+
+    // 3. Video Render (Veo)
+    final videoUrl = await EdgeAIService.generateVideo(
+       "Video overview for: ${report.title}. Summary: ${contentRes.text.length > 500 ? contentRes.text.substring(0, 500) : contentRes.text}",
+       isFinal: true,
+       ref: ref
+    );
     
-    return contentRes.text;
+    return GenerationResult(
+      content: contentRes.text,
+      uri: videoUrl
+    );
   }
 
   /// Generates a Mind Map structure (JSON)
-  static Future<String> generateMindMap(Report report, dynamic ref, {bool isPreview = false}) async {
+  static Future<GenerationResult> generateMindMap(Report report, dynamic ref, {bool isPreview = false}) async {
     final sources = _buildContextFromSources(report);
     
     final prompt = _mindMapPrompt(sources);
@@ -202,11 +226,12 @@ Sources: $sources
       ref: ref
     );
 
-    return _extractCodeBlock(result.text, 'json');
+    final json = _extractCodeBlock(result.text, 'json');
+    return GenerationResult(content: json);
   }
 
   /// Generates a professional Report (Markdown)
-  static Future<String> generateReport(Report report, dynamic ref, {bool isPreview = false, String topicFocus = ""}) async {
+  static Future<GenerationResult> generateReport(Report report, dynamic ref, {bool isPreview = false, String topicFocus = ""}) async {
     final sources = _buildContextFromSources(report);
     
     if (isPreview) {
@@ -215,7 +240,7 @@ Sources: $sources
         modelConfig: AIModelConfig.gemma2n,
         ref: ref,
       );
-      return res.text;
+      return GenerationResult(content: res.text);
     }
 
     // Retrieval -> Outliner -> Writer -> Refiner
@@ -228,11 +253,11 @@ Sources: $sources
       ref: ref,
     );
     
-    return reportRes.text;
+    return GenerationResult(content: reportRes.text);
   }
 
   /// Generates a Slide Deck Outline
-  static Future<String> generateSlideDeck(Report report, dynamic ref, {bool isPreview = false}) async {
+  static Future<GenerationResult> generateSlideDeck(Report report, dynamic ref, {bool isPreview = false}) async {
     final sources = _buildContextFromSources(report);
     
     final result = await EdgeAIService.generateText(
@@ -240,11 +265,11 @@ Sources: $sources
        modelConfig: isPreview ? AIModelConfig.gemma2n : AIModelConfig.geminiFlash,
        ref: ref
     );
-    return result.text;
+    return GenerationResult(content: result.text);
   }
 
-  /// Generates an Infographic Concept (Prompt for Imagen)
-  static Future<String> generateInfographic(Report report, dynamic ref, {bool isPreview = false}) async {
+  /// Generates an Infographic Concept (Prompt for Imagen) + Image Generation
+  static Future<GenerationResult> generateInfographic(Report report, dynamic ref, {bool isPreview = false}) async {
     final sources = _buildContextFromSources(report);
     
     final result = await EdgeAIService.generateText(
@@ -252,7 +277,18 @@ Sources: $sources
        modelConfig: isPreview ? AIModelConfig.gemma2n : AIModelConfig.geminiFlash,
        ref: ref
     );
-    return result.text;
+
+    if (isPreview) {
+      return GenerationResult(content: result.text);
+    }
+
+    // Generate Final Image (Imagen 3)
+    final imageUrl = await EdgeAIService.generateImage(result.text, ref: ref);
+
+    return GenerationResult(
+      content: result.text,
+      uri: imageUrl
+    );
   }
 
   static Stream<String> chatWithReport(Report report, String query, dynamic ref) async* {

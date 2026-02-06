@@ -35,7 +35,7 @@ class Attachment {
       url: json['url']?.toString() ?? '',
       name: json['name']?.toString() ?? 'Unnamed Attachment',
       type: AttachmentType.values.firstWhere(
-        (e) => e.name == json['type'],
+        (e) => e.toString().split('.').last == json['type'],
         orElse: () => AttachmentType.file,
       ),
       createdAt: json['createdAt'] != null 
@@ -48,7 +48,7 @@ class Attachment {
     'id': id,
     'url': url,
     'name': name,
-    'type': type.name,
+    'type': type.toString().split('.').last,
     'createdAt': createdAt.toIso8601String(),
   };
 }
@@ -98,7 +98,7 @@ class Campaign {
   final DateTime createdAt;
   final List<ResearchInsight> insights;
   final List<Attachment> attachments;
-  final List<String> proposals; // URLs or IDs of generated proposals
+  // MIGRATION NOTE: proposals field removed - use ProposalsLM module instead
 
   Campaign({
     required this.id,
@@ -111,7 +111,6 @@ class Campaign {
     required this.createdAt,
     this.insights = const [],
     this.attachments = const [],
-    this.proposals = const [],
   });
 
   factory Campaign.fromJson(Map<String, dynamic> json) {
@@ -135,7 +134,7 @@ class Campaign {
       clientId: json['clientId']?.toString(),
       industry: json['industry']?.toString(),
       status: CampaignStatus.values.firstWhere(
-        (e) => e.name == json['status'],
+        (e) => e.toString().split('.').last == json['status'],
         orElse: () => CampaignStatus.draft,
       ),
       createdAt: parseDate(json['createdAt']),
@@ -145,7 +144,7 @@ class Campaign {
       attachments: (json['attachments'] as List? ?? [])
           .map((a) => Attachment.fromJson(Map<String, dynamic>.from(a as Map? ?? {})))
           .toList(),
-      proposals: List<String>.from(json['proposals'] ?? []),
+      // proposals field removed - see ProposalsLM module
     );
   }
 
@@ -156,11 +155,11 @@ class Campaign {
     'clientName': clientName,
     'clientId': clientId,
     'industry': industry,
-    'status': status.name,
+    'status': status.toString().split('.').last,
     'createdAt': createdAt.toIso8601String(),
     'insights': insights.map((i) => i.toJson()).toList(),
     'attachments': attachments.map((a) => a.toJson()).toList(),
-    'proposals': proposals,
+    // proposals field removed - see ProposalsLM module
   };
 
   Campaign copyWith({
@@ -174,7 +173,6 @@ class Campaign {
     DateTime? createdAt,
     List<ResearchInsight>? insights,
     List<Attachment>? attachments,
-    List<String>? proposals,
   }) {
     return Campaign(
       id: id ?? this.id,
@@ -187,7 +185,6 @@ class Campaign {
       createdAt: createdAt ?? this.createdAt,
       insights: insights ?? this.insights,
       attachments: attachments ?? this.attachments,
-      proposals: proposals ?? this.proposals,
     );
   }
 }

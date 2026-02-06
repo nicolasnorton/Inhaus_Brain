@@ -98,7 +98,28 @@ class TrendReportWidget extends StatelessWidget {
           if (sections != null && sections.isNotEmpty)
             ...sections.map((section) => _buildSection(section)).toList()
           else if (legacyTrends != null && legacyTrends.isNotEmpty)
-            ...legacyTrends.map((trend) => _buildTrendItem(Map<String, dynamic>.from(trend))).toList()
+            ...legacyTrends.map((trend) {
+              if (trend is String) {
+                 return Container(
+                   margin: const EdgeInsets.only(bottom: 8),
+                   padding: const EdgeInsets.all(12),
+                   decoration: BoxDecoration(
+                     color: Colors.white.withOpacity(0.04),
+                     borderRadius: BorderRadius.circular(8),
+                     border: Border.all(color: Colors.white.withOpacity(0.05)),
+                   ),
+                   child: Row(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       const Icon(Icons.trending_neutral, size: 16, color: Colors.blueGrey),
+                       const SizedBox(width: 12),
+                       Expanded(child: Text(trend, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14))),
+                     ],
+                   ),
+                 );
+              }
+              return _buildTrendItem(Map<String, dynamic>.from(trend));
+            }).toList()
           else
             const Center(child: Text("No data available.", style: TextStyle(color: Colors.white38))),
             
@@ -166,7 +187,28 @@ class TrendReportWidget extends StatelessWidget {
          // Nested trends list
          final trends = sectionData['items'] as List? ?? [];
          return Column(
-           children: trends.map((t) => _buildTrendItem(Map<String, dynamic>.from(t))).toList(),
+           children: trends.map((t) {
+             if (t is String) {
+               return Container(
+                 margin: const EdgeInsets.only(bottom: 8),
+                 padding: const EdgeInsets.all(12),
+                 decoration: BoxDecoration(
+                   color: Colors.white.withOpacity(0.04),
+                   borderRadius: BorderRadius.circular(8),
+                   border: Border.all(color: Colors.white.withOpacity(0.05)),
+                 ),
+                 child: Row(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     const Icon(Icons.trending_neutral, size: 16, color: Colors.blueGrey),
+                     const SizedBox(width: 12),
+                     Expanded(child: Text(t, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14))),
+                   ],
+                 ),
+               );
+             }
+             return _buildTrendItem(Map<String, dynamic>.from(t));
+           }).toList(),
          );
       default:
         return const SizedBox.shrink();

@@ -179,12 +179,12 @@ class Plugin {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'type': type.name,
-        'source': source.name,
+        'type': type.toString().split('.').last,
+        'source': source.toString().split('.').last,
         'version': version,
         'description': description,
         if (icon != null) 'icon': icon,
-        'status': status.name,
+        'status': status.toString().split('.').last,
         if (author != null) 'author': author,
         if (installedAt != null) 'installed_at': installedAt!.toIso8601String(),
         if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
@@ -199,12 +199,21 @@ class Plugin {
     return Plugin(
       id: json['id'] as String,
       name: json['name'] as String,
-      type: PluginType.values.byName(json['type'] as String),
-      source: PluginSource.values.byName(json['source'] as String),
+      type: PluginType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['type'],
+        orElse: () => PluginType.tool,
+      ),
+      source: PluginSource.values.firstWhere(
+        (e) => e.toString().split('.').last == json['source'],
+        orElse: () => PluginSource.marketplace,
+      ),
       version: json['version'] as String,
       description: json['description'] as String,
       icon: json['icon'] as String?,
-      status: PluginStatus.values.byName(json['status'] as String),
+      status: PluginStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == json['status'],
+        orElse: () => PluginStatus.notInstalled,
+      ),
       author: json['author'] as String?,
       installedAt: json['installed_at'] != null
           ? DateTime.parse(json['installed_at'] as String)
@@ -277,8 +286,8 @@ class PluginSettings {
   }
 
   Map<String, dynamic> toJson() => {
-        'install_permission': installPermission.name,
-        'debug_permission': debugPermission.name,
+        'install_permission': installPermission.toString().split('.').last,
+        'debug_permission': debugPermission.toString().split('.').last,
         'auto_update': autoUpdate,
         'blocked_plugins': blockedPlugins,
       };
@@ -286,9 +295,15 @@ class PluginSettings {
   factory PluginSettings.fromJson(Map<String, dynamic> json) {
     return PluginSettings(
       installPermission:
-          PluginPermission.values.byName(json['install_permission'] as String),
+          PluginPermission.values.firstWhere(
+            (e) => e.toString().split('.').last == json['install_permission'],
+            orElse: () => PluginPermission.adminOnly,
+          ),
       debugPermission:
-          PluginPermission.values.byName(json['debug_permission'] as String),
+          PluginPermission.values.firstWhere(
+            (e) => e.toString().split('.').last == json['debug_permission'],
+            orElse: () => PluginPermission.adminOnly,
+          ),
       autoUpdate: json['auto_update'] as bool? ?? false,
       blockedPlugins:
           (json['blocked_plugins'] as List?)?.cast<String>() ?? [],

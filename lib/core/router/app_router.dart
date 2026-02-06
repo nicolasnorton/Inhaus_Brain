@@ -8,7 +8,7 @@ import '../../features/finance/screens/finance_dashboard_screen.dart'; // Update
 import '../../features/hr/screens/hr_dashboard_screen.dart'; // Updated
 
 import '../../features/campaigns/campaign_list_screen.dart';
-import '../../features/agency/screens/proposal_generator_screen.dart';
+import '../../features/proposals/screens/proposal_detail_screen.dart';
 // ... (imports continue)
 
 
@@ -257,7 +257,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                    GoRoute(
                     path: 'proposals/:id',
-                    builder: (context, state) => ProposalGeneratorScreen(
+                    builder: (context, state) => ProposalDetailScreen(
                       proposalId: state.pathParameters['id']!,
                     ),
                   ),

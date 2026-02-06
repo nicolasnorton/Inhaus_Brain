@@ -166,14 +166,16 @@ class MetadataFilterConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'mode': mode.name,
+        'mode': mode.toString().split('.').last,
         'logic_operator': logicOperator,
         'conditions': conditions.map((c) => c.toJson()).toList(),
       };
 
-  factory MetadataFilterConfig.fromJson(Map<String, dynamic> json) {
-    return MetadataFilterConfig(
-      mode: MetadataFilterMode.values.byName(json['mode'] as String),
+      return MetadataFilterConfig(
+      mode: MetadataFilterMode.values.firstWhere(
+        (e) => e.toString().split('.').last == json['mode'],
+        orElse: () => MetadataFilterMode.disabled,
+      ),
       logicOperator: json['logic_operator'] as String? ?? 'AND',
       conditions: (json['conditions'] as List?)
               ?.map((c) => MetadataConditionFilter.fromJson(c as Map<String, dynamic>))
@@ -250,7 +252,7 @@ class MultiPathRetrievalConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'strategy': strategy.name,
+        'strategy': strategy.toString().split('.').last,
         if (semanticWeight != null) 'semantic_weight': semanticWeight,
         if (keywordWeight != null) 'keyword_weight': keywordWeight,
         if (rerankModel != null) 'rerank_model': rerankModel!.toJson(),
@@ -259,9 +261,11 @@ class MultiPathRetrievalConfig {
         if (scoreThreshold != null) 'score_threshold': scoreThreshold,
       };
 
-  factory MultiPathRetrievalConfig.fromJson(Map<String, dynamic> json) {
-    return MultiPathRetrievalConfig(
-      strategy: RerankStrategy.values.byName(json['strategy'] as String),
+      return MultiPathRetrievalConfig(
+      strategy: RerankStrategy.values.firstWhere(
+        (e) => e.toString().split('.').last == json['strategy'],
+        orElse: () => RerankStrategy.weightedScore,
+      ),
       semanticWeight: json['semantic_weight'] as double?,
       keywordWeight: json['keyword_weight'] as double?,
       rerankModel: json['rerank_model'] != null

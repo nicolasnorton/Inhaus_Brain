@@ -110,7 +110,7 @@ class Client {
       name: json['name']?.toString() ?? 'Unnamed Client',
       clientType: json['clientType'] != null
           ? ClientType.values.firstWhere(
-              (e) => e.name == json['clientType'],
+              (e) => e.toString().split('.').last == json['clientType'],
               orElse: () => ClientType.corporate,
             )
           : ClientType.corporate,
@@ -140,7 +140,7 @@ class Client {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
-    'clientType': clientType.name,
+    'clientType': clientType.toString().split('.').last,
     'industry': industry,
     'logoUrl': logoUrl,
     'campaignIds': campaignIds,

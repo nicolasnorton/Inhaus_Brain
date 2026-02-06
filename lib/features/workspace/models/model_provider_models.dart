@@ -125,8 +125,8 @@ class ModelConfig {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'provider': provider.name,
-        'type': type.name,
+        'provider': provider.toString().split('.').last,
+        'type': type.toString().split('.').last,
         'capabilities': capabilities,
         if (contextWindow != null) 'context_window': contextWindow,
         if (maxOutputTokens != null) 'max_output_tokens': maxOutputTokens,
@@ -140,8 +140,14 @@ class ModelConfig {
     return ModelConfig(
       id: json['id'] as String,
       name: json['name'] as String,
-      provider: ModelProvider.values.byName(json['provider'] as String),
-      type: ModelProviderType.values.byName(json['type'] as String),
+      provider: ModelProvider.values.firstWhere(
+        (e) => e.toString().split('.').last == json['provider'],
+        orElse: () => ModelProvider.openai,
+      ),
+      type: ModelProviderType.values.firstWhere(
+        (e) => e.toString().split('.').last == json['type'],
+        orElse: () => ModelProviderType.llm,
+      ),
       capabilities: json['capabilities'] as Map<String, dynamic>? ?? {},
       contextWindow: json['context_window'] as int?,
       maxOutputTokens: json['max_output_tokens'] as int?,
@@ -172,7 +178,7 @@ class ProviderCredentials {
   });
 
   Map<String, dynamic> toJson() => {
-        'provider': provider.name,
+        'provider': provider.toString().split('.').last,
         'api_key': apiKey,
         if (baseUrl != null) 'base_url': baseUrl,
         if (additionalHeaders != null) 'additional_headers': additionalHeaders,
@@ -182,7 +188,10 @@ class ProviderCredentials {
 
   factory ProviderCredentials.fromJson(Map<String, dynamic> json) {
     return ProviderCredentials(
-      provider: ModelProvider.values.byName(json['provider'] as String),
+      provider: ModelProvider.values.firstWhere(
+        (e) => e.toString().split('.').last == json['provider'],
+        orElse: () => ModelProvider.openai,
+      ),
       apiKey: json['api_key'] as String,
       baseUrl: json['base_url'] as String?,
       additionalHeaders: (json['additional_headers'] as Map?)?.cast<String, String>(),
@@ -257,18 +266,21 @@ class ProviderConfig {
   }
 
   Map<String, dynamic> toJson() => {
-        'provider': provider.name,
+        'provider': provider.toString().split('.').last,
         if (credentials != null) 'credentials': credentials!.toJson(),
         'available_models': availableModels.map((m) => m.toJson()).toList(),
         if (defaultModel != null) 'default_model': defaultModel!.toJson(),
-        'status': status.name,
+        'status': status.toString().split('.').last,
         if (errorMessage != null) 'error_message': errorMessage,
         'enabled': enabled,
       };
 
   factory ProviderConfig.fromJson(Map<String, dynamic> json) {
     return ProviderConfig(
-      provider: ModelProvider.values.byName(json['provider'] as String),
+      provider: ModelProvider.values.firstWhere(
+        (e) => e.toString().split('.').last == json['provider'],
+        orElse: () => ModelProvider.openai,
+      ),
       credentials: json['credentials'] != null
           ? ProviderCredentials.fromJson(json['credentials'] as Map<String, dynamic>)
           : null,
@@ -279,7 +291,10 @@ class ProviderConfig {
       defaultModel: json['default_model'] != null
           ? ModelConfig.fromJson(json['default_model'] as Map<String, dynamic>)
           : null,
-      status: ProviderStatus.values.byName(json['status'] as String),
+      status: ProviderStatus.values.firstWhere(
+        (e) => e.toString().split('.').last == json['status'],
+        orElse: () => ProviderStatus.disconnected,
+      ),
       errorMessage: json['error_message'] as String?,
       enabled: json['enabled'] as bool? ?? true,
     );

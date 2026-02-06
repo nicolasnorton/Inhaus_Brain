@@ -126,7 +126,7 @@ exports.generateFinalAssets = functions.https.onCall(async (data, context) => {
 
     try {
         const generativeModel = vertexAI.getGenerativeModel({
-            model: 'gemini-1.5-pro-preview-0409',
+            model: 'gemini-1.5-pro',
         });
 
         // 1. Generate High-Tier Copy
@@ -156,409 +156,405 @@ exports.generateFinalAssets = functions.https.onCall(async (data, context) => {
  * Secures API access by validating Firebase Auth ID Tokens.
  * This prevents exposing credentials or allowing unauthenticated access from the client.
  */
-exports.proxyVertexAI = functions.https.onRequest(async (req, res) => {
-    // CORS Configuration - Apply to ALL responses
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+const cors = require('cors')({ origin: true });
 
-    if (req.method === 'OPTIONS') {
-        res.set('Access-Control-Allow-Methods', 'POST');
-        res.set('Access-Control-Max-Age', '3600');
-        res.status(204).send('');
-        return;
-    }
+exports.proxyVertexAI = functions.https.onRequest((req, res) => {
+    return cors(req, res, async () => {
+        // Main logic continues here...
 
-    if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed');
-        return;
-    }
 
-    try {
-        // 1. Authentication Check
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            throw { status: 401, message: 'Unauthorized: Missing or invalid Authorization header.' };
+        if (req.method !== 'POST') {
+            res.status(405).send('Method Not Allowed');
+            return;
         }
 
-        const idToken = authHeader.split('Bearer ')[1];
         try {
-            await admin.auth().verifyIdToken(idToken);
-        } catch (authError) {
-            console.error('Auth Verification Failed:', authError);
-            throw { status: 401, message: 'Unauthorized: Invalid Token.' };
-        }
+            // 1. Authentication Check
+            const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                throw { status: 401, message: 'Unauthorized: Missing or invalid Authorization header.' };
+            }
 
-        // 2. Body Extraction
-        const { model, prompt, config, systemInstruction, operationName } = req.body;
-
-        // --- PATH A: OPERATION POLLING ---
-        // Priority: If operationName is present, we are polling status. No prompt required.
-        if (operationName) {
-            console.log(`[PROXY] Polling Operation via SDK: ${operationName}`);
-
+            const idToken = authHeader.split('Bearer ')[1];
             try {
-                // Fallback to manual REST polling to avoid Google-GAX versioning issues/bugs in the emulator
-                console.log(`[PROXY] Polling LRO via REST: ${operationName}`);
+                await admin.auth().verifyIdToken(idToken);
+            } catch (authError) {
+                console.error('Auth Verification Failed:', authError);
+                throw { status: 401, message: 'Unauthorized: Invalid Token.' };
+            }
 
-                const { GoogleAuth } = require('google-auth-library');
-                const auth = new GoogleAuth({
-                    scopes: ['https://www.googleapis.com/auth/cloud-platform']
-                });
-                const client = await auth.getClient();
-                const tokenResponse = await client.getAccessToken();
-                const accessToken = tokenResponse.token;
-                console.log(`[PROXY] Polling operation: ${operationName}`);
+            // 2. Body Extraction
+            const { model, prompt, config, systemInstruction, operationName } = req.body;
 
-                // Extract components from operation name
-                const parts = operationName.split('/');
-                const pId = parts[1]; // project
-                const lId = parts[3]; // location
-                const opId = parts[parts.length - 1]; // operation ID (UUID or Long)
+            // --- PATH A: OPERATION POLLING ---
+            // Priority: If operationName is present, we are polling status. No prompt required.
+            if (operationName) {
+                console.log(`[PROXY] Polling Operation via SDK: ${operationName}`);
 
-                // [CRITICAL FIX] UUID operations (from Veo/Model Garden) CANNOT be polled via REST API
-                // The REST API (both v1 and v1beta1) only supports numeric Long IDs
-                // Solution: Use google-gax OperationsClient which uses gRPC internally
-                const isUUID = opId.includes('-'); // UUIDs contain hyphens, Longs don't
+                try {
+                    // Fallback to manual REST polling to avoid Google-GAX versioning issues/bugs in the emulator
+                    console.log(`[PROXY] Polling LRO via REST: ${operationName}`);
 
-                if (isUUID) {
-                    // UUID operations from Veo/Model Garden - MUST use :fetchPredictOperation endpoint
-                    // Model Garden operations have full path: projects/X/locations/Y/publishers/google/models/MODEL/operations/UUID
-                    // These CANNOT be polled via standard REST GET - must use :fetchPredictOperation POST
-                    const pollStartTime = Date.now();
-                    console.log('[PROXY] 🎬 UUID operation detected - Model Garden operation');
-                    console.log(`[PROXY] 📋 Full operation name (preserved): ${operationName}`);
-                    console.log(`[PROXY] 🔍 Operation ID (UUID): ${opId}`);
-                    console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_start: operation=${operationName.substring(0, 80)}, timestamp=${new Date().toISOString()}`);
+                    const { GoogleAuth } = require('google-auth-library');
+                    const auth = new GoogleAuth({
+                        scopes: ['https://www.googleapis.com/auth/cloud-platform']
+                    });
+                    const client = await auth.getClient();
+                    const tokenResponse = await client.getAccessToken();
+                    const accessToken = tokenResponse.token;
+                    console.log(`[PROXY] Polling operation: ${operationName}`);
 
-                    // Validate operation name format
-                    if (!operationName.includes('/operations/')) {
-                        console.error('[PROXY] ❌ Invalid operation name format - missing /operations/ segment');
-                        return res.status(200).json({
-                            done: true,
-                            error: {
-                                message: 'Invalid operation name format',
-                                code: 400
-                            }
+                    // Extract components from operation name
+                    const parts = operationName.split('/');
+                    const pId = parts[1]; // project
+                    const lId = parts[3]; // location
+                    const opId = parts[parts.length - 1]; // operation ID (UUID or Long)
+
+                    // [CRITICAL FIX] UUID operations (from Veo/Model Garden) CANNOT be polled via REST API
+                    // The REST API (both v1 and v1beta1) only supports numeric Long IDs
+                    // Solution: Use google-gax OperationsClient which uses gRPC internally
+                    const isUUID = opId.includes('-'); // UUIDs contain hyphens, Longs don't
+
+                    if (isUUID) {
+                        // UUID operations from Veo/Model Garden - MUST use :fetchPredictOperation endpoint
+                        // Model Garden operations have full path: projects/X/locations/Y/publishers/google/models/MODEL/operations/UUID
+                        // These CANNOT be polled via standard REST GET - must use :fetchPredictOperation POST
+                        const pollStartTime = Date.now();
+                        console.log('[PROXY] 🎬 UUID operation detected - Model Garden operation');
+                        console.log(`[PROXY] 📋 Full operation name (preserved): ${operationName}`);
+                        console.log(`[PROXY] 🔍 Operation ID (UUID): ${opId}`);
+                        console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_start: operation=${operationName.substring(0, 80)}, timestamp=${new Date().toISOString()}`);
+
+                        // Validate operation name format
+                        if (!operationName.includes('/operations/')) {
+                            console.error('[PROXY] ❌ Invalid operation name format - missing /operations/ segment');
+                            return res.status(200).json({
+                                done: true,
+                                error: {
+                                    message: 'Invalid operation name format',
+                                    code: 400
+                                }
+                            });
+                        }
+
+                        // Extract model name from operation path
+                        const modelMatch = operationName.match(/\/models\/([^\/]+)/);
+                        const modelName = modelMatch ? modelMatch[1] : 'veo-3.0-fast-generate-preview';
+
+                        // Construct :fetchPredictOperation endpoint
+                        const fetchEndpoint = `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/publishers/google/models/${modelName}:fetchPredictOperation`;
+
+                        console.log(`[PROXY] 🎯 Model: ${modelName}`);
+                        console.log(`[PROXY] 🔄 Polling method: fetchPredictOperation (POST)`);
+                        console.log(`[PROXY] 🌐 Endpoint: ${fetchEndpoint}`);
+
+                        const requestBody = {
+                            operationName: operationName  // Send FULL operation name string
+                        };
+                        console.log(`[PROXY] 📤 Request body: ${JSON.stringify(requestBody)}`);
+
+                        const response = await fetch(fetchEndpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(requestBody)
                         });
+
+                        console.log(`[PROXY] 📡 Response status: ${response.status}`);
+
+                        if (!response.ok) {
+                            const errorBody = await response.text();
+                            const pollDuration = Date.now() - pollStartTime;
+                            console.error(`[PROXY] ❌ fetchPredictOperation error: ${response.status} ${response.statusText}`);
+                            console.error(`[PROXY] 📄 Error body: ${errorBody}`);
+                            console.error(`[PROXY] 📊 [TELEMETRY] veo_poll_error: status=${response.status}, duration=${pollDuration}ms, operation=${opId}`);
+                            return res.status(200).json({
+                                done: true,
+                                error: {
+                                    message: `fetchPredictOperation Error: ${response.statusText}`,
+                                    code: response.status,
+                                    details: errorBody
+                                }
+                            });
+                        }
+
+                        let operation = await response.json();
+                        const pollDuration = Date.now() - pollStartTime;
+                        console.log('[PROXY] ✅ fetchPredictOperation successful');
+                        console.log(`[PROXY] ⏱️ Poll duration: ${pollDuration}ms`);
+                        console.log(`[PROXY] 📋 Operation status: done=${operation.done || false}`);
+                        console.log(`[PROXY] 🔍 Full operation response: ${JSON.stringify(operation, null, 2)}`);
+                        console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_success: duration=${pollDuration}ms, done=${operation.done || false}, operation=${opId}`);
+
+                        // CRITICAL FIX: Convert GCS URIs to signed URLs for browser playback
+                        if (operation.done && !operation.error) {
+                            operation = await convertGcsUrisToSignedUrls(operation);
+                        }
+
+                        return res.status(200).json(operation);
+
                     }
 
-                    // Extract model name from operation path
-                    const modelMatch = operationName.match(/\/models\/([^\/]+)/);
-                    const modelName = modelMatch ? modelMatch[1] : 'veo-3.0-fast-generate-preview';
+                    // For non-UUID operations, use REST API as before
+                    console.log('[PROXY] Long operation detected - using REST API');
+                    const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
+                    console.log(`[PROXY] Polling URL: ${targetUrl}`);
 
-                    // Construct :fetchPredictOperation endpoint
-                    const fetchEndpoint = `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/publishers/google/models/${modelName}:fetchPredictOperation`;
-
-                    console.log(`[PROXY] 🎯 Model: ${modelName}`);
-                    console.log(`[PROXY] 🔄 Polling method: fetchPredictOperation (POST)`);
-                    console.log(`[PROXY] 🌐 Endpoint: ${fetchEndpoint}`);
-
-                    const requestBody = {
-                        operationName: operationName  // Send FULL operation name string
-                    };
-                    console.log(`[PROXY] 📤 Request body: ${JSON.stringify(requestBody)}`);
-
-                    const response = await fetch(fetchEndpoint, {
-                        method: 'POST',
+                    const response = await fetch(targetUrl, {
+                        method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${accessToken}`,
                             'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(requestBody)
+                        }
                     });
 
-                    console.log(`[PROXY] 📡 Response status: ${response.status}`);
-
                     if (!response.ok) {
-                        const errorBody = await response.text();
-                        const pollDuration = Date.now() - pollStartTime;
-                        console.error(`[PROXY] ❌ fetchPredictOperation error: ${response.status} ${response.statusText}`);
-                        console.error(`[PROXY] 📄 Error body: ${errorBody}`);
-                        console.error(`[PROXY] 📊 [TELEMETRY] veo_poll_error: status=${response.status}, duration=${pollDuration}ms, operation=${opId}`);
+                        const errorText = await response.text();
+                        console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
+
+                        // [RECOVERY] Aggressive Operation Recovery
+                        // If the specific publisher path fails (common with Veo/Model Garden), 
+                        // try known canonical permutations until one works.
+                        if ((response.status === 400 || response.status === 404) && operationName.includes('/publishers/')) {
+                            console.log(`[PROXY] ${response.status} on publisher path. Initiating Aggressive Recovery...`);
+
+                            const parts = operationName.split('/');
+                            const pId = parts[1]; // project
+                            const lId = parts[3]; // location (us-central1)
+                            const opId = parts[parts.length - 1]; // UUID
+
+                            if (pId && lId && opId) {
+                                const candidates = [
+                                    // 1. Regional Canonical v1beta1 (Most likely)
+                                    `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`,
+                                    // 2. Regional Canonical v1 (Sometimes operations promote)
+                                    `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/operations/${opId}`,
+                                    // 3. Global Endpoint (Fallback)
+                                    `https://aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`
+                                ];
+
+                                for (const candidateUrl of candidates) {
+                                    console.log(`[PROXY] Trying candidates: ${candidateUrl}`);
+                                    try {
+                                        const retryResp = await fetch(candidateUrl, {
+                                            method: 'GET',
+                                            headers: {
+                                                'Authorization': `Bearer ${accessToken}`,
+                                                'Content-Type': 'application/json'
+                                            }
+                                        });
+                                        if (retryResp.ok) {
+                                            console.log(`[PROXY] Recovery SUCCESS with: ${candidateUrl}`);
+                                            const data = await retryResp.json();
+                                            return res.status(200).json(data);
+                                        }
+                                    } catch (e) {
+                                        console.log(`[PROXY] Candidate failed: ${e.message}`);
+                                    }
+                                }
+                                console.warn('[PROXY] All recovery candidates failed.');
+                            }
+                        }
+
+                        // Return 200 with error info so client can handle it gracefully instead of crashing
                         return res.status(200).json({
                             done: true,
                             error: {
-                                message: `fetchPredictOperation Error: ${response.statusText}`,
-                                code: response.status,
-                                details: errorBody
+                                message: `Polling HTTP Error ${response.status}: ${errorText}`,
+                                code: response.status
                             }
                         });
                     }
 
-                    let operation = await response.json();
-                    const pollDuration = Date.now() - pollStartTime;
-                    console.log('[PROXY] ✅ fetchPredictOperation successful');
-                    console.log(`[PROXY] ⏱️ Poll duration: ${pollDuration}ms`);
-                    console.log(`[PROXY] 📋 Operation status: done=${operation.done || false}`);
-                    console.log(`[PROXY] 🔍 Full operation response: ${JSON.stringify(operation, null, 2)}`);
-                    console.log(`[PROXY] 📊 [TELEMETRY] veo_poll_success: duration=${pollDuration}ms, done=${operation.done || false}, operation=${opId}`);
+                    const operationData = await response.json();
+
+                    // Mimic the SDK response structure [operation, null, rawResponse] for compatibility if needed, 
+                    // but the client just expects the operation object.
+                    // The client (Flutter) expects { done: boolean, response: ... }
 
                     // CRITICAL FIX: Convert GCS URIs to signed URLs for browser playback
-                    if (operation.done && !operation.error) {
-                        operation = await convertGcsUrisToSignedUrls(operation);
+                    let finalOperationData = operationData;
+                    if (operationData.done && !operationData.error) {
+                        finalOperationData = await convertGcsUrisToSignedUrls(operationData);
                     }
 
-                    return res.status(200).json(operation);
-
+                    if (finalOperationData.done) {
+                        // Normalize the response for the client
+                        // Vertex AI LROs usually have 'response' or 'error' field when done.
+                        return res.status(200).json(finalOperationData);
+                    } else {
+                        return res.status(200).json(finalOperationData);
+                    }
+                } catch (error) {
+                    console.error('[PROXY] Polling Error:', error);
+                    res.status(500).json({ error: error.message });
+                    return;
                 }
+            }
 
-                // For non-UUID operations, use REST API as before
-                console.log('[PROXY] Long operation detected - using REST API');
-                const targetUrl = `https://${lId}-aiplatform.googleapis.com/v1beta1/${operationName}`;
-                console.log(`[PROXY] Polling URL: ${targetUrl}`);
+            // --- VALIDATION FOR GENERATION REQUESTS ---
+            if (!prompt && !req.body.instances) {
+                throw { status: 400, message: 'Bad Request: Missing "prompt" or "instances" in body.' };
+            }
 
-                const response = await fetch(targetUrl, {
-                    method: 'GET',
+            const modelId = model || 'gemini-2.0-flash';
+
+            // --- PATH B: EMBEDDINGS (New) ---
+            if (modelId.toLowerCase().includes('embedding') || req.body.instances) {
+                const { GoogleAuth } = require('google-auth-library');
+                const auth = new GoogleAuth({
+                    scopes: 'https://www.googleapis.com/auth/cloud-platform'
+                });
+                const client = await auth.getClient();
+                const accessToken = await client.getAccessToken();
+                const projectId = await auth.getProjectId();
+
+                const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${accessToken}`,
+                        'Authorization': `Bearer ${accessToken.token}`,
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        instances: req.body.instances || [{ content: prompt }]
+                    })
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`[PROXY] Polling failed: ${response.status} ${errorText}`);
-
-                    // [RECOVERY] Aggressive Operation Recovery
-                    // If the specific publisher path fails (common with Veo/Model Garden), 
-                    // try known canonical permutations until one works.
-                    if ((response.status === 400 || response.status === 404) && operationName.includes('/publishers/')) {
-                        console.log(`[PROXY] ${response.status} on publisher path. Initiating Aggressive Recovery...`);
-
-                        const parts = operationName.split('/');
-                        const pId = parts[1]; // project
-                        const lId = parts[3]; // location (us-central1)
-                        const opId = parts[parts.length - 1]; // UUID
-
-                        if (pId && lId && opId) {
-                            const candidates = [
-                                // 1. Regional Canonical v1beta1 (Most likely)
-                                `https://${lId}-aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`,
-                                // 2. Regional Canonical v1 (Sometimes operations promote)
-                                `https://${lId}-aiplatform.googleapis.com/v1/projects/${pId}/locations/${lId}/operations/${opId}`,
-                                // 3. Global Endpoint (Fallback)
-                                `https://aiplatform.googleapis.com/v1beta1/projects/${pId}/locations/${lId}/operations/${opId}`
-                            ];
-
-                            for (const candidateUrl of candidates) {
-                                console.log(`[PROXY] Trying candidates: ${candidateUrl}`);
-                                try {
-                                    const retryResp = await fetch(candidateUrl, {
-                                        method: 'GET',
-                                        headers: {
-                                            'Authorization': `Bearer ${accessToken}`,
-                                            'Content-Type': 'application/json'
-                                        }
-                                    });
-                                    if (retryResp.ok) {
-                                        console.log(`[PROXY] Recovery SUCCESS with: ${candidateUrl}`);
-                                        const data = await retryResp.json();
-                                        return res.status(200).json(data);
-                                    }
-                                } catch (e) {
-                                    console.log(`[PROXY] Candidate failed: ${e.message}`);
-                                }
-                            }
-                            console.warn('[PROXY] All recovery candidates failed.');
-                        }
-                    }
-
-                    // Return 200 with error info so client can handle it gracefully instead of crashing
-                    return res.status(200).json({
-                        done: true,
-                        error: {
-                            message: `Polling HTTP Error ${response.status}: ${errorText}`,
-                            code: response.status
-                        }
-                    });
+                    const errText = await response.text();
+                    throw { status: response.status, message: `Vertex Embedding Error: ${errText}` };
                 }
 
-                const operationData = await response.json();
-
-                // Mimic the SDK response structure [operation, null, rawResponse] for compatibility if needed, 
-                // but the client just expects the operation object.
-                // The client (Flutter) expects { done: boolean, response: ... }
-
-                // CRITICAL FIX: Convert GCS URIs to signed URLs for browser playback
-                let finalOperationData = operationData;
-                if (operationData.done && !operationData.error) {
-                    finalOperationData = await convertGcsUrisToSignedUrls(operationData);
-                }
-
-                if (finalOperationData.done) {
-                    // Normalize the response for the client
-                    // Vertex AI LROs usually have 'response' or 'error' field when done.
-                    return res.status(200).json(finalOperationData);
-                } else {
-                    return res.status(200).json(finalOperationData);
-                }
-            } catch (error) {
-                console.error('[PROXY] Polling Error:', error);
-                res.status(500).json({ error: error.message });
+                const data = await response.json();
+                res.json(data);
                 return;
             }
-        }
 
-        // --- VALIDATION FOR GENERATION REQUESTS ---
-        if (!prompt && !req.body.instances) {
-            throw { status: 400, message: 'Bad Request: Missing "prompt" or "instances" in body.' };
-        }
-
-        const modelId = model || 'gemini-2.0-flash';
-
-        // --- PATH B: EMBEDDINGS (New) ---
-        if (modelId.toLowerCase().includes('embedding') || req.body.instances) {
-            const { GoogleAuth } = require('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: 'https://www.googleapis.com/auth/cloud-platform'
-            });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-            const projectId = await auth.getProjectId();
-
-            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    instances: req.body.instances || [{ content: prompt }]
-                })
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw { status: response.status, message: `Vertex Embedding Error: ${errText}` };
-            }
-
-            const data = await response.json();
-            res.json(data);
-            return;
-        }
-
-        // --- PATH C: IMAGE GENERATION (Imagen) ---
-        if (modelId.toLowerCase().includes('imagen')) {
-            const { GoogleAuth } = require('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: 'https://www.googleapis.com/auth/cloud-platform'
-            });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-            const projectId = await auth.getProjectId();
-
-            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    instances: [{ prompt: prompt }],
-                    parameters: config || { sampleCount: 1, aspectRatio: "1:1" }
-                })
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw { status: response.status, message: `Vertex Imagen Error: ${errText}` };
-            }
-
-            const data = await response.json();
-            // Wrap in a structure the client can easily detect as 'imagen'
-            res.json({
-                custom_type: 'imagen',
-                predictions: data.predictions
-            });
-            return;
-        }
-
-        // --- PATH D: VIDEO GENERATION (Veo) ---
-        if (modelId.toLowerCase().includes('veo')) {
-            const { GoogleAuth } = require('google-auth-library');
-            const auth = new GoogleAuth({
-                scopes: 'https://www.googleapis.com/auth/cloud-platform'
-            });
-            const client = await auth.getClient();
-            const accessToken = await client.getAccessToken();
-            const projectId = await auth.getProjectId();
-
-            const endpoint = `https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predictLongRunning`;
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    instances: [{ prompt: prompt }],
-                    parameters: config || { sampleCount: 1, aspectRatio: "16:9", durationSeconds: 5 }
-                })
-            });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw { status: response.status, message: `Vertex Veo Error: ${errText}` };
-            }
-
-            const data = await response.json();
-            // Check if it's an LRO (Long Running Operation)
-            if (data.name && data.name.includes('/operations/')) {
-                res.json({
-                    custom_type: 'veo_lro',
-                    operationName: data.name
+            // --- PATH C: IMAGE GENERATION (Imagen) ---
+            if (modelId.toLowerCase().includes('imagen')) {
+                const { GoogleAuth } = require('google-auth-library');
+                const auth = new GoogleAuth({
+                    scopes: 'https://www.googleapis.com/auth/cloud-platform'
                 });
-            } else if (data.predictions && data.predictions.length > 0) {
-                // Immediate result (unlikely for video but possible)
+                const client = await auth.getClient();
+                const accessToken = await client.getAccessToken();
+                const projectId = await auth.getProjectId();
+
+                const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predict`;
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        instances: [{ prompt: prompt }],
+                        parameters: config || { sampleCount: 1, aspectRatio: "1:1" }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw { status: response.status, message: `Vertex Imagen Error: ${errText}` };
+                }
+
+                const data = await response.json();
+                // Wrap in a structure the client can easily detect as 'imagen'
                 res.json({
-                    custom_type: 'veo_result',
+                    custom_type: 'imagen',
                     predictions: data.predictions
                 });
-            } else {
-                throw { status: 500, message: 'Veo response unrecognized.' };
+                return;
             }
-            return;
+
+            // --- PATH D: VIDEO GENERATION (Veo) ---
+            if (modelId.toLowerCase().includes('veo')) {
+                const { GoogleAuth } = require('google-auth-library');
+                const auth = new GoogleAuth({
+                    scopes: 'https://www.googleapis.com/auth/cloud-platform'
+                });
+                const client = await auth.getClient();
+                const accessToken = await client.getAccessToken();
+                const projectId = await auth.getProjectId();
+
+                const endpoint = `https://us-central1-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}:predictLongRunning`;
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        instances: [{ prompt: prompt }],
+                        parameters: config || { sampleCount: 1, aspectRatio: "16:9", durationSeconds: 5 }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw { status: response.status, message: `Vertex Veo Error: ${errText}` };
+                }
+
+                const data = await response.json();
+                // Check if it's an LRO (Long Running Operation)
+                if (data.name && data.name.includes('/operations/')) {
+                    res.json({
+                        custom_type: 'veo_lro',
+                        operationName: data.name
+                    });
+                } else if (data.predictions && data.predictions.length > 0) {
+                    // Immediate result (unlikely for video but possible)
+                    res.json({
+                        custom_type: 'veo_result',
+                        predictions: data.predictions
+                    });
+                } else {
+                    throw { status: 500, message: 'Veo response unrecognized.' };
+                }
+                return;
+            }
+
+            // --- PATH C: TEXT GENERATION (Gemini) ---
+            const generativeModel = vertexAI.getGenerativeModel({
+                model: modelId,
+                systemInstruction: systemInstruction, // Optional system prompt
+                generationConfig: config // Pass through temperature, maxTokens, etc.
+            });
+
+            // Handle multimodal input 
+            let requestContent;
+            if (typeof prompt === 'string') {
+                requestContent = prompt;
+            } else {
+                requestContent = prompt; // Array of parts
+            }
+
+            const result = await generativeModel.generateContent(requestContent);
+            const response = await result.response;
+            const candidates = response.candidates;
+
+            if (!candidates || candidates.length === 0) {
+                res.json({ candidates: [] });
+                return;
+            }
+
+            res.json(response);
+
+
+
+        } catch (error) {
+            console.error('Vertex AI Proxy Error:', error);
+            const status = error.status || 500;
+            const message = error.message || 'Internal Server Error';
+            res.status(status).json({ error: message });
         }
-
-        // --- PATH C: TEXT GENERATION (Gemini) ---
-        const generativeModel = vertexAI.getGenerativeModel({
-            model: modelId,
-            systemInstruction: systemInstruction, // Optional system prompt
-            generationConfig: config // Pass through temperature, maxTokens, etc.
-        });
-
-        // Handle multimodal input 
-        let requestContent;
-        if (typeof prompt === 'string') {
-            requestContent = prompt;
-        } else {
-            requestContent = prompt; // Array of parts
-        }
-
-        const result = await generativeModel.generateContent(requestContent);
-        const response = await result.response;
-        const candidates = response.candidates;
-
-        if (!candidates || candidates.length === 0) {
-            res.json({ candidates: [] });
-            return;
-        }
-
-        res.json(response);
-
-
-
-    } catch (error) {
-        console.error('Vertex AI Proxy Error:', error);
-        const status = error.status || 500;
-        const message = error.message || 'Internal Server Error';
-        res.status(status).json({ error: message });
-    }
+    });
 });
 
 // Expose CopilotKit Runtime

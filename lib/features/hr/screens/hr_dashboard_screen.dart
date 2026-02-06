@@ -104,10 +104,10 @@ class _HRDashboardScreenState extends ConsumerState<HRDashboardScreen> with Sing
                child: Text(e.fullName.substring(0,1), style: const TextStyle(color: AppTheme.primary)),
              ),
              title: Text(e.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-             subtitle: Text("${e.role} • ${e.department.name.toUpperCase()}"),
+             subtitle: Text("${e.role} • ${e.department.toString().split('.').last.toUpperCase()}"),
              trailing: Chip(
-               label: Text(e.status.name.toUpperCase(), style: const TextStyle(fontSize: 10)),
-               backgroundColor: e.status.name == 'probation' ? Colors.orange.withOpacity(0.2) : Colors.green.withOpacity(0.1),
+               label: Text(e.status.toString().split('.').last.toUpperCase(), style: const TextStyle(fontSize: 10)),
+               backgroundColor: e.status.toString().split('.').last == 'probation' ? Colors.orange.withOpacity(0.2) : Colors.green.withOpacity(0.1),
              ),
            ),
          );
