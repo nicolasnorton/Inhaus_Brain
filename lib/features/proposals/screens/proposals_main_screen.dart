@@ -61,10 +61,7 @@ class _ProposalsMainScreenState extends ConsumerState<ProposalsMainScreen> {
 
               await ref.read(proposalsServiceProvider).createProposal(proposal);
               
-              if (context.mounted) {
-                Navigator.pop(context);
-                context.go('/sales/proposals/${proposal.id}');
-              }
+                context.go('/agency/sales/proposals/${proposal.id}');
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
             child: const Text("Create"),
@@ -180,7 +177,7 @@ class _ProposalsMainScreenState extends ConsumerState<ProposalsMainScreen> {
       color: AppTheme.surface,
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () => context.go('/sales/proposals/${proposal.id}'),
+        onTap: () => context.go('/agency/sales/proposals/${proposal.id}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

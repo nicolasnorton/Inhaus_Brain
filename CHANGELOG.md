@@ -1,4 +1,12 @@
 # Changelog
+<br>
+## [1.1.8] - 2026-02-06
+
+### Fixed
+- **Major Routing Fix**: Resolved 404 error when navigating to individual proposals.
+- **Navigation Resilience**: Added redirect aliases for legacy `/sales` and `/proposals` paths.
+- **Back Button Navigation**: Fixed "Back" button in Proposal Detail screen to return to Sales Hub.
+
 
 ## [1.1.7] - 2026-02-05
 

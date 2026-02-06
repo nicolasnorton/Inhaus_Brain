@@ -228,7 +228,7 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         backgroundColor: AppTheme.surface,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/sales/proposals'),
+          onPressed: () => context.go('/agency/sales'),
         ),
       ),
       body: proposalAsync.when(

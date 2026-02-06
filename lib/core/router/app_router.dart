@@ -114,6 +114,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         routes: [
           GoRoute(
+            path: '/sales',
+            redirect: (context, state) => '/agency/sales',
+          ),
+          GoRoute(
+            path: '/sales/proposals/:id',
+            redirect: (context, state) => '/agency/sales/proposals/${state.pathParameters['id']}',
+          ),
+          GoRoute(
             path: '/',
             builder: (context, state) => const DashboardHome(),
           ),

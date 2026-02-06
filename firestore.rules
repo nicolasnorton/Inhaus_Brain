@@ -63,6 +63,13 @@ service cloud.firestore {
       allow update, delete: if isAgencyStaff();
     }
 
+    // PROPOSALS MODULE RULES
+    match /proposals/{proposalId} {
+      allow create: if isAgencyStaff();
+      allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
+      allow update, delete: if isAgencyStaff();
+    }
+
     // KNOWLEDGE MODULE RULES (Production Hardened)
     match /knowledge_datasets/{datasetId} {
       // Allow creation by any authenticated user (Agency OR Client wanting private knowledge)
