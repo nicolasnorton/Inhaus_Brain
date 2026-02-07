@@ -21,6 +21,10 @@ class _ServiceFormState extends State<ServiceForm> {
   late TextEditingController _costController;
   late TextEditingController _marginController;
   late TextEditingController _executionController;
+  late TextEditingController _teamController;
+  late TextEditingController _deliverablesController;
+  late TextEditingController _includesController;
+  late TextEditingController _excludesController;
   late ServiceType _type;
   late BillingCycle _billingCycle;
 
@@ -33,6 +37,10 @@ class _ServiceFormState extends State<ServiceForm> {
     _costController = TextEditingController(text: widget.service?.deliveryCost.toString() ?? '');
     _marginController = TextEditingController(text: widget.service?.targetMargin.toString() ?? '35.0');
     _executionController = TextEditingController(text: widget.service?.execution ?? '');
+    _teamController = TextEditingController(text: widget.service?.team.join(', ') ?? '');
+    _deliverablesController = TextEditingController(text: widget.service?.deliverables.join(', ') ?? '');
+    _includesController = TextEditingController(text: widget.service?.includes.join(', ') ?? '');
+    _excludesController = TextEditingController(text: widget.service?.excludes.join(', ') ?? '');
     _type = widget.service?.type ?? ServiceType.individual;
     _billingCycle = widget.service?.billingCycle ?? BillingCycle.monthly;
   }
@@ -45,6 +53,10 @@ class _ServiceFormState extends State<ServiceForm> {
     _costController.dispose();
     _marginController.dispose();
     _executionController.dispose();
+    _teamController.dispose();
+    _deliverablesController.dispose();
+    _includesController.dispose();
+    _excludesController.dispose();
     super.dispose();
   }
 
@@ -80,6 +92,14 @@ class _ServiceFormState extends State<ServiceForm> {
             ),
             const SizedBox(height: 16),
             _buildTextField(_executionController, "Execution Details", "Describe how the service is delivered", maxLines: 3),
+            const SizedBox(height: 16),
+            _buildTextField(_teamController, "Team Members", "e.g., Designer, Developer, Project Manager", maxLines: 2),
+            const SizedBox(height: 16),
+            _buildTextField(_deliverablesController, "Deliverables", "e.g., Logo files, Brand guidelines, Social media templates", maxLines: 3),
+            const SizedBox(height: 16),
+            _buildTextField(_includesController, "Included", "e.g., 3 revision rounds, Source files, Brand guidelines", maxLines: 3),
+            const SizedBox(height: 16),
+            _buildTextField(_excludesController, "Not Included", "e.g., Printing costs, Stock photography, Domain registration", maxLines: 3),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -156,6 +176,11 @@ class _ServiceFormState extends State<ServiceForm> {
 
   void _save() {
     if (_formKey.currentState!.validate()) {
+      // Parse comma-separated values into lists
+      List<String> parseCommaSeparated(String text) {
+        return text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      }
+
       widget.onSave({
         'name': _nameController.text,
         'nameEs': _nameEsController.text,
@@ -164,6 +189,10 @@ class _ServiceFormState extends State<ServiceForm> {
         'deliveryCost': double.parse(_costController.text),
         'targetMargin': double.parse(_marginController.text),
         'execution': _executionController.text,
+        'team': parseCommaSeparated(_teamController.text),
+        'deliverables': parseCommaSeparated(_deliverablesController.text),
+        'includes': parseCommaSeparated(_includesController.text),
+        'excludes': parseCommaSeparated(_excludesController.text),
         'billingCycle': _billingCycle.name,
       });
     }

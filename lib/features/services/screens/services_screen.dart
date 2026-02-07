@@ -67,6 +67,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> with SingleTick
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.add),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
     );
   }
 
@@ -95,6 +96,10 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> with SingleTick
                   deliveryCost: data['deliveryCost'],
                   targetMargin: data['targetMargin'],
                   execution: data['execution'],
+                  team: data['team'] ?? [],
+                  deliverables: data['deliverables'] ?? [],
+                  includes: data['includes'] ?? [],
+                  excludes: data['excludes'] ?? [],
                   billingCycle: BillingCycle.values.byName(data['billingCycle']),
                   createdAt: now,
                   updatedAt: now,
@@ -109,6 +114,10 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> with SingleTick
                   deliveryCost: data['deliveryCost'],
                   targetMargin: data['targetMargin'],
                   execution: data['execution'],
+                  team: data['team'],
+                  deliverables: data['deliverables'],
+                  includes: data['includes'],
+                  excludes: data['excludes'],
                   billingCycle: BillingCycle.values.byName(data['billingCycle']),
                   updatedAt: now,
                 );

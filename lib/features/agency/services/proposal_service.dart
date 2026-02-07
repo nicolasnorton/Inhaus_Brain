@@ -108,15 +108,24 @@ $sources
     final catalog = await _catalogRepository.getCatalog();
     final catalogContext = catalog != null ? _buildCatalogContext(catalog) : "";
     
-    // Fetch specific services if selected
+     // Fetch specific services if selected
     String selectedServicesContext = "";
     if (proposal.serviceIds.isNotEmpty) {
       final repo = new_repo.ServicesRepository();
       final selectedServices = await repo.getServicesByIds(proposal.serviceIds);
       if (selectedServices.isNotEmpty) {
-        selectedServicesContext = "\n--- SELECTED SERVICES (USER HAS CHOSEN THESE) ---\n";
+        selectedServicesContext = "\n--- SERVICIOS SELECCIONADOS (ADHERENCIA ESTRICTA REQUERIDA) ---\n";
         for (var s in selectedServices) {
-          selectedServicesContext += "- ${s.name} (${s.nameEs}): \$${s.basePrice} - ${s.execution}\n";
+          selectedServicesContext += """
+SERVICIO: ${s.nameEs} (${s.name})
+- Ejecución: ${s.execution}
+- Equipo: ${s.team.join(', ')}
+- Entregables: ${s.deliverables.join(', ')}
+- Incluye: ${s.includes.join(', ')}
+- No incluye: ${s.excludes.join(', ')}
+- Precio: \$${s.basePrice}
+
+""";
         }
       }
     }
@@ -217,9 +226,18 @@ $sources
       final repo = new_repo.ServicesRepository();
       final selectedServices = await repo.getServicesByIds(proposal.serviceIds);
       if (selectedServices.isNotEmpty) {
-        selectedServicesContext = "\n--- SELECTED SERVICES (USER HAS CHOSEN THESE) ---\n";
+        selectedServicesContext = "\n--- SERVICIOS SELECCIONADOS (ADHERENCIA ESTRICTA REQUERIDA) ---\n";
         for (var s in selectedServices) {
-          selectedServicesContext += "- ${s.name} (${s.nameEs}): \$${s.basePrice} - ${s.execution}\n";
+          selectedServicesContext += """
+SERVICIO: ${s.nameEs} (${s.name})
+- Ejecución: ${s.execution}
+- Equipo: ${s.team.join(', ')}
+- Entregables: ${s.deliverables.join(', ')}
+- Incluye: ${s.includes.join(', ')}
+- No incluye: ${s.excludes.join(', ')}
+- Precio: \$${s.basePrice}
+
+""";
         }
       }
     }
@@ -329,6 +347,39 @@ Generate valid JSON objects that represent business proposals.
    - Branding/Web Dev: $1,500.00 - $5,000.00 USD
 3. **Currency**: Always use the currency indicated in the sources (Default: USD).
 
+📋 STRUCTURED SERVICE PRESENTATION (CRITICAL)
+When "SERVICIOS SELECCIONADOS" are provided in sources, you MUST present each service with this EXACT structure:
+
+### [Nombre del Servicio en Español]
+
+**Descripción Personalizada**: [AI-generated description based on execution details, tailored to client needs - this is the ONLY field you can customize]
+
+**Ejecución**: [Copy EXACTLY from service execution]
+
+**Equipo**: 
+- [Team member 1]
+- [Team member 2]
+- [etc.]
+
+**Entregables**:
+- [Deliverable 1]
+- [Deliverable 2]
+- [etc.]
+
+**Incluye**:
+- [Included item 1]
+- [Included item 2]
+- [etc.]
+
+**No incluye**:
+- [Excluded item 1]
+- [Excluded item 2]
+- [etc.]
+
+**Precio**: $[exact price from catalog]
+
+⚠️ CRITICAL: You MUST use the EXACT values from the service catalog. Do NOT modify prices, team members, deliverables, includes, or excludes. Only the "Descripción Personalizada" should be AI-generated and contextual.
+
 SOURCES FOR CONTEXT:
 $sources
 
@@ -339,7 +390,7 @@ PROPOSAL CONFIGURATION:
 GUIDELINES:
 1. **Language**: Translate ALL content to $targetLang.
 2. **Hierarchy**: Map client needs to services like SEO, AEO, Paid Media, Creative, Strategy, Dev, RRSS, Content.
-3. **Selected Services**: If "SELECTED SERVICES" are provided in the sources, you MUST prioritize them. Use their exact names and base prices.
+3. **Selected Services**: If "SERVICIOS SELECCIONADOS" are provided in the sources, you MUST prioritize them and use the structured format above.
 4. **JSON Only**: Return ONLY the JSON object.
 
 JSON SCHEMA:
