@@ -30,7 +30,7 @@ import 'core/globals.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.1.13 STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.1.14 STARTED');
   
   // Load environment variables
   try {
