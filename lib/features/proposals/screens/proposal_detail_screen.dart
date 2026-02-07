@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import '../providers/proposals_provider.dart';
 import '../services/proposals_lm_service.dart';
 import '../services/proposal_pdf_service.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
+import '../../services/services/services_repository.dart';
 
 class ProposalDetailScreen extends ConsumerStatefulWidget {
   final String proposalId;
@@ -22,6 +24,12 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   final TextEditingController _chatController = TextEditingController();
   final List<Map<String, String>> _chatMessages = [];
   int _mobileTabIndex = 1; // Default to Chat on mobile
+  
+  // Progress tracking for PDF generation
+  bool _isGeneratingDetailed = false;
+  bool _isGeneratingQuote = false;
+  int _elapsedSeconds = 0;
+  Timer? _progressTimer;
 
   void _handleChatSubmit(Proposal proposal) async {
     final query = _chatController.text.trim();
@@ -106,16 +114,23 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    // Start progress tracking
+    setState(() {
+      _isGeneratingDetailed = true;
+      _elapsedSeconds = 0;
+    });
+
+    // Start timer to track elapsed time
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _elapsedSeconds++;
+        });
+      }
+    });
 
     try {
       final result = await ProposalsLMService.generateDetailedProposal(proposal, ref);
-
-      if (mounted) Navigator.pop(context);
 
       if (result.pdfBytes != null) {
         await ProposalPdfService.saveAndOpenPdf(
@@ -147,10 +162,18 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
+      }
+    } finally {
+      // Always cleanup - ensures loader is dismissed
+      _progressTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _isGeneratingDetailed = false;
+          _elapsedSeconds = 0;
+        });
       }
     }
   }
@@ -163,16 +186,23 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
+    // Start progress tracking
+    setState(() {
+      _isGeneratingQuote = true;
+      _elapsedSeconds = 0;
+    });
+
+    // Start timer to track elapsed time
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _elapsedSeconds++;
+        });
+      }
+    });
 
     try {
       final result = await ProposalsLMService.generateOnePageQuote(proposal, ref);
-
-      if (mounted) Navigator.pop(context);
 
       if (result.pdfBytes != null) {
         await ProposalPdfService.saveAndOpenPdf(
@@ -204,10 +234,18 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
+      }
+    } finally {
+      // Always cleanup - ensures loader is dismissed
+      _progressTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _isGeneratingQuote = false;
+          _elapsedSeconds = 0;
+        });
       }
     }
   }
@@ -243,8 +281,34 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
             return _buildDesktopLayout(proposal);
           }
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text("Error: $error", style: const TextStyle(color: Colors.red))),
+        loading: () => const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text("Connecting to Data Lake...", style: TextStyle(color: Colors.white24)),
+            ],
+          ),
+        ),
+        error: (error, stack) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.cloud_off, size: 48, color: Colors.orange),
+                const SizedBox(height: 16),
+                Text("Error: $error", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(proposalProvider(widget.proposalId)),
+                  child: const Text("Retry Connection"),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -314,6 +378,10 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
             ),
           ),
           const Divider(height: 1, color: Colors.white12),
+          if (proposal.serviceIds.isNotEmpty) ...[
+            _buildTargetServicesSection(proposal),
+            const Divider(height: 1, color: Colors.white12),
+          ],
           Expanded(
             child: proposal.sources.isEmpty
                 ? const Center(
@@ -333,6 +401,45 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTargetServicesSection(Proposal proposal) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            "TARGET SERVICES",
+            style: TextStyle(color: AppTheme.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          ),
+        ),
+        FutureBuilder(
+          future: ref.read(servicesRepositoryProvider).getServicesByIds(proposal.serviceIds),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return const SizedBox.shrink();
+            }
+            final services = snapshot.data as List;
+            return Column(
+              children: services.map((s) => ListTile(
+                dense: true,
+                leading: const Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
+                title: Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                subtitle: Text("\$${s.basePrice.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              )).toList(),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -411,6 +518,7 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                   label: "Detailed Proposal",
                   subtitle: "Full PDF with sections",
                   onPressed: () => _generateDetailedProposal(proposal),
+                  isGenerating: _isGeneratingDetailed,
                 ),
                 const SizedBox(height: 12),
                 _buildStudioButton(
@@ -418,6 +526,7 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                   label: "One-Page Quote",
                   subtitle: "Quick summary PDF",
                   onPressed: () => _generateOnePageQuote(proposal),
+                  isGenerating: _isGeneratingQuote,
                 ),
                 const SizedBox(height: 12),
                 _buildStudioButton(
@@ -436,6 +545,13 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                         leading: Icon(_getOutputIcon(output.type), color: AppTheme.primary, size: 20),
                         title: Text(output.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
                         subtitle: Text(_formatDate(output.createdAt), style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                        onTap: () {
+                          if (output.type == ProposalOutputType.detailedPdf) {
+                            _generateDetailedProposal(proposal);
+                          } else if (output.type == ProposalOutputType.onePagePdf) {
+                            _generateOnePageQuote(proposal);
+                          }
+                        },
                       )),
               ],
             ),
@@ -450,27 +566,50 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     required String label,
     required String subtitle,
     required VoidCallback? onPressed,
+    bool isGenerating = false,
   }) {
     return ElevatedButton(
-      onPressed: onPressed,
+      onPressed: isGenerating ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primary.withValues(alpha: onPressed == null ? 0.3 : 1.0),
+        backgroundColor: AppTheme.primary.withValues(alpha: (onPressed == null || isGenerating) ? 0.3 : 1.0),
         padding: const EdgeInsets.all(16),
         alignment: Alignment.centerLeft,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ],
-            ),
+          Row(
+            children: [
+              if (isGenerating)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                )
+              else
+                Icon(icon, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text(
+                      isGenerating ? "Generating... ${_elapsedSeconds}s" : subtitle,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+          if (isGenerating) ...[
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              backgroundColor: Colors.white24,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ],
         ],
       ),
     );

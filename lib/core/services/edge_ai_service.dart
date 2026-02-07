@@ -80,104 +80,129 @@ class EdgeAIService {
     }
 
     try {
-      EdgeAIResult result;
-      switch (config.provider) {
-        case AIProvider.gemini:
-          // Unified FirebaseAI Path (Vertex or Google AI Dev)
-          try {
-             // Prefer Vertex if we have a token/key for it
-             result = await _generateFirebaseAI(
-               effectivePrompt, 
-               config, 
-               vertexKeyOverride: vertexKey,
-               apiKeyOverride: apiKey,
-               imageBytes: imageBytes, 
-               imageMimeType: imageMimeType,
-               audioBytes: audioBytes,
-               audioMimeType: audioMimeType
-             );
-          } catch (e) {
-             _logger.w('EdgeAI: FirebaseAI failed: $e. Falling back to Proxy/Mock.');
-             // If direct SDK fails (e.g. Web CORS or Auth), try Proxy if on Web
-             if (kIsWeb) {
-                try {
-                   final proxyRes = await retry(
-                     () => AIProxyService.generateContent(prompt: effectivePrompt, config: config),
-                     maxAttempts: 3,
-                     delayFactor: const Duration(milliseconds: 500),
-                   );
-                   
-                   String text = "No proxy content.";
-                   try {
-                      final candidates = proxyRes['candidates'] as List?;
-                      if (candidates?.isNotEmpty == true) {
-                        final candidate = candidates!.first;
-                        final parts = candidate['content']?['parts'] as List?;
-                        if (parts?.isNotEmpty == true) {
-                          text = parts!.first['text'] ?? parts.first.toString();
-                        }
-                      }
-                    } catch (parseErr) {
-                      _logger.w('EdgeAI: Proxy parse error: $parseErr');
-                    }
-                   
-                   result = EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Proxy: ${config.modelId}');
-                } catch (proxyErr) {
-                   _logger.e('EdgeAI: Proxy fallback failed: $proxyErr');
-                   if (forceMock) rethrow; 
-                   // Fallback to LiteRT (On-Device)
-                   try {
-                     _logger.i('EdgeAI: Proxy failed. Switching to LiteRT (On-Device)...');
-                     result = await _generateLiteRT(effectivePrompt, config);
-                   } catch (liteErr) {
-                     _logger.w('EdgeAI: LiteRT failed: $liteErr. Using Mock.');
-                     result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-                   }
-                }
-             } else {
-                 // Not Web - Try LiteRT immediately
-                 try {
-                   _logger.i('EdgeAI: Cloud failed. Switching to LiteRT (On-Device)...');
-                   result = await _generateLiteRT(effectivePrompt, config);
-                 } catch (liteErr) {
-                   _logger.w('EdgeAI: LiteRT failed: $liteErr. Using Mock.');
-                   result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
-                 }
-             }
-          }
-          break;
-        case AIProvider.litert:
-          result = await _generateLiteRT(effectivePrompt, config);
-          break;
-        default:
-          // Fallback to FirebaseAI for everything else (using consolidated Key routing)
-             // Prefer Vertex if we have a token/key for it
-             result = await _generateFirebaseAI(
-               effectivePrompt, 
-               config, 
-               vertexKeyOverride: vertexKey,
-               apiKeyOverride: apiKey,
-               imageBytes: imageBytes, 
-               imageMimeType: imageMimeType,
-               audioBytes: audioBytes,
-               audioMimeType: audioMimeType
-             );
-      }
-      
-      // Phase 89: Global Proximity Sync (Only if ref is provided)
-      if (ref != null) {
-        ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
-      }
-      
-      return result;
+      return await _generateWithTimeout(
+        effectivePrompt,
+        config,
+        effectiveMemory,
+        outputMode,
+        imageBytes,
+        imageMimeType,
+        audioBytes,
+        audioMimeType,
+        apiKey,
+        vertexKey,
+        ref,
+      ).timeout(const Duration(seconds: 45));
     } catch (e, stack) {
-      _logger.e('EdgeAI: ERROR during ${config.provider} generation', error: e, stackTrace: stack);
+      if (e is TimeoutException) {
+         _logger.e('EdgeAI: TIMEOUT reached. Returning Mock fallback.');
+      } else {
+         _logger.e('EdgeAI: ERROR during ${config.provider} generation', error: e, stackTrace: stack);
+      }
       final mockRes = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
       if (ref != null) {
         ref.read(aiProximityProvider.notifier).setProximity(mockRes.proximity);
       }
       return mockRes;
     }
+  }
+
+  static Future<EdgeAIResult> _generateWithTimeout(
+    String effectivePrompt,
+    AIModelConfig config,
+    String? effectiveMemory,
+    String? outputMode,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Uint8List? audioBytes,
+    String? audioMimeType,
+    String? apiKey,
+    String? vertexKey,
+    dynamic ref,
+  ) async {
+    EdgeAIResult result;
+    // On Web, prefer the Proxy to bypass App Check issues and CORS
+    if (kIsWeb && config.provider == AIProvider.gemini) {
+      try {
+         _logger.i('EdgeAI: [WEB] Using Proxy as primary to ensure reliability.');
+         final proxyRes = await retry(
+           () => AIProxyService.generateContent(
+             prompt: effectivePrompt, 
+             config: config,
+             systemInstruction: effectiveMemory,
+           ),
+           maxAttempts: 2,
+           delayFactor: const Duration(milliseconds: 500),
+         );
+         
+         String text = "No proxy content.";
+         final candidates = proxyRes['candidates'] as List?;
+         if (candidates?.isNotEmpty == true) {
+           final candidate = candidates!.first;
+           final parts = candidate['content']?['parts'] as List?;
+           if (parts?.isNotEmpty == true) {
+             text = parts!.first['text'] ?? parts.first.toString();
+           }
+         }
+         
+         // Cleanup JSON if requested
+         if (outputMode == 'json') {
+           text = _stripMarkdown(text);
+         }
+         
+         return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Proxy: ${config.modelId}');
+      } catch (proxyErr) {
+         _logger.w('EdgeAI: [WEB] Proxy failed: $proxyErr. Attempting direct SDK...');
+         // If proxy fails, we can still TRY the direct SDK as a last resort
+      }
+    }
+
+    switch (config.provider) {
+      case AIProvider.gemini:
+        try {
+           result = await _generateFirebaseAI(
+             effectivePrompt, 
+             config, 
+             vertexKeyOverride: vertexKey,
+             apiKeyOverride: apiKey,
+             imageBytes: imageBytes, 
+             imageMimeType: imageMimeType,
+             audioBytes: audioBytes,
+             audioMimeType: audioMimeType
+           );
+        } catch (e) {
+           _logger.w('EdgeAI: FirebaseAI failed: $e. Using LiteRT/Mock fallback.');
+           // Fallback to LiteRT (On-Device) if cloud fails
+           try {
+             result = await _generateLiteRT(effectivePrompt, config);
+           } catch (liteErr) {
+             result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
+           }
+        }
+        break;
+      case AIProvider.litert:
+        result = await _generateLiteRT(effectivePrompt, config);
+        break;
+      default:
+        // Fallback to FirebaseAI for everything else
+           result = await _generateFirebaseAI(
+             effectivePrompt, 
+             config, 
+             vertexKeyOverride: vertexKey,
+             apiKeyOverride: apiKey,
+             imageBytes: imageBytes, 
+             imageMimeType: imageMimeType,
+             audioBytes: audioBytes,
+             audioMimeType: audioMimeType
+           );
+    }
+    
+    // Phase 89: Global Proximity Sync (Only if ref is provided)
+    if (ref != null) {
+      ref.read(aiProximityProvider.notifier).setProximity(result.proximity);
+    }
+    
+    return result;
   }
 
   // --- PROVIDER IMPLEMENTATIONS ---
@@ -299,6 +324,11 @@ class EdgeAIService {
       if (prompt.length > 50 && fullText.length < 5) {
         confidence = 0.1;
       }
+    }
+
+    // Cleanup JSON if requested
+    if (config.responseMimeType == 'application/json') {
+      fullText = _stripMarkdown(fullText);
     }
 
     return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId, confidence: confidence, sourceCitations: validSources);
@@ -539,5 +569,16 @@ class EdgeAIService {
       modelUsed: config.modelId,
       confidence: 0.85, // Good but maybe not perfect
     );
+  }
+
+  static String _stripMarkdown(String text) {
+    if (text.startsWith('```')) {
+      final firstLineEnd = text.indexOf('\n');
+      final lastBackticks = text.lastIndexOf('```');
+      if (firstLineEnd != -1 && lastBackticks > firstLineEnd) {
+        return text.substring(firstLineEnd + 1, lastBackticks).trim();
+      }
+    }
+    return text.trim();
   }
 }

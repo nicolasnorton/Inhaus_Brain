@@ -1,0 +1,171 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
+import '../models/service_model.dart';
+import '../models/service_enums.dart';
+
+class ServiceForm extends StatefulWidget {
+  final Service? service;
+  final Function(Map<String, dynamic>) onSave;
+
+  const ServiceForm({super.key, this.service, required this.onSave});
+
+  @override
+  State<ServiceForm> createState() => _ServiceFormState();
+}
+
+class _ServiceFormState extends State<ServiceForm> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _nameEsController;
+  late TextEditingController _priceController;
+  late TextEditingController _costController;
+  late TextEditingController _marginController;
+  late TextEditingController _executionController;
+  late ServiceType _type;
+  late BillingCycle _billingCycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.service?.name ?? '');
+    _nameEsController = TextEditingController(text: widget.service?.nameEs ?? '');
+    _priceController = TextEditingController(text: widget.service?.basePrice.toString() ?? '');
+    _costController = TextEditingController(text: widget.service?.deliveryCost.toString() ?? '');
+    _marginController = TextEditingController(text: widget.service?.targetMargin.toString() ?? '35.0');
+    _executionController = TextEditingController(text: widget.service?.execution ?? '');
+    _type = widget.service?.type ?? ServiceType.individual;
+    _billingCycle = widget.service?.billingCycle ?? BillingCycle.monthly;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _nameEsController.dispose();
+    _priceController.dispose();
+    _costController.dispose();
+    _marginController.dispose();
+    _executionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTextField(_nameController, "Service Name (EN)", "e.g., SEO Management"),
+            const SizedBox(height: 16),
+            _buildTextField(_nameEsController, "Nombre del Servicio (ES)", "ej., Gestión SEO"),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildDropdown<ServiceType>("Type", _type, ServiceType.values, (val) => setState(() => _type = val!))),
+                const SizedBox(width: 16),
+                Expanded(child: _buildDropdown<BillingCycle>("Billing", _billingCycle, BillingCycle.values, (val) => setState(() => _innerBillingCycle = val!))),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildNumberField(_priceController, "Base Price (\$)")),
+                const SizedBox(width: 16),
+                Expanded(child: _buildNumberField(_costController, "Delivery Cost (\$)")),
+                const SizedBox(width: 16),
+                Expanded(child: _buildNumberField(_marginController, "Target Margin (%)")),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(_executionController, "Execution Details", "Describe how the service is delivered", maxLines: 3),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                  child: Text(widget.service == null ? "Create Service" : "Update Service"),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, String hint, {int maxLines = 1}) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle: const TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(color: Colors.white24),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primary)),
+      ),
+      validator: (v) => v == null || v.isEmpty ? "Required" : null,
+    );
+  }
+
+  Widget _buildNumberField(TextEditingController controller, String label) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primary)),
+      ),
+      validator: (v) => v == null || v.isEmpty ? "Required" : null,
+    );
+  }
+
+  Widget _buildDropdown<T extends Enum>(String label, T value, List<T> items, ValueChanged<T?> onChanged) {
+    return DropdownButtonFormField<T>(
+      value: value,
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e.name.toUpperCase()))).toList(),
+      onChanged: onChanged,
+      dropdownColor: AppTheme.surface,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primary)),
+      ),
+    );
+  }
+
+  // Temporary variable to fix the dropdown assignment
+  BillingCycle get _innerBillingCycle => _billingCycle;
+  set _innerBillingCycle(BillingCycle val) => _billingCycle = val;
+
+  void _save() {
+    if (_formKey.currentState!.validate()) {
+      widget.onSave({
+        'name': _nameController.text,
+        'nameEs': _nameEsController.text,
+        'type': _type.name,
+        'basePrice': double.parse(_priceController.text),
+        'deliveryCost': double.parse(_costController.text),
+        'targetMargin': double.parse(_marginController.text),
+        'execution': _executionController.text,
+        'billingCycle': _billingCycle.name,
+      });
+    }
+  }
+}

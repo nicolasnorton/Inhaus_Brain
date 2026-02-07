@@ -12,11 +12,13 @@ class InhausProposalPdfGenerator {
     return PdfColor(color.red * opacity, color.green * opacity, color.blue * opacity, opacity);
   }
 
-  // INHAUS Color Palette (Exact Match)
-  static const _bgDarkPurple = PdfColor.fromInt(0xFF1A0F2E); // Dark purple-black
-  static const _sectionPurple = PdfColor.fromInt(0xFF6B46C1); // Purple headers
+  // INHAUS Color Palette (Vibrant v2.0)
+  static final _bgDark = PdfColor.fromInt(0xFF05050B);    // Dark/Black
+  static final _cardDark = PdfColor.fromInt(0xFF0F0F16);  // Card elevation
+  static final _accentPurple = PdfColor.fromInt(0xFF6E48AA); // Vibrant Purple for accents
+  static final _deepPurple = PdfColor.fromInt(0xFF1A1423);   // Deep purple for backgrounds
   static const _textWhite = PdfColors.white;
-  static const _textGray = PdfColor.fromInt(0xFFA0AEC0); // Gray secondary
+  static const _textGray = PdfColor.fromInt(0xFFA0A0A0); // Light Gray
 
   /// Generate One Page Quote PDF
   static Future<Uint8List> generateOnePageQuote(
@@ -26,27 +28,29 @@ class InhausProposalPdfGenerator {
     List<Uint8List>? additionalImages,
   }) async {
     final pdf = pw.Document();
+    final fontRegular = await PdfGoogleFonts.montserratRegular();
+    final fontBold = await PdfGoogleFonts.montserratBold();
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(0),
         theme: pw.ThemeData.withFont(
-          base: pw.Font.helvetica(),
-          bold: pw.Font.helveticaBold(),
+          base: fontRegular,
+          bold: fontBold,
         ),
-        build: (context) {
+build: (context) {
           return pw.Container(
-            color: _bgDarkPurple,
+            color: _bgDark,
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(quote.header, agencyLogo: agencyLogo, clientLogo: clientLogo),
+                _buildHeader(quote.header, agencyLogo: agencyLogo, clientLogo: clientLogo, bold: fontBold),
                 pw.SizedBox(height: 40),
-                _buildOnePageContent(quote.summary),
+                _buildOnePageContent(quote.summary, bold: fontBold),
                 if (additionalImages != null && additionalImages.isNotEmpty) ...[
                   pw.SizedBox(height: 30),
-                  _buildMoodboard(additionalImages),
+                  _buildMoodboard(additionalImages, bold: fontBold),
                 ],
                 pw.Spacer(),
                 _buildFooter(quote.footer),
@@ -68,6 +72,8 @@ class InhausProposalPdfGenerator {
     List<Uint8List>? additionalImages,
   }) async {
     final pdf = pw.Document();
+    final fontRegular = await PdfGoogleFonts.montserratRegular();
+    final fontBold = await PdfGoogleFonts.montserratBold();
 
     // First page with header and first sections
     pdf.addPage(
@@ -75,22 +81,22 @@ class InhausProposalPdfGenerator {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(0),
         theme: pw.ThemeData.withFont(
-          base: pw.Font.helvetica(),
-          bold: pw.Font.helveticaBold(),
+          base: fontRegular,
+          bold: fontBold,
         ),
         build: (context) {
           return [
             pw.Container(
-              color: _bgDarkPurple,
+              color: _bgDark,
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeader(proposal.header, agencyLogo: agencyLogo, clientLogo: clientLogo),
+                  _buildHeader(proposal.header, agencyLogo: agencyLogo, clientLogo: clientLogo, bold: fontBold),
                   pw.SizedBox(height: 30),
-                  ...proposal.sections.map((section) => _buildDetailedSection(section)),
+                  ...proposal.sections.map((section) => _buildDetailedSection(section, bold: fontBold)),
                   if (additionalImages != null && additionalImages.isNotEmpty) ...[
                     pw.SizedBox(height: 40),
-                    _buildMoodboard(additionalImages),
+                    _buildMoodboard(additionalImages, bold: fontBold),
                   ],
                 ],
               ),
@@ -109,6 +115,7 @@ class InhausProposalPdfGenerator {
     InhausProposalHeader header, {
     Uint8List? agencyLogo,
     Uint8List? clientLogo,
+    required pw.Font bold,
   }) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(40),
@@ -129,10 +136,10 @@ class InhausProposalPdfGenerator {
                 pw.Text(
                   header.agencyTitle,
                   style: pw.TextStyle(
-                    color: _textWhite,
-                    fontSize: 16,
+                    color: _accentPurple,
+                    fontSize: 14,
                     fontWeight: pw.FontWeight.bold,
-                    letterSpacing: 2,
+                    letterSpacing: 1.2,
                   ),
                 ),
             ],
@@ -171,18 +178,29 @@ class InhausProposalPdfGenerator {
   }
 
   /// Build One Page Quote Content
-  static pw.Widget _buildOnePageContent(InhausQuoteSummary summary) {
+  static pw.Widget _buildOnePageContent(InhausQuoteSummary summary, {required pw.Font bold}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 40),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
+          // Title Header
+          pw.Text(
+            'ONE-PAGE SUMMARY',
+            style: pw.TextStyle(
+              color: _accentPurple,
+              fontSize: 11,
+              fontWeight: pw.FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          pw.SizedBox(height: 20),
           // Intro
           pw.Text(
             summary.intro,
             style: pw.TextStyle(
               color: _textWhite,
-              fontSize: 14,
+              fontSize: 13,
               height: 1.5,
             ),
           ),
@@ -192,9 +210,9 @@ class InhausProposalPdfGenerator {
           pw.Container(
             padding: const pw.EdgeInsets.all(24),
             decoration: pw.BoxDecoration(
-              color: _withOpacity(_sectionPurple, 0.1),
+              color: _withOpacity(_accentPurple, 0.1),
               borderRadius: pw.BorderRadius.circular(12),
-              border: pw.Border.all(color: _withOpacity(_sectionPurple, 0.3)),
+              border: pw.Border.all(color: _withOpacity(_accentPurple, 0.3)),
             ),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -202,7 +220,7 @@ class InhausProposalPdfGenerator {
                 pw.Text(
                   'SERVICIOS INCLUIDOS',
                   style: pw.TextStyle(
-                    color: _sectionPurple,
+                    color: _accentPurple,
                     fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
                     letterSpacing: 1.5,
@@ -217,7 +235,7 @@ class InhausProposalPdfGenerator {
                         width: 6,
                         height: 6,
                         decoration: const pw.BoxDecoration(
-                          color: _sectionPurple,
+                          color: _accentPurple,
                           shape: pw.BoxShape.circle,
                         ),
                       ),
@@ -243,7 +261,7 @@ class InhausProposalPdfGenerator {
           pw.Container(
             padding: const pw.EdgeInsets.all(24),
             decoration: pw.BoxDecoration(
-              color: _sectionPurple,
+              color: _accentPurple,
               borderRadius: pw.BorderRadius.circular(12),
             ),
             child: pw.Row(
@@ -285,7 +303,7 @@ class InhausProposalPdfGenerator {
   }
 
   /// Build Detailed Section
-  static pw.Widget _buildDetailedSection(InhausProposalSection section) {
+  static pw.Widget _buildDetailedSection(InhausProposalSection section, {required pw.Font bold}) {
     return pw.Container(
       margin: const pw.EdgeInsets.only(left: 40, right: 40, bottom: 20),
       child: pw.Column(
@@ -295,7 +313,7 @@ class InhausProposalPdfGenerator {
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: pw.BoxDecoration(
-              color: _sectionPurple,
+              color: _accentPurple,
               borderRadius: pw.BorderRadius.circular(8),
             ),
             child: pw.Row(
@@ -363,7 +381,7 @@ class InhausProposalPdfGenerator {
                       pw.Text(
                         '• ',
                         style: const pw.TextStyle(
-                          color: _sectionPurple,
+                          color: _accentPurple,
                           fontSize: 10,
                         ),
                       ),
@@ -397,7 +415,7 @@ class InhausProposalPdfGenerator {
                           pw.Text(
                             'INCLUYE:',
                             style: pw.TextStyle(
-                              color: _sectionPurple,
+                              color: _accentPurple,
                               fontSize: 9,
                               fontWeight: pw.FontWeight.bold,
                             ),
@@ -471,7 +489,7 @@ class InhausProposalPdfGenerator {
   }
 
   /// Build Moodboard Section
-  static pw.Widget _buildMoodboard(List<Uint8List> images) {
+  static pw.Widget _buildMoodboard(List<Uint8List> images, {required pw.Font bold}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 40),
       child: pw.Column(
@@ -480,7 +498,7 @@ class InhausProposalPdfGenerator {
           pw.Text(
             'MOODBOARD & REFERENCIAS',
             style: pw.TextStyle(
-              color: _sectionPurple,
+              color: _accentPurple,
               fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               letterSpacing: 1.5,

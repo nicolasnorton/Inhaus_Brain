@@ -10,6 +10,7 @@ class Proposal {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? datasetId; // Reference to Knowledge Base
+  final List<String> serviceIds; // IDs of services from the catalog
   final List<ProposalSource> sources;
   final List<ProposalOutput> outputs;
   final ProposalStatus status;
@@ -22,6 +23,7 @@ class Proposal {
     required this.createdAt,
     required this.updatedAt,
     this.datasetId,
+    this.serviceIds = const [],
     List<ProposalSource>? sources,
     List<ProposalOutput>? outputs,
     this.status = ProposalStatus.draft,
@@ -33,6 +35,7 @@ class Proposal {
     required String clientId,
     required String clientName,
     String? datasetId,
+    List<String> serviceIds = const [],
   }) {
     final now = DateTime.now();
     return Proposal(
@@ -43,6 +46,7 @@ class Proposal {
       createdAt: now,
       updatedAt: now,
       datasetId: datasetId,
+      serviceIds: serviceIds,
     );
   }
 
@@ -55,6 +59,7 @@ class Proposal {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'datasetId': datasetId,
+      'serviceIds': serviceIds,
       'sources': sources.map((s) => s.toJson()).toList(),
       'outputs': outputs.map((o) => o.toJson()).toList(),
       'status': status.toString().split('.').last,
@@ -70,6 +75,7 @@ class Proposal {
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
       datasetId: json['datasetId'],
+      serviceIds: List<String>.from(json['serviceIds'] ?? []),
       sources: (json['sources'] as List<dynamic>?)
           ?.map((e) => ProposalSource.fromJson(e))
           .toList(),
@@ -91,6 +97,7 @@ class Proposal {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? datasetId,
+    List<String>? serviceIds,
     List<ProposalSource>? sources,
     List<ProposalOutput>? outputs,
     ProposalStatus? status,
@@ -103,6 +110,7 @@ class Proposal {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       datasetId: datasetId ?? this.datasetId,
+      serviceIds: serviceIds ?? this.serviceIds,
       sources: sources ?? this.sources,
       outputs: outputs ?? this.outputs,
       status: status ?? this.status,
@@ -265,6 +273,8 @@ class ProposalData {
   final String type; // 'detailed' or 'one_page'
   final String format; // 'pdf' or 'slides'
   final ProposalHeader header;
+  final DocumentSettings? settings;
+  final VisualTheme? theme;
   final List<ProposalSection>? sections; // For detailed
   final ProposalSummary? summary; // For one_page
   final String? footer;
@@ -274,6 +284,8 @@ class ProposalData {
     required this.type,
     required this.format,
     required this.header,
+    this.settings,
+    this.theme,
     this.sections,
     this.summary,
     this.footer,
@@ -281,6 +293,35 @@ class ProposalData {
   });
 
   factory ProposalData.fromJson(Map<String, dynamic> json) {
+    // Handle modular structure
+    if (json.containsKey('client_proposal')) {
+      final clientProposal = json['client_proposal'];
+      final settings = json['document_settings'] != null 
+          ? DocumentSettings.fromJson(json['document_settings']) 
+          : null;
+      final theme = json['visual_theme'] != null 
+          ? VisualTheme.fromJson(json['visual_theme']) 
+          : null;
+      
+      return ProposalData(
+        type: clientProposal['proposal_type'] ?? 'detailed',
+        format: json['format'] ?? 'pdf', // Format might be outside or inside
+        settings: settings,
+        theme: theme,
+        header: ProposalHeader(
+          agencyTitle: settings?.agencyName ?? 'INHAUS ESTUDIO CREATIVO',
+          clientName: clientProposal['client_name'] ?? 'Inhaus Client',
+          date: settings?.dateGenerated ?? '',
+        ),
+        sections: (clientProposal['sections'] as List?)
+            ?.map((s) => ProposalSection.fromJson(s))
+            .toList(),
+        footer: settings?.website ?? 'inhauscorp.com',
+        embeddedImages: List<String>.from(json['embedded_images'] ?? []),
+      );
+    }
+
+    // Handle legacy/one_page structure
     return ProposalData(
       type: json['type'] ?? 'detailed',
       format: json['format'] ?? 'pdf',
@@ -304,6 +345,44 @@ class ProposalData {
       cleanStr = raw.split('```')[1].split('```')[0].trim();
     }
     return ProposalData.fromJson(json.decode(cleanStr));
+  }
+}
+
+class DocumentSettings {
+  final String agencyName;
+  final String website;
+  final String dateGenerated;
+  final String currency;
+  final String locale;
+
+  DocumentSettings({
+    required this.agencyName,
+    required this.website,
+    required this.dateGenerated,
+    required this.currency,
+    required this.locale,
+  });
+
+  factory DocumentSettings.fromJson(Map<String, dynamic> json) {
+    return DocumentSettings(
+      agencyName: json['agency_name'] ?? 'INHAUS ESTUDIO CREATIVO',
+      website: json['website'] ?? 'inhauscorp.com',
+      dateGenerated: json['date_generated'] ?? '',
+      currency: json['currency'] ?? 'USD',
+      locale: json['locale'] ?? 'es-EC',
+    );
+  }
+}
+
+class VisualTheme {
+  final Map<String, String> colors;
+
+  VisualTheme({required this.colors});
+
+  factory VisualTheme.fromJson(Map<String, dynamic> json) {
+    return VisualTheme(
+      colors: Map<String, String>.from(json['colors'] ?? {}),
+    );
   }
 }
 
@@ -332,29 +411,72 @@ class ProposalHeader {
 
 class ProposalSection {
   final String title;
-  final String description;
-  final List<String> bullets;
-  final List<String> includes;
-  final List<String> excludes;
+  final String? layoutType;
+  final ProposalContent content;
   final ProposalPrice price;
 
   ProposalSection({
     required this.title,
-    required this.description,
-    required this.bullets,
-    required this.includes,
-    required this.excludes,
+    this.layoutType,
+    required this.content,
     required this.price,
   });
 
   factory ProposalSection.fromJson(Map<String, dynamic> json) {
+    // Check if it's the new modular section content or legacy
+    if (json.containsKey('content')) {
+      return ProposalSection(
+        title: json['title'] ?? '',
+        layoutType: json['layout_type'],
+        content: ProposalContent.fromJson(json['content'] ?? {}),
+        price: ProposalPrice.fromJson(json['pricing'] ?? {}),
+      );
+    }
+
+    // Legacy fallback
     return ProposalSection(
       title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      bullets: List<String>.from(json['bullets'] ?? []),
-      includes: List<String>.from(json['includes'] ?? []),
-      excludes: List<String>.from(json['excludes'] ?? []),
+      content: ProposalContent(
+        headerInfo: json['description'] != null ? [json['description']] : [],
+        items: List<String>.from(json['bullets'] ?? []),
+      ),
       price: ProposalPrice.fromJson(json['price'] ?? {}),
+    );
+  }
+}
+
+class ProposalContent {
+  final List<String> headerInfo;
+  final List<String> items;
+  final List<ProposalColumn> columns;
+
+  ProposalContent({
+    this.headerInfo = const [],
+    this.items = const [],
+    this.columns = const [],
+  });
+
+  factory ProposalContent.fromJson(Map<String, dynamic> json) {
+    return ProposalContent(
+      headerInfo: List<String>.from(json['header_info'] ?? []),
+      items: List<String>.from(json['items'] ?? []),
+      columns: (json['columns'] as List?)
+          ?.map((c) => ProposalColumn.fromJson(c))
+          .toList() ?? [],
+    );
+  }
+}
+
+class ProposalColumn {
+  final String title;
+  final String value;
+
+  ProposalColumn({required this.title, required this.value});
+
+  factory ProposalColumn.fromJson(Map<String, dynamic> json) {
+    return ProposalColumn(
+      title: json['title'] ?? '',
+      value: json['value'] ?? '',
     );
   }
 }
@@ -385,13 +507,15 @@ class ProposalSummary {
 class ProposalPrice {
   final String label;
   final String amount;
+  final String? terms;
 
-  ProposalPrice({required this.label, required this.amount});
+  ProposalPrice({required this.label, required this.amount, this.terms});
 
   factory ProposalPrice.fromJson(Map<String, dynamic> json) {
     return ProposalPrice(
       label: json['label'] ?? 'PRECIO:',
       amount: json['amount'] ?? 'TBD',
+      terms: json['terms'],
     );
   }
 }

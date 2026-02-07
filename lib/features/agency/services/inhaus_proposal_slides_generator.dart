@@ -12,11 +12,12 @@ class InhausProposalSlidesGenerator {
     return PdfColor(color.red * opacity, color.green * opacity, color.blue * opacity, opacity);
   }
 
-  // INHAUS Color Palette
-  static const _bgDarkPurple = PdfColor.fromInt(0xFF1A0F2E);
-  static const _sectionPurple = PdfColor.fromInt(0xFF6B46C1);
+  // INHAUS Color Palette (Exact Match v2.0)
+  static final _bgDark = PdfColor.fromInt(0xFF05050B);    // Dark/Black
+  static final _cardDark = PdfColor.fromInt(0xFF0F0F16);  // Card elevation
+  static final _accentPurple = PdfColor.fromInt(0xFF1A1423); // Rounded purple bars
   static const _textWhite = PdfColors.white;
-  static const _textGray = PdfColor.fromInt(0xFFA0AEC0);
+  static const _textGray = PdfColor.fromInt(0xFFA0A0A0); // Light Gray
 
   /// Generate One Page Quote Slides
   static Future<Uint8List> generateOnePageQuote(
@@ -26,24 +27,27 @@ class InhausProposalSlidesGenerator {
     List<Uint8List>? additionalImages,
   }) async {
     final pdf = pw.Document();
+    final fontRegular = await PdfGoogleFonts.montserratRegular();
+    final fontBold = await PdfGoogleFonts.montserratBold();
 
     // Title Slide
     pdf.addPage(_buildTitleSlide(
       quote.header,
       agencyLogo: agencyLogo,
       clientLogo: clientLogo,
+      bold: fontBold,
     ));
 
     // Summary Slide
-    pdf.addPage(_buildSummarySlide(quote.summary, agencyLogo: agencyLogo));
+    pdf.addPage(_buildSummarySlide(quote.summary, agencyLogo: agencyLogo, bold: fontBold));
 
     // Moodboard Slide
     if (additionalImages != null && additionalImages.isNotEmpty) {
-      pdf.addPage(_buildMoodboardSlide(additionalImages, header: quote.header, agencyLogo: agencyLogo, clientLogo: clientLogo));
+      pdf.addPage(_buildMoodboardSlide(additionalImages, header: quote.header, agencyLogo: agencyLogo, clientLogo: clientLogo, bold: fontBold));
     }
 
     // Closing Slide
-    pdf.addPage(_buildClosingSlide(quote.footer, agencyLogo: agencyLogo));
+    pdf.addPage(_buildClosingSlide(quote.footer, agencyLogo: agencyLogo, bold: fontBold));
 
     return pdf.save();
   }
@@ -56,26 +60,29 @@ class InhausProposalSlidesGenerator {
     List<Uint8List>? additionalImages,
   }) async {
     final pdf = pw.Document();
+    final fontRegular = await PdfGoogleFonts.montserratRegular();
+    final fontBold = await PdfGoogleFonts.montserratBold();
 
     // Title Slide
     pdf.addPage(_buildTitleSlide(
       proposal.header,
       agencyLogo: agencyLogo,
       clientLogo: clientLogo,
+      bold: fontBold,
     ));
 
     // Section Slides
     for (var section in proposal.sections) {
-      pdf.addPage(_buildSectionSlide(section, agencyLogo: agencyLogo));
+      pdf.addPage(_buildSectionSlide(section, agencyLogo: agencyLogo, bold: fontBold));
     }
 
     // Moodboard Slide
     if (additionalImages != null && additionalImages.isNotEmpty) {
-      pdf.addPage(_buildMoodboardSlide(additionalImages, header: proposal.header, agencyLogo: agencyLogo, clientLogo: clientLogo));
+      pdf.addPage(_buildMoodboardSlide(additionalImages, header: proposal.header, agencyLogo: agencyLogo, clientLogo: clientLogo, bold: fontBold));
     }
 
     // Closing Slide
-    pdf.addPage(_buildClosingSlide(proposal.footer, agencyLogo: agencyLogo));
+    pdf.addPage(_buildClosingSlide(proposal.footer, agencyLogo: agencyLogo, bold: fontBold));
 
     return pdf.save();
   }
@@ -85,17 +92,14 @@ class InhausProposalSlidesGenerator {
     InhausProposalHeader header, {
     Uint8List? agencyLogo,
     Uint8List? clientLogo,
+    required pw.Font bold,
   }) {
     return pw.Page(
       pageFormat: PdfPageFormat.a4.landscape,
       margin: const pw.EdgeInsets.all(0),
-      theme: pw.ThemeData.withFont(
-        base: pw.Font.helvetica(),
-        bold: pw.Font.helveticaBold(),
-      ),
       build: (context) {
         return pw.Container(
-          color: _bgDarkPurple,
+          color: _bgDark,
           child: pw.Stack(
             children: [
               // Decorative circle
@@ -106,7 +110,7 @@ class InhausProposalSlidesGenerator {
                   width: 500,
                   height: 500,
                   decoration: pw.BoxDecoration(
-                    color: _withOpacity(_sectionPurple, 0.05),
+                    color: _withOpacity(_accentPurple, 0.05),
                     shape: pw.BoxShape.circle,
                   ),
                 ),
@@ -145,7 +149,7 @@ class InhausProposalSlidesGenerator {
                     pw.Container(
                       width: 80,
                       height: 3,
-                      color: _sectionPurple,
+                      color: _accentPurple,
                     ),
                     pw.SizedBox(height: 30),
                     
@@ -179,7 +183,7 @@ class InhausProposalSlidesGenerator {
                         pw.Text(
                           header.date,
                           style: pw.TextStyle(
-                            color: _sectionPurple,
+                            color: _accentPurple,
                             fontSize: 12,
                           ),
                         ),
@@ -204,6 +208,7 @@ class InhausProposalSlidesGenerator {
   static pw.Page _buildSummarySlide(
     InhausQuoteSummary summary, {
     Uint8List? agencyLogo,
+    required pw.Font bold,
   }) {
     return pw.Page(
       pageFormat: PdfPageFormat.a4.landscape,
@@ -214,7 +219,7 @@ class InhausProposalSlidesGenerator {
       ),
       build: (context) {
         return pw.Container(
-          color: _bgDarkPurple,
+          color: _bgDark,
           padding: const pw.EdgeInsets.all(60),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -229,7 +234,7 @@ class InhausProposalSlidesGenerator {
                       pw.Text(
                         'RESUMEN',
                         style: pw.TextStyle(
-                          color: _sectionPurple,
+                          color: _accentPurple,
                           fontSize: 12,
                           letterSpacing: 2,
                           fontWeight: pw.FontWeight.bold,
@@ -254,7 +259,7 @@ class InhausProposalSlidesGenerator {
                 ],
               ),
               pw.SizedBox(height: 20),
-              pw.Divider(color: _withOpacity(_sectionPurple, 0.3), thickness: 1),
+              pw.Divider(color: _withOpacity(_accentPurple, 0.3), thickness: 1),
               pw.SizedBox(height: 30),
               
               // Intro
@@ -286,7 +291,7 @@ class InhausProposalSlidesGenerator {
                                 width: 8,
                                 height: 8,
                                 decoration: const pw.BoxDecoration(
-                                  color: _sectionPurple,
+                                  color: _accentPurple,
                                   shape: pw.BoxShape.circle,
                                 ),
                               ),
@@ -312,7 +317,7 @@ class InhausProposalSlidesGenerator {
                       width: 280,
                       padding: const pw.EdgeInsets.all(32),
                       decoration: pw.BoxDecoration(
-                        color: _sectionPurple,
+                        color: _accentPurple,
                         borderRadius: pw.BorderRadius.circular(12),
                       ),
                       child: pw.Column(
@@ -362,6 +367,7 @@ class InhausProposalSlidesGenerator {
   static pw.Page _buildSectionSlide(
     InhausProposalSection section, {
     Uint8List? agencyLogo,
+    required pw.Font bold,
   }) {
     return pw.Page(
       pageFormat: PdfPageFormat.a4.landscape,
@@ -372,7 +378,7 @@ class InhausProposalSlidesGenerator {
       ),
       build: (context) {
         return pw.Container(
-          color: _bgDarkPurple,
+          color: _bgDark,
           padding: const pw.EdgeInsets.all(60),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -389,7 +395,7 @@ class InhausProposalSlidesGenerator {
                         pw.Text(
                           'SERVICIO',
                           style: pw.TextStyle(
-                            color: _sectionPurple,
+                            color: _accentPurple,
                             fontSize: 11,
                             letterSpacing: 2,
                             fontWeight: pw.FontWeight.bold,
@@ -415,7 +421,7 @@ class InhausProposalSlidesGenerator {
                 ],
               ),
               pw.SizedBox(height: 20),
-              pw.Divider(color: _withOpacity(_sectionPurple, 0.3), thickness: 1),
+              pw.Divider(color: _withOpacity(_accentPurple, 0.3), thickness: 1),
               pw.SizedBox(height: 30),
               
               // Content
@@ -453,7 +459,7 @@ class InhausProposalSlidesGenerator {
                                   height: 6,
                                   margin: const pw.EdgeInsets.only(top: 6),
                                   decoration: const pw.BoxDecoration(
-                                    color: _sectionPurple,
+                                    color: _accentPurple,
                                     shape: pw.BoxShape.circle,
                                   ),
                                 ),
@@ -480,8 +486,8 @@ class InhausProposalSlidesGenerator {
                       width: 240,
                       padding: const pw.EdgeInsets.all(32),
                       decoration: pw.BoxDecoration(
-                        color: _withOpacity(_sectionPurple, 0.1),
-                        border: pw.Border.all(color: _withOpacity(_sectionPurple, 0.3)),
+                        color: _withOpacity(_accentPurple, 0.1),
+                        border: pw.Border.all(color: _withOpacity(_accentPurple, 0.3)),
                         borderRadius: pw.BorderRadius.circular(12),
                       ),
                       child: pw.Column(
@@ -491,7 +497,7 @@ class InhausProposalSlidesGenerator {
                           pw.Text(
                             section.price.label,
                             style: pw.TextStyle(
-                              color: _sectionPurple,
+                              color: _accentPurple,
                               fontSize: 10,
                               letterSpacing: 1.5,
                             ),
@@ -512,7 +518,7 @@ class InhausProposalSlidesGenerator {
                             pw.Text(
                               'INCLUYE:',
                               style: pw.TextStyle(
-                                color: _sectionPurple,
+                                color: _accentPurple,
                                 fontSize: 8,
                                 fontWeight: pw.FontWeight.bold,
                               ),
@@ -546,17 +552,14 @@ class InhausProposalSlidesGenerator {
   static pw.Page _buildClosingSlide(
     String footer, {
     Uint8List? agencyLogo,
+    required pw.Font bold,
   }) {
     return pw.Page(
       pageFormat: PdfPageFormat.a4.landscape,
       margin: const pw.EdgeInsets.all(0),
-      theme: pw.ThemeData.withFont(
-        base: pw.Font.helvetica(),
-        bold: pw.Font.helveticaBold(),
-      ),
       build: (context) {
         return pw.Container(
-          color: _bgDarkPurple,
+          color: _bgDark,
           padding: const pw.EdgeInsets.all(60),
           child: pw.Column(
             mainAxisAlignment: pw.MainAxisAlignment.center,
@@ -587,7 +590,7 @@ class InhausProposalSlidesGenerator {
               pw.Container(
                 padding: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 20),
                 decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: _withOpacity(_sectionPurple, 0.3)),
+                  border: pw.Border.all(color: _withOpacity(_accentPurple, 0.3)),
                   borderRadius: pw.BorderRadius.circular(12),
                 ),
                 child: pw.Column(
@@ -595,7 +598,7 @@ class InhausProposalSlidesGenerator {
                     pw.Text(
                       footer,
                       style: pw.TextStyle(
-                        color: _sectionPurple,
+                        color: _accentPurple,
                         fontSize: 16,
                         fontWeight: pw.FontWeight.bold,
                       ),
@@ -624,13 +627,14 @@ class InhausProposalSlidesGenerator {
     required InhausProposalHeader header,
     Uint8List? agencyLogo,
     Uint8List? clientLogo,
+    required pw.Font bold,
   }) {
     return pw.Page(
       pageFormat: PdfPageFormat.a4.landscape,
       margin: const pw.EdgeInsets.all(0),
       build: (context) {
         return pw.Container(
-          color: _bgDarkPurple,
+          color: _bgDark,
           child: pw.Column(
             children: [
               pw.Expanded(
@@ -642,7 +646,7 @@ class InhausProposalSlidesGenerator {
                       pw.Text(
                         'MOODBOARD & REFERENCIAS',
                         style: pw.TextStyle(
-                          color: _sectionPurple,
+                          color: _accentPurple,
                           fontSize: 18,
                           fontWeight: pw.FontWeight.bold,
                           letterSpacing: 2,

@@ -70,6 +70,14 @@ service cloud.firestore {
       allow update, delete: if isAgencyStaff();
     }
 
+    // SERVICES MODULE RULES
+    match /services/{serviceId} {
+      // All authenticated users can read services (for proposal creation)
+      allow read: if isAuthenticated();
+      // Only agency staff can create, update, or delete services
+      allow create, update, delete: if isAgencyStaff();
+    }
+
     // KNOWLEDGE MODULE RULES (Production Hardened)
     match /knowledge_datasets/{datasetId} {
       // Allow creation by any authenticated user (Agency OR Client wanting private knowledge)

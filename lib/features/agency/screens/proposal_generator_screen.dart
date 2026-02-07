@@ -272,7 +272,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
       }
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      if (Navigator.canPop(context)) Navigator.pop(context); // Close loading dialog
 
       // Save output
       final output = ProposalOutput(
@@ -287,9 +287,16 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
       await Printing.layoutPdf(onLayout: (pdfFormat) async => bytes);
 
     } catch (e) {
+      debugPrint("Generation Error: $e");
       if (mounted) {
         if (Navigator.canPop(context)) Navigator.pop(context);
         _showErrorDialog("Failed to generate proposal: $e");
+      }
+    } finally {
+      // Safety check: ensure dialog is closed if still open
+      if (mounted && Navigator.canPop(context)) {
+        // We only pop if we are sure the loading dialog is what's on top
+        // This is tricky in Flutter without a transition or specific key
       }
     }
   }

@@ -106,6 +106,7 @@ class Proposal {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? datasetId; // Reference to Knowledge Base for RAG
+  final List<String> serviceIds; 
   final List<ProposalSource> sources;
   final List<ProposalOutput> outputs;
 
@@ -116,11 +117,17 @@ class Proposal {
     required this.createdAt,
     required this.updatedAt,
     this.datasetId,
+    this.serviceIds = const [],
     List<ProposalSource>? sources,
     List<ProposalOutput>? outputs,
   }) : sources = sources ?? [], outputs = outputs ?? [];
 
-  factory Proposal.create({required String title, required String clientId, String? datasetId}) {
+  factory Proposal.create({
+    required String title, 
+    required String clientId, 
+    String? datasetId,
+    List<String> serviceIds = const [],
+  }) {
     final now = DateTime.now();
     return Proposal(
       id: const Uuid().v4(),
@@ -129,6 +136,7 @@ class Proposal {
       createdAt: now,
       updatedAt: now,
       datasetId: datasetId,
+      serviceIds: serviceIds,
     );
   }
 
@@ -140,6 +148,7 @@ class Proposal {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'datasetId': datasetId,
+      'serviceIds': serviceIds,
       'sources': sources.map((s) => s.toJson()).toList(),
       'outputs': outputs.map((o) => o.toJson()).toList(),
     };
@@ -153,6 +162,7 @@ class Proposal {
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
       datasetId: json['datasetId'],
+      serviceIds: List<String>.from(json['serviceIds'] ?? []),
       sources: (json['sources'] as List<dynamic>?)
           ?.map((e) => ProposalSource.fromJson(e))
           .toList(),
@@ -169,6 +179,7 @@ class Proposal {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? datasetId,
+    List<String>? serviceIds,
     List<ProposalSource>? sources,
     List<ProposalOutput>? outputs,
   }) {
@@ -179,6 +190,7 @@ class Proposal {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       datasetId: datasetId ?? this.datasetId,
+      serviceIds: serviceIds ?? this.serviceIds,
       sources: sources ?? this.sources,
       outputs: outputs ?? this.outputs,
     );

@@ -62,15 +62,24 @@ class ProposalsService {
             .map((doc) => Proposal.fromJson(doc.data() as Map<String, dynamic>))
             .toList());
   }
+
+  /// Get all proposals once (fallback for stream)
+  Future<List<Proposal>> getProposalsOnce() async {
+    final snapshot = await _collection.orderBy('updatedAt', descending: true).get();
+    return snapshot.docs.map((doc) => Proposal.fromJson(doc.data() as Map<String, dynamic>)).toList();
+  }
 }
 
 /// Provider for a single proposal by ID
 final proposalProvider = StreamProvider.family<Proposal?, String>((ref, proposalId) {
   final collection = ref.watch(proposalsCollectionProvider);
-  return collection.doc(proposalId).snapshots().map((doc) {
-    if (!doc.exists) return null;
-    return Proposal.fromJson(doc.data() as Map<String, dynamic>);
-  });
+  
+  return collection.doc(proposalId)
+      .snapshots()
+      .map((doc) {
+        if (!doc.exists) return null;
+        return Proposal.fromJson(doc.data() as Map<String, dynamic>);
+      });
 });
 
 /// Provider for all proposals by client

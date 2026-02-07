@@ -248,8 +248,9 @@ Sources: $sources
     for (var source in proposal.sources) {
       buffer.writeln("\n--- SOURCE: ${source.name} (${source.type.displayName}) ---");
       if (source.content != null) {
-        buffer.writeln(source.content!.length > 15000
-            ? source.content!.substring(0, 15000) + "...[TRUNCATED]"
+        // Reduced to 8000 to stay within safe payload limits for Web/Proxy
+        buffer.writeln(source.content!.length > 8000
+            ? source.content!.substring(0, 8000) + "...[TRUNCATED]"
             : source.content);
       } else {
         buffer.writeln("[No text content available]");

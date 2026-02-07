@@ -37,7 +37,13 @@ class AIProxyService {
       throw Exception('User must be logged in to use AI Proxy.');
     }
 
-    final idToken = await user.getIdToken();
+    final idToken = await user.getIdToken().timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {
+        debugPrint('⚠️ AIProxyService: getIdToken timed out. Attempting with stale token or failing.');
+        throw Exception('Authentication timeout. Please refresh the page and try again.');
+      },
+    );
     if (idToken == null) {
       throw Exception('Failed to retrieve ID Token.');
     }

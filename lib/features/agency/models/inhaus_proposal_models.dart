@@ -230,10 +230,11 @@ class InhausOnePageQuote {
 
 /// INHAUS Color Palette
 class InhausColors {
-  static const background = '#1A0F2E';      // Dark purple-black
-  static const sectionHeader = '#6B46C1';   // Purple
+  static const background = '#05050B';      // Dark/Black
+  static const card = '#0F0F16';            // Subtle card elevation
+  static const sectionHeader = '#1A1423';   // Rounded purple bars
   static const textPrimary = '#FFFFFF';     // White
-  static const textSecondary = '#A0AEC0';   // Gray
-  static const priceBox = '#6B46C1';        // Purple
-  static const divider = '#4A5568';         // Dark gray
+  static const textSecondary = '#A0A0A0';   // Light Gray
+  static const priceBox = '#1A1423';        // Match section header style
+  static const divider = '#1A1423';         // Dark purple-black
 }

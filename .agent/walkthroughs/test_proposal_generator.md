@@ -9,23 +9,31 @@ Before testing, ensure your development environment is ready:
 - **Login**: Log in as an administrator or account manager to access campaign features.
 
 ## 2. Navigation & Setup
-1.  **Navigate to Campaigns**: From the main dashboard, click on the **Campaigns** icon in the sidebar.
-2.  **Select a Campaign**: Choose an existing campaign (e.g., "Campaign Strategy Brief - Bajaj") or create a new one.
-3.  **Advance to Design Phase**: 
-    - If the campaign is in "Researching" status, you must **Approve all Insights** first.
-    - Click **Proceed to Design Plan**. The status will change to **Designing**, and the "Creative Studio" and "Proposal" buttons will appear.
+1.  **Navigate to Agency Hub**: Click the **Agency** (Building) icon in the sidebar.
+2.  **Go to Sales**: Select the **Proposals** tab in the Sales Hub.
+3.  **Select Client**: Use the dropdown at the top to select a client (e.g., "Banco del Austro").
+4.  **Open Proposal**: Click on an existing proposal card (e.g., "SEO 2026") or create a new one.
 
-## 3. Testing Generation (Detailed Proposal)
-1.  **Locate the Button**: Find the blueprint-blue card titled **Design Phase Active**.
-2.  **Click Generate**: Click on **Generate Client Proposal (PDF)**.
-3.  **Observe Logs**:
-    - **UI**: A loading indicator ("Generating Proposal...") should appear.
-    - **Terminal (Functions)**: You should see the `copilotRuntime` log trigger and the `Proposal Specialist` execution start.
+## 3. Testing Generation
+1.  **Add Sources**: Ensure the proposal has sources (links, text, or files).
+2.  **Click Detailed Proposal**: In the **Studio** panel on the right, click **Detailed Proposal**.
+3.  **Observe**:
+    - **UI**: A circular progress indicator appears.
+    - **Proxy Bypass**: The app now uses the `proxyVertexAI` Cloud Function to bypass App Check and CORS issues.
 4.  **Verification**: 
-    - A success snackbar should appear: "Proposal Generated Successfully!".
-    - The PDF should automatically open in a new tab or trigger a system share/view dialog.
+    - A success snackbar appears.
+    - The PDF preview/share dialog opens.
 
-## 4. Visual Audit (The INHAUS Style)
+## 4. Persistent Outputs
+1.  **View History**: Generated outputs are listed in the **Outputs** section of the Studio panel.
+2.  **Re-viewing**: Click any item in the **Outputs** list; the app will re-generate and open the PDF immediately.
+
+## 5. Troubleshooting (Production)
+- **App Check Error**: If you see "App Check verification failed", the app will still function via the Proxy fallback.
+- **400 Bad Request**: Resolved by payload optimization (limit set to 8,000 chars) and automated JSON markdown stripping.
+- **Service Worker (404)**: If navigation fails, the app automatically unregisters stale service workers on reload.
+
+## 6. Visual Audit (The INHAUS Style)
 Once the PDF is open, verify the following visual markers to ensure the **"Premium Agency"** look:
 - [ ] **Background**: Entire page should have a dark purple-black theme (#1A0F2E).
 - [ ] **Cover Page**: Should feature "INHAUS ESTUDIO CREATIVO" in purple, with a large, bold white title "BUSINESS PROPOSAL".

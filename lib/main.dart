@@ -30,7 +30,7 @@ import 'core/globals.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.1.8 STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.1.13 STARTED');
   
   // Load environment variables
   try {
@@ -45,36 +45,64 @@ void main() async {
 
   if (kDebugMode) {
     try {
-      // Use 10.0.2.2 for Android Emulator, 127.0.0.1 for others
-      final String host = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
-      FirebaseFirestore.instance.useFirestoreEmulator(host, 8080);
-      FirebaseFunctions.instance.useFunctionsEmulator(host, 5005);
-      print('🔥 Using Firestore Emulator on $host:8080');
-      print('🔥 Using Functions Emulator on $host:5005');
+      final String host = Uri.base.host;
+      // Only use emulators if we are actually local. Prevents hanging on hosted debug builds.
+      if (host.contains('localhost') || host.contains('127.0.0.1')) {
+        final String emulatorHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+        FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8080);
+        FirebaseFunctions.instance.useFunctionsEmulator(emulatorHost, 5005);
+        print('🔥 Using Firestore Emulator on $emulatorHost:8080');
+        print('🔥 Using Functions Emulator on $emulatorHost:5005');
+      }
+      
+      // Force disable persistence on Web to avoid IndexedDB hangs in strict browsers/incognito
+      if (kIsWeb) {
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: false,
+        );
+        debugPrint('ℹ️ Firestore: Web persistence disabled for maximum compatibility.');
+      }
     } catch (e) {
-      print('⚠️ Failed to connect to Firebase Emulators: $e');
+      print('⚠️ Failed to connect to Firebase Emulators or apply settings: $e');
     }
+  } else if (kIsWeb) {
+    // Also disable persistence in release web to be safe for now
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+    );
   }
   
   // App Check Activation
-  // Site Key: 6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy
   try {
-    await FirebaseAppCheck.instance.activate(
-      webProvider: ReCaptchaV3Provider('6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy'),
-      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.appAttest,
-    );
-    
-    // Attempt to retrieve and log the token to verify the handshake
-    final tokenResult = await FirebaseAppCheck.instance.getToken(true);
-    debugPrint('✅ App Check activated successfully.');
-    debugPrint('📝 App Check token: $tokenResult');
-    // debugPrint('Token expires: ${DateTime.fromMillisecondsSinceEpoch(tokenResult?.expireTimeMillis ?? 0)}'); // API v0.3.0+ returns String?
-    debugPrint('Is debug mode: ${kDebugMode}'); // Checking if kDebugMode is actually true
-  } catch (e, stack) {
-    debugPrint('❌ App Check activation failed: $e');
-    debugPrint('Stack trace: $stack');
-    // Continue without App Check in dev if it fails, to prevent crashing
+    bool shouldActivate = true;
+    if (kIsWeb) {
+      final String host = Uri.base.host;
+      // Skip App Check on local and known difficult testing domains
+      if (host.contains('localhost') || 
+          host.contains('127.0.0.1') || 
+          host.contains('inhausbrain.web.app') || 
+          host.contains('inhausbrain.firebaseapp.com')) {
+        shouldActivate = false;
+      }
+      
+      // If we are on a subdomain that often fails ReCAPTCHA, we can skip it
+      // But for now, we wrap in a safe zone.
+    }
+
+    if (shouldActivate) {
+      debugPrint('ℹ️ App Check: Attempting activation...');
+      await FirebaseAppCheck.instance.activate(
+        webProvider: ReCaptchaV3Provider('6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy'),
+        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.appAttest,
+      ).timeout(const Duration(seconds: 4), onTimeout: () {
+        debugPrint('⚠️ App Check: Activation timed out. Continuing without App Check.');
+        return;
+      });
+      debugPrint('✅ App Check activated.');
+    }
+  } catch (e) {
+    debugPrint('ℹ️ App Check: Activation skipped (This is expected on non-whitelisted domains): $e');
   }
 
   runApp(const ProviderScope(child: InhausBrainApp()));

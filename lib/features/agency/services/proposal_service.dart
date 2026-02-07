@@ -17,7 +17,8 @@ import 'inhaus_proposal_pdf_generator.dart';
 import 'inhaus_proposal_slides_generator.dart';
 import 'service_catalog_repository.dart';
 import '../models/agency_service_model.dart';
-
+import '../../services/services_repository.dart' as new_repo;
+import '../../services/models/service_model.dart' as new_sm;
 
 class ProposalService {
   static final ServiceCatalogRepository _catalogRepository = ServiceCatalogRepository();
@@ -107,13 +108,26 @@ $sources
     final catalog = await _catalogRepository.getCatalog();
     final catalogContext = catalog != null ? _buildCatalogContext(catalog) : "";
     
+    // Fetch specific services if selected
+    String selectedServicesContext = "";
+    if (proposal.serviceIds.isNotEmpty) {
+      final repo = new_repo.ServicesRepository();
+      final selectedServices = await repo.getServicesByIds(proposal.serviceIds);
+      if (selectedServices.isNotEmpty) {
+        selectedServicesContext = "\n--- SELECTED SERVICES (USER HAS CHOSEN THESE) ---\n";
+        for (var s in selectedServices) {
+          selectedServicesContext += "- ${s.name} (${s.nameEs}): \$${s.basePrice} - ${s.execution}\n";
+        }
+      }
+    }
+    
     // Inject Date & Language Context
     final now = DateTime.now();
-    final dateFormat = DateFormat('MMMM, d - yyyy', 'es'); // Always Spanish format for "Febrero, 4 - 2026" style, or adapt if needed
+    final dateFormat = DateFormat('MMMM, d - yyyy', 'es'); // Always Spanish format
     final dateStr = dateFormat.format(now);
-    final dateContext = "CURRENT DATE: ${dateStr[0].toUpperCase()}${dateStr.substring(1)}"; // Capitalize first letter
+    final dateContext = "CURRENT DATE: ${dateStr[0].toUpperCase()}${dateStr.substring(1)}";
     
-    final fullSources = "$catalogContext\n\n$dateContext\n\n$sources";
+    final fullSources = "$catalogContext\n$selectedServicesContext\n\n$dateContext\n\n$sources";
     
     final config = AIModelConfig.geminiPro;
 
@@ -124,9 +138,18 @@ $sources
       ref: ref,
     );
 
-    // 2. Parse JSON
-    String cleanJson = result.text.replaceAll('```json', '').replaceAll('```', '').trim();
-    final Map<String, dynamic> jsonData = jsonDecode(cleanJson);
+    // 2. Parse JSON with robustness
+    Map<String, dynamic> jsonData;
+    try {
+      jsonData = _parseModularJson(result.text);
+    } catch (e) {
+      debugPrint("ProposalService: Initial JSON parse failed: $e. Retrying with loose parsing...");
+      try {
+        jsonData = jsonDecode(_stripMarkdown(result.text));
+      } catch (innerE) {
+        throw Exception("Failed to parse AI response as valid Inhaus JSON. Please try again with a more specific prompt.");
+      }
+    }
 
     // 3. Load logos
     Uint8List? agencyLogo;
@@ -188,13 +211,26 @@ $sources
     final catalog = await _catalogRepository.getCatalog();
     final catalogContext = catalog != null ? _buildCatalogContext(catalog) : "";
     
+    // Fetch specific services if selected
+    String selectedServicesContext = "";
+    if (proposal.serviceIds.isNotEmpty) {
+      final repo = new_repo.ServicesRepository();
+      final selectedServices = await repo.getServicesByIds(proposal.serviceIds);
+      if (selectedServices.isNotEmpty) {
+        selectedServicesContext = "\n--- SELECTED SERVICES (USER HAS CHOSEN THESE) ---\n";
+        for (var s in selectedServices) {
+          selectedServicesContext += "- ${s.name} (${s.nameEs}): \$${s.basePrice} - ${s.execution}\n";
+        }
+      }
+    }
+
     // Inject Date & Language Context
     final now = DateTime.now();
     final dateFormat = DateFormat('MMMM, d - yyyy', 'es'); 
     final dateStr = dateFormat.format(now);
     final dateContext = "CURRENT DATE: ${dateStr[0].toUpperCase()}${dateStr.substring(1)}";
 
-    final fullSources = "$catalogContext\n\n$dateContext\n\n$sources";
+    final fullSources = "$catalogContext\n$selectedServicesContext\n\n$dateContext\n\n$sources";
 
     final config = AIModelConfig.geminiPro;
 
@@ -205,9 +241,18 @@ $sources
       ref: ref,
     );
 
-    // 2. Parse JSON
-    String cleanJson = result.text.replaceAll('```json', '').replaceAll('```', '').trim();
-    final Map<String, dynamic> jsonData = jsonDecode(cleanJson);
+    // 2. Parse JSON with robustness
+    Map<String, dynamic> jsonData;
+    try {
+      jsonData = _parseModularJson(result.text);
+    } catch (e) {
+      debugPrint("ProposalService: Initial JSON parse failed: $e. Retrying with loose parsing...");
+      try {
+        jsonData = jsonDecode(_stripMarkdown(result.text));
+      } catch (innerE) {
+        throw Exception("Failed to parse AI response as valid Inhaus JSON. Please try again with a more specific prompt.");
+      }
+    }
 
     // 3. Load logos
     Uint8List? agencyLogo;
@@ -258,15 +303,31 @@ $sources
     }
   }
 
-  /// System prompt for building INHAUS style JSON
+  /// System prompt for building INHAUS style JSON v2.0
   static String _inhausProposalPrompt(String sources, ProposalType type, ProposalLanguage language) {
-    final targetLang = language == ProposalLanguage.spanish ? "SPANISH (Ecuador/LatAm)" : "ENGLISH (Professional)";
+    final targetLang = language == ProposalLanguage.spanish ? "SPANISH (LatAm/Ecuador)" : "ENGLISH (Professional)";
     
     return '''
-You are the Bilingual Client Proposal Specialist for Inhaus Brain.
-Your goal is to generate professional, stunning, and conversion-focused business proposals in the **INHAUS style**.
+Bilingual Client Proposal Specialist - INHAUS Edition (v2.0)
 
-OUTPUT STRICT JSON ONLY.
+You are the Bilingual Client Proposal Specialist for Inhaus Brain. Your goal is to generate professional, stunning, and conversion-focused business proposals in the authentic INHAUS style.
+
+🎯 CORE OBJECTIVE
+Generate valid JSON objects that represent business proposals.
+
+🎨 INHAUS VISUAL IDENTITY
+* Backgrounds: Dark/Black (#05050B).
+* Headers: Rounded purple bars (#1A1423).
+* Typography: Montserrat. White (#FFFFFF) for titles, Light Gray (#A0A0A0) for body text.
+
+💰 PRICING RULES (STRICT)
+1. **NO PLACEHOLDERS**: Never use "USD XXX", "TBD", or "$0.00".
+2. **REALISTIC ESTIMATES**: If you don't find a price in the sources/catalog, use these standard INHAUS ranges:
+   - Monthly Management (RRSS/Ads): $1,200.00 - $3,500.00 USD
+   - Content Creation Day: $800.00 - $1,500.00 USD
+   - Strategy/Audit: $500.00 - $1,200.00 USD
+   - Branding/Web Dev: $1,500.00 - $5,000.00 USD
+3. **Currency**: Always use the currency indicated in the sources (Default: USD).
 
 SOURCES FOR CONTEXT:
 $sources
@@ -276,20 +337,30 @@ PROPOSAL CONFIGURATION:
 - TARGET LANGUAGE: $targetLang
 
 GUIDELINES:
-1. **Language**: Translate ALL content (descriptions, services, bullets) to $targetLang.
-   - If Spanish: Use natural, professional LatAm Spanish.
-   - If English: Use professional business English.
-2. **Visual Style**: Use the INHAUS visual style (dark purple theme).
-3. **Pricing**: Ensure pricing is realistic based on the Service Catalog if provided.
-4. **Date**: Use the "CURRENT DATE" provided in the sources for the "date" field.
-5. ${type == ProposalType.onePageQuote ? 
-    "Focus on a high-level summary with key services and total price." : 
-    "Provide detailed sections for each major service area with bullets, includes, and excludes."}
+1. **Language**: Translate ALL content to $targetLang.
+2. **Hierarchy**: Map client needs to services like SEO, AEO, Paid Media, Creative, Strategy, Dev, RRSS, Content.
+3. **Selected Services**: If "SELECTED SERVICES" are provided in the sources, you MUST prioritize them. Use their exact names and base prices.
+4. **JSON Only**: Return ONLY the JSON object.
 
 JSON SCHEMA:
 ${type == ProposalType.onePageQuote ? 
-    "Return JSON matching InhausOnePageQuote model: {header, summary, footer}" : 
-    "Return JSON matching InhausDetailedProposal model: {header, sections, footer}"}
+    '''{
+  "header": {"agency_title": "INHAUS ESTUDIO CREATIVO", "client_name": "...", "date": "Month, Day - Year"},
+  "summary": {"intro": "...", "key_services": ["..."], "total_price": {"label": "INVERSIÓN MENSUAL:", "amount": "$1,500.00 USD"}, "cta": "..."},
+  "footer": "inhauscorp.com"
+}''' : 
+    '''{
+  "header": {"agency_title": "INHAUS ESTUDIO CREATIVO", "client_name": "...", "date": "Month, Day - Year"},
+  "sections": [{
+    "title": "...",
+    "description": "...",
+    "bullets": ["..."],
+    "includes": ["..."],
+    "excludes": ["..."],
+    "price": {"label": "PRECIO MENSUAL:", "amount": "$1,500.00 USD"}
+  }],
+  "footer": "inhauscorp.com"
+}'''}
 ''';
   }
 
@@ -434,9 +505,25 @@ ${type == ProposalType.onePageQuote ?
       return null;
   }
 
-  // Helper for basic JSON parsing
-  static Map<String, dynamic> _parseLooseJson(String text) {
-     return jsonDecode(text);
+  // Helper for modular JSON parsing (extract from tags or direct)
+  static Map<String, dynamic> _parseModularJson(String text) {
+     final clean = _stripMarkdown(text);
+     return jsonDecode(clean);
+  }
+
+  static String _stripMarkdown(String text) {
+    if (text.contains('```json')) {
+      final parts = text.split('```json');
+      if (parts.length > 1) {
+        return parts[1].split('```')[0].trim();
+      }
+    } else if (text.contains('```')) {
+      final parts = text.split('```');
+      if (parts.length > 1) {
+        return parts[1].split('```')[0].trim();
+      }
+    }
+    return text.trim();
   }
 
 

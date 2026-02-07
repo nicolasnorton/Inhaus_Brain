@@ -30,18 +30,20 @@ class ClientState {
 
   ClientState copyWith({
     List<Client>? clients,
-    String? selectedClientId,
+    Object? selectedClientId = _undefined,
     bool? isLoading,
     String? error,
   }) {
     return ClientState(
       clients: clients ?? this.clients,
-      selectedClientId: selectedClientId ?? this.selectedClientId,
+      selectedClientId: selectedClientId == _undefined ? this.selectedClientId : (selectedClientId as String?),
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
   }
 }
+
+const Object _undefined = Object();
 
 class ClientNotifier extends StateNotifier<ClientState> {
   final ClientRepository _repository;
@@ -82,7 +84,7 @@ class ClientNotifier extends StateNotifier<ClientState> {
     });
   }
 
-  void selectClient(String clientId) {
+  void selectClient(String? clientId) {
     state = state.copyWith(selectedClientId: clientId);
   }
 

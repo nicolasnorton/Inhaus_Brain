@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../proposals/screens/proposals_main_screen.dart';
 import '../models/agency_models.dart';
 
+import '../../services/screens/services_screen.dart';
+
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
 
@@ -19,7 +21,7 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -38,6 +40,7 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
           tabs: const [
             Tab(icon: Icon(Icons.campaign), text: 'Marketing'),
             Tab(icon: Icon(Icons.description), text: 'Proposals'),
+            Tab(icon: Icon(Icons.inventory_2), text: 'Services'),
             Tab(icon: Icon(Icons.people), text: 'CRM'),
           ],
         ),
@@ -50,6 +53,9 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
           
           // ProposalsLM Module
           ProposalsMainScreen(),
+
+          // INHAUS Services Catalog
+          ServicesScreen(),
 
           // CRM Tab
           _CrmTab(),
