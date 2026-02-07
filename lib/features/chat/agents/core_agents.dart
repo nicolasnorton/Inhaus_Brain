@@ -106,6 +106,7 @@ class CreativeAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -144,6 +145,7 @@ class DesignAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -181,6 +183,7 @@ class VideoProductionAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -218,6 +221,7 @@ class CustomerServiceAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -255,6 +259,7 @@ class CRMAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -292,6 +297,7 @@ class CSuiteAdvisorAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -330,7 +336,7 @@ class StorytellingAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
-      modelConfig: AIModelConfig.geminiFlash, // Fast iteration
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -369,6 +375,7 @@ class CopywriterAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -408,6 +415,7 @@ class DeveloperAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));

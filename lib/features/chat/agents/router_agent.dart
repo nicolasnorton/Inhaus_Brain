@@ -6,6 +6,7 @@ import 'base_agent.dart';
 import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
+import '../../../core/tokens/llm_provider.dart'; // Import for AIModelConfig
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/utils/sanitization_utils.dart';
 import '../services/memory_service.dart';
@@ -93,6 +94,7 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
       classificationPrompt,
       apiKey: apiKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     
     // Parse Intent & Post to Blackboard

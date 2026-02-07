@@ -10,6 +10,8 @@ import '../providers/knowledge_service_providers.dart';
 import '../../../../core/services/integration_service.dart';
 import '../../connectors/models/connected_account_model.dart';
 import '../../../../core/services/sources_service.dart';
+import '../../services/services/services_repository.dart' as services_repo;
+import '../../services/models/service_model.dart' as service_model;
 
 class AddSourceDialog extends ConsumerStatefulWidget {
   final Function(KnowledgeSource) onSourceAdded;
@@ -25,9 +27,11 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
   
-  String? _activeInputMode; // 'url', 'text', 'drive', null (default)
+  String? _activeInputMode; // 'url', 'text', 'drive', 'services', null (default)
   List<GoogleDriveFile>? _driveFiles;
   bool _isLoadingDrive = false;
+  List<service_model.Service>? _availableServices;
+  Set<String> _selectedServiceIds = {};
 
   @override
   void dispose() {
@@ -275,6 +279,8 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
                         _buildOptionButton(Icons.hub, "Platforms", () => setState(() => _activeInputMode = 'platforms')),
                         const SizedBox(width: 8),
                         _buildOptionButton(Icons.assignment, "Text", () => setState(() => _activeInputMode = 'text')),
+                        const SizedBox(width: 8),
+                        _buildOptionButton(Icons.business_center, "Services", () => _fetchServices()),
                       ],
                     ),
                   ],
@@ -335,6 +341,10 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
         ),
       );
       onConfirm = _handleAddText;
+    } else if (_activeInputMode == 'services') {
+      title = 'Select Services';
+      content = _buildServicesSelector();
+      onConfirm = _handleAddServices;
     } else if (_activeInputMode == 'platforms') {
       title = 'Connect Platform';
       content = Column(
@@ -461,5 +471,94 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
         ),
       ),
     );
+  }
+
+  Future<void> _fetchServices() async {
+    setState(() {
+      _isLoadingDrive = true; // Reuse loading state
+      _activeInputMode = 'services';
+    });
+    try {
+      final repo = services_repo.ServicesRepository();
+      final services = await repo.streamServices().first;
+      setState(() => _availableServices = services);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading services: $e')));
+        setState(() => _activeInputMode = null);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingDrive = false);
+    }
+  }
+
+  Widget _buildServicesSelector() {
+    if (_availableServices == null || _availableServices!.isEmpty) {
+      return const Center(child: Text("No services available", style: TextStyle(color: Colors.white38)));
+    }
+
+    return SizedBox(
+      height: 300,
+      child: ListView.builder(
+        itemCount: _availableServices!.length,
+        itemBuilder: (context, index) {
+          final service = _availableServices![index];
+          final isSelected = _selectedServiceIds.contains(service.id);
+          
+          return CheckboxListTile(
+            value: isSelected,
+            onChanged: (bool? value) {
+              setState(() {
+                if (value == true) {
+                  _selectedServiceIds.add(service.id);
+                } else {
+                  _selectedServiceIds.remove(service.id);
+                }
+              });
+            },
+            title: Text(service.nameEs, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            subtitle: Text('\$${service.basePrice}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            activeColor: AppTheme.primary,
+            checkColor: Colors.white,
+          );
+        },
+      ),
+    );
+  }
+
+  void _handleAddServices() {
+    if (_selectedServiceIds.isEmpty) return;
+    
+    final selectedServices = _availableServices!.where((s) => _selectedServiceIds.contains(s.id)).toList();
+    
+    // Create a single knowledge source with all selected services
+    final serviceNames = selectedServices.map((s) => s.nameEs).join(', ');
+    final serviceDetails = selectedServices.map((s) {
+      return '''
+${s.nameEs} (${s.name})
+- Ejecución: ${s.execution}
+- Equipo: ${s.team.join(', ')}
+- Entregables: ${s.deliverables.join(', ')}
+- Incluye: ${s.includes.join(', ')}
+- No incluye: ${s.excludes.join(', ')}
+- Precio: \$${s.basePrice}
+''';
+    }).join('\n---\n');
+
+    final newSource = KnowledgeSource(
+      id: const Uuid().v4(),
+      title: 'Services: $serviceNames',
+      content: serviceDetails,
+      type: KnowledgeSourceType.text,
+      createdAt: DateTime.now(),
+      metadata: {
+        'source': 'services',
+        'serviceIds': _selectedServiceIds.toList(),
+        'serviceCount': _selectedServiceIds.length.toString(),
+      },
+    );
+    
+    widget.onSourceAdded(newSource);
+    Navigator.pop(context);
   }
 }

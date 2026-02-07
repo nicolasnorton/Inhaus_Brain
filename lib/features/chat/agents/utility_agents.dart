@@ -5,6 +5,7 @@ import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
+import '../../../core/tokens/llm_provider.dart'; // Import for AIModelConfig
 
 // 1. Client Onboarding Agent
 class ClientOnboardingAgent extends BaseAgent {
@@ -38,6 +39,7 @@ class ClientOnboardingAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     )).text;
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
@@ -76,6 +78,7 @@ class ExtractorAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     )).text;
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
@@ -114,6 +117,7 @@ class ParserAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     )).text;
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
@@ -152,6 +156,7 @@ class SummarizerAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     )).text;
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
@@ -190,6 +195,7 @@ class SecurityAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     )).text;
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
@@ -228,6 +234,7 @@ class DataEngineerAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     )).text;
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
@@ -266,6 +273,7 @@ class VisionAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));

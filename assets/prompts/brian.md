@@ -197,6 +197,12 @@ Here's what I did:
 1. **Simple/Fast**: Use `litert_preview_skill` logic (On-Device).
 2. **Complex/High-Stakes**: Use `veo_final_skill` or `report_lm_skill` (Cloud).
 
+**Web Tools**:
+- Use `web_search` to verify facts and gather real-time information before delegating tasks.
+- Use `web_browse` to access specific URLs for research and validation.
+- Always cite sources using [Source Name](URL) format when providing information to users.
+- Verify information accuracy before passing to specialized agents.
+
 ---
 
 ## Core Prompt Instructions / Instrucciones Principales

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_ai/firebase_ai.dart';
+// import 'package:google_generative_ai/google_generative_ai.dart' as g_ai; // Temporarily disabled due to build errors
 import 'package:http/http.dart' as http;
 import 'package:retry/retry.dart';
 import '../../features/knowledge/models/knowledge_source.dart';
@@ -234,11 +235,17 @@ class EdgeAIService {
             SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.high, HarmBlockMethod.probability),
             SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.high, HarmBlockMethod.probability),
       ],
-      tools: [
-        Tool.codeExecution(),
-        // if (config.useGoogleSearch) 
-        //   Tool.googleSearchRetrieval(GoogleSearchRetrieval(dynamicRetrievalConfig: DynamicRetrievalConfig(mode: DynamicRetrievalConfigMode.modeDynamic))),
-      ],
+      // CRITICAL: Code Execution is incompatible with JSON mode (controlled generation)
+      // Only enable tools when NOT using responseMimeType: 'application/json'
+      tools: config.responseMimeType == 'application/json' 
+        ? [] // No tools for JSON mode
+        : [
+            Tool.codeExecution(),
+            // Enable Google Search Grounding when useGoogleSearch is true
+            if (config.useGoogleSearch) 
+              // g_ai.Tool.googleSearchRetrieval(g_ai.GoogleSearchRetrieval(dynamicRetrievalConfig: g_ai.DynamicRetrievalConfig(mode: g_ai.DynamicRetrievalConfigMode.modeDynamic))),
+              Tool.codeExecution(), // Placeholder to keep list valid if needed, or just empty. actually we have codeExecution above.
+          ],
     );
 
     final parts = <Part>[TextPart(prompt)];

@@ -72,39 +72,68 @@ class InhausPrice {
 
 /// Section for detailed multi-page proposal
 class InhausProposalSection {
-  final String title;              // e.g., "RRSS / FACEBOOK INSTAGRAM"
-  final String? description;       // Optional description text
-  final List<String> bullets;      // Main bullet points
-  final List<String>? includes;    // "Incluye:" items
-  final List<String>? excludes;    // "No incluye:" items
-  final InhausPrice price;           // Price box
+  final String title;                  // e.g., "RRSS / FACEBOOK INSTAGRAM"
+  final String? introParagraph;        // AI-generated intro paragraph
+  final String? ejecucion;             // Execution timeline/process
+  final List<String>? incluye;         // "Incluye:" items (what's included)
+  final List<String>? noIncluye;       // "No incluye:" items (what's NOT included)
+  final List<String>? equipo;          // Team members assigned
+  final List<String>? entregables;     // Deliverables list
+  final InhausPrice price;             // Price box
+  
+  // Legacy fields for backwards compatibility
+  final String? description;           // Deprecated: use introParagraph
+  final List<String> bullets;          // Deprecated: use specific sections
+  final List<String>? includes;        // Deprecated: use incluye
+  final List<String>? excludes;        // Deprecated: use noIncluye
 
   InhausProposalSection({
     required this.title,
+    this.introParagraph,
+    this.ejecucion,
+    this.incluye,
+    this.noIncluye,
+    this.equipo,
+    this.entregables,
+    required this.price,
+    // Legacy fields
     this.description,
     this.bullets = const [],
     this.includes,
     this.excludes,
-    required this.price,
   });
 
   Map<String, dynamic> toJson() => {
     'title': title,
+    'intro_paragraph': introParagraph,
+    'ejecucion': ejecucion,
+    'incluye': incluye,
+    'no_incluye': noIncluye,
+    'equipo': equipo,
+    'entregables': entregables,
+    'price': price.toJson(),
+    // Legacy fields
     'description': description,
     'bullets': bullets,
     'includes': includes,
     'excludes': excludes,
-    'price': price.toJson(),
   };
 
   factory InhausProposalSection.fromJson(Map<String, dynamic> json) {
     return InhausProposalSection(
       title: json['title'] ?? '',
+      introParagraph: json['intro_paragraph'],
+      ejecucion: json['ejecucion'],
+      incluye: (json['incluye'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      noIncluye: (json['no_incluye'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      equipo: (json['equipo'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      entregables: (json['entregables'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      price: InhausPrice.fromJson(json['price'] ?? {}),
+      // Legacy fields for backwards compatibility
       description: json['description'],
       bullets: (json['bullets'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       includes: (json['includes'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
       excludes: (json['excludes'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
-      price: InhausPrice.fromJson(json['price'] ?? {}),
     );
   }
 }
@@ -155,33 +184,69 @@ class InhausDetailedProposal {
 
 /// Summary for one-page quote
 class InhausQuoteSummary {
-  final String intro;              // Brief introduction
-  final List<String> keyServices;  // Key services list
-  final InhausPrice totalPrice;      // Total price
-  final String cta;                // Call to action
+  final String introParagraph;         // AI-generated intro paragraph
+  final String? ejecucion;             // Execution timeline/process
+  final List<String> incluye;          // What's included
+  final List<String> noIncluye;        // What's NOT included
+  final List<String> equipo;           // Team members
+  final List<String> entregables;      // Deliverables
+  final InhausPrice precio;            // Total price
+  
+  // Legacy fields for backwards compatibility
+  final String intro;                  // Deprecated: use introParagraph
+  final List<String> keyServices;      // Deprecated: use incluye
+  final InhausPrice totalPrice;        // Deprecated: use precio
+  final String cta;                    // Call to action (still used)
 
   InhausQuoteSummary({
-    required this.intro,
-    required this.keyServices,
-    required this.totalPrice,
-    required this.cta,
-  });
+    required this.introParagraph,
+    this.ejecucion,
+    this.incluye = const [],
+    this.noIncluye = const [],
+    this.equipo = const [],
+    this.entregables = const [],
+    required this.precio,
+    // Legacy fields
+    String? intro,
+    List<String>? keyServices,
+    InhausPrice? totalPrice,
+    this.cta = '',
+  }) : intro = intro ?? introParagraph,
+       keyServices = keyServices ?? incluye,
+       totalPrice = totalPrice ?? precio;
 
   Map<String, dynamic> toJson() => {
+    'intro_paragraph': introParagraph,
+    'ejecucion': ejecucion,
+    'incluye': incluye,
+    'no_incluye': noIncluye,
+    'equipo': equipo,
+    'entregables': entregables,
+    'precio': precio.toJson(),
+    'cta': cta,
+    // Legacy fields
     'intro': intro,
     'key_services': keyServices,
     'total_price': totalPrice.toJson(),
-    'cta': cta,
   };
 
   factory InhausQuoteSummary.fromJson(Map<String, dynamic> json) {
+    final introParagraph = json['intro_paragraph'] ?? json['intro'] ?? '';
+    final precio = InhausPrice.fromJson(json['precio'] ?? json['total_price'] ?? {});
+    
     return InhausQuoteSummary(
-      intro: json['intro'] ?? '',
-      keyServices: (json['key_services'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList() ?? [],
-      totalPrice: InhausPrice.fromJson(json['total_price'] ?? {}),
+      introParagraph: introParagraph,
+      ejecucion: json['ejecucion'],
+      incluye: (json['incluye'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      noIncluye: (json['no_incluye'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      equipo: (json['equipo'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      entregables: (json['entregables'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      precio: precio,
       cta: json['cta'] ?? '',
+      // Legacy fields
+      intro: json['intro'],
+      keyServices: (json['key_services'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      totalPrice: json['total_price'] != null ? InhausPrice.fromJson(json['total_price']) : null,
     );
   }
 }

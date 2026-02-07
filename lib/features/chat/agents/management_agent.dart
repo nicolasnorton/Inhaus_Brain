@@ -6,6 +6,7 @@ import 'package:inhaus_brain/features/chat/agents/base_agent.dart';
 import 'package:inhaus_brain/features/chat/models/chat_models.dart';
 import 'package:inhaus_brain/features/knowledge/models/knowledge_source.dart';
 import 'package:inhaus_brain/core/services/edge_ai_service.dart';
+import 'package:inhaus_brain/core/tokens/llm_provider.dart'; // Import for AIModelConfig
 import 'package:inhaus_brain/core/adk/services/adk_event_bus.dart';
 import 'package:inhaus_brain/core/mcp/agent_tool.dart';
 import 'package:inhaus_brain/features/campaigns/tools/campaign_tools.dart';
@@ -133,6 +134,7 @@ Use this EXACT format:
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
     );
     
     final text = result.text.trim();

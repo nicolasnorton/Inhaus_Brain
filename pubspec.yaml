@@ -85,6 +85,7 @@ dependencies:
   syncfusion_flutter_pdf: ^32.1.25
   pdf: ^3.11.1
   printing: ^5.13.2
+  google_generative_ai: ^0.4.7
 
 
 dev_dependencies:

@@ -174,6 +174,7 @@ class AccountDirectorAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       ref: ref,
     );
   }
@@ -258,6 +259,7 @@ class EditorialManagerAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       ref: ref,
     );
   }
@@ -297,6 +299,7 @@ class MediaBuyerAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       ref: ref,
     );
   }
@@ -336,6 +339,7 @@ class PerformanceAnalystAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       ref: ref,
     );
   }
@@ -379,6 +383,7 @@ class SEOAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       ref: ref,
     );
   }
@@ -422,6 +427,7 @@ class AEOAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
       ref: ref,
     );
   }
