@@ -521,6 +521,8 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             }
 
             // --- PATH C: TEXT GENERATION (Gemini) ---
+            console.log(`VertexAI Proxy: Calling Gemini model: ${modelId} for prompt length: ${typeof prompt === 'string' ? prompt.length : 'multimodal'}`);
+
             const generativeModel = vertexAI.getGenerativeModel({
                 model: modelId,
                 systemInstruction: systemInstruction, // Optional system prompt

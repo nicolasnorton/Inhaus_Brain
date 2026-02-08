@@ -196,7 +196,7 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final docId = docRef.id;
 
-       // 3. Embeddings via Vertex AI
+    // 3. Embeddings via Vertex AI
     List<List<double>> embeddings = [];
     try {
       // Strategy: Try Vertex (OAuth) first, then fallback to Gemini Key (API Key)
@@ -223,13 +223,13 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
               apiKey: isApiKey ? vertexKey : null,
             );
          } else {
-           throw Exception('No Vertex Token available for initial attempt');
+            throw Exception('No Vertex Token available for initial attempt');
          }
       } catch (e) {
          final errStr = _safeError(e);
          
          if (errStr.contains('401') || errStr.contains('UNAUTHENTICATED')) {
-            debugPrint('KnowledgeApi: Vertex Embedding 401 (Expected with API Key). Fallback to Gemini Key...');
+            debugPrint('KnowledgeApi: Vertex Embedding 401. Fallback to Gemini Key...');
          } else {
             debugPrint('KnowledgeApi: Vertex Embedding failed ($errStr). Attempting fallback to Gemini Key...');
          }
@@ -242,15 +242,14 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
               apiKey: geminiKey,
             );
          } else {
-            // Rethrow original error if no fallback
-            throw Exception('Vertex Failed and no Gemini Key found: $errStr');
+            // Do NOT rethrow, just log and continue with empty embeddings to avoid crashing the whole pipeline
+            debugPrint('KnowledgeApi: ⚠️ CRITICAL - No AI keys found for embeddings. Chunks will be stored without vector data.');
          }
       }
     } catch (e) {
       final err = _safeError(e);
-      debugPrint('Embedding generation failed: $err');
-      // For MVP, we might fail or store empty. Let's fail to warn user.
-      throw Exception('Failed to generate embeddings: $err');
+      debugPrint('Embedding generation failed (handled): $err');
+      // Continue without embeddings
     }
 
     // 4. Store Chunks with Vectors

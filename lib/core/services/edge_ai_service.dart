@@ -568,13 +568,14 @@ class EdgeAIService {
     // Simulate On-Device Latency (fast!)
     await Future.delayed(const Duration(milliseconds: 150)); 
     
-    final sampleResponse = "LiteRT (${config.modelId}): Analyzed '$prompt'. Result: [Fast On-Device Preview] Content generated successfully.";
+    // CRITICAL: DO NOT echo the raw '$prompt' back here as it will leak system instructions if this is a fallback.
+    final sampleResponse = "LiteRT (${config.modelId}): Analyzed request locally. [Fast On-Device Preview] Content generated successfully.";
     
     return EdgeAIResult(
       sampleResponse, 
       AIProximity.local, 
       modelUsed: config.modelId,
-      confidence: 0.85, // Good but maybe not perfect
+      confidence: 0.85, 
     );
   }
 

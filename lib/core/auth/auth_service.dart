@@ -263,6 +263,17 @@ class AuthService {
   /// Refreshes the Google OAuth token if the user is signed in.
   /// Used by Vertex AI services to ensure valid credentials.
   Future<String?> getFreshVertexToken() async {
+    final user = currentUser;
+    if (user == null) return null;
+    
+    // Safety: Only attempt Google silent sign-in if the user actually has a Google provider.
+    // This prevents console errors and unnecessary GIS popups for email/password users.
+    final isGoogleUser = user.providerData.any((p) => p.providerId == 'google.com');
+    if (!isGoogleUser) {
+       // Check if there is already a vertex key in the vault we can use
+       return await _vault.getVertexKey();
+    }
+
     try {
       final googleUser = _googleSignIn.currentUser ?? await _googleSignIn.signInSilently();
       if (googleUser != null) {
