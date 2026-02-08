@@ -1,0 +1,25 @@
+[
+    {
+        "origin": [
+            "https://inhausbrain.web.app",
+            "https://inhausbrain.firebaseapp.com",
+            "http://localhost:5000",
+            "http://localhost:5001",
+            "http://localhost:5002",
+            "http://localhost:8080"
+        ],
+        "method": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "HEAD"
+        ],
+        "responseHeader": [
+            "Content-Type",
+            "Authorization",
+            "x-goog-resumable"
+        ],
+        "maxAgeSeconds": 3600
+    }
+]

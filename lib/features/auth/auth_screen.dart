@@ -104,7 +104,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                 ),
                 const Text(
-                  'v1.1.18',
+                  'v1.1.21',
                   style: TextStyle(color: Colors.white24, fontSize: 8),
                 ),
                 const SizedBox(height: 54),

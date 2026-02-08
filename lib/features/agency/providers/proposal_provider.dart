@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../agency/models/proposal_model.dart';
+import '../../proposals/models/proposal_model.dart';
 import '../../agency/services/proposal_service.dart';
 
 // Service Provider

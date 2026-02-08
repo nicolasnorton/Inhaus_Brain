@@ -149,7 +149,9 @@ enum ProposalSourceType {
   campaignData,
   file,
   text,
-  web;
+  web,
+  dataConnector,
+  pastedText;
 
   String get displayName {
     switch (this) {
@@ -163,6 +165,10 @@ enum ProposalSourceType {
         return 'Text';
       case ProposalSourceType.web:
         return 'Web';
+      case ProposalSourceType.dataConnector:
+        return 'Data Connector';
+      case ProposalSourceType.pastedText:
+        return 'Pasted Text';
     }
   }
 }
@@ -175,6 +181,7 @@ class ProposalSource {
   final String name;
   final String? content;
   final String? uri;
+  final Map<String, dynamic> metadata;
   final DateTime addedAt;
 
   ProposalSource({
@@ -184,6 +191,7 @@ class ProposalSource {
     required this.name,
     this.content,
     this.uri,
+    this.metadata = const {},
     required this.addedAt,
   });
 
@@ -194,6 +202,7 @@ class ProposalSource {
         'name': name,
         'content': content,
         'uri': uri,
+        'metadata': metadata,
         'addedAt': addedAt.toIso8601String(),
       };
 
@@ -208,6 +217,7 @@ class ProposalSource {
       name: json['name'],
       content: json['content'],
       uri: json['uri'],
+      metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
       addedAt: DateTime.parse(json['addedAt']),
     );
   }
@@ -328,25 +338,38 @@ class ProposalData {
       format: json['format'] ?? 'pdf',
       header: ProposalHeader.fromJson(json['header'] ?? {}),
       sections: (json['sections'] as List?)
-          ?.map((s) => ProposalSection.fromJson(s))
+          ?.map((s) => ProposalSection.fromJson(s as Map<String, dynamic>))
           .toList(),
       summary: json['summary'] != null
-          ? ProposalSummary.fromJson(json['summary'])
+          ? ProposalSummary.fromJson(json['summary'] as Map<String, dynamic>)
           : null,
-      footer: json['footer'],
+      footer: json['footer']?.toString(),
       embeddedImages: List<String>.from(json['embedded_images'] ?? []),
     );
   }
 
   factory ProposalData.fromRawJson(String raw) {
     try {
-      String cleanStr = raw;
-      if (raw.contains('```json')) {
-        cleanStr = raw.split('```json')[1].split('```')[0].trim();
-      } else if (raw.contains('```')) {
-        cleanStr = raw.split('```')[1].split('```')[0].trim();
+      String cleanStr = raw.trim();
+      if (cleanStr.contains('```json')) {
+        cleanStr = cleanStr.split('```json')[1].split('```')[0].trim();
+      } else if (cleanStr.contains('```')) {
+        cleanStr = cleanStr.split('```')[1].split('```')[0].trim();
       }
-      return ProposalData.fromJson(json.decode(cleanStr));
+      
+      final decoded = json.decode(cleanStr);
+      
+      // HARDENING: Handle Case where AI returns a List containing the object
+      if (decoded is List && decoded.isNotEmpty) {
+        debugPrint('ProposalData: Detected List wrapper, unwrapping...');
+        return ProposalData.fromJson(decoded.first as Map<String, dynamic>);
+      }
+      
+      if (decoded is Map<String, dynamic>) {
+        return ProposalData.fromJson(decoded);
+      }
+      
+      throw Exception('Unrecognized JSON structure: ${decoded.runtimeType}');
     } catch (e) {
       debugPrint('ProposalData: Failed to parse raw JSON: $e\nRaw String: $raw');
       rethrow;

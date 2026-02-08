@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../agency/models/proposal_model.dart';
+import '../../proposals/models/proposal_model.dart';
 import '../../agency/models/inhaus_proposal_models.dart';
 import '../../agency/providers/proposal_provider.dart';
 import '../../agency/providers/proposal_template_provider.dart';

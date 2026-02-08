@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart'; // Add Intl for date formatting
 
-import '../../agency/models/proposal_model.dart';
+import '../../proposals/models/proposal_model.dart';
 import '../../agency/models/proposal_template.dart';
 import '../../agency/models/inhaus_proposal_models.dart';
 import '../../../core/services/edge_ai_service.dart';

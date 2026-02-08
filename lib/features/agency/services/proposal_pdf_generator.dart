@@ -2,7 +2,7 @@
 import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:inhaus_brain/features/agency/models/proposal_model.dart';
+import 'package:inhaus_brain/features/proposals/models/proposal_model.dart';
 
 class ProposalPdfGenerator {
   
@@ -47,7 +47,8 @@ class ProposalPdfGenerator {
                     child: pw.Divider(color: _withOpacity(_accentGold, 0.3), thickness: 0.5),
                   ),
                   pw.SizedBox(height: 10),
-                  ...data.sections.map((s) => _buildSection(s)),
+                  if (data.sections != null)
+                    ...data.sections!.map((s) => _buildSection(s)),
                   pw.Spacer(),
                   _buildFooter(data),
                 ],
@@ -92,9 +93,9 @@ class ProposalPdfGenerator {
                    child: pw.Image(pw.MemoryImage(clientLogo)),
                  ),
               pw.Text('CLIENTE', style: const pw.TextStyle(color: _textGrey, fontSize: 8, letterSpacing: 1.5)),
-              pw.Text(data.clientName.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text(data.header.clientName.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 5),
-              pw.Text(data.date, style: pw.TextStyle(color: _accentGold, fontSize: 10)),
+              pw.Text(data.header.date, style: pw.TextStyle(color: _accentGold, fontSize: 10)),
             ],
           ),
         ],
@@ -127,9 +128,10 @@ class ProposalPdfGenerator {
                   ]
                 ),
                 pw.SizedBox(height: 10),
-                pw.Text(section.description, style: pw.TextStyle(color: _textGrey, fontSize: 9)),
+                if (section.content.headerInfo.isNotEmpty)
+                  pw.Text(section.content.headerInfo.join('\n'), style: pw.TextStyle(color: _textGrey, fontSize: 9)),
                 pw.SizedBox(height: 12),
-                ...section.items.map((item) => pw.Padding(
+                ...section.content.items.map((item) => pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 4),
                   child: pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -148,8 +150,9 @@ class ProposalPdfGenerator {
             children: [
               pw.Text('INVERSIÓN', style: pw.TextStyle(color: _accentGold, fontSize: 8, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 5),
-              pw.Text(section.price, style: pw.TextStyle(color: _textWhite, fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Text(section.frequency.toUpperCase(), style: pw.TextStyle(color: _textGrey, fontSize: 7)),
+              pw.Text(section.price.amount, style: pw.TextStyle(color: _textWhite, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              if (section.price.terms != null)
+                pw.Text(section.price.terms!.toUpperCase(), style: pw.TextStyle(color: _textGrey, fontSize: 7)),
             ],
           ),
         ],
@@ -181,52 +184,5 @@ class ProposalPdfGenerator {
         ],
       ),
     );
-  }
-}
-
-// --- Data Models for the Generator ---
-
-class ProposalData {
-  final String clientName;
-  final String? clientDomain;
-  final String date;
-  final List<ProposalSection> sections;
-
-  ProposalData({required this.clientName, this.clientDomain, required this.date, required this.sections});
-  
-  // Factory from Map (for JSON parsing)
-  factory ProposalData.fromJson(Map<String, dynamic> json) {
-    return ProposalData(
-      clientName: json['clientName'] ?? 'Cliente',
-      clientDomain: json['clientDomain'],
-      date: json['date'] ?? 'Fecha',
-      sections: (json['sections'] as List?)?.map((x) => ProposalSection.fromJson(x)).toList() ?? [],
-    );
-  }
-}
-
-class ProposalSection {
-  final String title;
-  final String description;
-  final List<String> items;
-  final String price;
-  final String frequency; // e.g., "Mensual" or "One-time"
-
-  ProposalSection({
-    required this.title,
-    required this.description,
-    required this.items,
-    required this.price,
-    required this.frequency,
-  });
-
-  factory ProposalSection.fromJson(Map<String, dynamic> json) {
-     return ProposalSection(
-       title: json['title'] ?? 'Service',
-       description: json['description'] ?? '',
-       items: List<String>.from(json['items'] ?? []),
-       price: json['price'] ?? '\$0.00',
-       frequency: json['frequency'] ?? '',
-     );
   }
 }

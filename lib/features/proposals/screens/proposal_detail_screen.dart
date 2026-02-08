@@ -528,6 +528,10 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         return Icons.text_fields;
       case ProposalSourceType.web:
         return Icons.language;
+      case ProposalSourceType.dataConnector:
+        return Icons.cloud_sync;
+      case ProposalSourceType.pastedText:
+        return Icons.content_paste;
     }
   }
 
