@@ -4,6 +4,9 @@ const express = require('express');
 
 const app = express();
 
+// Use JSON body parser
+app.use(express.json());
+
 // Middleware to handle Gemini API Key and Runtime setup
 app.use(async (req, res, next) => {
     // CORS Header is needed for all responses

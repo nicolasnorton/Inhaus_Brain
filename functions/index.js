@@ -523,30 +523,50 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             // --- PATH C: TEXT GENERATION (Gemini) ---
             console.log(`VertexAI Proxy: Calling Gemini model: ${modelId} for prompt length: ${typeof prompt === 'string' ? prompt.length : 'multimodal'}`);
 
-            const generativeModel = vertexAI.getGenerativeModel({
-                model: modelId,
-                systemInstruction: systemInstruction, // Optional system prompt
-                generationConfig: config // Pass through temperature, maxTokens, etc.
-            });
+            const regions = ['us-central1', 'us-east4', 'us-west1'];
+            const modelVariations = [modelId];
+            if (modelId === 'gemini-1.5-flash') modelVariations.push('gemini-1.5-flash-002');
+            if (modelId === 'gemini-1.5-pro') modelVariations.push('gemini-1.5-pro-002');
 
-            // Handle multimodal input 
-            let requestContent;
-            if (typeof prompt === 'string') {
-                requestContent = prompt;
-            } else {
-                requestContent = prompt; // Array of parts
+            let lastResError = null;
+            let success = false;
+            let finalResponse = null;
+
+            for (const reg of regions) {
+                for (const mVar of modelVariations) {
+                    try {
+                        console.log(`[PROXY] 🌐 Attempting Gemini ${mVar} in ${reg}...`);
+                        const vAI = new VertexAI({ project: project, location: reg });
+                        const genModel = vAI.getGenerativeModel({
+                            model: mVar,
+                            systemInstruction: systemInstruction,
+                            generationConfig: config
+                        });
+
+                        const result = await genModel.generateContent(prompt);
+                        finalResponse = await result.response;
+                        console.log(`[PROXY] ✅ Success with ${mVar} in ${reg}`);
+                        success = true;
+                        break;
+                    } catch (err) {
+                        console.warn(`[PROXY] ⚠️ Failed ${mVar} in ${reg}: ${err.message}`);
+                        lastResError = err;
+                    }
+                }
+                if (success) break;
             }
 
-            const result = await generativeModel.generateContent(requestContent);
-            const response = await result.response;
-            const candidates = response.candidates;
+            if (!success) {
+                throw lastResError || new Error('All regions and model variations failed.');
+            }
 
+            const candidates = finalResponse.candidates;
             if (!candidates || candidates.length === 0) {
                 res.json({ candidates: [] });
                 return;
             }
 
-            res.json(response);
+            res.json(finalResponse);
 
 
 
