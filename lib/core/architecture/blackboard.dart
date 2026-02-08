@@ -88,7 +88,8 @@ enum WorkflowEventType {
   humanFeedbackNeeded,
   phaseTransition,
   agentStatusChange,
-  agentAction
+  agentAction,
+  agentFinished
 }
 
 class WorkflowEvent {

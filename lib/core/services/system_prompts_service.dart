@@ -39,6 +39,8 @@ class SystemPromptsService {
   static const String _csuitePromptKey = 'csuite_prompt';
   static const String _proposalSpecialistPromptKey = 'proposal_specialist_prompt';
   static const String _dataAnalystPromptKey = 'data_analyst_agent_prompt';
+  static const String _intentClassifierPromptKey = 'intent_classifier_prompt';
+  static const String _assistantMainPromptKey = 'assistant_main_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -358,6 +360,71 @@ If the user asks for email insights, use gmail_tool.
 Provide clear, actionable insights and always cite your sources.
 """;
 
+  static const String originalIntentClassifierPrompt = """
+Analyze the user's request and determine the user's intent.
+User Input: {{USER_INPUT}}
+
+Classify into one of:
+- CREATIVE: User wants to GENERATE or CREATE an image, video, logo, or artistic asset.
+- RESEARCH: User is asking for facts, searching for info, or analysis.
+- MANAGEMENT: User wants to create/manage clients, campaigns, or tasks.
+- DEVELOPMENT: User is asking for code or technical help.
+- SEO: User is asking for search engine optimization, keywords, or site audits.
+- AEO: User is asking for answer engine optimization, snippets, or voice search.
+- DIRECT_CHAT: Simple conversation or greeting.
+
+Return ONLY a JSON object:
+{
+  "intent": "INTENT_NAME",
+  "confidence": 0.9,
+  "required_tools": ["tool_name_1", "tool_name_2"]
+}
+""";
+
+  static const String originalAssistantMainPrompt = """
+{{BRIAN_PERSONA}}
+
+Context:
+- Current Mode: {{CURRENT_MODE}}
+- Detected Intent: {{DETECTED_INTENT}}
+- System Memory: {{SYSTEM_MEMORY}}
+
+CONVERSATION HISTORY:
+{{CONVERSATION_HISTORY}}
+
+AVAILABLE TOOLS:
+{{AVAILABLE_TOOLS}}
+
+MULTI-MODAL CAPABILITIES:
+- I have direct access to Google Search via "Grounding". I will use it for all factual queries and real-time research.
+- I can see and analyze attached images (Multimodal Vision).
+- I generate images via 'image_generation' tool.
+- I generate videos via 'video_generation' tool.
+
+User Input: "{{USER_INPUT}}"
+
+CRITICAL INSTRUCTIONS:
+1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research.
+2. NAVIGATION: Use 'navigate_to' tool for navigation.
+3. GENERATION: Use 'image_generation' or 'video_generation' for media.
+4. GEN UI - MANDATORY FOR MULTIMEDIA CONTENT:
+   - **ALWAYS use 'gen_ui_component' for**: Checklists, Campaigns, Strategy reports, TREND REPORTS, Market research, Competitor analysis, RECIPES, Comparison charts, Process flows, Marketing plans, and ANY request that can be visualized.
+   - **TRIGGER KEYWORDS**: If the user mentions "checklist", "campaign", "strategy", "report", "analysis", "plan", "comparison", "trends", "recipe", or "Gen UI", you MUST use gen_ui_component.
+   - **CRITICAL**: GenUI Should be used for EVERY prompt that can benefit from information presented graphically (Reports, Recipes, Strategy, Analysis, Checklists, Campaigns, etc).
+   - **CRITICAL**: Gen UI data MUST be RICH, SPECIFIC, and DETAILED. NO placeholders like "TBD" or "XX%". Use real metrics and competitor names via Research/Grounding.
+   - **RESTRICTION**: The `summary_text` argument in `gen_ui_component` MUST be a single headline sentence. Do NOT put long reports there.
+   - **FORBIDDEN**: Do NOT return a text-only report if the intent is RESEARCH, STRATEGY, ANALYSIS, CHECKLIST, or CAMPAIGN. You MUST use gen_ui_component.
+   - Use Google Search grounding to get REAL market data, competitor names, actual metrics.
+   - Include 5-7 diverse sections for reports: stat_card, text, chart, trend_list, or check_list.
+   - Example (Checklist): {"name": "gen_ui_component", "args": {"component_type": "recipe_card", "data": {"title": "Google Pmax Campaign Checklist", "steps": [{"title": "Account Setup", "description": "Configure conversion tracking and bid strategies."}]}, "summary_text": "Your Google Pmax campaign checklist is ready."}}
+   - Do NOT just write a text summary. You MUST generate the UI component with real, detailed data.
+5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
+6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
+7. If NO tool from the restricted list above applies, answer from your grounded knowledge. Simple answers for simple questions only. Complex tasks require GEN UI.
+
+{{EPHEMERAL_MESSAGE}}
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
@@ -434,6 +501,12 @@ Provide clear, actionable insights and always cite your sources.
 
   Future<void> saveDataAnalystPrompt(String prompt) async => await _storage.write(key: _dataAnalystPromptKey, value: prompt);
   Future<String> getDataAnalystPrompt() async => await _getPrompt(_dataAnalystPromptKey, 'assets/prompts/data_analyst.md', originalDataAnalystPrompt);
+
+  Future<void> saveIntentClassifierPrompt(String prompt) async => await _storage.write(key: _intentClassifierPromptKey, value: prompt);
+  Future<String> getIntentClassifierPrompt() async => await _getPrompt(_intentClassifierPromptKey, 'assets/prompts/intent_classifier.md', originalIntentClassifierPrompt);
+
+  Future<void> saveAssistantMainPrompt(String prompt) async => await _storage.write(key: _assistantMainPromptKey, value: prompt);
+  Future<String> getAssistantMainPrompt() async => await _getPrompt(_assistantMainPromptKey, 'assets/prompts/assistant_main.md', originalAssistantMainPrompt);
 
   Future<String> getPromptForSender(MessageSender sender) async {
     String basePrompt = "";

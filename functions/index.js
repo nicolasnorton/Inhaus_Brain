@@ -559,3 +559,65 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
 
 // Expose CopilotKit Runtime
 exports.copilotRuntime = functions.https.onRequest(copilotHandler);
+
+/**
+ * GHL WEBHOOK RECEIVER
+ * Listens for events from GoHighLevel (Contact Created, Opportunity Update, etc.)
+ * and syncs them to Firestore 'sales_leads' collection.
+ */
+exports.ghlWebhook = functions.https.onRequest(async (req, res) => {
+    // 1. Validate Method
+    if (req.method !== 'POST') {
+        return res.status(405).send('Method Not Allowed');
+    }
+
+    // 2. Extract Data
+    const event = req.body;
+    console.log(`[GHL Webhook] Received event: ${JSON.stringify(event)}`);
+
+    try {
+        const type = event.type; // e.g., 'ContactCreated', 'OpportunityStatusUpdate'
+        // Note: GHL payload structure varies. Contact data is usually at root or in 'contact' object.
+        // We'll map common fields to our SalesLead model.
+
+        const leadId = event.id || event.contact_id;
+        if (!leadId) {
+            console.warn('[GHL Webhook] No ID found in payload. Ignoring.');
+            return res.status(200).send('Ignored: No ID');
+        }
+
+        const leadData = {
+            ghlId: leadId,
+            name: event.name || `${event.first_name || ''} ${event.last_name || ''}`.trim(),
+            email: event.email,
+            phone: event.phone,
+            company: event.company_name || event.company,
+            status: _mapGhlStatus(event.status || 'new'), // Helper to map GHL status to LeadStatus
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'ghl_webhook',
+            rawGhlData: event // Store raw data for debugging/completeness
+        };
+
+        // 3. Update Firestore
+        // Use set(..., {merge: true}) to create or update
+        await admin.firestore().collection('sales_leads').doc(leadId).set(leadData, { merge: true });
+
+        console.log(`[GHL Webhook] Synced lead ${leadId} to Firestore.`);
+        return res.status(200).send('Synced');
+
+    } catch (error) {
+        console.error('[GHL Webhook] Error processing event:', error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+function _mapGhlStatus(ghlStatus) {
+    const status = ghlStatus.toLowerCase();
+    if (status.includes('won')) return 'closedWon';
+    if (status.includes('lost') || status.includes('abandoned')) return 'closedLost';
+    if (status.includes('negotiation')) return 'negotiation';
+    if (status.includes('proposal') || status.includes('sent')) return 'proposalSent';
+    if (status.includes('qualified')) return 'qualified';
+    if (status.includes('contacted')) return 'contacted';
+    return 'newLead';
+}

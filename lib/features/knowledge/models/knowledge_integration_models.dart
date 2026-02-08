@@ -171,7 +171,8 @@ class MetadataFilterConfig {
         'conditions': conditions.map((c) => c.toJson()).toList(),
       };
 
-      return MetadataFilterConfig(
+  factory MetadataFilterConfig.fromJson(Map<String, dynamic> json) {
+    return MetadataFilterConfig(
       mode: MetadataFilterMode.values.firstWhere(
         (e) => e.toString().split('.').last == json['mode'],
         orElse: () => MetadataFilterMode.disabled,
@@ -261,7 +262,8 @@ class MultiPathRetrievalConfig {
         if (scoreThreshold != null) 'score_threshold': scoreThreshold,
       };
 
-      return MultiPathRetrievalConfig(
+  factory MultiPathRetrievalConfig.fromJson(Map<String, dynamic> json) {
+    return MultiPathRetrievalConfig(
       strategy: RerankStrategy.values.firstWhere(
         (e) => e.toString().split('.').last == json['strategy'],
         orElse: () => RerankStrategy.weightedScore,

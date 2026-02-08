@@ -28,6 +28,7 @@ Future<String> _simpleExecute({
   String? imageMimeType,
   Function(AdkEvent)? onEvent,
   AIModelConfig? modelConfig,
+  bool jsonMode = false,
   dynamic ref, // Phase 89: Required for CopilotKit
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
@@ -44,7 +45,7 @@ Future<String> _simpleExecute({
           
           final systemMsg = SystemMessage(
              id: 'sys_${DateTime.now().millisecondsSinceEpoch}',
-             content: promptHeader
+             content: promptHeader + (jsonMode ? "\n\nCRITICAL: You MUST return a valid JSON object." : "")
           );
 
           // We append context to the user prompt for now, as SimpleRunAgentInput has specific context fields
@@ -65,7 +66,16 @@ Future<String> _simpleExecute({
                 }
              },
              onDone: () {
-                if (!completer.isCompleted) completer.complete(buffer.toString());
+                String text = buffer.toString();
+                if (jsonMode) {
+                  // Basic cleanup for CopilotKit which might not support mimeType directly yet
+                  if (text.contains('```json')) {
+                    text = text.split('```json').last.split('```').first.trim();
+                  } else if (text.contains('```')) {
+                    text = text.split('```').last.split('```').first.trim();
+                  }
+                }
+                if (!completer.isCompleted) completer.complete(text);
              },
              onError: (err) {
                  if (!completer.isCompleted) completer.completeError(err);
@@ -93,6 +103,7 @@ Future<String> _simpleExecute({
     apiKey: apiKey,
     gemmaKey: gemmaKey,
     modelConfig: modelConfig,
+    outputMode: jsonMode ? 'json' : null,
     ref: ref,
   );
   
@@ -135,6 +146,7 @@ class TrendScoutAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       modelConfig: AIModelConfig.geminiResearch,
+      jsonMode: true,
       ref: ref,
     );
   }
@@ -220,6 +232,7 @@ class StrategistAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       modelConfig: AIModelConfig.geminiResearch,
+      jsonMode: true,
       ref: ref,
     );
   }
@@ -505,6 +518,105 @@ Tone: Professional, Premium. Spanish PRIMARY (ES), English OPTIONAL.
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       modelConfig: AIModelConfig.geminiPro, // Use Pro for complex synthesis
+      jsonMode: true,
+      ref: ref,
+    );
+    
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
+  }
+}
+
+/// 10. Copywriter Agent
+class CopywriterAgent extends BaseAgent {
+  @override
+  String get name => "Copywriter";
+  
+  @override
+  MessageSender get type => MessageSender.editorialManagerAgent; // Reusing editorial for now or add specific
+
+  @override
+  String get systemPromptKey => "copywriter.md";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    dynamic ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getCopywriterPrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT_DATA]', userPrompt);
+
+    final result = await _simpleExecute(
+      agentName: name,
+      systemPromptKey: systemPromptKey,
+      systemPrompt: prompt,
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiPro,
+      ref: ref,
+    );
+    
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
+  }
+}
+
+/// 11. Creative Agent
+class CreativeAgent extends BaseAgent {
+  @override
+  String get name => "Creative";
+  
+  @override
+  MessageSender get type => MessageSender.creativeAgent;
+
+  @override
+  String get systemPromptKey => "creative.md";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    dynamic ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getCreativePrompt();
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT_DATA]', userPrompt);
+
+    final result = await _simpleExecute(
+      agentName: name,
+      systemPromptKey: systemPromptKey,
+      systemPrompt: prompt,
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiPro,
       ref: ref,
     );
     

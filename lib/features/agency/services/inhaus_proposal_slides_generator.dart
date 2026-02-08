@@ -2,6 +2,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
+import 'package:printing/printing.dart';
 import '../models/inhaus_proposal_models.dart';
 
 /// INHAUS-Style Slides Generator (Landscape Deck)
@@ -290,7 +291,7 @@ class InhausProposalSlidesGenerator {
                               pw.Container(
                                 width: 8,
                                 height: 8,
-                                decoration: const pw.BoxDecoration(
+                                decoration: pw.BoxDecoration(
                                   color: _accentPurple,
                                   shape: pw.BoxShape.circle,
                                 ),
@@ -458,7 +459,7 @@ class InhausProposalSlidesGenerator {
                                   width: 6,
                                   height: 6,
                                   margin: const pw.EdgeInsets.only(top: 6),
-                                  decoration: const pw.BoxDecoration(
+                                  decoration: pw.BoxDecoration(
                                     color: _accentPurple,
                                     shape: pw.BoxShape.circle,
                                   ),

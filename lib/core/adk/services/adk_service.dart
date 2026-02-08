@@ -7,7 +7,7 @@ import '../services/adk_event_bus.dart';
 import '../../auth/secret_vault_service.dart';
 import '../../../features/chat/agents/base_agent.dart';
 import '../../../features/chat/agents/utility_agents.dart';
-import '../../../features/chat/agents/core_agents.dart';
+import '../../../features/chat/agents/core_agents.dart' hide CreativeAgent, CopywriterAgent;
 import '../../../features/chat/agents/router_agent.dart';
 import '../../../features/chat/agents/agency_agents.dart'; // Phase 31
 import '../../../features/chat/models/chat_models.dart';

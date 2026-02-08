@@ -7,6 +7,8 @@ import '../../proposals/screens/proposals_main_screen.dart';
 import '../models/agency_models.dart';
 
 import '../../services/screens/services_screen.dart';
+import '../services/sales_service.dart';
+import 'lead_detail_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -65,74 +67,117 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
   }
 }
 
-class _CrmTab extends StatelessWidget {
+class _CrmTab extends ConsumerWidget {
   const _CrmTab();
 
   @override
-  Widget build(BuildContext context) {
-    // Mock Data for CRM
-    final leads = [
-      SalesLead(
-        id: '1',
-        name: 'Maria Rodriguez',
-        company: 'Café Del Sol',
-        email: 'maria@cafedelsol.ec',
-        phone: '+593 99 123 4567',
-        status: LeadStatus.proposalSent,
-        estimatedValue: 15000,
-        lastContacted: DateTime.now().subtract(const Duration(days: 2)),
-        notes: 'Interested in rebranding and social media.',
-      ),
-      SalesLead(
-        id: '2',
-        name: 'Juan Perez',
-        company: 'TechSolutions S.A.',
-        email: 'juan@techsolutions.ec',
-        phone: '+593 98 765 4321',
-        status: LeadStatus.newLead,
-        estimatedValue: 5000,
-        lastContacted: DateTime.now().subtract(const Duration(days: 5)),
-        notes: 'Met at networking event. Needs SEO.',
-      ),
-       SalesLead(
-        id: '3',
-        name: 'Ana Lopez',
-        company: 'Boutique Floral',
-        email: 'ana@floral.ec',
-        phone: '+593 97 111 2222',
-        status: LeadStatus.negotiation,
-        estimatedValue: 8500,
-        lastContacted: DateTime.now().subtract(const Duration(hours: 4)),
-        notes: 'Negotiating contract terms.',
-      ),
-    ];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final salesService = ref.watch(salesServiceProvider);
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: leads.length,
-      itemBuilder: (context, index) {
-        final lead = leads[index];
-        return Card(
-          elevation: 1,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: _getStatusColor(lead.status).withValues(alpha: 0.2),
-              child: Icon(_getStatusIcon(lead.status), color: _getStatusColor(lead.status), size: 18),
-            ),
-            title: Text(lead.company, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${lead.name} • ${lead.email}'),
-                Text('Est. Value: \$${lead.estimatedValue.toStringAsFixed(0)}'),
-              ],
-            ),
-            trailing: _buildStatusChip(context, lead.status),
-            isThreeLine: true,
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddLeadDialog(context, ref),
+        child: const Icon(Icons.add),
+      ),
+      body: StreamBuilder<List<SalesLead>>(
+        stream: salesService.getLeads(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          
+          final leads = snapshot.data ?? [];
+          if (leads.isEmpty) {
+            return const Center(child: Text('No leads found. Add one to sync with GHL!'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: leads.length,
+            itemBuilder: (context, index) {
+              final lead = leads[index];
+              return Card(
+                elevation: 1,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: _getStatusColor(lead.status).withOpacity(0.2),
+                    child: Icon(_getStatusIcon(lead.status), color: _getStatusColor(lead.status), size: 18),
+                  ),
+                  title: Text(lead.company, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${lead.name} • ${lead.email}'),
+                      if (lead.estimatedValue > 0)
+                        Text('Est. Value: \$${lead.estimatedValue.toStringAsFixed(0)}'),
+                    ],
+                  ),
+                  trailing: _buildStatusChip(context, lead.status),
+                  isThreeLine: true,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => LeadDetailScreen(lead: lead)),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAddLeadDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final companyController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add GHL Contact'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: companyController, decoration: const InputDecoration(labelText: 'Company')),
+              TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email')),
+              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone')),
+            ],
           ),
-        );
-      },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final lead = SalesLead(
+                id: '', // Will be assigned by GHL/Firestore
+                name: nameController.text,
+                company: companyController.text,
+                email: emailController.text,
+                phone: phoneController.text,
+                status: LeadStatus.newLead,
+                estimatedValue: 0,
+                lastContacted: DateTime.now(),
+                notes: '',
+              );
+              ref.read(salesServiceProvider).createLead(lead);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Creating contact in GHL... Sync may take a moment.')),
+              );
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -164,9 +209,9 @@ class _CrmTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: _getStatusColor(status).withValues(alpha: 0.1),
+        color: _getStatusColor(status).withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _getStatusColor(status).withValues(alpha: 0.3)),
+        border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
       ),
       child: Text(
         status.name.toUpperCase().replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' '), // Split camelCase

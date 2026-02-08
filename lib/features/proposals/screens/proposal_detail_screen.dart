@@ -11,6 +11,10 @@ import '../services/proposal_pdf_service.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
 import '../../services/services/services_repository.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/architecture/blackboard.dart';
+import '../../knowledge/models/knowledge_source.dart' as ks;
+
 class ProposalDetailScreen extends ConsumerStatefulWidget {
   final String proposalId;
 
@@ -31,249 +35,140 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   int _elapsedSeconds = 0;
   Timer? _progressTimer;
 
-  void _handleChatSubmit(Proposal proposal) async {
-    final query = _chatController.text.trim();
-    if (query.isEmpty) return;
+  @override
+  void dispose() {
+    _chatController.dispose();
+    _progressTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLoading(String type) {
+    setState(() {
+      if (type == 'detailed') _isGeneratingDetailed = true;
+      if (type == 'one_page') _isGeneratingQuote = true;
+      _elapsedSeconds = 0;
+    });
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() => _elapsedSeconds++);
+    });
+  }
+
+  void _stopLoading() {
+    _progressTimer?.cancel();
+    setState(() {
+      _isGeneratingDetailed = false;
+      _isGeneratingQuote = false;
+    });
+  }
+
+  Future<void> _handleChatSubmit() async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
 
     setState(() {
-      _chatMessages.add({'role': 'user', 'content': query});
+      _chatMessages.add({'role': 'user', 'content': text});
       _chatController.clear();
-      _chatMessages.add({'role': 'ai', 'content': ''});
     });
 
-    try {
-      final stream = ProposalsLMService.chatWithProposal(proposal, query, ref);
-
-      await for (final chunk in stream) {
-        if (!mounted) break;
-        setState(() {
-          final lastIdx = _chatMessages.length - 1;
-          // If the chunk is longer than the current content and starts with it, it's likely a full update
-          if (chunk.length > (_chatMessages[lastIdx]['content']?.length ?? 0) && 
-              chunk.startsWith(_chatMessages[lastIdx]['content'] ?? "")) {
-             _chatMessages[lastIdx]['content'] = chunk;
-          } else {
-             // Otherwise, it's a delta, so append it (standard for most LLM streams)
-             // But wait, if we see "PleasePlease", it means we are appending when we should likely be replacing 
-             // OR the provider is sending "A", then "AB", then "ABC".
-             // Let's assume standard delta for now, but if the chunk implies full text, switch strategy.
-             // Actually, safest is to just APPEND if we are sure it's a delta. 
-             // But the bug "PleasePlease" strongly suggests we are appending "Please" to "Please".
-             // Let's inspect ProposalsLMService to be sure.
-             // For now, I will assume it sends DELTAS. 
-             // If it was sending full text, the previous code `content + chunk` would result in "PleasePlease...".
-             // Wait, if the provider sends "Please", then " provide", the previous code does "Please" + " provide" -> "Please provide".
-             // If the provider sends "Please", then "Please provide", the previous code does "Please" + "Please provide" -> "PleasePlease provide".
-             // This confirms the provider is likely sending FULL ACCUMULATED TEXT in each chunk.
-             
-             // FIX: We will treat the chunk as the NEW FULL CONTENT if it starts with the old content
-             // OR if it looks like a replacement.
-             // Actually, simpler fix: Just set content = chunk if the service returns full text.
-             // Let's check the service first. I'll revert this thought and check the service.
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          final lastIdx = _chatMessages.length - 1;
-          _chatMessages[lastIdx]['content'] = "Error: $e";
-        });
-      }
-    } finally {
-      if (mounted) setState(() {});
-    }
+    // In a real scenario, this would call the AssistantService/Blackboard
   }
 
-  Future<void> _addSource(Proposal proposal, ProposalSource source) async {
-    try {
-      final updatedProposal = proposal.copyWith(
-        updatedAt: DateTime.now(),
-        sources: [...proposal.sources, source],
-      );
-
-      await ref.read(proposalsServiceProvider).updateProposal(updatedProposal);
-      ref.invalidate(proposalProvider(widget.proposalId));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Added ${source.name}"), backgroundColor: AppTheme.primary),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error adding source: $e"), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  Future<void> _showAddSourceDialog(Proposal proposal) async {
-    showDialog(
+  Future<void> _addSource() async {
+    await showDialog(
       context: context,
       builder: (context) => AddSourceDialog(
-        onSourceAdded: (knowledgeSource) async {
-          final source = ProposalSource(
-            id: const Uuid().v4(),
-            proposalId: proposal.id,
-            type: ProposalSourceType.text,
-            name: knowledgeSource.title,
-            content: knowledgeSource.content,
-            addedAt: DateTime.now(),
-          );
-          await _addSource(proposal, source);
+        onSourceAdded: (ks.KnowledgeSource newSource) async {
+          final proposal = ref.read(proposalProvider(widget.proposalId)).value;
+          if (proposal != null) {
+            final propSource = ProposalSource(
+              id: newSource.id,
+              proposalId: proposal.id,
+              type: _mapKnowledgeToProposalSourceType(newSource.type),
+              name: newSource.title,
+              content: newSource.content,
+              uri: newSource.metadata?['uri'],
+              addedAt: DateTime.now(),
+            );
+            
+            final updatedProposal = proposal.copyWith(
+              sources: [...proposal.sources, propSource],
+              updatedAt: DateTime.now(),
+            );
+            await ref.read(proposalsServiceProvider).updateProposal(updatedProposal);
+          }
         },
       ),
     );
   }
 
-  Future<void> _generateDetailedProposal(Proposal proposal) async {
-    if (proposal.sources.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please add sources first"), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    // Start progress tracking
-    setState(() {
-      _isGeneratingDetailed = true;
-      _elapsedSeconds = 0;
-    });
-
-    // Start timer to track elapsed time
-    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _elapsedSeconds++;
-        });
-      }
-    });
-
-    try {
-      final result = await ProposalsLMService.generateDetailedProposal(proposal, ref);
-
-      if (result.pdfBytes != null) {
-        await ProposalPdfService.saveAndOpenPdf(
-          result.pdfBytes!,
-          "Proposal_${proposal.clientName.replaceAll(' ', '_')}.pdf",
-        );
-
-        final output = ProposalOutput(
-          id: const Uuid().v4(),
-          title: "Detailed Proposal",
-          type: ProposalOutputType.detailedPdf,
-          createdAt: DateTime.now(),
-        );
-
-        final updatedProposal = proposal.copyWith(
-          outputs: [...proposal.outputs, output],
-          status: ProposalStatus.generated,
-          updatedAt: DateTime.now(),
-        );
-
-        await ref.read(proposalsServiceProvider).updateProposal(updatedProposal);
-        ref.invalidate(proposalProvider(widget.proposalId));
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Proposal generated successfully!"), backgroundColor: Colors.green),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      // Always cleanup - ensures loader is dismissed
-      _progressTimer?.cancel();
-      if (mounted) {
-        setState(() {
-          _isGeneratingDetailed = false;
-          _elapsedSeconds = 0;
-        });
-      }
+  ProposalSourceType _mapKnowledgeToProposalSourceType(ks.KnowledgeSourceType type) {
+    switch (type) {
+      case ks.KnowledgeSourceType.file:
+      case ks.KnowledgeSourceType.pdf:
+      case ks.KnowledgeSourceType.image:
+        return ProposalSourceType.file;
+      case ks.KnowledgeSourceType.url:
+      case ks.KnowledgeSourceType.youtube:
+      case ks.KnowledgeSourceType.ga4:
+      case ks.KnowledgeSourceType.googleAds:
+        return ProposalSourceType.web;
+      case ks.KnowledgeSourceType.text:
+      default:
+        return ProposalSourceType.text;
     }
   }
 
+  Future<void> _generateDetailedProposal(Proposal proposal) async {
+    _startLoading('detailed');
+    // DISPATCH TO BLACKBOARD via OrchestrationService
+    ref.read(blackboardProvider.notifier).addEvent(
+      WorkflowEventType.userRequested, 
+      "Generate Detailed Proposal",
+      data: {
+        'action': 'create_proposal',
+        'proposalId': proposal.id,
+        'type': 'detailed',
+      }
+    );
+  }
+
   Future<void> _generateOnePageQuote(Proposal proposal) async {
-    if (proposal.sources.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please add sources first"), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    // Start progress tracking
-    setState(() {
-      _isGeneratingQuote = true;
-      _elapsedSeconds = 0;
-    });
-
-    // Start timer to track elapsed time
-    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _elapsedSeconds++;
-        });
+    _startLoading('one_page');
+    // DISPATCH TO BLACKBOARD via OrchestrationService
+    ref.read(blackboardProvider.notifier).addEvent(
+      WorkflowEventType.userRequested, 
+      "Generate One-Page Quote",
+      data: {
+        'action': 'create_proposal',
+        'proposalId': proposal.id,
+        'type': 'one_page',
       }
-    });
-
-    try {
-      final result = await ProposalsLMService.generateOnePageQuote(proposal, ref);
-
-      if (result.pdfBytes != null) {
-        await ProposalPdfService.saveAndOpenPdf(
-          result.pdfBytes!,
-          "Quote_${proposal.clientName.replaceAll(' ', '_')}.pdf",
-        );
-
-        final output = ProposalOutput(
-          id: const Uuid().v4(),
-          title: "One-Page Quote",
-          type: ProposalOutputType.onePagePdf,
-          createdAt: DateTime.now(),
-        );
-
-        final updatedProposal = proposal.copyWith(
-          outputs: [...proposal.outputs, output],
-          status: ProposalStatus.generated,
-          updatedAt: DateTime.now(),
-        );
-
-        await ref.read(proposalsServiceProvider).updateProposal(updatedProposal);
-        ref.invalidate(proposalProvider(widget.proposalId));
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Quote generated successfully!"), backgroundColor: Colors.green),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      // Always cleanup - ensures loader is dismissed
-      _progressTimer?.cancel();
-      if (mounted) {
-        setState(() {
-          _isGeneratingQuote = false;
-          _elapsedSeconds = 0;
-        });
-      }
-    }
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen for Proposal Updates to handle completion of async generation
+    ref.listen<AsyncValue<Proposal?>>(proposalProvider(widget.proposalId), (previous, next) {
+      if (next.hasValue && next.value != null && previous?.hasValue == true && previous?.value != null) {
+        final prevProps = previous!.value!;
+        final nextProps = next.value!;
+        
+        // Check if a new output was added
+        if (nextProps.outputs.length > prevProps.outputs.length) {
+          _stopLoading();
+          ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text("Proposal Generated Successfully!"), backgroundColor: Colors.green),
+          );
+        }
+        
+        // Check if status changed to generated
+        if (prevProps.status != ProposalStatus.generated && nextProps.status == ProposalStatus.generated) {
+           _stopLoading();
+        }
+      }
+    });
+
     final proposalAsync = ref.watch(proposalProvider(widget.proposalId));
     final isMobile = MediaQuery.of(context).size.width < 900;
 
@@ -338,21 +233,6 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   Widget _buildMobileLayout(Proposal proposal) {
     return Column(
       children: [
-        Container(
-          color: AppTheme.surface,
-          child: TabBar(
-            controller: null,
-            onTap: (index) => setState(() => _mobileTabIndex = index),
-            indicatorColor: AppTheme.primary,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white54,
-            tabs: const [
-              Tab(text: "Sources"),
-              Tab(text: "Chat"),
-              Tab(text: "Studio"),
-            ],
-          ),
-        ),
         Expanded(
           child: IndexedStack(
             index: _mobileTabIndex,
@@ -363,6 +243,18 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
             ],
           ),
         ),
+        BottomNavigationBar(
+          currentIndex: _mobileTabIndex,
+          onTap: (index) => setState(() => _mobileTabIndex = index),
+          backgroundColor: AppTheme.surface,
+          selectedItemColor: AppTheme.primary,
+          unselectedItemColor: Colors.white38,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.source), label: "Sources"),
+            BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
+            BottomNavigationBarItem(icon: Icon(Icons.bolt), label: "Studio"),
+          ],
+        ),
       ],
     );
   }
@@ -370,11 +262,11 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   Widget _buildDesktopLayout(Proposal proposal) {
     return Row(
       children: [
-        SizedBox(width: 280, child: _buildSourcesPanel(proposal)),
+        SizedBox(width: 300, child: _buildSourcesPanel(proposal)),
         const VerticalDivider(width: 1, color: Colors.white12),
         Expanded(child: _buildChatPanel(proposal)),
         const VerticalDivider(width: 1, color: Colors.white12),
-        SizedBox(width: 320, child: _buildStudioPanel(proposal)),
+        SizedBox(width: 300, child: _buildStudioPanel(proposal)),
       ],
     );
   }
@@ -388,38 +280,31 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Sources", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.add, color: AppTheme.primary, size: 20),
-                  onPressed: () => _showAddSourceDialog(proposal),
-                  tooltip: "Add Source",
+                  icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                  onPressed: _addSource,
                 ),
               ],
             ),
           ),
           const Divider(height: 1, color: Colors.white12),
-          if (proposal.serviceIds.isNotEmpty) ...[
-            _buildTargetServicesSection(proposal),
-            const Divider(height: 1, color: Colors.white12),
-          ],
           Expanded(
-            child: proposal.sources.isEmpty
-                ? const Center(
-                    child: Text("No sources added yet", style: TextStyle(color: Colors.white38)),
-                  )
-                : ListView.builder(
-                    itemCount: proposal.sources.length,
-                    itemBuilder: (context, index) {
-                      final source = proposal.sources[index];
-                      return ListTile(
-                        leading: Icon(_getSourceIcon(source.type), color: AppTheme.primary, size: 20),
-                        title: Text(source.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                        subtitle: Text(source.type.displayName, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                      );
-                    },
-                  ),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                ...proposal.sources.map((source) => ListTile(
+                      leading: Icon(_getSourceIcon(source.type), color: Colors.white70, size: 20),
+                      title: Text(source.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                      subtitle: Text((source.content ?? '').length > 50 ? "${source.content!.substring(0, 50)}..." : (source.content ?? ''),
+                          style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                    )),
+                const SizedBox(height: 24),
+                _buildTargetServicesSection(proposal),
+              ],
+            ),
           ),
         ],
       ),
@@ -430,37 +315,19 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            "TARGET SERVICES",
-            style: TextStyle(color: AppTheme.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
-          ),
+        const Text("Target Services", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: proposal.serviceIds
+              .map((s) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.5))),
+                    child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  ))
+              .toList(),
         ),
-        FutureBuilder(
-          future: ref.read(servicesRepositoryProvider).getServicesByIds(proposal.serviceIds),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-              );
-            }
-            if (snapshot.hasError || !snapshot.hasData) {
-              return const SizedBox.shrink();
-            }
-            final services = snapshot.data as List;
-            return Column(
-              children: services.map((s) => ListTile(
-                dense: true,
-                leading: const Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
-                title: Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                subtitle: Text("\$${s.basePrice.toStringAsFixed(0)}", style: const TextStyle(color: Colors.white38, fontSize: 11)),
-              )).toList(),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
       ],
     );
   }
@@ -470,22 +337,22 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       children: [
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             itemCount: _chatMessages.length,
             itemBuilder: (context, index) {
-              final message = _chatMessages[index];
-              final isUser = message['role'] == 'user';
+              final msg = _chatMessages[index];
+              final isUser = msg['role'] == 'user';
               return Align(
                 alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: isUser ? AppTheme.primary : AppTheme.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Text(message['content']!, style: const TextStyle(color: Colors.white)),
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Text(msg['content']!, style: const TextStyle(color: Colors.white, fontSize: 14)),
                 ),
               );
             },
@@ -499,19 +366,22 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
               Expanded(
                 child: TextField(
                   controller: _chatController,
+                  onSubmitted: (_) => _handleChatSubmit(),
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: "Ask about this proposal...",
-                    hintStyle: TextStyle(color: Colors.white38),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    hintText: "Ask Brian anything...",
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    filled: true,
+                    fillColor: AppTheme.background,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
-                  onSubmitted: (_) => _handleChatSubmit(proposal),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               IconButton(
                 icon: const Icon(Icons.send, color: AppTheme.primary),
-                onPressed: () => _handleChatSubmit(proposal),
+                onPressed: _handleChatSubmit,
               ),
             ],
           ),
@@ -568,10 +438,12 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                         title: Text(output.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
                         subtitle: Text(_formatDate(output.createdAt), style: const TextStyle(color: Colors.white38, fontSize: 12)),
                         onTap: () {
-                          if (output.type == ProposalOutputType.detailedPdf) {
-                            _generateDetailedProposal(proposal);
-                          } else if (output.type == ProposalOutputType.onePagePdf) {
-                            _generateOnePageQuote(proposal);
+                          if (output.uri != null) {
+                             launchUrl(Uri.parse(output.uri!));
+                          } else {
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(content: Text("File not found (Url is empty)"), backgroundColor: Colors.red),
+                             );
                           }
                         },
                       )),

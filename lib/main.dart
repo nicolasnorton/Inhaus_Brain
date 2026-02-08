@@ -27,6 +27,7 @@ import 'core/commands/widgets/command_palette.dart';
 import 'core/widgets/hotkey_cheat_sheet.dart';
 import 'package:flutter/services.dart';
 import 'core/globals.dart';
+import 'core/services/orchestration_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -113,6 +114,9 @@ class InhausBrainApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize Orchestration Service
+    ref.read(orchestrationServiceProvider).init();
+
     final router = ref.watch(routerProvider);
     final preferences = ref.watch(userPreferencesProvider);
     final hotkeyService = ref.watch(hotkeyProvider);

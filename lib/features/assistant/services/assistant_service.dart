@@ -21,6 +21,7 @@ import '../../../core/architecture/blackboard.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
+import '../../../core/services/json_parser_service.dart';
 
 import '../domain/agent_outputs.dart';
 import '../providers/assistant_provider.dart';
@@ -241,26 +242,9 @@ class AssistantService {
 
     // B. Intent Classification
     // Use RouterAgent to determine intent and tool selection
-    final routerPrompt = """
-Analyze the user's request and determine the user's intent.
-User Input: "$text"
-
-Classify into one of:
-- CREATIVE: User wants to GENERATE or CREATE an image, video, logo, or artistic asset.
-- RESEARCH: User is asking for facts, searching for info, or analysis.
-- MANAGEMENT: User wants to create/manage clients, campaigns, or tasks.
-- DEVELOPMENT: User is asking for code or technical help.
-- SEO: User is asking for search engine optimization, keywords, or site audits.
-- AEO: User is asking for answer engine optimization, snippets, or voice search.
-- DIRECT_CHAT: Simple conversation or greeting.
-
-Return ONLY a JSON object:
-{
-  "intent": "INTENT_NAME",
-  "confidence": 0.9,
-  "required_tools": ["tool_name_1", "tool_name_2"]
-}
-""";
+    final systemPrompts = _ref.read(systemPromptsProvider);
+    final rawRouterPrompt = await systemPrompts.getIntentClassifierPrompt();
+    final routerPrompt = rawRouterPrompt.replaceAll('{{USER_INPUT}}', text);
 
     RouterIntent intentEnum = RouterIntent.directChat;
     List<String> suggestedTools = [];
@@ -275,13 +259,9 @@ Return ONLY a JSON object:
           ref: _ref
        );
        
-       final rawText = routerRes.text.trim();
-       final jsonStart = rawText.indexOf('{');
-       final jsonEnd = rawText.lastIndexOf('}');
+       final data = JsonParserService.parseJson(routerRes.text);
        
-       if (jsonStart != -1 && jsonEnd != -1) {
-          final jsonStr = rawText.substring(jsonStart, jsonEnd + 1);
-          final data = jsonDecode(jsonStr);
+       if (data != null) {
           final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
           
           intentEnum = RouterIntent.values.firstWhere(
@@ -355,50 +335,16 @@ Return ONLY a JSON object:
       return "$role: ${m.text}";
     }).join("\n");
 
-    final mainPrompt = """
-$brianPersona
-
-Context:
-- Current Mode: ${currentMode.toString().split('.').last.toUpperCase()}
-- Detected Intent: ${intentEnum.toString().split('.').last.toUpperCase()}
-- System Memory: $longTermMemory
-
-CONVERSATION HISTORY:
-$recentHistory
-
-AVAILABLE TOOLS:
-$toolDefinitions
-
-MULTI-MODAL CAPABILITIES:
-- I have direct access to Google Search via "Grounding". I will use it for all factual queries and real-time research.
-- I can see and analyze attached images (Multimodal Vision).
-- I generate images via 'image_generation' tool.
-- I generate videos via 'video_generation' tool.
-
-User Input: "$text"
-
-CRITICAL INSTRUCTIONS:
-1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research.
-2. NAVIGATION: Use 'navigate_to' tool for navigation.
-3. GENERATION: Use 'image_generation' or 'video_generation' for media.
-4. GEN UI - MANDATORY FOR MULTIMEDIA CONTENT:
-   - **ALWAYS use 'gen_ui_component' for**: Checklists, Campaigns, Strategy reports, TREND REPORTS, Market research, Competitor analysis, RECIPES, Comparison charts, Process flows, Marketing plans, and ANY request that can be visualized.
-   - **TRIGGER KEYWORDS**: If the user mentions "checklist", "campaign", "strategy", "report", "analysis", "plan", "comparison", "trends", "recipe", or "Gen UI", you MUST use gen_ui_component.
-   - **CRITICAL**: GenUI Should be used for EVERY prompt that can benefit from information presented graphically (Reports, Recipes, Strategy, Analysis, Checklists, Campaigns, etc).
-   - **CRITICAL**: Gen UI data MUST be RICH, SPECIFIC, and DETAILED. NO placeholders like "TBD" or "XX%". Use real metrics and competitor names via Research/Grounding.
-   - **RESTRICTION**: The `summary_text` argument in `gen_ui_component` MUST be a single headline sentence. Do NOT put long reports there.
-   - **FORBIDDEN**: Do NOT return a text-only report if the intent is RESEARCH, STRATEGY, ANALYSIS, CHECKLIST, or CAMPAIGN. You MUST use gen_ui_component.
-   - Use Google Search grounding to get REAL market data, competitor names, actual metrics.
-   - Include 5-7 diverse sections for reports: stat_card, text, chart, trend_list, or check_list.
-   - Example (Checklist): {"name": "gen_ui_component", "args": {"component_type": "recipe_card", "data": {"title": "Google Pmax Campaign Checklist", "steps": [{"title": "Account Setup", "description": "Configure conversion tracking and bid strategies."}]}, "summary_text": "Your Google Pmax campaign checklist is ready."}}
-   - Do NOT just write a text summary. You MUST generate the UI component with real, detailed data.
-5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
-6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
-7. If NO tool from the restricted list above applies, answer from your grounded knowledge. Simple answers for simple questions only. Complex tasks require GEN UI.
-
-
-$ephemeralMsg
-""";
+    final rawMainPrompt = await systemPrompts.getAssistantMainPrompt();
+    final mainPrompt = rawMainPrompt
+      .replaceAll('{{BRIAN_PERSONA}}', brianPersona)
+      .replaceAll('{{CURRENT_MODE}}', currentMode.toString().split('.').last.toUpperCase())
+      .replaceAll('{{DETECTED_INTENT}}', intentEnum.toString().split('.').last.toUpperCase())
+      .replaceAll('{{SYSTEM_MEMORY}}', longTermMemory)
+      .replaceAll('{{CONVERSATION_HISTORY}}', recentHistory)
+      .replaceAll('{{AVAILABLE_TOOLS}}', toolDefinitions)
+      .replaceAll('{{USER_INPUT}}', text)
+      .replaceAll('{{EPHEMERAL_MESSAGE}}', ephemeralMsg);
 
     // Semantic Cache Check
     final semanticCache = _ref.read(semanticCacheServiceProvider);
@@ -416,27 +362,8 @@ $ephemeralMsg
     }
 
     String responseText = "";
-
-    // 3. Strict Mode Check (Typed Agents) - TEMPORARILY DISABLED due to 400 errors
-    // TODO: Fix schema validation issues with Vertex AI
-    /*
-    if (intentEnum == RouterIntent.management || intentEnum == RouterIntent.research || intentEnum == RouterIntent.seo || blackboard.state.phase == BlackboardPhase.strategy) {
-       debugPrint('Assistant: Strict Mode Active for Strategy.');
-       final strictResult = await _runStrictAgent(
-         "Generate a comprehensive marketing strategy for: $text",
-         StrategyOutput.fromJson,
-         StrategyOutput.schemaDescription
-       );
-       
-       if (strictResult != null) {
-          blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
-          return strictResult;
-       }
-    }
-    */
     
     // DIRECT EDGE AI SERVICE (Primary)
-    // CopilotKit bypassed due to protocol errors
     List<String>? sources;
     try {
       _ref.read(assistantStatusProvider.notifier).state = "Thinking...";
@@ -455,189 +382,89 @@ $ephemeralMsg
       
       responseText = edgeResult.text;
       
-      // Parse JSON from EdgeAI response if present
-      String cleanResponse = responseText.trim();
-      print('DEBUG: Assistant - Raw response length: ${responseText.length}');
-      print('DEBUG: Assistant - Response preview: ${responseText.substring(0, responseText.length > 100 ? 100 : responseText.length)}...');
-      
-      // 1. Strip Markdown Code Blocks
-      final codeBlockRegex = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true);
-      final matches = codeBlockRegex.allMatches(cleanResponse);
+      // Parse JSON from EdgeAI response using JsonParserService
+      final parsed = JsonParserService.parseJson(responseText);
 
-      // 0. Global Clean-up: Strip python print() wrapper if it wraps the whole JSON
-      // Gemini 2.0 has a habit of outputting: print({"tool": ...})
-      if (cleanResponse.startsWith('print(') && cleanResponse.endsWith(')')) {
-          print('DEBUG: Assistant - Stripping global print() wrapper');
-          cleanResponse = cleanResponse.substring(6, cleanResponse.length - 1).trim();
-          // Remove surrounding quotes if it was print("...")
-          if ((cleanResponse.startsWith('"') && cleanResponse.endsWith('"')) || 
-              (cleanResponse.startsWith("'") && cleanResponse.endsWith("'"))) {
-             cleanResponse = cleanResponse.substring(1, cleanResponse.length - 1);
-             // Unescape generic escaped quotes
-             cleanResponse = cleanResponse.replaceAll(r'\"', '"');
-          }
-      }
+      if (parsed != null) {
+          debugPrint('Assistant: JSON decode successful via JsonParserService');
+          String? toolName;
+          Map<String, dynamic>? toolArgs;
 
-      if (matches.isNotEmpty) {
-        bool foundJson = false;
-        for (final match in matches) {
-           final content = match.group(1)!.trim();
-           if (content.startsWith('{') && content.endsWith('}')) {
-             try {
-                final safeContent = content.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (m) {
-                     return m.group(0)?.replaceAll('\n', '\\n') ?? '';
-                });
-                jsonDecode(safeContent);
-                cleanResponse = content; 
-                foundJson = true;
-                break;
-             } catch (_) {}
-           }
-        }
-        if (!foundJson) {
-           cleanResponse = cleanResponse.replaceAll(RegExp(r'```\w*\n?'), '').replaceAll('```', '');
-        }
-      }
-
-      // 1.5 Handle Python code prefix or other junk
-      if (cleanResponse.contains('import json') || cleanResponse.contains('report_')) {
-          cleanResponse = cleanResponse.substring(cleanResponse.indexOf('{'));
-      }
-
-      // 2. Find JSON Object using Brace Counting (Robust)
-      int startIndex = 0;
-      while (true) {
-        int jsonStart = cleanResponse.indexOf('{', startIndex);
-        if (jsonStart == -1) break;
-
-        int braceCount = 0;
-        int jsonEnd = -1;
-        
-        for (int i = jsonStart; i < cleanResponse.length; i++) {
-          if (cleanResponse[i] == '{') {
-            braceCount++;
-          } else if (cleanResponse[i] == '}') {
-            braceCount--;
-            if (braceCount == 0) {
-              jsonEnd = i;
-              break;
-            }
-          }
-        }
-
-        if (jsonEnd != -1) {
-          String candidate = cleanResponse.substring(jsonStart, jsonEnd + 1);
-          debugPrint('Assistant: Found JSON candidate: ${candidate.substring(0, candidate.length > 30 ? 30 : candidate.length)}...');
-          // Sanitize formatting
-          candidate = candidate.replaceAllMapped(RegExp(r'(?<=: ")(.*?)(?=")', dotAll: true), (match) {
-               return match.group(0)?.replaceAll('\n', '\\n') ?? '';
-          });
-          
-          try {
-            final dynamic parsed = jsonDecode(candidate);
-            debugPrint('Assistant: JSON decode successful, parsed type: ${parsed.runtimeType}');
-            if (parsed is Map) {
-               String? toolName;
-               Map<String, dynamic>? toolArgs;
-
-               if (parsed.containsKey('tool')) {
-                 toolName = parsed['tool'];
-                 toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
-               } else if (parsed.containsKey('tool_call')) {
-                 final call = parsed['tool_call'];
-                 if (call is Map) {
-                    toolName = call['name'];
-                    toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
-                 }
-               } else if (parsed.containsKey('name') && (parsed.containsKey('args') || parsed.containsKey('parameters'))) {
-                 toolName = parsed['name'];
-                 toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
-               } else if (parsed.containsKey('llamada_herramienta')) { // Spanish support
-                 final call = parsed['llamada_herramienta'];
-                 if (call is Map) {
-                    toolName = call['nombre'];
-                    toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
-                 }
-               } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
-                 // DIRECT COMPONENT OUTPUT SUPPORT
-                 toolName = 'gen_ui_component';
-                  toolArgs = Map<String, dynamic>.from(parsed);
-               } else {
-                  // Heuristic inference
-                  final prefix = cleanResponse.substring(0, jsonStart).trim();
-                  final funcMatch = RegExp(r'([a-zA-Z0-9_]+)\s*\($').firstMatch(prefix);
-                  if (funcMatch != null) {
-                    final inferredName = funcMatch.group(1);
-                    // Explicitly ignore 'print' as a tool name due to Python code confusion
-                    if (inferredName != 'print') {
-                       toolName = inferredName;
-                       toolArgs = Map<String, dynamic>.from(parsed);
+           if (parsed.containsKey('tool')) {
+             toolName = parsed['tool'];
+             toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
+           } else if (parsed.containsKey('tool_call')) {
+             final call = parsed['tool_call'];
+             if (call is Map) {
+                toolName = call['name'];
+                toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
+             }
+           } else if (parsed.containsKey('name') && (parsed.containsKey('args') || parsed.containsKey('parameters'))) {
+             toolName = parsed['name'];
+             toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
+           } else if (parsed.containsKey('llamada_herramienta')) { // Spanish support
+             final call = parsed['llamada_herramienta'];
+             if (call is Map) {
+                toolName = call['nombre'];
+                toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
+             }
+           } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
+             // DIRECT COMPONENT OUTPUT SUPPORT
+             toolName = 'gen_ui_component';
+              toolArgs = Map<String, dynamic>.from(parsed);
+           } else {
+              // Fallback: Check if the root key corresponds to a known tool
+              // e.g. {"video_generation": {"prompt": "..."}}
+              for (final tool in combinedTools) {
+                 if (parsed.containsKey(tool.name)) {
+                    toolName = tool.name;
+                    final inner = parsed[tool.name];
+                    if (inner is Map) {
+                       toolArgs = Map<String, dynamic>.from(inner);
                     }
-                  } else {
-                      // Fallback: Check if the root key corresponds to a known tool
-                      // e.g. {"video_generation": {"prompt": "..."}}
-                      for (final tool in combinedTools) {
-                         if (parsed.containsKey(tool.name)) {
-                            toolName = tool.name;
-                            final inner = parsed[tool.name];
-                            if (inner is Map) {
-                               toolArgs = Map<String, dynamic>.from(inner);
-                            }
-                            break;
-                         }
-                      }
-                   }
+                    break;
                  }
+              }
+           }
 
-               if (toolName != null && toolArgs != null) {
-                 if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
-                   toolArgs = Map<String, dynamic>.from(toolArgs['args']);
-                 }
-                 debugPrint('Assistant: Parsed tool JSON: $toolName with ${toolArgs.length} args');
-                 debugPrint('Assistant: Found valid tool JSON: $toolName');
-                 debugPrint('Assistant: Attempting to execute tool: $toolName');
-                 _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
-                 final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
-                 _ref.read(assistantStatusProvider.notifier).state = null;
-                 debugPrint('Assistant: Tool execution completed for: $toolName');
-                 return result;
-               } else {
-                  debugPrint('Assistant: JSON parsed but toolName or toolArgs is null. toolName=$toolName, toolArgs=$toolArgs');
-               }
+           if (toolName != null && toolArgs != null) {
+             if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
+               toolArgs = Map<String, dynamic>.from(toolArgs['args']);
+             }
+             debugPrint('Assistant: Parsed tool JSON: $toolName with ${toolArgs.length} args');
+             debugPrint('Assistant: Found valid tool JSON: $toolName');
+             debugPrint('Assistant: Attempting to execute tool: $toolName');
+             _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
+             final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
+             _ref.read(assistantStatusProvider.notifier).state = null;
+             debugPrint('Assistant: Tool execution completed for: $toolName');
+             return result;
+           } else {
+              debugPrint('Assistant: JSON parsed but toolName or toolArgs is null. toolName=$toolName, toolArgs=$toolArgs');
+           }
 
-               // BRIAN ORCHESTRATION EXTRACTION
-               final hasOrchestration = parsed.containsKey('subtasks') || 
-                                      parsed.containsKey('final_output') ||
-                                      parsed.containsKey('subtareas') ||
-                                      parsed.containsKey('salida_final');
-               
-               if (hasOrchestration) {
-                 debugPrint('Assistant: Detected Brian Orchestration JSON');
-                 final blackboard = _ref.read(blackboardProvider.notifier);
-                 final subtasks = parsed['subtasks'] ?? parsed['subtareas'];
-                 if (subtasks is List) {
-                   for (var task in subtasks) {
-                     blackboard.addEvent(WorkflowEventType.agentAction, "Brian Plan: $task");
-                   }
-                 }
-                 final output = parsed['final_output'] ?? parsed['salida_final'] ?? responseText;
-                 final notes = parsed['verification_notes'] ?? parsed['notas_verificacion'];
-                 if (notes != null) {
-                   blackboard.postFact('verification_notes', notes);
-                 }
-                 return ToolExecutionSummary(text: output.toString());
+           // BRIAN ORCHESTRATION EXTRACTION
+           final hasOrchestration = parsed.containsKey('subtasks') || 
+                                  parsed.containsKey('final_output') ||
+                                  parsed.containsKey('subtareas') ||
+                                  parsed.containsKey('salida_final');
+           
+           if (hasOrchestration) {
+             debugPrint('Assistant: Detected Brian Orchestration JSON');
+             final blackboard = _ref.read(blackboardProvider.notifier);
+             final subtasks = parsed['subtasks'] ?? parsed['subtareas'];
+             if (subtasks is List) {
+               for (var task in subtasks) {
+                 blackboard.addEvent(WorkflowEventType.agentAction, "Brian Plan: $task");
                }
-            }
-          } catch (e) {
-             // Continue searching if this bracket pair wasn't valid JSON
-             debugPrint('Assistant: skipped invalid JSON candidate: $e');
-          }
-          // Move past this block to find next candidate
-          startIndex = jsonEnd + 1;
-        } else {
-          // Unclosed brace, stop searching
-          break;
-        }
+             }
+             final output = parsed['final_output'] ?? parsed['salida_final'] ?? responseText;
+             final notes = parsed['verification_notes'] ?? parsed['notas_verificacion'];
+             if (notes != null) {
+               blackboard.postFact('verification_notes', notes);
+             }
+             return ToolExecutionSummary(text: output.toString());
+           }
       }
 
       // If no tool was executed, responseText remains the raw text

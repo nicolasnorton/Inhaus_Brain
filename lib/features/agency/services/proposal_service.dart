@@ -17,7 +17,7 @@ import 'inhaus_proposal_pdf_generator.dart';
 import 'inhaus_proposal_slides_generator.dart';
 import 'service_catalog_repository.dart';
 import '../models/agency_service_model.dart';
-import '../../services/services_repository.dart' as new_repo;
+import '../../services/services/services_repository.dart' as new_repo;
 import '../../services/models/service_model.dart' as new_sm;
 
 class ProposalService {
@@ -143,8 +143,8 @@ SERVICIO: ${s.nameEs} (${s.name})
     List<String> searchQueries = [];
     
     for (var source in proposal.sources) {
-      if (source.title.startsWith("Search:")) {
-        searchQueries.add(source.title.replaceAll("Search:", "").trim());
+      if (source.name.startsWith("Search:")) {
+        searchQueries.add(source.name.replaceAll("Search:", "").trim());
       }
     }
 
@@ -308,8 +308,8 @@ SERVICIO: ${s.nameEs} (${s.name})
     List<String> searchQueries = [];
     
     for (var source in proposal.sources) {
-      if (source.title.startsWith("Search:")) {
-        searchQueries.add(source.title.replaceAll("Search:", "").trim());
+      if (source.name.startsWith("Search:")) {
+        searchQueries.add(source.name.replaceAll("Search:", "").trim());
       }
     }
 
@@ -499,7 +499,7 @@ JSON SCHEMA:
 ${type == ProposalType.onePageQuote ? 
     '''{
   "header": {"agency_title": "INHAUS ESTUDIO CREATIVO", "client_name": "...", "date": "Month, Day - Year"},
-  "summary": {"intro": "...", "key_services": ["..."], "total_price": {"label": "INVERSIÓN MENSUAL:", "amount": "$1,500.00 USD"}, "cta": "..."},
+  "summary": {"intro": "...", "key_services": ["..."], "total_price": {"label": "INVERSIÓN MENSUAL:", "amount": "\$1,500.00 USD"}, "cta": "..."},
   "footer": "inhauscorp.com"
 }''' : 
     '''{
@@ -510,7 +510,7 @@ ${type == ProposalType.onePageQuote ?
     "bullets": ["..."],
     "includes": ["..."],
     "excludes": ["..."],
-    "price": {"label": "PRECIO MENSUAL:", "amount": "$1,500.00 USD"}
+    "price": {"label": "PRECIO MENSUAL:", "amount": "\$1,500.00 USD"}
   }],
   "footer": "inhauscorp.com"
 }'''}
@@ -663,6 +663,8 @@ ${type == ProposalType.onePageQuote ?
      final clean = _stripMarkdown(text);
      return jsonDecode(clean);
   }
+
+  static Map<String, dynamic> _parseLooseJson(String text) => _parseModularJson(text);
 
   static String _stripMarkdown(String text) {
     if (text.contains('```json')) {
