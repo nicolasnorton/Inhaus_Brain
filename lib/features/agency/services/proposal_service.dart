@@ -138,11 +138,64 @@ SERVICIO: ${s.nameEs} (${s.name})
     
     final fullSources = "$catalogContext\n$selectedServicesContext\n\n$dateContext\n\n$sources";
     
-    final config = AIModelConfig.geminiPro;
+    // Check for search sources and perform explicit research step
+    String researchContext = "";
+    List<String> searchQueries = [];
+    
+    for (var source in proposal.sources) {
+      if (source.title.startsWith("Search:")) {
+        searchQueries.add(source.title.replaceAll("Search:", "").trim());
+      }
+    }
+
+    if (searchQueries.isNotEmpty) {
+      debugPrint("ProposalService: Performing research step for ${searchQueries.length} queries...");
+      try {
+        final researchPrompt = """
+You are a senior market researcher.
+TASK: Conduct a deep web search for the following entities/queries: ${searchQueries.join(', ')}.
+
+OUTPUT: Provide a comprehensive dossier including:
+1. Business Description (Industry, offering, positioning)
+2. Target Audience
+3. Key Competitors
+4. Any public pricing or pricing indications (if available)
+5. Recent news or campaigns
+
+CRITICAL: Return only the factual summary. Do not use placeholders. If info is missing, state what was found.
+""";
+        
+        // Use Gemini Flash for speed, or Pro if needed. Using Pro for quality.
+        // Explicitly enable Google Search and ensure text mode (no JSON mimeType)
+        final researchConfig = AIModelConfig.geminiPro.copyWith(
+          useGoogleSearch: true,
+          responseMimeType: null, // Ensure text mode for tools
+        );
+
+        final researchResult = await EdgeAIService.generateText(
+          researchPrompt,
+          modelConfig: researchConfig,
+          ref: ref,
+        );
+        
+        researchContext = "\n\n=== AI RESEARCH DOSSIER ===\n${researchResult.text}\n===========================\n";
+        debugPrint("ProposalService: Research complete. Length: ${researchContext.length}");
+        
+      } catch (e) {
+        debugPrint("ProposalService: Research step failed: $e. Proceeding with basic context.");
+        researchContext = "\n\n[Research Attempt Failed: $e]\n";
+      }
+    }
+
+    // Combine all context
+    final combinedSources = "$fullSources$researchContext";
+    
+    // Final Generation Config (Tools disabled to avoid conflicts with JSON, relying on Research Context)
+    final config = AIModelConfig.geminiPro.copyWith(useGoogleSearch: false);
 
     // 1. Generate INHAUS JSON
     final result = await EdgeAIService.generateText(
-      _inhausProposalPrompt(fullSources, type, language),
+      _inhausProposalPrompt(combinedSources, type, language),
       modelConfig: config,
       ref: ref,
     );
@@ -250,11 +303,58 @@ SERVICIO: ${s.nameEs} (${s.name})
 
     final fullSources = "$catalogContext\n$selectedServicesContext\n\n$dateContext\n\n$sources";
 
-    final config = AIModelConfig.geminiPro;
+    // Check for search sources and perform explicit research step
+    String researchContext = "";
+    List<String> searchQueries = [];
+    
+    for (var source in proposal.sources) {
+      if (source.title.startsWith("Search:")) {
+        searchQueries.add(source.title.replaceAll("Search:", "").trim());
+      }
+    }
+
+    if (searchQueries.isNotEmpty) {
+      debugPrint("ProposalService (Slides): Performing research step for ${searchQueries.length} queries...");
+      try {
+        final researchPrompt = """
+You are a senior market researcher.
+TASK: Conduct a deep web search for the following entities/queries: ${searchQueries.join(', ')}.
+
+OUTPUT: Provide a comprehensive dossier including:
+1. Business Description (Industry, offering, positioning)
+2. Target Audience
+3. Key Competitors
+4. Any public pricing or pricing indications (if available)
+5. Recent news or campaigns
+
+CRITICAL: Return only the factual summary. Do not use placeholders. If info is missing, state what was found.
+""";
+        
+        final researchConfig = AIModelConfig.geminiPro.copyWith(
+          useGoogleSearch: true,
+          responseMimeType: null,
+        );
+
+        final researchResult = await EdgeAIService.generateText(
+          researchPrompt,
+          modelConfig: researchConfig,
+          ref: ref,
+        );
+        
+        researchContext = "\n\n=== AI RESEARCH DOSSIER ===\n${researchResult.text}\n===========================\n";
+        
+      } catch (e) {
+        debugPrint("ProposalService (Slides): Research step failed: $e. Proceeding with basic context.");
+        researchContext = "\n\n[Research Attempt Failed: $e]\n";
+      }
+    }
+
+    final combinedSources = "$fullSources$researchContext";
+    final config = AIModelConfig.geminiPro.copyWith(useGoogleSearch: false);
 
     // 1. Generate INHAUS JSON
     final result = await EdgeAIService.generateText(
-      _inhausProposalPrompt(fullSources, type, language),
+      _inhausProposalPrompt(combinedSources, type, language),
       modelConfig: config,
       ref: ref,
     );
@@ -322,9 +422,11 @@ SERVICIO: ${s.nameEs} (${s.name})
   }
 
   /// System prompt for building INHAUS style JSON v2.0
-  static String _inhausProposalPrompt(String sources, ProposalType type, ProposalLanguage language) {
-    final targetLang = language == ProposalLanguage.spanish ? "SPANISH (LatAm/Ecuador)" : "ENGLISH (Professional)";
+  static String _inhausProposalPrompt(
+      String sources, ProposalType type, ProposalLanguage language) {
     
+    String targetLang = language == ProposalLanguage.english ? "English" : "Spanish";
+
     return '''
 Bilingual Client Proposal Specialist - INHAUS Edition (v2.0)
 
@@ -339,12 +441,12 @@ Generate valid JSON objects that represent business proposals.
 * Typography: Montserrat. White (#FFFFFF) for titles, Light Gray (#A0A0A0) for body text.
 
 💰 PRICING RULES (STRICT)
-1. **NO PLACEHOLDERS**: Never use "USD XXX", "TBD", or "$0.00".
+1. **NO PLACEHOLDERS**: Never use "USD XXX", "TBD", or "\$0.00".
 2. **REALISTIC ESTIMATES**: If you don't find a price in the sources/catalog, use these standard INHAUS ranges:
-   - Monthly Management (RRSS/Ads): $1,200.00 - $3,500.00 USD
-   - Content Creation Day: $800.00 - $1,500.00 USD
-   - Strategy/Audit: $500.00 - $1,200.00 USD
-   - Branding/Web Dev: $1,500.00 - $5,000.00 USD
+   - Monthly Management (RRSS/Ads): \$1,200.00 - \$3,500.00 USD
+   - Content Creation Day: \$800.00 - \$1,500.00 USD
+   - Strategy/Audit: \$500.00 - \$1,200.00 USD
+   - Branding/Web Dev: \$1,500.00 - \$5,000.00 USD
 3. **Currency**: Always use the currency indicated in the sources (Default: USD).
 
 📋 STRUCTURED SERVICE PRESENTATION (CRITICAL)
@@ -376,7 +478,7 @@ When "SERVICIOS SELECCIONADOS" are provided in sources, you MUST present each se
 - [Excluded item 2]
 - [etc.]
 
-**Precio**: $[exact price from catalog]
+**Precio**: \$[exact price from catalog]
 
 ⚠️ CRITICAL: You MUST use the EXACT values from the service catalog. Do NOT modify prices, team members, deliverables, includes, or excludes. Only the "Descripción Personalizada" should be AI-generated and contextual.
 

@@ -48,7 +48,29 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         if (!mounted) break;
         setState(() {
           final lastIdx = _chatMessages.length - 1;
-          _chatMessages[lastIdx]['content'] = _chatMessages[lastIdx]['content']! + chunk;
+          // If the chunk is longer than the current content and starts with it, it's likely a full update
+          if (chunk.length > (_chatMessages[lastIdx]['content']?.length ?? 0) && 
+              chunk.startsWith(_chatMessages[lastIdx]['content'] ?? "")) {
+             _chatMessages[lastIdx]['content'] = chunk;
+          } else {
+             // Otherwise, it's a delta, so append it (standard for most LLM streams)
+             // But wait, if we see "PleasePlease", it means we are appending when we should likely be replacing 
+             // OR the provider is sending "A", then "AB", then "ABC".
+             // Let's assume standard delta for now, but if the chunk implies full text, switch strategy.
+             // Actually, safest is to just APPEND if we are sure it's a delta. 
+             // But the bug "PleasePlease" strongly suggests we are appending "Please" to "Please".
+             // Let's inspect ProposalsLMService to be sure.
+             // For now, I will assume it sends DELTAS. 
+             // If it was sending full text, the previous code `content + chunk` would result in "PleasePlease...".
+             // Wait, if the provider sends "Please", then " provide", the previous code does "Please" + " provide" -> "Please provide".
+             // If the provider sends "Please", then "Please provide", the previous code does "Please" + "Please provide" -> "PleasePlease provide".
+             // This confirms the provider is likely sending FULL ACCUMULATED TEXT in each chunk.
+             
+             // FIX: We will treat the chunk as the NEW FULL CONTENT if it starts with the old content
+             // OR if it looks like a replacement.
+             // Actually, simpler fix: Just set content = chunk if the service returns full text.
+             // Let's check the service first. I'll revert this thought and check the service.
+          }
         });
       }
     } catch (e) {

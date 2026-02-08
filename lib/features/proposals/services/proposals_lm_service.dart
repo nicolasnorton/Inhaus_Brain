@@ -229,10 +229,20 @@ Sources: $sources
       }
     }
 
+    final systemPrompt = """
+You are an expert proposal specialist at INHAUS.
+Your goal is to help the user refine their proposal strategy.
+CRITICAL:
+- Be concise and direct. No fluff.
+- Do NOT repeat the user's question.
+- Focus on actionable advice for the proposal.
+- Use bullet points for clarity.
+- Stay professional and on-brand (INHAUS).
+""";
+
     final stream = EdgeAIService.generateTextStream(
-      query,
+      "$systemPrompt\n\nCONTEXT:\n$context\n\nUSER QUERY: $query",
       config: AIModelConfig.geminiFlash,
-      memoryContext: context,
       ref: ref,
     );
 
