@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
-import '../models/service_model.dart';
-import '../models/service_enums.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../models/agency_service_model.dart';
 
-class ServiceForm extends StatefulWidget {
-  final Service? service;
+class AgencyServiceForm extends StatefulWidget {
+  final AgencyService? service;
   final Function(Map<String, dynamic>) onSave;
 
-  const ServiceForm({super.key, this.service, required this.onSave});
+  const AgencyServiceForm({super.key, this.service, required this.onSave});
 
   @override
-  State<ServiceForm> createState() => _ServiceFormState();
+  State<AgencyServiceForm> createState() => _AgencyServiceFormState();
 }
 
-class _ServiceFormState extends State<ServiceForm> {
+class _AgencyServiceFormState extends State<AgencyServiceForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _nameEsController;
   late TextEditingController _priceController;
+  late TextEditingController _basePriceController;
   late TextEditingController _costController;
   late TextEditingController _marginController;
   late TextEditingController _executionController;
@@ -25,6 +25,7 @@ class _ServiceFormState extends State<ServiceForm> {
   late TextEditingController _deliverablesController;
   late TextEditingController _includesController;
   late TextEditingController _excludesController;
+  late TextEditingController _descriptionController;
   late ServiceType _type;
   late BillingCycle _billingCycle;
 
@@ -33,7 +34,9 @@ class _ServiceFormState extends State<ServiceForm> {
     super.initState();
     _nameController = TextEditingController(text: widget.service?.name ?? '');
     _nameEsController = TextEditingController(text: widget.service?.nameEs ?? '');
-    _priceController = TextEditingController(text: widget.service?.basePrice.toString() ?? '');
+    _descriptionController = TextEditingController(text: widget.service?.description ?? '');
+    _priceController = TextEditingController(text: widget.service?.price ?? '');
+    _basePriceController = TextEditingController(text: widget.service?.basePrice.toString() ?? '');
     _costController = TextEditingController(text: widget.service?.deliveryCost.toString() ?? '');
     _marginController = TextEditingController(text: widget.service?.targetMargin.toString() ?? '35.0');
     _executionController = TextEditingController(text: widget.service?.execution ?? '');
@@ -42,14 +45,16 @@ class _ServiceFormState extends State<ServiceForm> {
     _includesController = TextEditingController(text: widget.service?.includes.join(', ') ?? '');
     _excludesController = TextEditingController(text: widget.service?.excludes.join(', ') ?? '');
     _type = widget.service?.type ?? ServiceType.individual;
-    _billingCycle = widget.service?.billingCycle ?? BillingCycle.monthly;
+    _billingCycle = widget.service?.billingCycle ?? BillingCycle.oneTime;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _nameEsController.dispose();
+    _descriptionController.dispose();
     _priceController.dispose();
+    _basePriceController.dispose();
     _costController.dispose();
     _marginController.dispose();
     _executionController.dispose();
@@ -73,17 +78,21 @@ class _ServiceFormState extends State<ServiceForm> {
             const SizedBox(height: 16),
             _buildTextField(_nameEsController, "Nombre del Servicio (ES)", "ej., Gestión SEO"),
             const SizedBox(height: 16),
+            _buildTextField(_descriptionController, "Description", "Brief overview of the service", maxLines: 2),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(child: _buildDropdown<ServiceType>("Type", _type, ServiceType.values, (val) => setState(() => _type = val!))),
                 const SizedBox(width: 16),
-                Expanded(child: _buildDropdown<BillingCycle>("Billing", _billingCycle, BillingCycle.values, (val) => setState(() => _innerBillingCycle = val!))),
+                Expanded(child: _buildDropdown<BillingCycle>("Billing", _billingCycle, BillingCycle.values, (val) => setState(() => _billingCycle = val!))),
               ],
             ),
             const SizedBox(height: 16),
+            _buildTextField(_priceController, "Price Display String", "e.g., 1000.00-1500.00 or 1500.00"),
+            const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildNumberField(_priceController, "Base Price (\$)")),
+                Expanded(child: _buildNumberField(_basePriceController, "Calc Price (\$)")),
                 const SizedBox(width: 16),
                 Expanded(child: _buildNumberField(_costController, "Delivery Cost (\$)")),
                 const SizedBox(width: 16),
@@ -170,10 +179,6 @@ class _ServiceFormState extends State<ServiceForm> {
     );
   }
 
-  // Temporary variable to fix the dropdown assignment
-  BillingCycle get _innerBillingCycle => _billingCycle;
-  set _innerBillingCycle(BillingCycle val) => _billingCycle = val;
-
   void _save() {
     if (_formKey.currentState!.validate()) {
       // Parse comma-separated values into lists
@@ -184,8 +189,10 @@ class _ServiceFormState extends State<ServiceForm> {
       widget.onSave({
         'name': _nameController.text,
         'nameEs': _nameEsController.text,
+        'description': _descriptionController.text,
         'type': _type.name,
-        'basePrice': double.parse(_priceController.text),
+        'price': _priceController.text,
+        'basePrice': double.parse(_basePriceController.text),
         'deliveryCost': double.parse(_costController.text),
         'targetMargin': double.parse(_marginController.text),
         'execution': _executionController.text,

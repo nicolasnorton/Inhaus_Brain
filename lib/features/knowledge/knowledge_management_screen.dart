@@ -10,7 +10,7 @@ import 'screens/external_knowledge_screen.dart';
 import 'screens/pipeline_orchestrator.dart';
 import 'widgets/knowledge_tour_overlay.dart';
 import 'providers/knowledge_provider.dart';
-import '../agency/screens/service_catalog_screen.dart';
+import '../agency/screens/agency_services_dashboard.dart';
 
 class KnowledgeManagementScreen extends ConsumerStatefulWidget {
   const KnowledgeManagementScreen({super.key});
@@ -388,7 +388,7 @@ class _KnowledgeManagementScreenState extends ConsumerState<KnowledgeManagementS
       case 'api':
         return const ExternalKnowledgeScreen();
       case 'agency-services':
-        return const ServiceCatalogScreen();
+        return const AgencyServicesDashboard();
       default:
         return _buildPlaceholder(currentView.toUpperCase().replaceAll('-', ' '));
     }

@@ -10,8 +10,8 @@ import '../providers/knowledge_service_providers.dart';
 import '../../../../core/services/integration_service.dart';
 import '../../connectors/models/connected_account_model.dart';
 import '../../../../core/services/sources_service.dart';
-import '../../services/services/services_repository.dart' as services_repo;
-import '../../services/models/service_model.dart' as service_model;
+import '../../agency/models/agency_service_model.dart';
+import '../../agency/services/service_catalog_repository.dart';
 
 class AddSourceDialog extends ConsumerStatefulWidget {
   final Function(KnowledgeSource) onSourceAdded;
@@ -30,7 +30,7 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
   String? _activeInputMode; // 'url', 'text', 'drive', 'services', null (default)
   List<GoogleDriveFile>? _driveFiles;
   bool _isLoadingDrive = false;
-  List<service_model.Service>? _availableServices;
+  List<AgencyService>? _availableServices;
   Set<String> _selectedServiceIds = {};
 
   @override
@@ -479,9 +479,9 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
       _activeInputMode = 'services';
     });
     try {
-      final repo = services_repo.ServicesRepository();
-      final services = await repo.streamServices().first;
-      setState(() => _availableServices = services);
+      final repo = ServiceCatalogRepository();
+      final catalog = await repo.getCatalog();
+      setState(() => _availableServices = catalog?.services ?? []);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading services: $e')));

@@ -137,6 +137,14 @@ class ServiceCatalogRepository {
     }
   }
 
+  /// Get multiple services by their IDs
+  Future<List<AgencyService>> getServicesByIds(List<String> ids) async {
+    final catalog = await getCatalog();
+    if (catalog == null || ids.isEmpty) return [];
+
+    return catalog.services.where((s) => ids.contains(s.id)).toList();
+  }
+
   /// Search services by name or description
   Future<List<AgencyService>> searchServices(String query) async {
     final catalog = await getCatalog();

@@ -11,6 +11,7 @@ import '../../agency/models/inhaus_proposal_models.dart';
 import '../../agency/providers/proposal_provider.dart';
 import '../../agency/providers/proposal_template_provider.dart';
 import '../../agency/services/proposal_service.dart';
+import '../../agency/services/proposal_storage_service.dart';
 import '../../agency/widgets/proposal_type_selection_dialog.dart';
 // import '../../agency/widgets/template_manager_dialog.dart';
 import '../../knowledge/models/knowledge_source.dart';
@@ -165,18 +166,38 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
         final template = ref.read(currentTemplateProvider);
         final bytes = await ProposalService.generateProposalPdfBytes(proposal, ref, template: template);
         if (!mounted) return;
-        Navigator.pop(context);
+        Navigator.pop(context); // Close loading dialog
         
-        final output = ProposalOutput(
-          id: const Uuid().v4(),
-          title: "Proposal Doc (${DateTime.now().minute})",
-          type: ProposalOutputType.pdf,
-          createdAt: DateTime.now(),
-        );
-        _addOutput(proposal, output);
+        // Upload to Firebase Storage
+        final outputId = const Uuid().v4();
+        try {
+          _showLoadingDialog("Saving PDF to storage...");
+          final downloadUrl = await ProposalStorageService.uploadProposalOutput(
+            proposalId: proposal.id,
+            outputId: outputId,
+            fileBytes: bytes,
+            fileExtension: 'pdf',
+          );
+          
+          if (!mounted) return;
+          Navigator.pop(context); // Close upload dialog
+          
+          final output = ProposalOutput(
+            id: outputId,
+            title: "Proposal Doc (${DateTime.now().toString().substring(11, 16)})",
+            type: ProposalOutputType.pdf,
+            uri: downloadUrl,
+            createdAt: DateTime.now(),
+          );
+          _addOutput(proposal, output);
 
-        await Printing.layoutPdf(onLayout: (format) async => Uint8List.fromList(bytes));
-
+          await Printing.layoutPdf(onLayout: (format) async => Uint8List.fromList(bytes));
+        } catch (uploadError) {
+          if (!mounted) return;
+          if (Navigator.canPop(context)) Navigator.pop(context);
+          _showErrorDialog("Failed to save PDF: $uploadError");
+          return;
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -204,18 +225,38 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
       } else {
         final bytes = await ProposalService.generateProposalSlidesBytes(proposal, ref);
         if (!mounted) return;
-        Navigator.pop(context);
+        Navigator.pop(context); // Close loading dialog
 
-        final output = ProposalOutput(
-          id: const Uuid().v4(),
-          title: "Slide Deck (${DateTime.now().minute})",
-          type: ProposalOutputType.slides,
-          createdAt: DateTime.now(),
-        );
-        _addOutput(proposal, output);
+        // Upload to Firebase Storage
+        final outputId = const Uuid().v4();
+        try {
+          _showLoadingDialog("Saving slides to storage...");
+          final downloadUrl = await ProposalStorageService.uploadProposalOutput(
+            proposalId: proposal.id,
+            outputId: outputId,
+            fileBytes: bytes,
+            fileExtension: 'pdf', // Slides are also PDF format
+          );
+          
+          if (!mounted) return;
+          Navigator.pop(context); // Close upload dialog
+          
+          final output = ProposalOutput(
+            id: outputId,
+            title: "Slide Deck (${DateTime.now().toString().substring(11, 16)})",
+            type: ProposalOutputType.slides,
+            uri: downloadUrl,
+            createdAt: DateTime.now(),
+          );
+          _addOutput(proposal, output);
 
-        await Printing.layoutPdf(onLayout: (format) async => Uint8List.fromList(bytes));
-
+          await Printing.layoutPdf(onLayout: (format) async => Uint8List.fromList(bytes));
+        } catch (uploadError) {
+          if (!mounted) return;
+          if (Navigator.canPop(context)) Navigator.pop(context);
+          _showErrorDialog("Failed to save slides: $uploadError");
+          return;
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -274,17 +315,38 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context); // Close loading dialog
 
-      // Save output
-      final output = ProposalOutput(
-        id: const Uuid().v4(),
-        title: "$typeLabel - $formatLabel (${DateTime.now().minute})",
-        type: format == ProposalFormat.pdf ? ProposalOutputType.pdf : ProposalOutputType.slides,
-        createdAt: DateTime.now(),
-      );
-      _addOutput(proposal, output);
+      // Upload to Firebase Storage
+      final outputId = const Uuid().v4();
+      try {
+        _showLoadingDialog("Saving $formatLabel to storage...");
+        final downloadUrl = await ProposalStorageService.uploadProposalOutput(
+          proposalId: proposal.id,
+          outputId: outputId,
+          fileBytes: bytes,
+          fileExtension: 'pdf',
+        );
+        
+        if (!mounted) return;
+        Navigator.pop(context); // Close upload dialog
+        
+        // Save output with download URL
+        final output = ProposalOutput(
+          id: outputId,
+          title: "$typeLabel - $formatLabel (${DateTime.now().toString().substring(11, 16)})",
+          type: format == ProposalFormat.pdf ? ProposalOutputType.pdf : ProposalOutputType.slides,
+          uri: downloadUrl,
+          createdAt: DateTime.now(),
+        );
+        _addOutput(proposal, output);
 
-      // Show PDF viewer
-      await Printing.layoutPdf(onLayout: (pdfFormat) async => bytes);
+        // Show PDF viewer
+        await Printing.layoutPdf(onLayout: (pdfFormat) async => bytes);
+      } catch (uploadError) {
+        if (!mounted) return;
+        if (Navigator.canPop(context)) Navigator.pop(context);
+        _showErrorDialog("Failed to save proposal: $uploadError");
+        return;
+      }
 
     } catch (e) {
       debugPrint("Generation Error: $e");
@@ -733,7 +795,24 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
                         title: Text(o.title, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                         subtitle: Text(o.createdAt.toString().substring(0, 16), style: const TextStyle(color: Colors.white12, fontSize: 9)),
                         dense: true,
-                        onTap: () => _showResultDialog(o.title, o.content ?? "No content."),
+                        onTap: () async {
+                          if (o.uri != null && o.uri!.isNotEmpty) {
+                            // Download and display stored PDF
+                            try {
+                              _showLoadingDialog(\"Loading ${o.title}...\");
+                              final bytes = await ProposalStorageService.downloadProposalOutput(o.uri!);
+                              if (!mounted) return;
+                              Navigator.pop(context); // Close loading dialog
+                              await Printing.layoutPdf(onLayout: (format) async => bytes);
+                            } catch (e) {
+                              if (!mounted) return;
+                              if (Navigator.canPop(context)) Navigator.pop(context);
+                              _showErrorDialog(\"Failed to load output: $e\");
+                            }
+                          } else {
+                            _showResultDialog(o.title, o.content ?? \"No content available.\");
+                          }
+                        },
                       ),
                     );
                   },

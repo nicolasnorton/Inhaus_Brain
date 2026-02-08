@@ -44,8 +44,10 @@ class OrchestrationService {
       try {
         final proposal = event.data['proposal'] as Proposal?;
         final proposalId = event.data['proposalId'] as String?;
-        final type = event.data['type'] ?? 'detailed';
+        final type = event.data['type'] as String? ?? 'detailed';
         
+        debugPrint('OrchestrationService: Decision to generate $type proposal. Proposal: $proposal, ID: $proposalId');
+
         if (proposal != null) {
           await _generateProposal(proposal, type, event.id);
         } else if (proposalId != null) {
@@ -53,11 +55,13 @@ class OrchestrationService {
           if (fetchedProposal != null) {
             await _generateProposal(fetchedProposal, type, event.id);
           } else {
-             debugPrint('OrchestrationService: Proposal not found for ID: $proposalId');
+             debugPrint('OrchestrationService: ERROR - Proposal not found for ID: $proposalId');
           }
+        } else {
+          debugPrint('OrchestrationService: ERROR - Missing both proposal object and ID in event.');
         }
-      } catch (e) {
-        debugPrint('OrchestrationService: Invalid proposal data in event: $e');
+      } catch (e, stack) {
+        debugPrint('OrchestrationService: CRASH in _handleUserRequest: $e\n$stack');
       }
     }
   }
@@ -196,12 +200,15 @@ class OrchestrationService {
 
       // Robust JSON Handling: If the result is JSON, we can parse it before posting
       dynamic factValue = resultText;
-      try {
-        if (resultText.trim().startsWith('{') || resultText.trim().startsWith('[')) {
-          factValue = jsonDecode(resultText);
+      if (resultText.trim().isNotEmpty) {
+        try {
+          final trimmed = resultText.trim();
+          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            factValue = jsonDecode(trimmed);
+          }
+        } catch (e) {
+          debugPrint('OrchestrationService: Result for $agentName is not valid JSON, posting as string. Error: $e');
         }
-      } catch (e) {
-        debugPrint('OrchestrationService: Result not valid JSON, posting as string.');
       }
 
       debugPrint('OrchestrationService: $agentName finished work.');

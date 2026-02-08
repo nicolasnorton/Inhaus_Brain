@@ -6,7 +6,8 @@ import '../models/proposal_model.dart';
 import '../providers/proposals_provider.dart';
 import '../../clients/providers/client_provider.dart';
 import '../../clients/models/client_model.dart';
-import '../../services/services/services_repository.dart';
+import '../../agency/models/agency_service_model.dart';
+import '../../agency/providers/service_catalog_riverpod_provider.dart';
 
 class ProposalsMainScreen extends ConsumerStatefulWidget {
   const ProposalsMainScreen({super.key});
@@ -44,7 +45,7 @@ class _ProposalsMainScreenState extends ConsumerState<ProposalsMainScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final servicesAsync = ref.watch(servicesProvider);
+            final servicesAsync = ref.watch(servicesListProvider);
 
             return AlertDialog(
               backgroundColor: AppTheme.surface,

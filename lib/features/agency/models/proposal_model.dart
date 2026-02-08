@@ -1,5 +1,12 @@
 import 'package:uuid/uuid.dart';
 
+enum ProposalStatus {
+  draft,
+  sent,
+  accepted,
+  rejected
+}
+
 enum ProposalOutputType {
   pdf,
   slides,
@@ -103,6 +110,8 @@ class Proposal {
   final String id;
   final String title;
   final String clientId;
+  final String clientName; // Human-readable client name
+  final ProposalStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? datasetId; // Reference to Knowledge Base for RAG
@@ -114,6 +123,8 @@ class Proposal {
     required this.id,
     required this.title,
     required this.clientId,
+    required this.clientName,
+    this.status = ProposalStatus.draft,
     required this.createdAt,
     required this.updatedAt,
     this.datasetId,
@@ -124,7 +135,8 @@ class Proposal {
 
   factory Proposal.create({
     required String title, 
-    required String clientId, 
+    required String clientId,
+    required String clientName,
     String? datasetId,
     List<String> serviceIds = const [],
   }) {
@@ -133,6 +145,8 @@ class Proposal {
       id: const Uuid().v4(),
       title: title,
       clientId: clientId,
+      clientName: clientName,
+      status: ProposalStatus.draft,
       createdAt: now,
       updatedAt: now,
       datasetId: datasetId,
@@ -145,6 +159,8 @@ class Proposal {
       'id': id,
       'title': title,
       'clientId': clientId,
+      'clientName': clientName,
+      'status': status.name,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'datasetId': datasetId,
@@ -159,6 +175,11 @@ class Proposal {
       id: json['id'],
       title: json['title'],
       clientId: json['clientId'],
+      clientName: json['clientName'] ?? '',
+      status: ProposalStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => ProposalStatus.draft,
+      ),
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
       datasetId: json['datasetId'],
@@ -176,6 +197,8 @@ class Proposal {
     String? id,
     String? title,
     String? clientId,
+    String? clientName,
+    ProposalStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? datasetId,
@@ -187,6 +210,8 @@ class Proposal {
       id: id ?? this.id,
       title: title ?? this.title,
       clientId: clientId ?? this.clientId,
+      clientName: clientName ?? this.clientName,
+      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       datasetId: datasetId ?? this.datasetId,

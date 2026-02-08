@@ -17,8 +17,6 @@ import 'inhaus_proposal_pdf_generator.dart';
 import 'inhaus_proposal_slides_generator.dart';
 import 'service_catalog_repository.dart';
 import '../models/agency_service_model.dart';
-import '../../services/services/services_repository.dart' as new_repo;
-import '../../services/models/service_model.dart' as new_sm;
 
 class ProposalService {
   static final ServiceCatalogRepository _catalogRepository = ServiceCatalogRepository();
@@ -111,19 +109,18 @@ $sources
      // Fetch specific services if selected
     String selectedServicesContext = "";
     if (proposal.serviceIds.isNotEmpty) {
-      final repo = new_repo.ServicesRepository();
-      final selectedServices = await repo.getServicesByIds(proposal.serviceIds);
+      final selectedServices = await _catalogRepository.getServicesByIds(proposal.serviceIds);
       if (selectedServices.isNotEmpty) {
         selectedServicesContext = "\n--- SERVICIOS SELECCIONADOS (ADHERENCIA ESTRICTA REQUERIDA) ---\n";
         for (var s in selectedServices) {
           selectedServicesContext += """
-SERVICIO: ${s.nameEs} (${s.name})
+SERVICIO: ${s.nameEs.isNotEmpty ? s.nameEs : s.name} (${s.name})
 - Ejecución: ${s.execution}
 - Equipo: ${s.team.join(', ')}
 - Entregables: ${s.deliverables.join(', ')}
 - Incluye: ${s.includes.join(', ')}
 - No incluye: ${s.excludes.join(', ')}
-- Precio: \$${s.basePrice}
+- Precio: \$${s.basePrice > 0 ? s.basePrice : s.price}
 
 """;
         }
@@ -276,19 +273,18 @@ CRITICAL: Return only the factual summary. Do not use placeholders. If info is m
     // Fetch specific services if selected
     String selectedServicesContext = "";
     if (proposal.serviceIds.isNotEmpty) {
-      final repo = new_repo.ServicesRepository();
-      final selectedServices = await repo.getServicesByIds(proposal.serviceIds);
+      final selectedServices = await _catalogRepository.getServicesByIds(proposal.serviceIds);
       if (selectedServices.isNotEmpty) {
         selectedServicesContext = "\n--- SERVICIOS SELECCIONADOS (ADHERENCIA ESTRICTA REQUERIDA) ---\n";
         for (var s in selectedServices) {
           selectedServicesContext += """
-SERVICIO: ${s.nameEs} (${s.name})
+SERVICIO: ${s.nameEs.isNotEmpty ? s.nameEs : s.name} (${s.name})
 - Ejecución: ${s.execution}
 - Equipo: ${s.team.join(', ')}
 - Entregables: ${s.deliverables.join(', ')}
 - Incluye: ${s.includes.join(', ')}
 - No incluye: ${s.excludes.join(', ')}
-- Precio: \$${s.basePrice}
+- Precio: \$${s.basePrice > 0 ? s.basePrice : s.price}
 
 """;
         }

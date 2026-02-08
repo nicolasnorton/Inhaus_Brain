@@ -41,6 +41,7 @@ class ProposalNotifier extends StateNotifier<List<Proposal>> {
         id: '1',
         title: 'Café Del Sol - Rebranding',
         clientId: '1',
+        clientName: 'Café Del Sol',
         createdAt: DateTime.now().subtract(const Duration(days: 2)),
         updatedAt: DateTime.now(),
         sources: [
@@ -58,6 +59,7 @@ class ProposalNotifier extends StateNotifier<List<Proposal>> {
         id: '2',
         title: 'TechSolutions - SEO Campaign',
         clientId: '2',
+        clientName: 'TechSolutions Inc.',
         createdAt: DateTime.now().subtract(const Duration(days: 5)),
         updatedAt: DateTime.now().subtract(const Duration(days: 1)),
         sources: [],
@@ -81,6 +83,7 @@ final proposalDetailProvider = Provider.family<Proposal?, String>((ref, id) {
         id: 'active-proposal',
         title: 'New Proposal Draft',
         clientId: 'draft',
+        clientName: 'New Client',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         sources: [],

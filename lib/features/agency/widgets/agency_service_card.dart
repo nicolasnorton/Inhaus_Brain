@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
-import '../models/service_model.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../models/agency_service_model.dart';
 
-class ServiceCard extends StatelessWidget {
-  final Service service;
+class AgencyServiceCard extends StatelessWidget {
+  final AgencyService service;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
-  const ServiceCard({
+  const AgencyServiceCard({
     super.key, 
     required this.service,
     this.onEdit,
@@ -16,8 +16,11 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final margin = service.margin;
-    final meetsTarget = service.meetsTarget;
+    // Calculate margin if not zero, otherwise use targetMargin as placeholder or 0
+    final double margin = service.basePrice > 0 
+        ? ((service.basePrice - service.deliveryCost) / service.basePrice) * 100 
+        : 0.0;
+    final bool meetsTarget = margin >= service.targetMargin;
 
     return Card(
       color: AppTheme.surface,
@@ -44,12 +47,12 @@ class ServiceCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 40), // Space for menu
-                    _buildMarginIndicator(margin, meetsTarget),
+                    if (service.basePrice > 0) _buildMarginIndicator(margin, meetsTarget),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  service.execution,
+                  service.description,
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -66,7 +69,7 @@ class ServiceCard extends StatelessWidget {
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 10, letterSpacing: 1),
                         ),
                         Text(
-                          "\$${service.basePrice.toStringAsFixed(2)}",
+                          service.price.contains('\$') ? service.price : "\$${service.price}",
                           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -78,7 +81,7 @@ class ServiceCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        service.billingCycle.name.toUpperCase(),
+                        service.frequency.toUpperCase(),
                         style: const TextStyle(color: AppTheme.primary, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),

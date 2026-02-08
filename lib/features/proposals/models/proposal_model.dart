@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 /// Proposal document model
@@ -295,17 +296,17 @@ class ProposalData {
   factory ProposalData.fromJson(Map<String, dynamic> json) {
     // Handle modular structure
     if (json.containsKey('client_proposal')) {
-      final clientProposal = json['client_proposal'];
+      final clientProposal = json['client_proposal'] as Map<String, dynamic>? ?? {};
       final settings = json['document_settings'] != null 
-          ? DocumentSettings.fromJson(json['document_settings']) 
+          ? DocumentSettings.fromJson(json['document_settings'] as Map<String, dynamic>) 
           : null;
       final theme = json['visual_theme'] != null 
-          ? VisualTheme.fromJson(json['visual_theme']) 
+          ? VisualTheme.fromJson(json['visual_theme'] as Map<String, dynamic>) 
           : null;
       
       return ProposalData(
         type: clientProposal['proposal_type'] ?? 'detailed',
-        format: json['format'] ?? 'pdf', // Format might be outside or inside
+        format: json['format'] ?? 'pdf',
         settings: settings,
         theme: theme,
         header: ProposalHeader(
@@ -314,7 +315,7 @@ class ProposalData {
           date: settings?.dateGenerated ?? '',
         ),
         sections: (clientProposal['sections'] as List?)
-            ?.map((s) => ProposalSection.fromJson(s))
+            ?.map((s) => ProposalSection.fromJson(s as Map<String, dynamic>))
             .toList(),
         footer: settings?.website ?? 'inhauscorp.com',
         embeddedImages: List<String>.from(json['embedded_images'] ?? []),
@@ -338,13 +339,18 @@ class ProposalData {
   }
 
   factory ProposalData.fromRawJson(String raw) {
-    String cleanStr = raw;
-    if (raw.contains('```json')) {
-      cleanStr = raw.split('```json')[1].split('```')[0].trim();
-    } else if (raw.contains('```')) {
-      cleanStr = raw.split('```')[1].split('```')[0].trim();
+    try {
+      String cleanStr = raw;
+      if (raw.contains('```json')) {
+        cleanStr = raw.split('```json')[1].split('```')[0].trim();
+      } else if (raw.contains('```')) {
+        cleanStr = raw.split('```')[1].split('```')[0].trim();
+      }
+      return ProposalData.fromJson(json.decode(cleanStr));
+    } catch (e) {
+      debugPrint('ProposalData: Failed to parse raw JSON: $e\nRaw String: $raw');
+      rethrow;
     }
-    return ProposalData.fromJson(json.decode(cleanStr));
   }
 }
 
@@ -428,8 +434,8 @@ class ProposalSection {
       return ProposalSection(
         title: json['title'] ?? '',
         layoutType: json['layout_type'],
-        content: ProposalContent.fromJson(json['content'] ?? {}),
-        price: ProposalPrice.fromJson(json['pricing'] ?? {}),
+        content: ProposalContent.fromJson(json['content'] as Map<String, dynamic>? ?? {}),
+        price: ProposalPrice.fromJson(json['pricing'] as Map<String, dynamic>? ?? {}),
       );
     }
 
@@ -437,10 +443,10 @@ class ProposalSection {
     return ProposalSection(
       title: json['title'] ?? '',
       content: ProposalContent(
-        headerInfo: json['description'] != null ? [json['description']] : [],
+        headerInfo: json['description'] != null ? [json['description'] as String] : [],
         items: List<String>.from(json['bullets'] ?? []),
       ),
-      price: ProposalPrice.fromJson(json['price'] ?? {}),
+      price: ProposalPrice.fromJson(json['price'] as Map<String, dynamic>? ?? {}),
     );
   }
 }

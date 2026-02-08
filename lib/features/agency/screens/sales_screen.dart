@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../proposals/screens/proposals_main_screen.dart';
 import '../models/agency_models.dart';
 
-import '../../services/screens/services_screen.dart';
+import 'agency_services_dashboard.dart';
 import '../services/sales_service.dart';
 import 'lead_detail_screen.dart';
 
@@ -57,7 +57,7 @@ class _SalesScreenState extends State<SalesScreen> with SingleTickerProviderStat
           ProposalsMainScreen(),
 
           // INHAUS Services Catalog
-          ServicesScreen(),
+          AgencyServicesDashboard(),
 
           // CRM Tab
           _CrmTab(),

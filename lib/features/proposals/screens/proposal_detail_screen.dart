@@ -9,7 +9,7 @@ import '../providers/proposals_provider.dart';
 import '../services/proposals_lm_service.dart';
 import '../services/proposal_pdf_service.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
-import '../../services/services/services_repository.dart';
+
 
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/architecture/blackboard.dart';
@@ -43,32 +43,39 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   }
 
   void _startLoading(String type) {
+    _progressTimer?.cancel();
+    _elapsedSeconds = 0;
     setState(() {
       if (type == 'detailed') _isGeneratingDetailed = true;
       if (type == 'one_page') _isGeneratingQuote = true;
-      _elapsedSeconds = 0;
     });
     _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() => _elapsedSeconds++);
+      if (mounted) {
+        setState(() => _elapsedSeconds++);
+      }
     });
   }
 
   void _stopLoading() {
     _progressTimer?.cancel();
-    setState(() {
-      _isGeneratingDetailed = false;
-      _isGeneratingQuote = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isGeneratingDetailed = false;
+        _isGeneratingQuote = false;
+      });
+    }
   }
 
   Future<void> _handleChatSubmit() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _chatMessages.add({'role': 'user', 'content': text});
-      _chatController.clear();
-    });
+    if (mounted) {
+      setState(() {
+        _chatMessages.add({'role': 'user', 'content': text});
+        _chatController.clear();
+      });
+    }
 
     // In a real scenario, this would call the AssistantService/Blackboard
   }
