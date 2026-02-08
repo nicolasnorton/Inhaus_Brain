@@ -1,0 +1,12 @@
+{
+    "name": "cloud-run-poc",
+    "version": "1.0.0",
+    "description": "Prototype for testing long-running agent flows on Cloud Run",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2"
+    }
+}

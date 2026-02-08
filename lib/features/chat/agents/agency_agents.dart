@@ -458,6 +458,15 @@ class ProposalSpecialistAgent extends BaseAgent {
   String get systemPromptKey => "proposal_specialist.md";
 
   @override
+  Map<String, dynamic>? get outputSchema => {
+        "type": "object",
+        "properties": {
+          "sections": {"type": "array"}
+        },
+        "required": ["sections"]
+      };
+
+  @override
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,

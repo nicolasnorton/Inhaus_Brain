@@ -31,7 +31,7 @@ import 'core/services/orchestration_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.1.22 STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.1.23 STARTED');
   
   // Load environment variables
   try {

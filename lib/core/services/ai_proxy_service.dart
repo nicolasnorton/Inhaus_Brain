@@ -33,55 +33,78 @@ class AIProxyService {
     String? systemInstruction,
     Map<String, dynamic>? generationParams, // Added to support model-specific params (Veo/Imagen)
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('User must be logged in to use AI Proxy.');
-    }
+    const maxRetries = 3;
+    const timeout = Duration(seconds: 45);
 
-    final idToken = await user.getIdToken().timeout(
-      const Duration(seconds: 8),
-      onTimeout: () {
-        debugPrint('⚠️ AIProxyService: getIdToken timed out. Attempting with stale token or failing.');
-        throw Exception('Authentication timeout. Please refresh the page and try again.');
-      },
-    );
-    if (idToken == null) {
-      throw Exception('Failed to retrieve ID Token.');
-    }
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          throw Exception('User must be logged in to use AI Proxy.');
+        }
 
-    // Prepare body
-    final body = {
-      "model": config.modelId,
-      "prompt": prompt,
-      "config": {
-        "temperature": config.temperature,
-        "maxOutputTokens": config.maxTokens,
-        if (config.responseMimeType != null) "responseMimeType": config.responseMimeType,
-      },
-      if (systemInstruction != null) "systemInstruction": systemInstruction, 
-      if (generationParams != null) "generationParams": generationParams,
-    };
+        final idToken = await user.getIdToken().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('⚠️ AIProxyService: getIdToken timed out (Attempt ${attempt + 1})');
+            throw Exception('Authentication timeout.');
+          },
+        );
 
-    try {
-      final response = await http.post(
-        Uri.parse(_functionUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode(body),
-      );
+        if (idToken == null) {
+          throw Exception('Failed to retrieve ID Token.');
+        }
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Proxy Error ${response.statusCode}: ${response.body}');
+        // Prepare body
+        final body = {
+          "model": config.modelId,
+          "prompt": prompt,
+          "config": {
+            "temperature": config.temperature,
+            "maxOutputTokens": config.maxTokens,
+            if (config.responseMimeType != null) "responseMimeType": config.responseMimeType,
+          },
+          if (systemInstruction != null) "systemInstruction": systemInstruction, 
+          if (generationParams != null) "generationParams": generationParams,
+        };
+
+        final response = await http.post(
+          Uri.parse(_functionUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $idToken',
+          },
+          body: jsonEncode(body),
+        ).timeout(timeout);
+
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body);
+        } else if (response.statusCode == 404 || response.statusCode >= 500) {
+          // Retry on 404 (model propagation issues) or server errors
+          throw Exception('Proxy Error ${response.statusCode}: ${response.body}');
+        } else {
+          // Persistent error (auth, etc.)
+          final errorMsg = 'Proxy Error ${response.statusCode}: ${response.body}';
+          debugPrint('AIProxyService: Persistent error detected. $errorMsg');
+          throw Exception(errorMsg);
+        }
+      } catch (e) {
+        final isLastAttempt = attempt == maxRetries - 1;
+        final isAuthError = e.toString().contains('401') || e.toString().contains('403') || e.toString().contains('Authentication timeout');
+
+        if (isLastAttempt || isAuthError) {
+          debugPrint('AIProxyService Error (Final/Fatal): $e');
+          rethrow;
+        }
+
+        final delay = Duration(seconds: 1 << (attempt + 1));
+        debugPrint('AIProxyService Attempt ${attempt + 1} Failed: $e. Retrying in ${delay.inSeconds}s...');
+        await Future.delayed(delay);
       }
-    } catch (e) {
-      debugPrint('AIProxyService Error: $e');
-      rethrow;
     }
+    throw Exception('Content generation failed after $maxRetries attempts');
   }
+
 
   static Future<Map<String, dynamic>> pollOperation(String operationName) async {
     final user = FirebaseAuth.instance.currentUser;

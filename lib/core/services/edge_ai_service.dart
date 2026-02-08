@@ -125,25 +125,31 @@ class EdgeAIService {
     // On Web, prefer the Proxy to bypass App Check issues and CORS
     if (kIsWeb && config.provider == AIProvider.gemini) {
       try {
-         _logger.i('EdgeAI: [WEB] Using Proxy as primary to ensure reliability.');
-         final proxyRes = await retry(
-           () => AIProxyService.generateContent(
-             prompt: effectivePrompt, 
-             config: config,
-             systemInstruction: effectiveMemory,
-           ),
-           maxAttempts: 2,
-           delayFactor: const Duration(milliseconds: 500),
+         _logger.i('EdgeAI: [WEB] Routing generation via secure proxy (${config.modelId}).');
+         
+         // AIProxyService now has internal retries, but we keep a shallow wrapper for top-level resilience
+         final proxyRes = await AIProxyService.generateContent(
+           prompt: effectivePrompt, 
+           config: config,
+           systemInstruction: effectiveMemory,
          );
          
-         String text = "No proxy content.";
+         String text = "";
          final candidates = proxyRes['candidates'] as List?;
-         if (candidates?.isNotEmpty == true) {
-           final candidate = candidates!.first;
-           final parts = candidate['content']?['parts'] as List?;
-           if (parts?.isNotEmpty == true) {
-             text = parts!.first['text'] ?? parts.first.toString();
+         if (candidates != null && candidates.isNotEmpty) {
+           final candidate = candidates.first;
+           final content = candidate['content'];
+           if (content != null && content['parts'] != null) {
+              final parts = content['parts'] as List;
+              if (parts.isNotEmpty) {
+                text = parts.map((p) => p['text'] ?? '').join('');
+              }
            }
+         }
+         
+         if (text.isEmpty) {
+           _logger.w('EdgeAI: Proxy returned empty candidates. Falling back to direct SDK.');
+           throw Exception('empty_proxy_response');
          }
          
          // Cleanup JSON if requested
@@ -153,10 +159,11 @@ class EdgeAIService {
          
          return EdgeAIResult(text, AIProximity.cloud, modelUsed: 'Proxy: ${config.modelId}');
       } catch (proxyErr) {
-         _logger.w('EdgeAI: [WEB] Proxy failed: $proxyErr. Attempting direct SDK...');
-         // If proxy fails, we can still TRY the direct SDK as a last resort
+         _logger.e('EdgeAI: [WEB] Proxy failed definitively: $proxyErr. Attempting direct FirebaseAI SDK as emergency fallback...');
+         // Fall through to SDK implementation below
       }
     }
+
 
     switch (config.provider) {
       case AIProvider.gemini:

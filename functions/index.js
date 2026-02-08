@@ -3,12 +3,26 @@ const admin = require("firebase-admin");
 const { VertexAI } = require("@google-cloud/vertexai");
 // Import the Copilot handler
 const { copilotHandler } = require('./copilot');
+// Import Task Handlers
+const researchTask = require('./tasks/campaign_research');
+const strategyTask = require('./tasks/campaign_strategy');
+const cancelFunc = require('./campaign_cancel');
 
 admin.initializeApp();
 
+// Export the Task Handler (V2 Function)
+exports.performResearchTask = researchTask.performResearchTask;
+exports.performStrategyTask = strategyTask.performStrategyTask;
+
+// Export Helper Functions
+exports.cancelCampaign = cancelFunc.cancelCampaign;
+
 // Initialize Vertex AI
-const project = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+// Fallback hierarchy: Environment -> Hardcoded ID -> Hardcoded Number
+const project = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT || 'inhausbrain';
+const projectNumber = '1096509611056';
 const location = 'us-central1';
+console.log(`[PROXY] 🚀 Vertex AI Initialized. ID: ${project}, Number: ${projectNumber}`);
 const vertexAI = new VertexAI({ project: project, location: location });
 
 /**
@@ -79,14 +93,25 @@ exports.onCampaignCreated = functions.firestore
         const campaignData = snapshot.data();
         const campaignId = context.params.campaignId;
 
-        console.log(`New campaign created: ${campaignId}. Starting research...`);
+        console.log(`New campaign created: ${campaignId}. Enqueueing research task...`);
 
-        // TODO: Call Gemini Pro to generate research insights
-        // Update Firestore with 'researching' status and eventually insights
-        return snapshot.ref.update({
-            status: 'researching',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        try {
+            // Use the Task Queue to handle research asynchronously
+            // This prevents timeout issues for long-running AI operations
+            await researchTask.enqueueResearch(campaignId);
+
+            // Update status to 'enqueued'
+            return snapshot.ref.update({
+                status: 'research_queued',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.error(`Failed to enqueue research task for ${campaignId}:`, error);
+            return snapshot.ref.update({
+                status: 'error_enqueueing',
+                error: error.message
+            });
+        }
     });
 
 /**
@@ -523,7 +548,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             // --- PATH C: TEXT GENERATION (Gemini) ---
             console.log(`VertexAI Proxy: Calling Gemini model: ${modelId} for prompt length: ${typeof prompt === 'string' ? prompt.length : 'multimodal'}`);
 
-            const regions = ['us-central1', 'us-east4', 'us-west1'];
+            const regions = ['us-central1', 'us-east4', 'us-west1', 'us-east1', 'europe-west4'];
             const modelVariations = [modelId];
             if (modelId === 'gemini-1.5-flash') modelVariations.push('gemini-1.5-flash-002');
             if (modelId === 'gemini-1.5-pro') modelVariations.push('gemini-1.5-pro-002');
@@ -531,10 +556,13 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             let lastResError = null;
             let success = false;
             let finalResponse = null;
+            let attemptedVariations = [];
 
             for (const reg of regions) {
                 for (const mVar of modelVariations) {
                     try {
+                        const attemptKey = `${mVar}@${reg}`;
+                        attemptedVariations.push(attemptKey);
                         console.log(`[PROXY] 🌐 Attempting Gemini ${mVar} in ${reg}...`);
                         const vAI = new VertexAI({ project: project, location: reg });
                         const genModel = vAI.getGenerativeModel({
@@ -549,15 +577,42 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
                         success = true;
                         break;
                     } catch (err) {
-                        console.warn(`[PROXY] ⚠️ Failed ${mVar} in ${reg}: ${err.message}`);
+                        const status = err.status || (err.message && err.message.includes('404') ? 404 : 500);
+                        console.warn(`[PROXY] ⚠️ Failed ${mVar} in ${reg} (${status}): ${err.message}`);
+
+                        // If we get a 404 with the project ID, try once more with the project NUMBER in us-central1
+                        if (status === 404 && reg === 'us-central1' && project !== projectNumber) {
+                            try {
+                                console.log(`[PROXY] 🔄 Retrying ${mVar} in ${reg} using Project Number...`);
+                                const vAIAlt = new VertexAI({ project: projectNumber, location: reg });
+                                const genModelAlt = vAIAlt.getGenerativeModel({
+                                    model: mVar,
+                                    systemInstruction: systemInstruction,
+                                    generationConfig: config
+                                });
+                                const resultAlt = await genModelAlt.generateContent(prompt);
+                                finalResponse = await resultAlt.response;
+                                console.log(`[PROXY] ✅ Success with ${mVar} in ${reg} using Project Number!`);
+                                success = true;
+                                break;
+                            } catch (retryErr) {
+                                console.warn(`[PROXY] ❌ Project Number retry also failed: ${retryErr.message}`);
+                            }
+                        }
+
                         lastResError = err;
+                        lastResError.status = status;
                     }
                 }
                 if (success) break;
             }
 
             if (!success) {
-                throw lastResError || new Error('All regions and model variations failed.');
+                console.error(`[PROXY] ❌ All regions and model variations failed: ${attemptedVariations.join(', ')}`);
+                throw {
+                    status: lastResError?.status || 500,
+                    message: `Vertex Proxy Failed after multiple attempts: ${lastResError?.message}. Attempted: ${attemptedVariations.join(', ')}`
+                };
             }
 
             const candidates = finalResponse.candidates;
