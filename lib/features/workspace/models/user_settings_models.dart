@@ -112,7 +112,7 @@ class UserSettings {
     required this.theme,
     required this.notifications,
     required this.apiKeys,
-    this.preferredModelId = 'gemini-2.0-flash',
+    this.preferredModelId = 'gemini-1.5-flash',
   });
 
   UserSettings copyWith({

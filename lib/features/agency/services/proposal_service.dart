@@ -577,8 +577,8 @@ ${type == ProposalType.onePageQuote ?
         }
         
         // Fetch Client Logo
-        if (proposalData.clientName.isNotEmpty) {
-             clientLogo = await _fetchClientLogo(proposalData.clientName, domain: proposalData.clientDomain);
+        if (proposalData.header.clientName.isNotEmpty) {
+             clientLogo = await _fetchClientLogo(proposalData.header.clientName);
         }
 
         // 4. Render PDF (use template if provided, otherwise use default generator)

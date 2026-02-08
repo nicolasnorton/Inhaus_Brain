@@ -650,13 +650,16 @@ class ProposalChatAgent extends BaseAgent {
   }) async {
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     
-    // Conversational prompt
-    final prompt = systemPrompt ?? """
-You are Brian, the Inhaus Agency AI Assistant specializing in proposals. 
-You are helpful, creative, and professional. 
-Answer questions about the proposal being viewed, the agency services, or general inquiries.
-Keep responses concise, helpful, and friendly.
-""";
+    // FETCH OFFICIAL PROMPT
+    String? prompt = systemPrompt;
+    if (prompt == null && ref != null) {
+       try {
+         final service = ref.read(systemPromptsProvider);
+         prompt = await service.getProposalChatPrompt();
+       } catch (e) {
+         debugPrint("Failed to load proposal chat prompt: $e");
+       }
+    }
 
     final result = await _simpleExecute(
       agentName: name,
@@ -669,7 +672,7 @@ Keep responses concise, helpful, and friendly.
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiPro,
+      modelConfig: AIModelConfig.geminiFlash,
       jsonMode: false, // Text mode for chat
       ref: ref,
     );

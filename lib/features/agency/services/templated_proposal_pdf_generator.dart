@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:inhaus_brain/features/agency/models/proposal_template.dart';
 import 'package:inhaus_brain/features/agency/services/proposal_pdf_generator.dart';
+import 'package:inhaus_brain/features/proposals/models/proposal_model.dart';
 
 class TemplatedProposalPdfGenerator {
   
@@ -65,7 +66,7 @@ class TemplatedProposalPdfGenerator {
                         child: pw.Divider(color: _withOpacity(accentColor, 0.3), thickness: 0.5),
                       ),
                     pw.SizedBox(height: 10),
-                    ...data.sections.map((s) => _buildSection(s, template, surfaceColor: surfaceColor, accentColor: accentColor, textPrimary: textPrimary, textSecondary: textSecondary)),
+                    ...(data.sections ?? []).map((s) => _buildSection(s, template, surfaceColor: surfaceColor, accentColor: accentColor, textPrimary: textPrimary, textSecondary: textSecondary)),
                     pw.Spacer(),
                     _buildFooter(data, template, textPrimary: textPrimary, textSecondary: textSecondary),
                   ],
@@ -93,7 +94,7 @@ class TemplatedProposalPdfGenerator {
       );
 
       // Section pages
-      for (var section in data.sections) {
+      for (var section in (data.sections ?? [])) {
         pdf.addPage(
           pw.Page(
             pageFormat: PdfPageFormat.a4,
@@ -181,9 +182,9 @@ class TemplatedProposalPdfGenerator {
                    child: pw.Image(pw.MemoryImage(clientLogo)),
                  ),
               pw.Text('CLIENTE', style: pw.TextStyle(color: textSecondary, fontSize: 8, letterSpacing: 1.5)),
-              pw.Text(data.clientName.toUpperCase(), style: pw.TextStyle(color: textPrimary, fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.Text(data.header.clientName.toUpperCase(), style: pw.TextStyle(color: textPrimary, fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 5),
-              pw.Text(data.date, style: pw.TextStyle(color: accentColor, fontSize: 10)),
+              pw.Text(data.header.date, style: pw.TextStyle(color: accentColor, fontSize: 10)),
             ],
           ),
         ],
@@ -216,9 +217,9 @@ class TemplatedProposalPdfGenerator {
                   ]
                 ),
                 pw.SizedBox(height: 10),
-                pw.Text(section.description, style: pw.TextStyle(color: textSecondary, fontSize: 9)),
+                pw.Text(section.content.headerInfo.join('\n'), style: pw.TextStyle(color: textSecondary, fontSize: 9)),
                 pw.SizedBox(height: 12),
-                ...section.items.map((item) => pw.Padding(
+                ...section.content.items.map((item) => pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 4),
                   child: pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -237,8 +238,9 @@ class TemplatedProposalPdfGenerator {
             children: [
               pw.Text('INVERSIÓN', style: pw.TextStyle(color: accentColor, fontSize: 8, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 5),
-              pw.Text(section.price, style: pw.TextStyle(color: textPrimary, fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Text(section.frequency.toUpperCase(), style: pw.TextStyle(color: textSecondary, fontSize: 7)),
+               pw.Text(section.price.amount, style: pw.TextStyle(color: textPrimary, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              if (section.price.terms != null)
+                pw.Text(section.price.terms!.toUpperCase(), style: pw.TextStyle(color: textSecondary, fontSize: 7)),
             ],
           ),
         ],
@@ -293,9 +295,9 @@ class TemplatedProposalPdfGenerator {
           pw.SizedBox(height: 30),
           pw.Text('PROPUESTA ESTRATÉGICA', style: pw.TextStyle(color: textSecondary, fontSize: 14, letterSpacing: 3)),
           pw.SizedBox(height: 10),
-          pw.Text(data.clientName.toUpperCase(), style: pw.TextStyle(color: textPrimary, fontSize: 56, fontWeight: pw.FontWeight.bold)),
+          pw.Text(data.header.clientName.toUpperCase(), style: pw.TextStyle(color: textPrimary, fontSize: 56, fontWeight: pw.FontWeight.bold)),
           pw.Spacer(),
-          pw.Text(data.date, style: pw.TextStyle(color: accentColor, fontSize: 14)),
+          pw.Text(data.header.date, style: pw.TextStyle(color: accentColor, fontSize: 14)),
         ],
       ),
     );
@@ -319,9 +321,9 @@ class TemplatedProposalPdfGenerator {
         pw.SizedBox(height: 10),
         pw.Divider(color: _withOpacity(accentColor, 0.3)),
         pw.SizedBox(height: 20),
-        pw.Text(section.description, style: pw.TextStyle(color: textPrimary, fontSize: 14, height: 1.5)),
+        pw.Text(section.content.headerInfo.join('\n'), style: pw.TextStyle(color: textPrimary, fontSize: 14, height: 1.5)),
         pw.SizedBox(height: 20),
-        ...section.items.map((item) => pw.Padding(
+        ...section.content.items.map((item) => pw.Padding(
           padding: const pw.EdgeInsets.only(bottom: 10),
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -346,8 +348,9 @@ class TemplatedProposalPdfGenerator {
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Text(section.price, style: pw.TextStyle(color: textPrimary, fontSize: 24, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(section.frequency.toUpperCase(), style: pw.TextStyle(color: textSecondary, fontSize: 10)),
+                  pw.Text(section.price.amount, style: pw.TextStyle(color: textPrimary, fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                  if (section.price.terms != null)
+                    pw.Text(section.price.terms!.toUpperCase(), style: pw.TextStyle(color: textSecondary, fontSize: 10)),
                 ],
               ),
             ],
@@ -362,7 +365,7 @@ class TemplatedProposalPdfGenerator {
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(template.config.branding.website, style: pw.TextStyle(color: textSecondary, fontSize: 9)),
-        pw.Text(data.date, style: pw.TextStyle(color: textSecondary, fontSize: 9)),
+        pw.Text(data.header.date, style: pw.TextStyle(color: textSecondary, fontSize: 9)),
       ],
     );
   }

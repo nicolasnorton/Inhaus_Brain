@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +42,7 @@ class SystemPromptsService {
   static const String _dataAnalystPromptKey = 'data_analyst_agent_prompt';
   static const String _intentClassifierPromptKey = 'intent_classifier_prompt';
   static const String _assistantMainPromptKey = 'assistant_main_prompt';
+  static const String _proposalChatPromptKey = 'proposal_chat_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -425,6 +427,29 @@ CRITICAL INSTRUCTIONS:
 {{EPHEMERAL_MESSAGE}}
 """;
 
+  static const String originalProposalChatPrompt = """
+# Brian - Proposal Chat Specialist (v2.0)
+
+You are Brian, the AI Orchestrator for INHAUS ESTUDIO CREATIVO, specifically acting as the Proposal Specialist during this session.
+
+## 🎯 MISSION
+To assist the user in drafting, refining, and understanding client proposals. You are helpful, strategic, and professional.
+
+## 🎨 BRAND VOICE
+- **Language**: Bilingual (Spanish/English). Default to the user's language but use premium, professional terminology.
+- **Personality**: Creative, Strategic, Direct. No fluff.
+- **Goal**: Help the user win the client.
+
+## 🧠 CONTEXT AWARENESS
+- You have access to the **Current Proposal** data (JSON) and all linked **Sources**.
+- Use this data to answer specific questions like "How much are we charging for RRSS?" or "Compare this to the client's previous goals."
+
+## 💎 CRITICAL RULES
+- **NEVER** hallucinate pricing if not found in sources. Ask the user for the budget if unknown.
+- **NEVER** output raw JSON unless specifically asked. You are a conversational agent.
+- **ALWAYS** be supportive and proactive.
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
@@ -498,6 +523,9 @@ CRITICAL INSTRUCTIONS:
 
   Future<void> saveProposalSpecialistPrompt(String prompt) async => await _storage.write(key: _proposalSpecialistPromptKey, value: prompt);
   Future<String> getProposalSpecialistPrompt() async => await _getPrompt(_proposalSpecialistPromptKey, 'assets/prompts/proposal_specialist.md', originalProposalSpecialistPrompt);
+
+  Future<void> saveProposalChatPrompt(String prompt) async => await _storage.write(key: _proposalChatPromptKey, value: prompt);
+  Future<String> getProposalChatPrompt() async => await _getPrompt(_proposalChatPromptKey, 'assets/prompts/proposal_chat.md', originalProposalChatPrompt);
 
   Future<void> saveDataAnalystPrompt(String prompt) async => await _storage.write(key: _dataAnalystPromptKey, value: prompt);
   Future<String> getDataAnalystPrompt() async => await _getPrompt(_dataAnalystPromptKey, 'assets/prompts/data_analyst.md', originalDataAnalystPrompt);
@@ -586,8 +614,15 @@ CRITICAL INSTRUCTIONS:
     final stored = await _storage.read(key: storageKey);
     if (stored != null) return stored;
     try {
-      return await rootBundle.loadString(assetPath);
-    } catch (_) {
+      final content = await rootBundle.loadString(assetPath);
+      // Safeguard against HTML fallback (index.html) served by hosting for missing assets
+      if (content.trim().startsWith('<!DOCTYPE') || content.trim().startsWith('<html')) {
+        debugPrint('⚠️ SystemPromptsService: Detected HTML content for asset $assetPath. Using fallback.');
+        return fallback;
+      }
+      return content;
+    } catch (e) {
+      debugPrint('⚠️ SystemPromptsService: Failed to load asset $assetPath: $e. Using fallback.');
       return fallback;
     }
   }

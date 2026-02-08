@@ -175,7 +175,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
           final downloadUrl = await ProposalStorageService.uploadProposalOutput(
             proposalId: proposal.id,
             outputId: outputId,
-            fileBytes: bytes,
+            fileBytes: Uint8List.fromList(bytes),
             fileExtension: 'pdf',
           );
           
@@ -185,7 +185,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
           final output = ProposalOutput(
             id: outputId,
             title: "Proposal Doc (${DateTime.now().toString().substring(11, 16)})",
-            type: ProposalOutputType.pdf,
+            type: ProposalOutputType.detailedPdf,
             uri: downloadUrl,
             createdAt: DateTime.now(),
           );
@@ -234,7 +234,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
           final downloadUrl = await ProposalStorageService.uploadProposalOutput(
             proposalId: proposal.id,
             outputId: outputId,
-            fileBytes: bytes,
+            fileBytes: Uint8List.fromList(bytes),
             fileExtension: 'pdf', // Slides are also PDF format
           );
           
@@ -244,7 +244,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
           final output = ProposalOutput(
             id: outputId,
             title: "Slide Deck (${DateTime.now().toString().substring(11, 16)})",
-            type: ProposalOutputType.slides,
+            type: ProposalOutputType.googleSlides,
             uri: downloadUrl,
             createdAt: DateTime.now(),
           );
@@ -333,7 +333,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
         final output = ProposalOutput(
           id: outputId,
           title: "$typeLabel - $formatLabel (${DateTime.now().toString().substring(11, 16)})",
-          type: format == ProposalFormat.pdf ? ProposalOutputType.pdf : ProposalOutputType.slides,
+          type: format == ProposalFormat.pdf ? ProposalOutputType.detailedPdf : ProposalOutputType.googleSlides,
           uri: downloadUrl,
           createdAt: DateTime.now(),
         );
@@ -788,7 +788,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
                       ),
                       child: ListTile(
                         leading: Icon(
-                          o.type == ProposalOutputType.pdf ? Icons.file_present : Icons.data_usage,
+                          o.type == ProposalOutputType.detailedPdf ? Icons.file_present : Icons.data_usage,
                           color: Colors.white30,
                           size: 16,
                         ),
@@ -799,7 +799,7 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
                           if (o.uri != null && o.uri!.isNotEmpty) {
                             // Download and display stored PDF
                             try {
-                              _showLoadingDialog(\"Loading ${o.title}...\");
+                              _showLoadingDialog("Loading ${o.title}...");
                               final bytes = await ProposalStorageService.downloadProposalOutput(o.uri!);
                               if (!mounted) return;
                               Navigator.pop(context); // Close loading dialog
@@ -807,10 +807,10 @@ class _ProposalGeneratorScreenState extends ConsumerState<ProposalGeneratorScree
                             } catch (e) {
                               if (!mounted) return;
                               if (Navigator.canPop(context)) Navigator.pop(context);
-                              _showErrorDialog(\"Failed to load output: $e\");
+                              _showErrorDialog("Failed to load output: $e");
                             }
                           } else {
-                            _showResultDialog(o.title, o.content ?? \"No content available.\");
+                            _showResultDialog(o.title, o.uri ?? "No URI available");
                           }
                         },
                       ),

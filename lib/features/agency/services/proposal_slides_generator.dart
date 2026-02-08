@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:inhaus_brain/features/agency/services/proposal_pdf_generator.dart';
+import 'package:inhaus_brain/features/proposals/models/proposal_model.dart';
 
 class ProposalSlidesGenerator {
   
@@ -58,12 +59,12 @@ class ProposalSlidesGenerator {
                       pw.SizedBox(height: 30),
                       pw.Text('PROPUESTA ESTRATÉGICA', style: pw.TextStyle(color: _textGrey, fontSize: 12, letterSpacing: 4)),
                       pw.SizedBox(height: 10),
-                      pw.Text(data.clientName.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 56, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(data.header.clientName.toUpperCase(), style: pw.TextStyle(color: _textWhite, fontSize: 56, fontWeight: pw.FontWeight.bold)),
                       pw.Spacer(),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text(data.date, style: pw.TextStyle(color: _accentGold, fontSize: 12)),
+                          pw.Text(data.header.date, style: pw.TextStyle(color: _accentGold, fontSize: 12)),
                           pw.Text('CONFIDENCIAL', style: pw.TextStyle(color: _withOpacity(_textGrey, 0.5), fontSize: 10, letterSpacing: 2)),
                         ],
                       ),
@@ -78,7 +79,7 @@ class ProposalSlidesGenerator {
     );
 
     // 2. Section Slides
-    for (var section in data.sections) {
+    for (var section in (data.sections ?? [])) {
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4.landscape,
@@ -117,9 +118,9 @@ class ProposalSlidesGenerator {
                            child: pw.Column(
                              crossAxisAlignment: pw.CrossAxisAlignment.start,
                              children: [
-                               pw.Text(section.description, style: pw.TextStyle(color: _withOpacity(_textWhite, 0.9), fontSize: 16, height: 1.4)),
+                               pw.Text(section.content.headerInfo.join('\n'), style: pw.TextStyle(color: _withOpacity(_textWhite, 0.9), fontSize: 16, height: 1.4)),
                                pw.SizedBox(height: 40),
-                               ...section.items.map((item) => pw.Padding(
+                               ...section.content.items.map((item) => pw.Padding(
                                  padding: const pw.EdgeInsets.only(bottom: 15),
                                  child: pw.Row(
                                    children: [
@@ -147,9 +148,10 @@ class ProposalSlidesGenerator {
                              children: [
                                pw.Text('INVERSIÓN', style: pw.TextStyle(color: _accentGold, fontSize: 10, letterSpacing: 2)),
                                pw.SizedBox(height: 20),
-                               pw.Text(section.price, style: pw.TextStyle(color: _textWhite, fontSize: 32, fontWeight: pw.FontWeight.bold)),
+                               pw.Text(section.price.amount, style: pw.TextStyle(color: _textWhite, fontSize: 32, fontWeight: pw.FontWeight.bold)),
                                pw.SizedBox(height: 5),
-                               pw.Text(section.frequency.toUpperCase(), style: pw.TextStyle(color: _textGrey, fontSize: 9, letterSpacing: 1)),
+                               if (section.price.terms != null)
+                                 pw.Text(section.price.terms!.toUpperCase(), style: pw.TextStyle(color: _textGrey, fontSize: 9, letterSpacing: 1)),
                              ],
                            ),
                          ),
