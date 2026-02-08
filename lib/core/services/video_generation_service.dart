@@ -207,6 +207,7 @@ class VideoGenerationService {
         final proxyResponse = await AIProxyService.generateContent(
           prompt: prompt,
           config: config,
+          generationParams: params,
         );
 
         if (proxyResponse['custom_type'] == 'veo_lro') {

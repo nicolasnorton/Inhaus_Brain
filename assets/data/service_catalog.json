@@ -1,0 +1,853 @@
+{
+    "id": "inhaus-catalog-2026",
+    "name": "INHAUS ESTUDIO CREATIVO - Catálogo Maestro",
+    "description": "Catálogo consolidado de paquetes y servicios individuales de INHAUS",
+    "version": "2.0",
+    "createdAt": "2026-02-07T22:10:00.000Z",
+    "updatedAt": "2026-02-07T22:10:00.000Z",
+    "metadata": {
+        "currency": "USD",
+        "region": "Ecuador",
+        "language": "es"
+    },
+    "services": [
+        {
+            "id": "pkg-rrss-estandar",
+            "name": "Social Media Management Package (Standard)",
+            "nameEs": "Paquete Manejo de Redes Sociales (Estándar)",
+            "description": "Estrategia creativa, gestión de comunidad y publicación de contenidos para Facebook e Instagram",
+            "type": "bundle",
+            "execution": "Estrategia creativa, gestión de comunidad y publicación de contenidos para Facebook e Instagram.",
+            "team": [
+                "Community Manager",
+                "Diseñador Gráfico",
+                "Ejecutivo de Cuentas"
+            ],
+            "deliverables": [
+                "30 piezas mensuales: 3 Reels (Edición/Montaje)",
+                "4 Carruseles (3-4 slides)",
+                "3 Publicaciones estáticas",
+                "15 Stories (Diseño/Animación/Copywriting)",
+                "Calendarización y Reporte mensual"
+            ],
+            "includes": [
+                "Adaptación de formatos",
+                "Copywriting",
+                "Reuniones de seguimiento"
+            ],
+            "excludes": [
+                "Producción de material (se trabaja con recursos entregados por el cliente o stock)"
+            ],
+            "price": "1500.00",
+            "basePrice": 1500.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 63.33,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-tiktok-mgmt",
+            "name": "TikTok Management Package",
+            "nameEs": "Paquete TikTok Management",
+            "description": "Producción audiovisual y gestión específica de la plataforma TikTok",
+            "type": "bundle",
+            "execution": "Producción audiovisual y gestión específica de la plataforma TikTok.",
+            "team": [
+                "Videógrafo",
+                "Ejecutiva",
+                "Asistente"
+            ],
+            "deliverables": [
+                "4 Reels de hasta 30 segundos",
+                "Gestión de respuestas en publicaciones",
+                "1 Informe mensual"
+            ],
+            "includes": [
+                "Una jornada de producción de 8 horas en día laborable (casco urbano Cuenca)",
+                "Props de arte (presupuesto de $100)",
+                "Post-producción y edición"
+            ],
+            "excludes": [
+                "Modelos",
+                "Maquilladora",
+                "Estilista",
+                "Viáticos del equipo",
+                "Jornadas mayores a 8 horas"
+            ],
+            "price": "900.00",
+            "basePrice": 900.00,
+            "deliveryCost": 250.00,
+            "targetMargin": 72.22,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-premium-bundle",
+            "name": "Premium Services Bundle",
+            "nameEs": "Paquete Premium Services (Bundle)",
+            "description": "Servicio combinado de Manejo de Redes Sociales + Servicio de Edición de Contenido",
+            "type": "bundle",
+            "execution": "Servicio combinado de Manejo de Redes Sociales + Servicio de Edición de Contenido.",
+            "team": [
+                "Community Manager",
+                "Diseñador",
+                "Ejecutivo",
+                "Editor de video"
+            ],
+            "deliverables": [
+                "Las 30 piezas del plan estándar de Redes",
+                "Adicionales de edición: 4 micro videos (15s)",
+                "2 carruseles",
+                "5 estáticas",
+                "7 stories animadas"
+            ],
+            "includes": [
+                "Procesos de edición y diseño gráfico a partir de material crudo enviado por el cliente"
+            ],
+            "excludes": [
+                "Grabación ni producción en sitio (todo es con material del cliente)"
+            ],
+            "price": "2250.00",
+            "basePrice": 2250.00,
+            "deliveryCost": 750.00,
+            "targetMargin": 66.67,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-contenido-completo",
+            "name": "Content Creation Package (Complete)",
+            "nameEs": "Paquete Creación de Contenido (Completo)",
+            "description": "Levantamiento profesional de imagen y video con equipos de alta gama",
+            "type": "bundle",
+            "execution": "Levantamiento profesional de imagen y video con equipos de alta gama.",
+            "team": [
+                "Audiovisual",
+                "Ejecutiva",
+                "Community",
+                "Diseñador"
+            ],
+            "deliverables": [
+                "5 Reels (hasta 30 seg)",
+                "25 Fotos calidad profesional"
+            ],
+            "includes": [
+                "Iluminación y equipo profesional de video/foto",
+                "Jornada de 8 horas en Cuenca",
+                "Props de arte ($100)"
+            ],
+            "excludes": [
+                "Modelos",
+                "Maquillaje",
+                "Estilismo",
+                "Foodstyling",
+                "Viáticos"
+            ],
+            "price": "1500.00",
+            "basePrice": 1500.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 63.33,
+            "frequency": "bimonthly",
+            "billingCycle": "bimonthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-contenido-light",
+            "name": "Content Creation Package (Light)",
+            "nameEs": "Paquete Creación de Contenido (Light / Bimensual)",
+            "description": "Producción integral de piezas visuales con equipo semiprofesional",
+            "type": "bundle",
+            "execution": "Producción integral de piezas visuales con equipo semiprofesional.",
+            "team": [
+                "Fotógrafo/Videógrafo (Equipo semiprofesional)",
+                "Dirección de arte"
+            ],
+            "deliverables": [
+                "1 Sesión fotográfica básica (hasta 15 fotos editadas)",
+                "2 Micro videos (vertical hasta 30s)",
+                "2 Carruseles (3-4 slides)",
+                "5 Publicaciones estáticas",
+                "6 Stories animadas"
+            ],
+            "includes": [
+                "Dirección de arte y producción según calendario"
+            ],
+            "excludes": [
+                "Modelos",
+                "Maquillaje",
+                "Estilismo",
+                "Locaciones rentadas",
+                "Cámaras de cine"
+            ],
+            "price": "1000.00",
+            "basePrice": 1000.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 45.00,
+            "frequency": "bimonthly",
+            "billingCycle": "bimonthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-corporativo",
+            "name": "Corporate Package (High Volume - Retail)",
+            "nameEs": "Paquete Corporativo (Alto Volumen - Retail)",
+            "description": "Gestión masiva para marcas grandes cubriendo redes y soporte gráfico offline/online",
+            "type": "bundle",
+            "execution": "Gestión masiva para marcas grandes (Ej. Bajaj) cubriendo redes y soporte gráfico offline/online.",
+            "team": [
+                "Equipo completo de redes",
+                "Soporte de diseño dedicado"
+            ],
+            "deliverables": [
+                "Aproximadamente 40 piezas para redes (FB, IG, TikTok, YouTube)",
+                "Soporte gráfico masivo (hasta 140-180 piezas totales para ecosistema retail/mayoreo)"
+            ],
+            "includes": [
+                "Estrategia",
+                "Gestión de múltiples plataformas",
+                "Acompañamiento gráfico ($1,500 asignados a diseño)"
+            ],
+            "excludes": [
+                "Pauta publicitaria (se cobra comisión aparte)"
+            ],
+            "price": "4500.00",
+            "basePrice": 4500.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 87.78,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-hipersonificacion",
+            "name": "Hyperpersonification Package",
+            "nameEs": "Paquete Hipersonificación",
+            "description": "Creación y gestión de un personaje digital / influencer anónimo",
+            "type": "bundle",
+            "execution": "Creación y gestión de un personaje digital / influencer anónimo.",
+            "team": [
+                "Estrategas",
+                "Editor",
+                "Community Manager (rol de personaje)"
+            ],
+            "deliverables": [
+                "3 Reels tipo vlog (con voz IA)",
+                "15 Imágenes lifestyle",
+                "16 Stories y 3 listas gráficas"
+            ],
+            "includes": [
+                "Uso de gafas Ray-Ban Meta para contenido POV (Costo gafas $1,300 pago único)",
+                "Asistencia a eventos y activaciones como incógnito",
+                "Gestión de Instagram y X con tono sarcástico/descomplicado"
+            ],
+            "excludes": [],
+            "price": "4200.00",
+            "basePrice": 4200.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 86.90,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {
+                "initialInvestment": 1300.00,
+                "initialInvestmentNote": "Gafas Ray-Ban Meta (pago único)"
+            }
+        },
+        {
+            "id": "pkg-seo-aeo",
+            "name": "SEO & AEO Maintenance Package",
+            "nameEs": "Paquete Mantenimiento SEO & AEO",
+            "description": "Optimización continua para Google y Motores de Respuesta IA (ChatGPT/Gemini)",
+            "type": "bundle",
+            "execution": "Optimización continua para Google y Motores de Respuesta IA (ChatGPT/Gemini).",
+            "team": [
+                "Especialista SEO/AEO"
+            ],
+            "deliverables": [
+                "2 Artículos tipo E-E-A-T (Experiencia, Autoridad, Confianza) mensuales",
+                "Actualización de FAQs dinámicas",
+                "2 Actualizaciones en Google Business Profile (Maps)",
+                "1 Respuesta a reseña con keywords"
+            ],
+            "includes": [
+                "Monitoreo de AI Share of Voice (visibilidad en inteligencia artificial)",
+                "Gestión de Entity Building"
+            ],
+            "excludes": [],
+            "price": "550.00",
+            "basePrice": 550.00,
+            "deliveryCost": 150.00,
+            "targetMargin": 72.73,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-embajadores",
+            "name": "Brand Ambassadors Package",
+            "nameEs": "Paquete Embajadores de Marca (Chandon Case)",
+            "description": "Planning estratégico y gestión de influencers/voceros",
+            "type": "bundle",
+            "execution": "Planning estratégico y gestión de influencers/voceros.",
+            "team": [
+                "Planner Digital",
+                "Ejecutivo",
+                "Equipo de producción (si se contrata contenido)"
+            ],
+            "deliverables": [
+                "Estrategia: Plan anual, momentos de consumo, KPIs, reporte",
+                "Contenido (si se suma): 8 Reels bimensuales"
+            ],
+            "includes": [
+                "Scouting",
+                "Negociación",
+                "Onboarding de voceros"
+            ],
+            "excludes": [
+                "Fee de los voceros (se cobra 35% extra por gestión sobre el valor del influencer)",
+                "Props/modelos adicionales"
+            ],
+            "price": "2000.00-3500.00",
+            "basePrice": 2750.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 80.00,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {
+                "influencerFeeCommission": 35.00,
+                "priceNote": "$2,000 (Estrategia) + $1,500 (Producción Bimensual)"
+            }
+        },
+        {
+            "id": "pkg-campana-impacto",
+            "name": "High Impact Campaign Package",
+            "nameEs": "Paquete Campaña Gran Impacto (Integral)",
+            "description": "Campaña 360 de alto nivel para lanzamientos masivos",
+            "type": "bundle",
+            "execution": "Campaña 360 de alto nivel para lanzamientos masivos.",
+            "team": [
+                "Director",
+                "Director de Foto",
+                "Arte",
+                "Gaffer",
+                "Styling",
+                "Maquillaje",
+                "Modelos (5)",
+                "Productoras",
+                "Equipo técnico completo (Cine)"
+            ],
+            "deliverables": [
+                "Idea Creativa: Concepto y narrativa ($3,500)",
+                "Gráfica: 1 KV, 3 carruseles, 30 historias ($1,400)",
+                "Audiovisual: Spot Principal 45s (Cine), 5-6 Reels/TikToks, 3 Fotos pro ($25k-$30k)"
+            ],
+            "includes": [
+                "Jornada de rodaje de 12 horas",
+                "3-4 locaciones",
+                "Postproducción avanzada (color cine, sonido)"
+            ],
+            "excludes": [],
+            "price": "30000.00-35000.00",
+            "basePrice": 32500.00,
+            "deliveryCost": 5550.00,
+            "targetMargin": 82.92,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-campana-mediana",
+            "name": "Medium Campaign Package",
+            "nameEs": "Paquete Campaña Mediana (Táctica)",
+            "description": "Activaciones digitales o promociones de temporada",
+            "type": "bundle",
+            "execution": "Activaciones digitales o promociones de temporada.",
+            "team": [
+                "Director de Foto",
+                "Fotógrafo",
+                "Productora",
+                "Styling",
+                "Makeup (Equipo reducido)"
+            ],
+            "deliverables": [
+                "Idea Creativa: ($3,500)",
+                "Gráfica: 1 KV, 2 carruseles, 5-10 historias ($600)",
+                "Audiovisual: 1 Recap, 3 Reels, 2 TikToks, 2 Fotos ($15k-$20k)"
+            ],
+            "includes": [
+                "Jornada de 12 horas",
+                "2 locaciones",
+                "3 modelos"
+            ],
+            "excludes": [],
+            "price": "19000.00-24000.00",
+            "basePrice": 21500.00,
+            "deliveryCost": 5550.00,
+            "targetMargin": 74.19,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {}
+        },
+        {
+            "id": "pkg-crm-mantenimiento",
+            "name": "CRM Maintenance Package",
+            "nameEs": "Paquete Mantenimiento CRM",
+            "description": "Soporte técnico y optimización de la herramienta CRM",
+            "type": "bundle",
+            "execution": "Soporte técnico y optimización de la herramienta CRM.",
+            "team": [
+                "Especialista técnico CRM"
+            ],
+            "deliverables": [
+                "Monitoreo de pipelines y workflows",
+                "Gestión de usuarios y permisos",
+                "Validación de integraciones"
+            ],
+            "includes": [
+                "Soporte ante errores y ajustes menores"
+            ],
+            "excludes": [
+                "Gestión comercial (ventas)",
+                "Rediseño de funnels complejos",
+                "Pauta digital"
+            ],
+            "price": "450.00-1000.00",
+            "basePrice": 725.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 24.14,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {
+                "priceNote": "$450 (Estándar) - $1,000 (Avanzado)"
+            }
+        },
+        {
+            "id": "svc-linkedin-b2b",
+            "name": "LinkedIn B2B Management",
+            "nameEs": "Gestión de LinkedIn B2B",
+            "description": "Creación estratégica de contenido profesional para posicionamiento de autoridad y generación de relaciones empresariales (B2B)",
+            "type": "individual",
+            "execution": "Creación estratégica de contenido profesional para posicionamiento de autoridad y generación de relaciones empresariales (B2B).",
+            "team": [
+                "Planner Digital",
+                "Redactor especializado"
+            ],
+            "deliverables": [
+                "4 artículos de fondo mensuales (1 semanal)",
+                "Calendarización y reporte de resultados"
+            ],
+            "includes": [
+                "Redacción estructurada para construir autoridad y conectar con aliados o clientes potenciales"
+            ],
+            "excludes": [
+                "Producción audiovisual compleja",
+                "Gestión de otras redes personales"
+            ],
+            "price": "1500.00",
+            "basePrice": 1500.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 63.33,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "svc-spot-highend",
+            "name": "High-End Audiovisual Spot",
+            "nameEs": "Spot Audiovisual High-End (Independiente)",
+            "description": "Producción cinematográfica completa de 1 a 2 días para comerciales de TV o lanzamientos digitales de alto impacto",
+            "type": "individual",
+            "execution": "Producción cinematográfica completa de 1 a 2 días para comerciales de TV o lanzamientos digitales de alto impacto.",
+            "team": [
+                "Director Creativo",
+                "Director de Fotografía",
+                "Director de Arte",
+                "Gaffer",
+                "Sonidista",
+                "Editor",
+                "Colorista",
+                "Piloto de Dron"
+            ],
+            "deliverables": [
+                "Spot principal de 45-60 segundos",
+                "Versiones reducidas de 30s y 15s",
+                "5-8 microclips verticales para redes",
+                "Animación de logo"
+            ],
+            "includes": [
+                "Conceptualización",
+                "Guion",
+                "Rodaje con cámara de cine",
+                "Iluminación avanzada",
+                "Edición",
+                "Colorización",
+                "Música y licencias"
+            ],
+            "excludes": [
+                "Talento (modelos)",
+                "Locaciones complejas fuera del presupuesto estándar (se cotizan según proyecto)"
+            ],
+            "price": "8000.00",
+            "basePrice": 8000.00,
+            "deliveryCost": 2050.00,
+            "targetMargin": 74.38,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {}
+        },
+        {
+            "id": "svc-web-webflow",
+            "name": "Web Development (Webflow)",
+            "nameEs": "Desarrollo Web (Webflow)",
+            "description": "Diseño y desarrollo de sitio web informativo o landing page enfocado en UX/UI y conversión",
+            "type": "individual",
+            "execution": "Diseño y desarrollo de sitio web informativo o landing page enfocado en UX/UI y conversión.",
+            "team": [
+                "Diseñador UI/UX",
+                "Desarrollador Webflow",
+                "Especialista SEO básico"
+            ],
+            "deliverables": [
+                "Sitio web responsivo (móvil, tablet, escritorio)",
+                "Hasta 20-50 páginas estáticas (según plan)",
+                "Conexión con Google Analytics y Search Console"
+            ],
+            "includes": [
+                "Arquitectura del sitio",
+                "Diseño visual (Look & Feel)",
+                "Capacitación para 2 usuarios",
+                "Optimización de velocidad"
+            ],
+            "excludes": [
+                "Adquisición de Dominio ni Hosting (se recomienda pago anual directo a Webflow aprox. $276)",
+                "Integración con botones de pago complejos o CRM avanzado"
+            ],
+            "price": "1500.00-2000.00",
+            "basePrice": 1750.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 68.57,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {
+                "hostingCostAnnual": 276.00
+            }
+        },
+        {
+            "id": "svc-seo-aeo-individual",
+            "name": "SEO & AEO Maintenance (Individual)",
+            "nameEs": "Mantenimiento SEO & AEO (Mensual)",
+            "description": "Optimización continua para motores de búsqueda (Google) y motores de respuesta de Inteligencia Artificial (ChatGPT, Gemini)",
+            "type": "individual",
+            "execution": "Optimización continua para motores de búsqueda (Google) y motores de respuesta de Inteligencia Artificial (ChatGPT, Gemini).",
+            "team": [
+                "Especialista SEO/AEO"
+            ],
+            "deliverables": [
+                "2 Artículos tipo E-E-A-T (Experiencia, Expertise, Autoridad, Confianza)",
+                "Actualización mensual de FAQs dinámicas",
+                "2 actualizaciones en Google Business Profile y respuesta a reseñas"
+            ],
+            "includes": [
+                "Monitoreo de Share of Voice en IA",
+                "Gestión de Entity Building y Schema Markup proactivo"
+            ],
+            "excludes": [
+                "Desarrollo web estructural",
+                "Pauta publicitaria"
+            ],
+            "price": "550.00",
+            "basePrice": 550.00,
+            "deliveryCost": 150.00,
+            "targetMargin": 72.73,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {}
+        },
+        {
+            "id": "svc-asesoria-estrategica",
+            "name": "Strategic Marketing Consulting",
+            "nameEs": "Asesoría Estratégica de Marketing",
+            "description": "Acompañamiento a la directiva o equipo interno para definir el rumbo de la marca, mix de medios y supervisión de acciones",
+            "type": "individual",
+            "execution": "Acompañamiento a la directiva o equipo interno para definir el rumbo de la marca, mix de medios y supervisión de acciones.",
+            "team": [
+                "Director de Estrategia",
+                "Planner"
+            ],
+            "deliverables": [
+                "Documento de roadmap estratégico",
+                "Definición de territorios de comunicación y mensajes clave",
+                "Reuniones de seguimiento quincenales"
+            ],
+            "includes": [
+                "Análisis de competencia",
+                "Bajada de concepto",
+                "Recomendación de timing y canales"
+            ],
+            "excludes": [
+                "Ejecución operativa de las piezas (diseño/video)",
+                "Pauta (a menos que se contraten por separado)"
+            ],
+            "price": "2000.00-4000.00",
+            "basePrice": 3000.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 81.67,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {
+                "priceNote": "$2,000 - $4,000 (o por proyecto)"
+            }
+        },
+        {
+            "id": "svc-reactivacion-produccion",
+            "name": "Production Reactivation (Revive Material)",
+            "nameEs": "Reactivación de Producción (Revivir Material)",
+            "description": "Re-edición y optimización de material audiovisual antiguo (footage previo) para darle una nueva narrativa y look",
+            "type": "individual",
+            "execution": "Re-edición y optimización de material audiovisual antiguo (footage previo) para darle una nueva narrativa y look.",
+            "team": [
+                "Editor Senior",
+                "Colorista",
+                "Sonidista"
+            ],
+            "deliverables": [
+                "1 Spot principal renovado (60 segundos)",
+                "7 fotografías de campaña curadas y re-editadas",
+                "22 imágenes para social media con nueva colorización"
+            ],
+            "includes": [
+                "Optimización de color",
+                "Sonorización",
+                "Musicalización",
+                "Derechos de uso de modelos (si ya estaban negociados)"
+            ],
+            "excludes": [
+                "Nuevo rodaje (si se requiere grabar algo nuevo, se cotiza aparte)"
+            ],
+            "price": "3500.00",
+            "basePrice": 3500.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 84.29,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {}
+        },
+        {
+            "id": "svc-crm-setup",
+            "name": "CRM Implementation (Setup)",
+            "nameEs": "Implementación de CRM (Setup)",
+            "description": "Configuración técnica de la plataforma de gestión de clientes (ej. HubSpot, Kommo)",
+            "type": "individual",
+            "execution": "Configuración técnica de la plataforma de gestión de clientes (ej. HubSpot, Kommo).",
+            "team": [
+                "Especialista en CRM y Automatización"
+            ],
+            "deliverables": [
+                "Estructura de embudos (pipelines) de venta",
+                "Mapeo y carga de base de datos (limpieza de duplicados)",
+                "Creación de usuarios, roles y etiquetas",
+                "Capacitación básica al equipo"
+            ],
+            "includes": [
+                "Integración con formularios web y canales de captación (Meta, WhatsApp)"
+            ],
+            "excludes": [
+                "Licencia del software (pago a la plataforma)",
+                "Gestión comercial (ventas)",
+                "Mantenimiento mensual (se cobra aparte)"
+            ],
+            "price": "1000.00-3500.00",
+            "basePrice": 2250.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 75.56,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {
+                "priceNote": "$1,000 (Básico) - $3,500 (Complejo)"
+            }
+        },
+        {
+            "id": "svc-filtros-tiktok",
+            "name": "TikTok Filters (Effects)",
+            "nameEs": "Filtros de TikTok (Efectos)",
+            "description": "Diseño y programación de efectos de Realidad Aumentada en TikTok Effect House",
+            "type": "individual",
+            "execution": "Diseño y programación de efectos de Realidad Aumentada en TikTok Effect House.",
+            "team": [
+                "Diseñador 2D/3D",
+                "Desarrollador AR"
+            ],
+            "deliverables": [
+                "Archivo del filtro publicado en la cuenta oficial",
+                "Elementos visuales interactivos o de gamificación"
+            ],
+            "includes": [
+                "Conceptualización",
+                "Diseño gráfico",
+                "Pruebas técnicas y publicación"
+            ],
+            "excludes": [
+                "Contratación de influencers para usar el filtro",
+                "Pauta publicitaria",
+                "Filtros con reconocimiento facial avanzado complejo"
+            ],
+            "price": "250.00",
+            "basePrice": 250.00,
+            "deliveryCost": 550.00,
+            "targetMargin": -120.00,
+            "frequency": "one-time",
+            "billingCycle": "oneTime",
+            "metadata": {
+                "bulkPricing": {
+                    "quantity": 10,
+                    "price": 2500.00,
+                    "pricePerUnit": 250.00
+                }
+            }
+        },
+        {
+            "id": "svc-personaje-2d",
+            "name": "Character Design (Brand Mascot) - 2D",
+            "nameEs": "Diseño de Personaje (Mascota de Marca) - 2D",
+            "description": "Creación desde cero de un personaje representativo para la marca en 2D, basado en arquetipos y psicología",
+            "type": "individual",
+            "execution": "Creación desde cero de un personaje representativo para la marca, basado en arquetipos y psicología.",
+            "team": [
+                "Ilustrador",
+                "Estratega Creativo"
+            ],
+            "deliverables": [
+                "Cuerpo completo",
+                "3 expresiones",
+                "2 posiciones clave",
+                "Manual de personaje (personalidad, historia, rol)"
+            ],
+            "includes": [
+                "Fase de investigación (insights)",
+                "Bocetaje y refinamiento (hasta 2 rondas)"
+            ],
+            "excludes": [
+                "Animación del personaje (videos)",
+                "Integración en VR compleja"
+            ],
+            "price": "3800.00",
+            "basePrice": 3800.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 85.53,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {
+                "variant": "2D"
+            }
+        },
+        {
+            "id": "svc-personaje-3d",
+            "name": "Character Design (Brand Mascot) - 3D",
+            "nameEs": "Diseño de Personaje (Mascota de Marca) - 3D",
+            "description": "Creación desde cero de un personaje representativo para la marca en 3D, basado en arquetipos y psicología",
+            "type": "individual",
+            "execution": "Creación desde cero de un personaje representativo para la marca, basado en arquetipos y psicología.",
+            "team": [
+                "Modelador 3D",
+                "Estratega Creativo"
+            ],
+            "deliverables": [
+                "Modelado profesional",
+                "Texturas",
+                "Render alta resolución",
+                "2 poses",
+                "3 expresiones",
+                "Manual de personaje (personalidad, historia, rol)"
+            ],
+            "includes": [
+                "Fase de investigación (insights)",
+                "Bocetaje y refinamiento (hasta 2 rondas)"
+            ],
+            "excludes": [
+                "Animación del personaje (videos)",
+                "Integración en VR compleja"
+            ],
+            "price": "6500.00",
+            "basePrice": 6500.00,
+            "deliveryCost": 550.00,
+            "targetMargin": 91.54,
+            "frequency": "one-time",
+            "billingCycle": "project",
+            "metadata": {
+                "variant": "3D"
+            }
+        },
+        {
+            "id": "svc-brochure",
+            "name": "Corporate Brochure Design",
+            "nameEs": "Diseño de Brochure Corporativo",
+            "description": "Diagramación y diseño editorial de material corporativo",
+            "type": "individual",
+            "execution": "Diagramación y diseño editorial de material corporativo.",
+            "team": [
+                "Diseñador Editorial/Gráfico"
+            ],
+            "deliverables": [
+                "Brochure en PDF listo para impresión",
+                "Especificaciones técnicas para imprenta"
+            ],
+            "includes": [
+                "Conceptualización visual",
+                "Jerarquía de información",
+                "Aplicación de marca",
+                "2 rondas de cambios"
+            ],
+            "excludes": [
+                "Redacción de textos (deben ser entregados por el cliente)",
+                "Fotografía (se usa stock o recursos del cliente)",
+                "Impresión física"
+            ],
+            "price": "50.00",
+            "basePrice": 50.00,
+            "deliveryCost": 550.00,
+            "targetMargin": -1000.00,
+            "frequency": "one-time",
+            "billingCycle": "oneTime",
+            "metadata": {
+                "pricingUnit": "per page"
+            }
+        },
+        {
+            "id": "svc-pauta-digital",
+            "name": "Digital Advertising Management (Ads)",
+            "nameEs": "Gestión de Pauta Digital (Ads)",
+            "description": "Planificación y optimización de campañas publicitarias pagadas",
+            "type": "individual",
+            "execution": "Planificación y optimización de campañas publicitarias pagadas.",
+            "team": [
+                "Planner Digital",
+                "Trafficker Digital"
+            ],
+            "deliverables": [
+                "Flow de medios (planificación)",
+                "Reporte de performance (rendimiento)"
+            ],
+            "includes": [
+                "Segmentación",
+                "Configuración en Meta Ads / Google Ads / TikTok Ads",
+                "Optimización continua"
+            ],
+            "excludes": [
+                "El presupuesto publicitario (se paga directo a la plataforma con tarjeta del cliente)",
+                "Si la agencia paga, cobra un 15% extra financiero"
+            ],
+            "price": "300.00-500.00",
+            "basePrice": 400.00,
+            "deliveryCost": 550.00,
+            "targetMargin": -37.50,
+            "frequency": "monthly",
+            "billingCycle": "monthly",
+            "metadata": {
+                "commissionRate": 15.00,
+                "priceNote": "Comisión del 15% sobre la inversión (o fee fijo $300-$500 según caso)"
+            }
+        }
+    ]
+}

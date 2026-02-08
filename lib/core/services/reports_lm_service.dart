@@ -201,9 +201,16 @@ Sources: $sources
       ref: ref,
     );
 
-    // 3. Video Render (Veo)
+    // 3. Visual Prompt Generator (New Step for Better Quality)
+    final visualPromptRes = await EdgeAIService.generateText(
+      "Create a single, highly descriptive visual prompt (under 400 words) for a video generation model (Veo) that captures the essence of this content. Style: Cinematic, Professional, Documentary. Content: ${contentRes.text}",
+      modelConfig: AIModelConfig.geminiFlash,
+      ref: ref,
+    );
+
+    // 4. Video Render (Veo)
     final videoUrl = await EdgeAIService.generateVideo(
-       "Video overview for: ${report.title}. Summary: ${contentRes.text.length > 500 ? contentRes.text.substring(0, 500) : contentRes.text}",
+       visualPromptRes.text, // Use optimized visual prompt
        isFinal: true,
        ref: ref
     );
@@ -283,7 +290,11 @@ Sources: $sources
     }
 
     // Generate Final Image (Imagen 3)
-    final imageUrl = await EdgeAIService.generateImage(result.text, ref: ref);
+    final imageUrl = await EdgeAIService.generateImage(
+       result.text, 
+       ref: ref,
+       generationParams: {'aspectRatio': '3:4', 'sampleCount': 1},
+    );
 
     return GenerationResult(
       content: result.text,

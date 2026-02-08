@@ -10,6 +10,8 @@ import '../../features/proposals/models/proposal_model.dart';
 import '../../features/proposals/services/proposals_lm_service.dart';
 import '../../features/proposals/providers/proposals_provider.dart';
 
+import '../../features/knowledge/models/knowledge_source.dart';
+
 class OrchestrationService {
   final Ref _ref;
   bool _isListening = false;
@@ -63,6 +65,26 @@ class OrchestrationService {
       } catch (e, stack) {
         debugPrint('OrchestrationService: CRASH in _handleUserRequest: $e\n$stack');
       }
+    } else if (action == 'proposal_chat') {
+      final message = event.data['message'] as String;
+      final proposalId = event.data['proposalId'] as String?;
+      
+      List<KnowledgeSource> context = [];
+      if (proposalId != null) {
+         final proposal = await _ref.read(proposalsServiceProvider).getProposal(proposalId);
+         if (proposal != null) {
+            context.add(KnowledgeSource(
+              id: 'prop_ctx_${proposal.id}',
+              title: 'Current Proposal: ${proposal.title}',
+              content: jsonEncode(proposal.toJson()),
+              type: KnowledgeSourceType.text,
+              createdAt: DateTime.now()
+            ));
+         }
+      }
+
+      // Trigger Proposal Chat for conversational interaction
+      await _triggerAgent('Proposal Chat Agent', message, context: context);
     }
   }
 
@@ -169,7 +191,7 @@ class OrchestrationService {
   final Map<String, int> _agentRetries = {};
   static const int _maxRetries = 2;
 
-  Future<void> _triggerAgent(String agentName, String input) async {
+  Future<void> _triggerAgent(String agentName, String input, {List<KnowledgeSource> context = const []}) async {
     final blackboard = _ref.read(blackboardProvider.notifier);
     
     debugPrint('OrchestrationService: Triggering $agentName');
@@ -180,16 +202,22 @@ class OrchestrationService {
       
       if (agentName == 'Trend Scout') {
          final agent = TrendScoutAgent();
-         resultText = await agent.execute(userPrompt: input, context: [], ref: _ref);
+         resultText = await agent.execute(userPrompt: input, context: context, ref: _ref);
       } else if (agentName == 'Strategist') {
          final agent = StrategistAgent();
-         resultText = await agent.execute(userPrompt: input, context: [], ref: _ref);
+         resultText = await agent.execute(userPrompt: input, context: context, ref: _ref);
       } else if (agentName == 'Copywriter') {
          final agent = CopywriterAgent();
-         resultText = await agent.execute(userPrompt: input, context: [], ref: _ref);
+         resultText = await agent.execute(userPrompt: input, context: context, ref: _ref);
       } else if (agentName == 'Creative') {
          final agent = CreativeAgent();
-         resultText = await agent.execute(userPrompt: input, context: [], ref: _ref);
+         resultText = await agent.execute(userPrompt: input, context: context, ref: _ref);
+      } else if (agentName == 'Proposal Specialist') {
+         final agent = ProposalSpecialistAgent();
+         resultText = await agent.execute(userPrompt: input, context: context, ref: _ref);
+      } else if (agentName == 'Proposal Chat Agent') {
+         final agent = ProposalChatAgent();
+        resultText = await agent.execute(userPrompt: input, context: context, ref: _ref);
       } else {
          debugPrint("Orchestration: No agent implementation mapped for $agentName");
          resultText = "Agent $agentName attempted to run but has no wiring.";

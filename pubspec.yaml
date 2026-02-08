@@ -132,6 +132,7 @@ flutter:
     - assets/images/
     - assets/prompts/
     - assets/providers/
+    - assets/data/
     - .env
 
 

@@ -23,13 +23,18 @@ class ProposalsLMService {
       "Based on the extracted information, create a structured outline for a professional proposal. Include: Executive Summary, Client Needs Analysis, Proposed Services, Pricing Structure, Timeline, and Call to Action.";
 
   static String _detailedGeneratorPrompt(String sources) => """
-You are an expert proposal specialist for INHAUS ESTUDIO CREATIVO creating a detailed client proposal.
+You are the Bilingual Client Proposal Specialist for INHAUS ESTUDIO CREATIVO.
+Your goal is to generate professional, stunning, and conversion-focused business proposals in the authentic INHAUS style (v2.0).
 
 STRICT RULES:
-- Ground everything in the provided sources; no external knowledge.
-- Output MUST be valid JSON matching the 'detailed' schema from the proposal_specialist.md prompt.
-- Use Spanish as primary language (bilingual optional).
-- Apply INHAUS visual style: dark purple theme (#1A0F2E), purple accents (#6B46C1).
+1. Ground everything in the provided sources; no external knowledge.
+2. Output MUST be valid JSON matching the v2.0 schema.
+3. Use Spanish (ES) for all content.
+4. Apply INHAUS VISUAL IDENTITY:
+   - Backgrounds: Dark/Black (#05050B)
+   - Accent Elements: Dark Purple Bars (#1A1423)
+   - Typography: Montserrat. White (#FFFFFF) for titles, Light Gray (#A0A0A0) for body.
+   - Pricing: High-contrast white text in dedicated boxes.
 
 REQUIRED JSON STRUCTURE:
 {
@@ -42,28 +47,33 @@ REQUIRED JSON STRUCTURE:
   },
   "sections": [
     {
-      "title": "RRSS" (or service name),
-      "description": "...",
-      "bullets": ["..."],
-      "includes": ["..."],
-      "excludes": ["..."],
-      "price": {"label": "PRECIO:", "amount": "USD XXX"}
+      "title": "NOMBRE DEL SERVICIO",
+      "layout_type": "standard",
+      "content": {
+        "header_info": ["Breve descripción del alcance..."],
+        "items": ["Entregable 1", "Entregable 2", "Beneficio clave"]
+      },
+      "pricing": {
+        "label": "INVERSIÓN:",
+        "amount": "USD X,XXX",
+        "terms": "Pago único / Mensual"
+      }
     }
   ],
-  "footer": "..."
+  "footer": "inhauscorp.com"
 }
 
 Sources: $sources
 """;
 
   static String _onePageGeneratorPrompt(String sources) => """
-You are an expert proposal specialist for INHAUS ESTUDIO CREATIVO creating a one-page quote.
+You are the Bilingual Client Proposal Specialist for INHAUS ESTUDIO CREATIVO creating a high-impact summary quote.
 
 STRICT RULES:
-- Ground everything in the provided sources; no external knowledge.
-- Output MUST be valid JSON matching the 'one_page' schema from the proposal_specialist.md prompt.
-- Use Spanish as primary language.
-- Apply INHAUS visual style.
+1. Ground everything in the provided sources.
+2. Output MUST be valid JSON matching the one_page schema.
+3. Use Spanish (ES).
+4. Style: INHAUS Dark Theme (v2.0).
 
 REQUIRED JSON STRUCTURE:
 {
@@ -75,10 +85,10 @@ REQUIRED JSON STRUCTURE:
     "date": "..."
   },
   "summary": {
-    "intro": "...",
-    "key_services": ["...", "..."],
-    "total_price": {"label": "TOTAL:", "amount": "USD XXX"},
-    "cta": "..."
+    "intro": "Resumen ejecutivo de la propuesta...",
+    "key_services": ["Servicio 1: Beneficio principal", "Servicio 2: Valor agregado"],
+    "total_price": {"label": "TOTAL INVERSIÓN:", "amount": "USD X,XXX"},
+    "cta": "Próximos pasos y contacto."
   }
 }
 

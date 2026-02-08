@@ -624,3 +624,58 @@ class CreativeAgent extends BaseAgent {
     return result;
   }
 }
+
+/// 12. Proposal Chat Agent
+class ProposalChatAgent extends BaseAgent {
+  @override
+  String get name => "Proposal Chat Agent";
+  
+  @override
+  MessageSender get type => MessageSender.proposalSpecialistAgent; // Reusing icon/persona
+
+  @override
+  String get systemPromptKey => "proposal_chat.md";
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    dynamic ref,
+  }) async {
+    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
+    
+    // Conversational prompt
+    final prompt = systemPrompt ?? """
+You are Brian, the Inhaus Agency AI Assistant specializing in proposals. 
+You are helpful, creative, and professional. 
+Answer questions about the proposal being viewed, the agency services, or general inquiries.
+Keep responses concise, helpful, and friendly.
+""";
+
+    final result = await _simpleExecute(
+      agentName: name,
+      systemPromptKey: systemPromptKey,
+      systemPrompt: prompt,
+      userPrompt: userPrompt,
+      context: context,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      modelConfig: AIModelConfig.geminiPro,
+      jsonMode: false, // Text mode for chat
+      ref: ref,
+    );
+    
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
+    return result;
+  }
+}
+

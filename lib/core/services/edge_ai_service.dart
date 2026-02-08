@@ -419,7 +419,7 @@ class EdgeAIService {
   }
 
 
-  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref}) async {
+  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref, Map<String, dynamic>? generationParams}) async {
     // 1. WEB PROXY PATH (Vertex Imagen - Primary)
     if (kIsWeb) {
        try {
@@ -427,6 +427,7 @@ class EdgeAIService {
          final proxyResponse = await AIProxyService.generateContent(
            prompt: prompt,
            config: AIModelConfig(provider: AIProvider.vertex, modelId: 'imagen-3.0-generate-001'),
+           generationParams: generationParams,
          );
          
          if (proxyResponse['custom_type'] == 'imagen') {

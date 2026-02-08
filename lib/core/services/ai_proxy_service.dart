@@ -31,6 +31,7 @@ class AIProxyService {
     required AIModelConfig config,
     List<Map<String, dynamic>>? contextData, // Future use for structured context
     String? systemInstruction,
+    Map<String, dynamic>? generationParams, // Added to support model-specific params (Veo/Imagen)
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -58,6 +59,7 @@ class AIProxyService {
         if (config.responseMimeType != null) "responseMimeType": config.responseMimeType,
       },
       if (systemInstruction != null) "systemInstruction": systemInstruction, 
+      if (generationParams != null) "generationParams": generationParams,
     };
 
     try {

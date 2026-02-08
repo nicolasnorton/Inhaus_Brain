@@ -77,7 +77,16 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       });
     }
 
-    // In a real scenario, this would call the AssistantService/Blackboard
+    // DISPATCH TO BLACKBOARD via OrchestrationService
+    ref.read(blackboardProvider.notifier).addEvent(
+      WorkflowEventType.userRequested, 
+      "User Chat Message",
+      data: {
+        'action': 'proposal_chat',
+        'message': text,
+        'proposalId': widget.proposalId,
+      }
+    );
   }
 
   Future<void> _addSource() async {
@@ -135,6 +144,8 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         'action': 'create_proposal',
         'proposalId': proposal.id,
         'type': 'detailed',
+        // Pass the full proposal object if available to avoid null lookups in OrchestrationService
+        'proposal': proposal,
       }
     );
   }
@@ -149,6 +160,8 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         'action': 'create_proposal',
         'proposalId': proposal.id,
         'type': 'one_page',
+        // Pass the full proposal object if available to avoid null lookups in OrchestrationService
+        'proposal': proposal,
       }
     );
   }
@@ -172,6 +185,23 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         // Check if status changed to generated
         if (prevProps.status != ProposalStatus.generated && nextProps.status == ProposalStatus.generated) {
            _stopLoading();
+        }
+      }
+    });
+
+    // Listen for Agent Responses (Chat)
+    ref.listen<BlackboardState>(blackboardProvider, (previous, next) {
+      if (next.events.length > (previous?.events.length ?? 0)) {
+        final newEvent = next.events.last;
+        if (newEvent.type == WorkflowEventType.agentFinished && 
+            newEvent.data['agent'] == 'Proposal Chat Agent') {
+          
+          final output = newEvent.data['output'];
+          if (output != null && mounted) {
+            setState(() {
+              _chatMessages.add({'role': 'assistant', 'content': output.toString()});
+            });
+          }
         }
       }
     });
