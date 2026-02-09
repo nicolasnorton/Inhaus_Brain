@@ -200,51 +200,57 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
     List<List<double>> embeddings = [];
     try {
       // Strategy: Try Vertex (OAuth) first, then fallback to Gemini Key (API Key)
+      // ON WEB: We prefer the Proxy which handles its own auth via Firebase ID Tokens.
       
-      // Attempt 1: Vertex Token
-      String? vertexKey = await _vault.getVertexKey();
-      
-      // If no vertex key in vault, fall back to our token provider which might have one
-      if (vertexKey == null) {
-          final t = await tokenProvider();
-          if (t != null && (t.startsWith('ya29.') || t.startsWith('AQ.'))) {
-             vertexKey = t;
-          }
-      }
-      
-      try {
-         if (vertexKey != null) {
-            // Check if it's an API Key (AQ.) or OAuth Token (ya29.)
-            final isApiKey = vertexKey.startsWith('AQ.');
-            
-            embeddings = await _vertexService.getEmbeddings(
-              chunks, 
-              accessToken: isApiKey ? null : vertexKey,
-              apiKey: isApiKey ? vertexKey : null,
-            );
-         } else {
-            throw Exception('No Vertex Token available for initial attempt');
-         }
-      } catch (e) {
-         final errStr = _safeError(e);
-         
-         if (errStr.contains('401') || errStr.contains('UNAUTHENTICATED')) {
-            debugPrint('KnowledgeApi: Vertex Embedding 401. Fallback to Gemini Key...');
-         } else {
-            debugPrint('KnowledgeApi: Vertex Embedding failed ($errStr). Attempting fallback to Gemini Key...');
-         }
-         
-         // Attempt 2: Gemini API Key
-         final geminiKey = await _vault.getGeminiKey();
-         if (geminiKey != null && geminiKey.isNotEmpty) {
-            embeddings = await _vertexService.getEmbeddings(
-              chunks, 
-              apiKey: geminiKey,
-            );
-         } else {
-            // Do NOT rethrow, just log and continue with empty embeddings to avoid crashing the whole pipeline
-            debugPrint('KnowledgeApi: ⚠️ CRITICAL - No AI keys found for embeddings. Chunks will be stored without vector data.');
-         }
+      if (kIsWeb) {
+        debugPrint('KnowledgeApi: [WEB] Delegating embedding generation to VertexApiService (Proxy path).');
+        embeddings = await _vertexService.getEmbeddings(chunks);
+      } else {
+        // Attempt 1: Vertex Token (Native/Desktop)
+        String? vertexKey = await _vault.getVertexKey();
+        
+        // If no vertex key in vault, fall back to our token provider which might have one
+        if (vertexKey == null) {
+            final t = await tokenProvider();
+            if (t != null && (t.startsWith('ya29.') || t.startsWith('AQ.'))) {
+               vertexKey = t;
+            }
+        }
+        
+        try {
+           if (vertexKey != null) {
+              // Check if it's an API Key (AQ.) or OAuth Token (ya29.)
+              final isApiKey = vertexKey.startsWith('AQ.');
+              
+              embeddings = await _vertexService.getEmbeddings(
+                chunks, 
+                accessToken: isApiKey ? null : vertexKey,
+                apiKey: isApiKey ? vertexKey : null,
+              );
+           } else {
+              throw Exception('No Vertex Token available for initial attempt');
+           }
+        } catch (e) {
+           final errStr = _safeError(e);
+           
+           if (errStr.contains('401') || errStr.contains('UNAUTHENTICATED')) {
+              debugPrint('KnowledgeApi: Vertex Embedding 401. Fallback to Gemini Key...');
+           } else {
+              debugPrint('KnowledgeApi: Vertex Embedding failed ($errStr). Attempting fallback to Gemini Key...');
+           }
+           
+           // Attempt 2: Gemini API Key
+           final geminiKey = await _vault.getGeminiKey();
+           if (geminiKey != null && geminiKey.isNotEmpty) {
+              embeddings = await _vertexService.getEmbeddings(
+                chunks, 
+                apiKey: geminiKey,
+              );
+           } else {
+              // Do NOT rethrow, just log and continue with empty embeddings to avoid crashing the whole pipeline
+              debugPrint('KnowledgeApi: ⚠️ CRITICAL - No AI keys found for embeddings. Chunks will be stored without vector data.');
+           }
+        }
       }
     } catch (e) {
       final err = _safeError(e);
@@ -539,36 +545,44 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
        }
      }
 
-     // Vector Search Implementation (Firestore Native)
-     try {
+      // Vector Search Implementation (Firestore Native)
+      try {
         // 1. Generate Embedding for Query
-        String? apiKey = await _vault.getVertexKey();
-        bool isVertex = true;
+        List<List<double>> queryEmbeddings = [];
         
-        // Check local token provider first (often has fresh OAuth)
-        if (apiKey == null) {
-            apiKey = await tokenProvider();
-             if (apiKey != null && (apiKey.startsWith('ya29.') || apiKey.startsWith('AQ.'))) {
-               // Good info
-             } else {
-               apiKey = null;
-             }
-        }
+        if (kIsWeb) {
+          debugPrint('KnowledgeApi: [WEB-RETRIEVE] Delegating query embedding to VertexApiService (Proxy path).');
+          queryEmbeddings = await _vertexService.getEmbeddings([query]);
+        } else {
+          String? apiKey = await _vault.getVertexKey();
+          bool isVertex = true;
+          
+          // Check local token provider first (often has fresh OAuth)
+          if (apiKey == null) {
+              apiKey = await tokenProvider();
+               if (apiKey != null && (apiKey.startsWith('ya29.') || apiKey.startsWith('AQ.'))) {
+                 // Good info
+               } else {
+                 apiKey = null;
+               }
+          }
 
-        if (apiKey == null) {
-            apiKey = await _vault.getGeminiKey();
-            isVertex = false;
+          if (apiKey == null) {
+              apiKey = await _vault.getGeminiKey();
+              isVertex = false;
+          }
+          
+          if (apiKey != null) {
+             queryEmbeddings = await _vertexService.getEmbeddings(
+                [query], 
+                accessToken: isVertex && !apiKey.startsWith('AQ.') ? apiKey : null,
+                apiKey: (!isVertex || apiKey.startsWith('AQ.')) ? apiKey : null
+             );
+          }
         }
         
-        if (apiKey != null) {
-           final embeddings = await _vertexService.getEmbeddings(
-              [query], 
-              accessToken: isVertex && !apiKey.startsWith('AQ.') ? apiKey : null,
-              apiKey: (!isVertex || apiKey.startsWith('AQ.')) ? apiKey : null
-           );
-           
-           if (embeddings.isNotEmpty) {
-              final queryVector = embeddings.first;
+        if (queryEmbeddings.isNotEmpty) {
+           final queryVector = queryEmbeddings.first;
               
                // 2. Query Firestore Vector Search
                debugPrint('KnowledgeApi: Performing Firestore Vector Search for "$query"...');

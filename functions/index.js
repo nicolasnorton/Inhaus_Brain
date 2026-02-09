@@ -524,9 +524,20 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             console.log(`VertexAI Proxy: Calling Gemini model: ${modelId} for prompt length: ${typeof prompt === 'string' ? prompt.length : 'multimodal'}`);
 
             const regions = ['us-central1', 'us-east4', 'us-west1'];
-            const modelVariations = [modelId];
-            if (modelId === 'gemini-1.5-flash') modelVariations.push('gemini-1.5-flash-002');
-            if (modelId === 'gemini-1.5-pro') modelVariations.push('gemini-1.5-pro-002');
+
+            // AGGRESSIVE SANITIZATION: Replace legacy aliases with stable versioned IDs
+            let targetModelId = modelId;
+            if (modelId === 'gemini-1.5-flash' || modelId === 'gemini-1.5-flash-001') {
+                targetModelId = 'gemini-1.5-flash-002';
+                console.log(`[PROXY] 🛡️ Sanitizing: ${modelId} -> ${targetModelId}`);
+            } else if (modelId === 'gemini-1.5-pro' || modelId === 'gemini-1.5-pro-001') {
+                targetModelId = 'gemini-1.5-pro-002';
+                console.log(`[PROXY] 🛡️ Sanitizing: ${modelId} -> ${targetModelId}`);
+            }
+
+            const modelVariations = [targetModelId];
+            // If sanitization didn't happen, we can still add fallback variations if needed, 
+            // but for now, we trust the versioned ones.
 
             let lastResError = null;
             let success = false;

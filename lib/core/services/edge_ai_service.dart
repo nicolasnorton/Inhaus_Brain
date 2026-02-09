@@ -388,6 +388,12 @@ class EdgeAIService {
   }
 
   static String _sanitizeModelName(String modelId) {
+    if (modelId == 'gemini-1.5-flash' || modelId == 'gemini-1.5-flash-001') {
+      return 'gemini-1.5-flash-002';
+    }
+    if (modelId == 'gemini-1.5-pro' || modelId == 'gemini-1.5-pro-001') {
+      return 'gemini-1.5-pro-002';
+    }
     return modelId;
   }
 
