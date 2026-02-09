@@ -587,6 +587,8 @@ exports.copilotRuntime = functions.https.onRequest(copilotHandler);
  * Listens for events from GoHighLevel (Contact Created, Opportunity Update, etc.)
  * and syncs them to Firestore 'sales_leads' collection.
  */
+return 'newLead';
+}
 exports.ghlWebhook = functions.https.onRequest(async (req, res) => {
     // 1. Validate Method
     if (req.method !== 'POST') {
@@ -632,6 +634,13 @@ exports.ghlWebhook = functions.https.onRequest(async (req, res) => {
         return res.status(500).send('Internal Server Error');
     }
 });
+
+/**
+ * EXPORT NEW ANALYTICS FUNCTION
+ */
+const { exportEventsToBigQuery } = require('./analytics');
+exports.exportEventsToBigQuery = exportEventsToBigQuery;
+
 
 function _mapGhlStatus(ghlStatus) {
     const status = ghlStatus.toLowerCase();

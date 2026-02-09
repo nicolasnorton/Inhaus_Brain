@@ -59,6 +59,29 @@ class BlackboardState {
       retryCount: retryCount ?? this.retryCount,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'facts': facts,
+      'tasks': tasks.map((t) => t.toJson()).toList(),
+      'events': events.map((e) => e.toJson()).toList(),
+      'phase': phase.name,
+      'activeAgents': activeAgents.map((key, value) => MapEntry(key, value.name)),
+      'retryCount': retryCount,
+    };
+  }
+
+  factory BlackboardState.fromJson(Map<String, dynamic> json) {
+    return BlackboardState(
+      facts: json['facts'] ?? {},
+      tasks: (json['tasks'] as List?)?.map((t) => WorkflowTask.fromJson(t)).toList() ?? [],
+      events: (json['events'] as List?)?.map((e) => WorkflowEvent.fromJson(e)).toList() ?? [],
+      phase: BlackboardPhase.values.firstWhere((e) => e.name == json['phase'], orElse: () => BlackboardPhase.idle),
+      activeAgents: (json['activeAgents'] as Map?)?.map((key, value) => 
+          MapEntry(key as String, AgentStatus.values.firstWhere((e) => e.name == value, orElse: () => AgentStatus.idle))) ?? {},
+      retryCount: json['retryCount'] ?? 0,
+    );
+  }
 }
 
 enum TaskStatus { pending, inProgress, completed, failed }
@@ -79,6 +102,28 @@ class WorkflowTask {
     this.result = const {},
     this.dependencies = const [],
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'requiredCapability': requiredCapability,
+      'status': status.name,
+      'result': result,
+      'dependencies': dependencies,
+    };
+  }
+
+  factory WorkflowTask.fromJson(Map<String, dynamic> json) {
+    return WorkflowTask(
+      id: json['id'],
+      title: json['title'],
+      requiredCapability: json['requiredCapability'],
+      status: TaskStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => TaskStatus.pending),
+      result: json['result'] ?? {},
+      dependencies: List<String>.from(json['dependencies'] ?? []),
+    );
+  }
 }
 
 enum WorkflowEventType { 
@@ -106,6 +151,26 @@ class WorkflowEvent {
     this.data = const {},
     required this.timestamp,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type.name,
+      'message': message,
+      'data': data,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory WorkflowEvent.fromJson(Map<String, dynamic> json) {
+    return WorkflowEvent(
+      id: json['id'],
+      type: WorkflowEventType.values.firstWhere((e) => e.name == json['type'], orElse: () => WorkflowEventType.agentAction),
+      message: json['message'],
+      data: json['data'] ?? {},
+      timestamp: DateTime.parse(json['timestamp']),
+    );
+  }
 }
 
 class BlackboardNotifier extends StateNotifier<BlackboardState> {
@@ -126,6 +191,18 @@ class BlackboardNotifier extends StateNotifier<BlackboardState> {
       timestamp: DateTime.now(),
     );
     state = state.copyWith(events: [...state.events, event]);
+  }
+
+  void restoreState(BlackboardState newState) {
+    state = newState;
+    // Log restoration event without triggering new persistence loop immediately
+    // Or just silently restore. 
+    // Let's create an event to mark restoration.
+    addEvent(
+      WorkflowEventType.agentAction, 
+      "Session Restored from Persistence",
+      data: {'timestamp': DateTime.now().toIso8601String()}
+    );
   }
 
   void transitionTo(BlackboardPhase nextPhase) {

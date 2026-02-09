@@ -255,7 +255,7 @@ class AssistantService {
        // Use RouterAgent via EdgeAIService directly for speed, or properly instantiate Agent
        final routerRes = await EdgeAIService.generateText(
           routerPrompt, 
-          modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash'), // Fast router
+          modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002'), // Fast router
           ref: _ref
        );
        
@@ -515,7 +515,7 @@ class AssistantService {
     // Config: Force JSON
     final config = AIModelConfig(
       provider: AIProvider.gemini, 
-      modelId: 'gemini-1.5-flash',
+      modelId: 'gemini-1.5-flash-002',
       responseMimeType: 'application/json',
       temperature: 0.2, // Lower temp for logic
       maxTokens: 4096,

@@ -11,7 +11,7 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
   UserSettingsNotifier() : super(_getInitialSettings()) {
     // Migration Force Check on Boot
     if (state.preferredModelId == 'gemini-1.5-flash-001' || state.preferredModelId == 'gemini-1.5-flash') {
-      state = state.copyWith(preferredModelId: 'gemini-1.5-flash');
+      state = state.copyWith(preferredModelId: 'gemini-1.5-flash-002');
     }
   }
 

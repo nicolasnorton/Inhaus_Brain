@@ -49,9 +49,19 @@ class AIProxyService {
       throw Exception('Failed to retrieve ID Token.');
     }
 
+    // Force Model ID Upgrade (Sanitization)
+    var effectiveModelId = config.modelId;
+    if (effectiveModelId == 'gemini-1.5-flash' || effectiveModelId == 'gemini-1.5-flash-001') {
+      effectiveModelId = 'gemini-1.5-flash-002';
+      debugPrint('AIProxyService: 🛡️ Upgrading legacy model ID -> $effectiveModelId');
+    } else if (effectiveModelId == 'gemini-1.5-pro' || effectiveModelId == 'gemini-1.5-pro-001') {
+      effectiveModelId = 'gemini-1.5-pro-002';
+      debugPrint('AIProxyService: 🛡️ Upgrading legacy model ID -> $effectiveModelId');
+    }
+
     // Prepare body
     final body = {
-      "model": config.modelId,
+      "model": effectiveModelId,
       "prompt": prompt,
       "config": {
         "temperature": config.temperature,

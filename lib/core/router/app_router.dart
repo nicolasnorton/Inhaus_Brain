@@ -56,6 +56,9 @@ import '../../features/copilot/presentation/copilot_view.dart';
 import '../../core/auth/auth_service.dart';
 import '../../features/auth/models/user_model.dart';
 
+import '../../features/legal/screens/legal_document_viewer.dart';
+import '../../features/legal/constants/legal_text.dart';
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider).value;
   final onboardingCompleted = ref.watch(onboardingProvider);
@@ -69,8 +72,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final appUserAsync = ref.read(appUserProvider);
       final appUser = appUserAsync.value;
+      
+      final path = state.uri.toString();
+      final isPublicRoute = path == '/privacy' || path == '/terms';
 
-      if (!isLoggedIn && !isLoggingIn) return '/login';
+      if (!isLoggedIn && !isLoggingIn && !isPublicRoute) return '/login';
       // if (isLoggedIn && !onboardingCompleted && !isOnboarding) return '/onboarding';
       if (isLoggedIn && isLoggingIn) return '/';
       
@@ -107,6 +113,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const WelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const LegalDocumentViewer(
+          title: 'Privacy Policy',
+          content: LegalText.privacyPolicy,
+        ),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const LegalDocumentViewer(
+          title: 'Terms of Service',
+          content: LegalText.termsOfService,
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) {

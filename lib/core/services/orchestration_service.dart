@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -11,6 +10,7 @@ import '../../features/proposals/services/proposals_lm_service.dart';
 import '../../features/proposals/providers/proposals_provider.dart';
 
 import '../../features/knowledge/models/knowledge_source.dart';
+import 'analytics_service.dart';
 
 class OrchestrationService {
   final Ref _ref;
@@ -146,6 +146,17 @@ class OrchestrationService {
           'pdfUrl': pdfUrl
         }
       );
+
+      // Analytics
+      _ref.read(analyticsServiceProvider).logEvent(
+        'proposal_generated',
+        payload: {
+          'proposalId': proposal.id,
+          'type': type,
+          'hasPdf': pdfUrl != null,
+        },
+        agentId: 'Proposal Specialist'
+      );
       
     } catch (e) {
       debugPrint('OrchestrationService: Proposal generation failed: $e');
@@ -196,6 +207,9 @@ class OrchestrationService {
     
     debugPrint('OrchestrationService: Triggering $agentName');
     blackboard.updateAgentStatus(agentName, AgentStatus.working);
+    final analytics = _ref.read(analyticsServiceProvider);
+    
+    analytics.logEvent('agent_start', agentId: agentName, payload: {'input_length': input.length});
 
     try {
       String resultText = "";
@@ -250,8 +264,16 @@ class OrchestrationService {
         data: {'agent': agentName, 'output': factValue}
       );
       
+      analytics.logEvent('agent_complete', agentId: agentName, payload: {'result_length': resultText.length});
+      
     } catch (e) {
       debugPrint('OrchestrationService: Error executing $agentName: $e');
+      _ref.read(analyticsServiceProvider).logEvent(
+        'agent_error', 
+        agentId: agentName, 
+        severity: AnalyticsSeverity.error,
+        payload: {'error': e.toString()}
+      );
       
       final currentRetries = _agentRetries[agentName] ?? 0;
       if (currentRetries < _maxRetries) {

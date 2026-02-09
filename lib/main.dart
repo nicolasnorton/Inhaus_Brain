@@ -28,10 +28,11 @@ import 'core/widgets/hotkey_cheat_sheet.dart';
 import 'package:flutter/services.dart';
 import 'core/globals.dart';
 import 'core/services/orchestration_service.dart';
+import 'core/services/blackboard_persistence_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.1.22 STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.2.1-clean-fix STARTED');
   
   // Load environment variables
   try {
@@ -93,9 +94,7 @@ void main() async {
     if (shouldActivate) {
       debugPrint('ℹ️ App Check: Attempting activation...');
       await FirebaseAppCheck.instance.activate(
-        webProvider: ReCaptchaV3Provider('6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy'),
-        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.appAttest,
+        providerWeb: ReCaptchaV3Provider('6LeGhFcsAAAAAGbtF7S_rnocz9BiauHPtQWBKZcy'),
       ).timeout(const Duration(seconds: 4), onTimeout: () {
         debugPrint('⚠️ App Check: Activation timed out. Continuing without App Check.');
         return;
@@ -116,6 +115,11 @@ class InhausBrainApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Initialize Orchestration Service
     ref.read(orchestrationServiceProvider).init();
+    
+    // Initialize Persistence Service & Restore Session
+    final persistence = ref.read(blackboardPersistenceServiceProvider);
+    // Use Future.microtask to avoid build phase issues, or just fire and forget
+    Future.microtask(() => persistence.restoreSession());
 
     final router = ref.watch(routerProvider);
     final preferences = ref.watch(userPreferencesProvider);

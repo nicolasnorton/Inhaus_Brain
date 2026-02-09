@@ -13,6 +13,7 @@ import '../auth/secret_vault_service.dart';
 import 'ai_proxy_service.dart';
 import 'video_generation_service.dart';
 import 'telemetry_service.dart';
+import 'semantic_cache_service.dart';
 
 
 enum AIProximity {
@@ -67,11 +68,43 @@ class EdgeAIService {
     final effectiveMemory = memoryContext ?? systemInstruction;
     var config = modelConfig ?? AIModelConfig.geminiFlash;
     
+    
+    // START FIX: Force model version upgrade for legacy/stale configs
+    if (config.provider == AIProvider.gemini) {
+      if (config.modelId == 'gemini-1.5-flash' || config.modelId == 'gemini-1.5-flash-001') {
+         config = config.copyWith(modelId: 'gemini-1.5-flash-002');
+         _logger.d('EdgeAI: Upgraded legacy model ID to gemini-1.5-flash-002');
+      }
+      if (config.modelId == 'gemini-1.5-pro' || config.modelId == 'gemini-1.5-pro-001') {
+         config = config.copyWith(modelId: 'gemini-1.5-pro-002');
+         _logger.d('EdgeAI: Upgraded legacy model ID to gemini-1.5-pro-002');
+      }
+    }
+    // END FIX
+
     if (outputMode == 'json') {
       config = config.copyWith(responseMimeType: 'application/json');
     }
 
     final effectivePrompt = _buildPromptWithContext(prompt, context, memoryContext: effectiveMemory);
+    
+    // --- SEMANTIC CACHE CHECK ---
+    if (ref != null && !forceMock) {
+       try {
+         final cache = ref.read(semanticCacheServiceProvider);
+         final cachedResult = await cache.get(effectivePrompt, config);
+         if (cachedResult != null) {
+           _logger.i('EdgeAI: Cache HIT for "${prompt.substring(0, 15)}..."');
+           if (ref != null) {
+             ref.read(aiProximityProvider.notifier).setProximity(AIProximity.local);
+           }
+           return cachedResult;
+         }
+       } catch (e) {
+         _logger.w('EdgeAI: Cache check failed: $e');
+       }
+    }
+    // ---------------------------
     
     _logger.d('EdgeAI: Generating text via ${config.provider} (${config.modelId})');
 
@@ -81,7 +114,7 @@ class EdgeAIService {
     }
 
     try {
-      return await _generateWithTimeout(
+      final result = await _generateWithTimeout(
         effectivePrompt,
         config,
         effectiveMemory,
@@ -94,6 +127,20 @@ class EdgeAIService {
         vertexKey,
         ref,
       ).timeout(const Duration(seconds: 45));
+
+      // --- SAVE TO CACHE ---
+      if (ref != null && !forceMock && result.confidence > 0.5) {
+         try {
+           final cache = ref.read(semanticCacheServiceProvider);
+           // Fire and forget save
+           cache.set(effectivePrompt, config, result);
+         } catch (e) {
+            _logger.w('EdgeAI: Cache save failed: $e');
+         }
+      }
+      // --------------------
+
+      return result;
     } catch (e, stack) {
       if (e is TimeoutException) {
          _logger.e('EdgeAI: TIMEOUT reached. Returning Mock fallback.');
@@ -358,8 +405,21 @@ class EdgeAIService {
     dynamic ref, 
   }) async* {
     final effectiveMemory = memoryContext ?? systemInstruction;
-    final effectiveConfig = config ?? AIModelConfig.geminiFlash;
+    var effectiveConfig = config ?? AIModelConfig.geminiFlash;
      
+     // START FIX: Force model version upgrade for legacy/stale configs
+     if (effectiveConfig.provider == AIProvider.gemini) {
+        if (effectiveConfig.modelId == 'gemini-1.5-flash' || effectiveConfig.modelId == 'gemini-1.5-flash-001') {
+           effectiveConfig = effectiveConfig.copyWith(modelId: 'gemini-1.5-flash-002');
+           _logger.d('EdgeAI: [STREAM] Upgraded legacy model ID to gemini-1.5-flash-002');
+        }
+        if (effectiveConfig.modelId == 'gemini-1.5-pro' || effectiveConfig.modelId == 'gemini-1.5-pro-001') {
+           effectiveConfig = effectiveConfig.copyWith(modelId: 'gemini-1.5-pro-002');
+           _logger.d('EdgeAI: [STREAM] Upgraded legacy model ID to gemini-1.5-pro-002');
+        }
+     }
+     // END FIX
+
      if (effectiveConfig.provider != AIProvider.gemini) {
         yield EdgeAIResult("Thinking...", AIProximity.simulated);
         yield await generateText(
