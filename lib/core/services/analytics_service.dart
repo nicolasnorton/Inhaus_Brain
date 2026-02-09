@@ -3,57 +3,69 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_service.dart';
 
-/// Standard Severity Levels for Analytics
-enum AnalyticsSeverity { info, warning, error, critical }
-
-/// Service for logging app usage and system events to Firestore `events` collection.
-/// These events are then streamed to BigQuery via Cloud Function.
+/// Analytics Service (Inhaus Brain v1.3)
+/// 
+/// Logs structured events to Firestore, which are then streamed to BigQuery via Cloud Functions.
+/// Used for tracking AI Profitability (Token Usage), Error Rates, and Agent Performance.
 class AnalyticsService {
   final Ref _ref;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   AnalyticsService(this._ref);
 
-  /// Logs a structured event.
-  /// 
-  /// [type]: Short snake_case string identifying event (e.g., 'llm_generation_complete').
-  /// [payload]: Arbitrary JSON-encodable map with details.
-  /// [severity]: Importance level.
-  Future<void> logEvent(
-    String type, {
-    Map<String, dynamic>? payload,
-    String? agentId,
-    AnalyticsSeverity severity = AnalyticsSeverity.info,
-  }) async {
+  /// Log a generic event
+  Future<void> logEvent(String eventName, {Map<String, dynamic>? parameters}) async {
     final user = _ref.read(authServiceProvider).currentUser;
-    if (user == null) return; // Anonymous events currently ignored
+    if (user == null) return;
 
     try {
-      // Just generate session ID if needed or get from elsewhere?
-      // Since Blackboard state doesn't have an explicit 'sessionId', we can use user ID + date or just omit for now.
-      // The schema had 'session_id'. Let's default to null if not available.
-      String? sessionId;
-      
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('events')
           .add({
-        'type': type,
+        'name': eventName,
+        'parameters': parameters ?? {},
         'timestamp': FieldValue.serverTimestamp(),
-        'userId': user.uid,
-        'agentId': agentId,
-        'sessionId': sessionId,
-        'payload': payload ?? {},
-        'severity': severity.name.toUpperCase(), // Store as UPPERCASE in DB for consistency
-        'clientPlatform': kIsWeb ? 'web' : 'mobile', // Simple platform check
+        'platform': kIsWeb ? 'web' : 'mobile',
       });
-      
-      debugPrint('[Analytics] Logged: $type');
     } catch (e) {
-      // Fail silently to avoid interrupting user flow
-      debugPrint('[Analytics] Failed to log event: $e');
+      debugPrint('Analytics: Failed to log event $eventName: $e');
     }
+  }
+
+  /// Log AI Generation Usage (Cost Tracking)
+  Future<void> logAiUsage({
+    required String modelId,
+    required String provider,
+    required int inputTokens, // Estimated or actual
+    required int outputTokens, // Estimated or actual
+    required double latencyMs,
+    required bool isCacheHit,
+    String? agentName,
+  }) async {
+    await logEvent('ai_generation', parameters: {
+      'model_id': modelId,
+      'provider': provider,
+      'input_tokens': inputTokens,
+      'output_tokens': outputTokens,
+      'latency_ms': latencyMs,
+      'is_cache_hit': isCacheHit,
+      'agent': agentName ?? 'unknown',
+    });
+  }
+
+  /// Log Agent Action
+  Future<void> logAgentAction({
+    required String agentName,
+    required String action,
+    Map<String, dynamic>? metadata,
+  }) async {
+    await logEvent('agent_action', parameters: {
+      'agent': agentName,
+      'action': action,
+      ...(metadata ?? {}),
+    });
   }
 }
 

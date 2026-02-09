@@ -1,63 +1,60 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
+/**
+ * Inhaus Brain v1.3 - Data Pipeline Export
+ * Exports events from Firestore to BigQuery
+ */
+
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { BigQuery } = require("@google-cloud/bigquery");
 
 const bigquery = new BigQuery();
-const DATASET_ID = "inhaus_brain_analytics";
-const TABLE_ID = "event_log";
+const datasetId = "inhaus_brain_analytics";
+const tableId = "event_log_v2";
 
 /**
- * Trigger: On Create of a new event document in `users/{userId}/events/{eventId}`.
- * Action: Inserts the event into BigQuery `inhaus_brain_analytics.event_log`.
+ * Triggers when a new document is added to {users}/{userId}/events/{eventId}
+ * Streams the event data to BigQuery for analysis.
  */
-exports.exportEventsToBigQuery = functions.firestore
-    .document("users/{userId}/events/{eventId}")
-    .onCreate(async (snapshot, context) => {
-        const eventId = context.params.eventId;
-        const userId = context.params.userId;
-        const data = snapshot.data();
+exports.exportEventsToBigQuery = onDocumentCreated("users/{userId}/events/{eventId}", async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+        console.log("No data associated with the event");
+        return;
+    }
 
-        if (!data) {
-            console.warn(`[Analytics] Event ${eventId} has no data.`);
-            return null;
+    const data = snapshot.data();
+    const userId = event.params.userId;
+    const eventId = event.params.eventId;
+
+    const row = {
+        event_id: eventId,
+        user_id: userId,
+        event_name: data.name,
+        timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : new Date().toISOString(),
+        platform: data.platform || 'unknown',
+        parameters: JSON.stringify(data.parameters || {}), // Store params as JSON string for flexibility
+
+        // Extract key metrics for top-level query speed if present
+        model_id: data.parameters?.model_id || null,
+        latency_ms: data.parameters?.latency_ms || null,
+        is_cache_hit: data.parameters?.is_cache_hit || false,
+        input_tokens: data.parameters?.input_tokens || 0,
+        output_tokens: data.parameters?.output_tokens || 0,
+    };
+
+    try {
+        await bigquery
+            .dataset(datasetId)
+            .table(tableId)
+            .insert([row]);
+
+        console.log(`Exported event ${eventId} to BigQuery`);
+    } catch (error) {
+        if (error.name === 'PartialFailureError') {
+            // Handle partial errors (common with streaming inserts)
+            error.errors.forEach(err => {
+                console.error(`BigQuery Partial Error: ${err.message}`, err.row);
+            });
         }
-
-        // Prepare BigQuery Row
-        // Ensure schema matches `bigquery_schema_proposal.sql`
-        const row = {
-            event_id: eventId,
-            timestamp: BigQuery.timestamp(data.timestamp ? data.timestamp.toDate() : new Date()),
-            agent_id: data.agentId || null,
-            session_id: data.sessionId || null,
-            workflow_id: data.workflowId || null,
-            event_type: data.type || "unknown",
-            payload: JSON.stringify(data.payload || {}), // Store payload as JSON string
-            severity: data.severity || "INFO",
-            // Add userId metadata not in the main schema? 
-            // The schema did not explicitly have user_id but maybe it should?
-            // Wait, the schema proposal had: agent_id, session_id, workflow_id.
-            // Let's stick to the schema.
-            // Maybe we add client_id if available in payload?
-        };
-
-        try {
-            await bigquery
-                .dataset(DATASET_ID)
-                .table(TABLE_ID)
-                .insert([row]);
-
-            console.log(`[Analytics] ✅ Exported event ${eventId} (${row.event_type}) to BigQuery.`);
-        } catch (error) {
-            console.error(`[Analytics] ❌ Failed to export event ${eventId}:`, error);
-
-            if (error.name === 'PartialFailureError') {
-                error.errors.forEach(err => {
-                    console.error(`[Analytics] Row error:`, err);
-                });
-            }
-            // We do NOT retry indefinitely to avoid spamming logs/costs if schema mismatch
-            // Firestore triggers retry on error by default if not caught properly, 
-            // but here we catch and log, effectively swallowing the error to stop retry loop 
-            // for non-transient errors (like schema mismatch).
-        }
-    });
+        console.error("Error exporting to BigQuery:", error);
+    }
+});

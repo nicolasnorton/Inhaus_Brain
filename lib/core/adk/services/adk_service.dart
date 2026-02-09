@@ -15,6 +15,8 @@ import '../../../features/knowledge/models/knowledge_source.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../services/system_prompts_service.dart';
+import '../../../agents/sre/sre_orchestrator.dart';
+import '../../../agents/postmortem/postmortem_generator.dart';
 
 // Pipeline Execution Result
 class PipelineResult {
@@ -51,7 +53,10 @@ class AdkService {
     MessageSender.summarizerAgent: SummarizerAgent(),
     MessageSender.securityAgent: SecurityAgent(),
     MessageSender.dataEngineerAgent: DataEngineerAgent(),
+    MessageSender.dataEngineerAgent: DataEngineerAgent(),
     MessageSender.visionAgent: VisionAgent(),
+    MessageSender.sreOrchestratorAgent: SreOrchestratorAgent(),
+    MessageSender.postmortemAgent: PostmortemAgent(),
   };
 
   AdkService(this.ref);
@@ -221,6 +226,8 @@ class AdkService {
       case MessageSender.securityAgent: dynamicPrompt = await prompts.getSecurityPrompt(); break;
       case MessageSender.dataEngineerAgent: dynamicPrompt = await prompts.getDataEngPrompt(); break;
       case MessageSender.orchestratorAgent: dynamicPrompt = await prompts.getOrchestratorPrompt(); break;
+      case MessageSender.sreOrchestratorAgent: dynamicPrompt = await prompts.getSreOrchestratorPrompt(); break;
+      case MessageSender.postmortemAgent: dynamicPrompt = await prompts.getPostmortemPrompt(); break;
       default: break;
     }
 
@@ -1059,6 +1066,16 @@ Input: $resolvedInput
               result = "Found results for '${resolvedParams['query']}': 1. Inhaus AI 2. INHAUS BRAIN Guide...";
            } else if (tool == 'Weather') {
               result = "Current weather in ${resolvedParams['location']}: 72°F, Sunny.";
+           } else if (tool == 'github_commit_fetch') {
+              final repo = resolvedParams['repo'] ?? 'inhaus-brain';
+              final limit = resolvedParams['limit'] ?? '5';
+              result = "[MOCK] Fetched $limit commits from $repo:\\n - feat: implement SRE workflow (sha: a1b2c3)\\n - fix: memory leak in reports (sha: d4e5f6)\\n - chore: update dependencies (sha: 789012)";
+           } else if (tool == 'firebase_log_query') {
+              final query = resolvedParams['query'] ?? 'errors';
+              result = "[MOCK] Firebase Logs for '$query':\\n - [ERROR] Null check operator used on a null value (AdkService.dart:404)\\n - [WARN] Slow query on 'campaigns' collection (latency: 1200ms)\\n - [INFO] Agent started processing 'incident flow'";
+           } else if (tool == 'patch_simulation') {
+               final patchId = resolvedParams['patch_id'] ?? 'unknown_patch';
+               result = "[MOCK] Patch Simulator: Applying patch $patchId to staging environment...\\n - specific_step: Build Application... SUCCESS\\n - specific_step: Run Integration Tests... SUCCESS (142/142 passed)\\n - specific_step: Validate Deployment Config... VALID\\n RESULT: SAFE TO DEPLOY (Risk: Low).";
            } else {
               result = "$tool executed successfully with params: $resolvedParams";
            }

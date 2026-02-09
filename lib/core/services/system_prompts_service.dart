@@ -43,6 +43,8 @@ class SystemPromptsService {
   static const String _intentClassifierPromptKey = 'intent_classifier_prompt';
   static const String _assistantMainPromptKey = 'assistant_main_prompt';
   static const String _proposalChatPromptKey = 'proposal_chat_prompt';
+  static const String _sreOrchestratorPromptKey = 'sre_orchestrator_prompt';
+  static const String _postmortemPromptKey = 'postmortem_prompt';
 
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
@@ -450,6 +452,30 @@ To assist the user in drafting, refining, and understanding client proposals. Yo
 - **ALWAYS** be supportive and proactive.
 """;
 
+  static const String originalSreOrchestratorPrompt = """
+You are the SRE Orchestrator Agent.
+Your goal is to manage incidents using Google SRE best practices.
+1. Analyze symptoms from logs/metrics.
+2. Formulate hypotheses.
+3. Propose mitigations.
+4. Execute approved actions safely.
+5. Identify root causes.
+Verify every step. Prioritize safety.
+""";
+
+  static const String originalPostmortemPrompt = """
+You are the Postmortem Agent.
+Your goal is to generate blameless postmortem reports.
+Ingest the incident timeline, root cause analysis, and resolution details.
+Produce a structured Markdown report including:
+- Summary
+- Timeline
+- Root Cause
+- Resolution
+- Lessons Learned
+- Action Items
+""";
+
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', originalResearchPrompt);
 
@@ -536,6 +562,12 @@ To assist the user in drafting, refining, and understanding client proposals. Yo
   Future<void> saveAssistantMainPrompt(String prompt) async => await _storage.write(key: _assistantMainPromptKey, value: prompt);
   Future<String> getAssistantMainPrompt() async => await _getPrompt(_assistantMainPromptKey, 'assets/prompts/assistant_main.md', originalAssistantMainPrompt);
 
+  Future<void> saveSreOrchestratorPrompt(String prompt) async => await _storage.write(key: _sreOrchestratorPromptKey, value: prompt);
+  Future<String> getSreOrchestratorPrompt() async => await _getPrompt(_sreOrchestratorPromptKey, 'assets/prompts/sre_orchestrator.md', originalSreOrchestratorPrompt);
+
+  Future<void> savePostmortemPrompt(String prompt) async => await _storage.write(key: _postmortemPromptKey, value: prompt);
+  Future<String> getPostmortemPrompt() async => await _getPrompt(_postmortemPromptKey, 'assets/prompts/postmortem.md', originalPostmortemPrompt);
+
   Future<String> getPromptForSender(MessageSender sender) async {
     String basePrompt = "";
     switch (sender) {
@@ -564,6 +596,8 @@ To assist the user in drafting, refining, and understanding client proposals. Yo
       case MessageSender.aeoAgent: basePrompt = await getAEOPrompt(); break;
       case MessageSender.proposalSpecialistAgent: basePrompt = await getProposalSpecialistPrompt(); break;
       case MessageSender.reportsAgent: basePrompt = await getDataAnalystPrompt(); break;
+      case MessageSender.sreOrchestratorAgent: basePrompt = await getSreOrchestratorPrompt(); break;
+      case MessageSender.postmortemAgent: basePrompt = await getPostmortemPrompt(); break;
       case MessageSender.system: basePrompt = await getBrianPrompt(); break;
       default: basePrompt = "";
     }
@@ -605,6 +639,8 @@ To assist the user in drafting, refining, and understanding client proposals. Yo
       case MessageSender.aeoAgent: await saveAEOPrompt(prompt); break;
       case MessageSender.proposalSpecialistAgent: await saveProposalSpecialistPrompt(prompt); break;
       case MessageSender.reportsAgent: await saveDataAnalystPrompt(prompt); break;
+      case MessageSender.sreOrchestratorAgent: await saveSreOrchestratorPrompt(prompt); break;
+      case MessageSender.postmortemAgent: await savePostmortemPrompt(prompt); break;
       default: break;
     }
   }

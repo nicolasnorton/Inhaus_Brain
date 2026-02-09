@@ -14,6 +14,7 @@ import 'ai_proxy_service.dart';
 import 'video_generation_service.dart';
 import 'telemetry_service.dart';
 import 'semantic_cache_service.dart';
+import 'analytics_service.dart';
 
 
 enum AIProximity {
@@ -97,6 +98,16 @@ class EdgeAIService {
            _logger.i('EdgeAI: Cache HIT for "${prompt.substring(0, 15)}..."');
            if (ref != null) {
              ref.read(aiProximityProvider.notifier).setProximity(AIProximity.local);
+             
+             // Log Cache Hit
+             ref.read(analyticsServiceProvider).logAiUsage(
+                modelId: config.modelId,
+                provider: 'cache',
+                inputTokens: effectivePrompt.length ~/ 4,
+                outputTokens: cachedResult.text.length ~/ 4,
+                latencyMs: 50.0,
+                isCacheHit: true,
+             );
            }
            return cachedResult;
          }
@@ -106,6 +117,7 @@ class EdgeAIService {
     }
     // ---------------------------
     
+    final stopwatch = Stopwatch()..start();
     _logger.d('EdgeAI: Generating text via ${config.provider} (${config.modelId})');
 
     if (forceMock) {
@@ -137,6 +149,29 @@ class EdgeAIService {
          } catch (e) {
             _logger.w('EdgeAI: Cache save failed: $e');
          }
+         
+         // --- ANALYTICS LOGGING ---
+         if (ref != null) {
+            try {
+               final analytics = ref.read(analyticsServiceProvider);
+               stopwatch.stop();
+               // Estimate tokens: 4 chars ~ 1 token
+               final inputTokens = effectivePrompt.length ~/ 4;
+               final outputTokens = result.text.length ~/ 4;
+               
+               analytics.logAiUsage(
+                  modelId: config.modelId,
+                  provider: config.provider.name,
+                  inputTokens: inputTokens,
+                  outputTokens: outputTokens,
+                  latencyMs: stopwatch.elapsedMilliseconds.toDouble(),
+                  isCacheHit: false,
+               );
+            } catch (e) {
+               _logger.w('EdgeAI: Analytics logging failed: $e');
+            }
+         }
+         // -------------------------
       }
       // --------------------
 

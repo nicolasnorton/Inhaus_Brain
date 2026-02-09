@@ -41,6 +41,10 @@ enum MessageSender {
   aeoAgent,               // New AEO Agent
   proposalSpecialistAgent,// New Phase 10: Proposal Specialist
 
+  // SRE Incident Workflow Agents (Phase 13)
+  sreOrchestratorAgent,
+  postmortemAgent,
+
   humanAgent,
   system
 }

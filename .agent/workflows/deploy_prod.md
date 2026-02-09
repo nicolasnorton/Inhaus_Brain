@@ -19,7 +19,7 @@ This workflow handles the full clean, build, and deployment process for the Inha
 ## 2. Build for Production
 3.  Build the web application in release mode (CanvasKit renderer is recommended for performance, but auto is fine. Using standard build).
     ```bash
-    flutter build web --release --web-renderer canvaskit
+    flutter build web --release
     ```
 
 ## 3. Deploy to Firebase (gclout)
