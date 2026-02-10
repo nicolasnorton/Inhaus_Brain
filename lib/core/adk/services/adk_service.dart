@@ -53,7 +53,6 @@ class AdkService {
     MessageSender.summarizerAgent: SummarizerAgent(),
     MessageSender.securityAgent: SecurityAgent(),
     MessageSender.dataEngineerAgent: DataEngineerAgent(),
-    MessageSender.dataEngineerAgent: DataEngineerAgent(),
     MessageSender.visionAgent: VisionAgent(),
     MessageSender.sreOrchestratorAgent: SreOrchestratorAgent(),
     MessageSender.postmortemAgent: PostmortemAgent(),

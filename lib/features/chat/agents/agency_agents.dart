@@ -205,6 +205,23 @@ class TrendScoutAgent extends BaseAgent with LangExtractMixin {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) {
+    // LangExtract for deep market research (Background)
+    if (userPrompt.toLowerCase().contains('research') || context.length > 1) {
+      extractFromContext(
+        context: context,
+        schema: {
+          "type": "object",
+          "properties": {
+            "market_trends": {"type": "array", "items": {"type": "string"}},
+            "consumer_insights": {"type": "array", "items": {"type": "string"}},
+            "growth_opportunities": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        ref: ref,
+        agentName: name
+      ).catchError((e) => debugPrint('TrendScout Extract Error: $e'));
+    }
+
     return _simpleExecute(
       agentName: name,
       systemPromptKey: systemPromptKey,
@@ -220,25 +237,6 @@ class TrendScoutAgent extends BaseAgent with LangExtractMixin {
       jsonMode: true,
       ref: ref,
     );
-
-    // LangExtract for deep market research
-    if (userPrompt.toLowerCase().contains('research') || context.length > 1) {
-      extractFromContext(
-        context: context,
-        schema: {
-          "type": "object",
-          "properties": {
-            "market_trends": {"type": "array", "items": {"type": "string"}},
-            "consumer_insights": {"type": "array", "items": {"type": "string"}},
-            "growth_opportunities": {"type": "array", "items": {"type": "string"}}
-          }
-        },
-        ref: ref,
-        agentName: name
-      );
-    }
-
-    return result;
   }
 }
 

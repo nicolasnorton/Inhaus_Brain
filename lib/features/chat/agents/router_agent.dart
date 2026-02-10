@@ -60,6 +60,12 @@ class RouterAgent extends BaseAgent {
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name, message: "Analyzing system state..."));
 
+    // 0. Fast-Path: Salutations
+    if (SanitizationUtils.isSimpleSalutation(userPrompt)) {
+      onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Intent: DIRECT_CHAT (Heuristic)"));
+      return '{"intent": "directChat", "confidence": 1.0, "reasoning": "Heuristic: Simple salutation detected."}';
+    }
+
     // 1. Tiered Context: Read Global & Episodic Memory
     // Note: In a full implementation, we'd fetch this from a dedicated MemoryProvider
     final globalContext = GlobalContext(

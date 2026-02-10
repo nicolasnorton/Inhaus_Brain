@@ -8,6 +8,7 @@ import '../../campaigns/models/campaign.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/auth/secret_vault_service.dart';
+import '../../../core/utils/sanitization_utils.dart';
 import '../../../core/services/orchestrator_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../../core/services/system_prompts_service.dart';
@@ -201,6 +202,12 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
   }
 
   Future<void> _handleIntelligentRouting(String text, List<KnowledgeSource> context, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, AIModelConfig? config) async {
+    // 0. Fast-Path: Salutations (Instant Response)
+    if (SanitizationUtils.isSimpleSalutation(text)) {
+      await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, config: config);
+      return;
+    }
+
     // 1. Tool Usage Indicator
     final toolMsg = ChatMessage(
       id: const Uuid().v4(),
