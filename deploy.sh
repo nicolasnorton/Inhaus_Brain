@@ -93,6 +93,9 @@ gcloud run deploy $SERVICE_NAME \
 echo "🔥 Deploying Firebase Functions..."
 npx firebase deploy --only functions --project $PROJECT_ID
 
+echo "🌐 Deploying Firebase Hosting (inhaus-brain)..."
+npx firebase deploy --only hosting:inhaus-brain --project $PROJECT_ID
+
 echo "✅ Final Deployment Complete!"
 echo "🌍 App available at: $PRODUCTION_URL"
 

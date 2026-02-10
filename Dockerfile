@@ -1,5 +1,5 @@
 # Stage 1: Build Flutter Web
-FROM debian:latest AS build-env
+FROM debian:bookworm-slim AS build-env
 
 # Build Arguments (Passed from Cloud Build or local docker build)
 ARG VERTEX_API_KEY

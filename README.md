@@ -158,7 +158,7 @@ To use the full version of the app with live AI capabilities, please follow our 
    ```
 
 ### ☁️ Cloud Deployment
-See [DEPLOY.md](DEPLOY.md) for full instructions on deploying to **Google Cloud Run** using Cloud Build or Terraform.
+See [DEPLOY.md](DEPLOY.md) for full instructions on deploying to **Firebase Hosting** and **Cloud Run** using our automated scripts.
 
 ### 🛡️ App Check & Emulators
 - **Production**: Uses ReCaptcha v3 (Site Key in `main.dart`).

@@ -63,6 +63,13 @@ The AI Proxy service runs on Firebase Cloud Functions. If you made changes to `f
 firebase deploy --only functions
 ```
 
+### 6. Deploy Firebase Hosting (Frontend)
+The web application is served via Firebase Hosting for optimal performance.
+
+```bash
+firebase deploy --only hosting:inhaus-brain
+```
+
 Note: Ensure you are logged in via `firebase login` and have the correct project selected (`firebase use inhausbrain`).
 
 ## Troubleshooting
