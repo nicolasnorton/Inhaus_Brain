@@ -42,10 +42,6 @@ app.use(async (req, res, next) => {
             apiKey: apiKey,
         });
 
-        // Patch for v1.x compatibility: default to 'chat' if method is missing
-        if (req.body && !req.body.method) {
-            req.body.method = 'chat';
-        }
 
         next();
     } catch (error) {

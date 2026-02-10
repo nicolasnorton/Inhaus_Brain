@@ -393,20 +393,26 @@ class AssistantService {
            if (parsed.containsKey('tool')) {
              toolName = parsed['tool'];
              toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
-           } else if (parsed.containsKey('tool_call')) {
-             final call = parsed['tool_call'];
-             if (call is Map) {
-                toolName = call['name'];
-                toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
-             }
-           } else if (parsed.containsKey('name') && (parsed.containsKey('args') || parsed.containsKey('parameters'))) {
-             toolName = parsed['name'];
-             toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
-           } else if (parsed.containsKey('llamada_herramienta')) { // Spanish support
-             final call = parsed['llamada_herramienta'];
-             if (call is Map) {
-                toolName = call['nombre'];
-                toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
+           } else if (parsed.containsKey('tool_calls')) {
+             final calls = parsed['tool_calls'];
+             if (calls is List && calls.isNotEmpty) {
+                final call = calls[0];
+                if (call is Map && call.containsKey('function')) {
+                   final function = call['function'];
+                   if (function is Map) {
+                      toolName = function['name'];
+                      final dynamic args = function['arguments'];
+                      if (args is String) {
+                        try {
+                          toolArgs = Map<String, dynamic>.from(jsonDecode(args));
+                        } catch (e) {
+                          debugPrint('Assistant: Failed to decode tool_calls arguments: $e');
+                        }
+                      } else if (args is Map) {
+                        toolArgs = Map<String, dynamic>.from(args);
+                      }
+                   }
+                }
              }
            } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
              // DIRECT COMPONENT OUTPUT SUPPORT

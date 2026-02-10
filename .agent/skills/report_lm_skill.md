@@ -36,9 +36,14 @@ All outputs must be strictly grounded in uploaded sources via RAG.
 - STRICTLY use {SOURCES}. No hallucinations.
 - Cite sources as [Source Name] or [Source X].
 
-### 3. Visuals via Text
-- Use Markdown tables for data.
-- Suggest diagrams/charts: "[Chart: Type - Description]".
+### 3. Visuals & Dashboards
+- **MANDATORY**: Use `gen_ui_component` for all structured reports.
+- **Priority**:
+    - `stat_card` for individual metrics.
+    - `chart` (Line/Bar) for trends.
+    - `check_list` for Action Items.
+    - `trend_list` for thematic extraction.
+- **Fallback**: Use Markdown tables only if Gen UI is unavailable.
 
 ## Verification Steps
 1. **Source Fidelity**: Is every claim backed by a source?
