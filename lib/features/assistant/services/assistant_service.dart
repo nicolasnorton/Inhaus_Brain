@@ -393,6 +393,10 @@ class AssistantService {
            if (parsed.containsKey('tool')) {
              toolName = parsed['tool'];
              toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
+           } else if (parsed.containsKey('name') && (parsed.containsKey('args') || parsed.containsKey('parameters'))) {
+             // NEW: Support for {"name": "tool_name", "args": {...}}
+             toolName = parsed['name'];
+             toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
            } else if (parsed.containsKey('tool_calls')) {
              final calls = parsed['tool_calls'];
              if (calls is List && calls.isNotEmpty) {

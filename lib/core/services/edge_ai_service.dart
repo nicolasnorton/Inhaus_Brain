@@ -209,11 +209,20 @@ class EdgeAIService {
          
          String text = "No proxy content.";
          final candidates = proxyRes['candidates'] as List?;
-         if (candidates?.isNotEmpty == true) {
-           final candidate = candidates!.first;
-           final parts = candidate['content']?['parts'] as List?;
-           if (parts?.isNotEmpty == true) {
-             text = parts!.first['text'] ?? parts.first.toString();
+         if (candidates != null && candidates.isNotEmpty) {
+           final candidate = candidates.first;
+           final content = candidate['content'];
+           final parts = content?['parts'] as List?;
+           if (parts != null && parts.isNotEmpty) {
+             final firstPart = parts.first;
+             text = firstPart['text'] ?? firstPart.toString();
+           } else {
+             _logger.w('EdgeAI: Proxy response has candidates but NO parts.');
+           }
+         } else {
+           _logger.w('EdgeAI: Proxy response has NO candidates. Fallback text used.');
+           if (proxyRes['error'] != null) {
+             text = "Proxy Error: ${proxyRes['error']}";
            }
          }
          
