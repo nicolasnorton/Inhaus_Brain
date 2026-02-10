@@ -20,41 +20,47 @@ class AIProxyService {
       return 'http://127.0.0.1:5005/inhausbrain/us-central1/proxyVertexAI';
     }
     return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
-  }  
+  }
+
+  static String get _pythonBaseUrl {
+    if (kDebugMode) {
+      if (Platform.isAndroid) {
+        return 'http://10.0.2.2:5005/inhausbrain/us-central1';
+      }
+      return 'http://127.0.0.1:5005/inhausbrain/us-central1';
+    }
+    return 'https://us-central1-inhausbrain.cloudfunctions.net';
+  }
+
+  static String get _generateContentUrl => '$_pythonBaseUrl/generate_content';
+  static String get _countTokensUrl => '$_pythonBaseUrl/count_tokens';
+
 
   /// Routes a generation request through the secure Cloud Function proxy.
   /// 
   /// [prompt] can be a String or a complex structure depending on the backend expectation.
   /// For this implementation, we send the prompt and config to the proxy.
   static Future<Map<String, dynamic>> generateContent({
-    required String prompt,
+    required dynamic prompt, // Can be String or List<Map<String, dynamic>>
     required AIModelConfig config,
-    List<Map<String, dynamic>>? contextData, // Future use for structured context
+    List<Map<String, dynamic>>? contextData, 
     String? systemInstruction,
-    Map<String, dynamic>? generationParams, // Added to support model-specific params (Veo/Imagen)
+    Map<String, dynamic>? generationParams,
+    bool usePython = true, // Default to true for migration
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       throw Exception('User must be logged in to use AI Proxy.');
     }
 
-    final idToken = await user.getIdToken().timeout(
-      const Duration(seconds: 8),
-      onTimeout: () {
-        debugPrint('⚠️ AIProxyService: getIdToken timed out. Attempting with stale token or failing.');
-        throw Exception('Authentication timeout. Please refresh the page and try again.');
-      },
-    );
+    final idToken = await user.getIdToken();
     if (idToken == null) {
       throw Exception('Failed to retrieve ID Token.');
     }
 
-    // Use model ID from config directly
-    var effectiveModelId = config.modelId;
-
     // Prepare body
     final body = {
-      "model": effectiveModelId,
+      "model": config.modelId,
       "prompt": prompt,
       "config": {
         "temperature": config.temperature,
@@ -65,7 +71,33 @@ class AIProxyService {
       if (generationParams != null) "generationParams": generationParams,
     };
 
+    if (usePython) {
+      try {
+        debugPrint('AIProxyService: 🐍 Routing to Python Gemini SDK...');
+        final response = await http.post(
+          Uri.parse(_generateContentUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $idToken',
+          },
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 45));
+
+        if (response.statusCode == 200) {
+          return jsonDecode(response.body);
+        } else {
+          debugPrint('AIProxyService: Python Proxy failed (${response.statusCode}). Falling back to legacy JS proxy.');
+          // Fall through to JS proxy code below
+        }
+      } catch (e) {
+        debugPrint('AIProxyService Python Error: $e. Falling back to legacy JS proxy.');
+        // Fall through
+      }
+    }
+
+    // Legacy JS Proxy Fallback
     try {
+      debugPrint('AIProxyService: 📦 Routing to Legacy JS Proxy...');
       final response = await http.post(
         Uri.parse(_functionUrl),
         headers: {
@@ -81,10 +113,46 @@ class AIProxyService {
         throw Exception('Proxy Error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      debugPrint('AIProxyService Error: $e');
+      debugPrint('AIProxyService Legacy Error: $e');
       rethrow;
     }
   }
+
+  /// Counts tokens using the Python Gemini SDK.
+  static Future<int> countTokens({
+    required String prompt,
+    String model = 'gemini-1.5-flash',
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return 0;
+      
+      final idToken = await user.getIdToken();
+      if (idToken == null) return 0;
+
+      final response = await http.post(
+        Uri.parse(_countTokensUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode({
+          "model": model,
+          "prompt": prompt,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['totalTokens'] ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      debugPrint('AIProxyService countTokens Error: $e');
+      return 0;
+    }
+  }
+
 
   static Future<Map<String, dynamic>> pollOperation(String operationName) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -205,10 +273,7 @@ class AIProxyService {
       throw Exception('Failed to retrieve ID Token.');
     }
 
-    // New Python function endpoint (assuming default us-central1)
-    final extractFunctionUrl = kDebugMode 
-      ? 'http://127.0.0.1:5005/inhausbrain/us-central1/extract_structured' 
-      : 'https://us-central1-inhausbrain.cloudfunctions.net/extract_structured';
+    final extractFunctionUrl = '$_pythonBaseUrl/extract_structured';
 
     final body = {
       "document": document,

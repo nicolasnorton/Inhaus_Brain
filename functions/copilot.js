@@ -9,6 +9,19 @@ app.use(express.json());
 
 // Middleware to handle Gemini API Key and Runtime setup
 app.use(async (req, res, next) => {
+    // Diagnostic Logging
+    console.log(`[COPILOT] 📥 Request Method: ${req.method}`);
+    console.log(`[COPILOT] 📥 Request Path: ${req.path}`);
+    if (req.method === 'POST') {
+        console.log(`[COPILOT] 📦 Request Body: ${JSON.stringify(req.body)}`);
+        // If 'method' is 'chat', it might be coming from an older client version or custom implementation
+        // CopilotKit v1.x runtime might throw "Unsupported method" if it sees this.
+        if (req.body && req.body.method === 'chat') {
+            console.log(`[COPILOT] ⚠️ Stripping 'method: chat' for v1 compatibility`);
+            delete req.body.method;
+        }
+    }
+
     // CORS Header is needed for all responses
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -38,7 +51,7 @@ app.use(async (req, res, next) => {
 
         req.runtime = new CopilotRuntime();
         req.serviceAdapter = new GoogleGenerativeAIAdapter({
-            model: "gemini-1.5-pro",
+            model: "gemini-1.5-pro-002",
             apiKey: apiKey,
         });
 

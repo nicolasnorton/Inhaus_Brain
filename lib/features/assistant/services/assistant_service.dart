@@ -384,6 +384,7 @@ class AssistantService {
       
       // Parse JSON from EdgeAI response using JsonParserService
       final parsed = JsonParserService.parseJson(responseText);
+      debugPrint('Assistant: Parsed Object: $parsed');
 
       if (parsed != null) {
           debugPrint('Assistant: JSON decode successful via JsonParserService');
@@ -397,28 +398,54 @@ class AssistantService {
              // NEW: Support for {"name": "tool_name", "args": {...}}
              toolName = parsed['name'];
              toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
-           } else if (parsed.containsKey('tool_calls')) {
-             final calls = parsed['tool_calls'];
-             if (calls is List && calls.isNotEmpty) {
-                final call = calls[0];
-                if (call is Map && call.containsKey('function')) {
-                   final function = call['function'];
-                   if (function is Map) {
-                      toolName = function['name'];
-                      final dynamic args = function['arguments'];
-                      if (args is String) {
-                        try {
-                          toolArgs = Map<String, dynamic>.from(jsonDecode(args));
-                        } catch (e) {
-                          debugPrint('Assistant: Failed to decode tool_calls arguments: $e');
-                        }
-                      } else if (args is Map) {
-                        toolArgs = Map<String, dynamic>.from(args);
-                      }
-                   }
-                }
+           } else if (parsed.containsKey('functionCall')) {
+             // NATIVE GEMINI FORMAT (passed through proxy)
+             final call = parsed['functionCall'];
+             if (call is Map) {
+                toolName = call['name'];
+                toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
              }
-           } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
+            } else if (parsed.containsKey('tool_calls')) {
+              debugPrint('Assistant: 🛠️ Found tool_calls in JSON response');
+              final calls = parsed['tool_calls'];
+              if (calls is List && calls.isNotEmpty) {
+                 final call = calls[0];
+                 debugPrint('Assistant: 🛠️ Processing first tool call: $call');
+                 if (call is Map) {
+                    // Standard OpenAI/Gemini format uses 'function'
+                    if (call.containsKey('function')) {
+                       final function = call['function'];
+                       debugPrint('Assistant: 🛠️ Found function object: $function');
+                       if (function is Map) {
+                          toolName = function['name'];
+                          final dynamic args = function['arguments'];
+                          if (args is String) {
+                            try {
+                              toolArgs = Map<String, dynamic>.from(jsonDecode(args));
+                            } catch (e) {
+                              debugPrint('Assistant: ❌ Failed to decode tool_calls function arguments (String): $e');
+                            }
+                          } else if (args is Map) {
+                            toolArgs = Map<String, dynamic>.from(args);
+                          }
+                       }
+                    } else {
+                       // Custom/Direct format: {"tool": "...", "args": {...}} inside the list
+                       toolName = call['tool'] ?? call['name'] ?? call['type'];
+                       final dynamic args = call['args'] ?? call['parameters'] ?? call['arguments'];
+                       if (args is String) {
+                         try {
+                           toolArgs = Map<String, dynamic>.from(jsonDecode(args));
+                         } catch (e) {
+                           debugPrint('Assistant: ❌ Failed to decode tool_calls direct arguments (String): $e');
+                         }
+                       } else if (args is Map) {
+                         toolArgs = Map<String, dynamic>.from(args);
+                       }
+                    }
+                 }
+              }
+            } else if (parsed.containsKey('component_type') && parsed.containsKey('data')) {
              // DIRECT COMPONENT OUTPUT SUPPORT
              toolName = 'gen_ui_component';
               toolArgs = Map<String, dynamic>.from(parsed);
@@ -437,20 +464,22 @@ class AssistantService {
               }
            }
 
+           debugPrint('Assistant: 🕵️ Resolved toolName: $toolName');
+           debugPrint('Assistant: 🕵️ Resolved toolArgs keys: ${toolArgs?.keys}');
+
            if (toolName != null && toolArgs != null) {
              if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
                toolArgs = Map<String, dynamic>.from(toolArgs['args']);
              }
-             debugPrint('Assistant: Parsed tool JSON: $toolName with ${toolArgs.length} args');
-             debugPrint('Assistant: Found valid tool JSON: $toolName');
-             debugPrint('Assistant: Attempting to execute tool: $toolName');
+             debugPrint('Assistant: ✅ Attempting to execute tool: $toolName');
              _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
              final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
              _ref.read(assistantStatusProvider.notifier).state = null;
-             debugPrint('Assistant: Tool execution completed for: $toolName');
+             debugPrint('Assistant: 🏁 Tool execution completed for: $toolName');
              return result;
            } else {
-              debugPrint('Assistant: JSON parsed but toolName or toolArgs is null. toolName=$toolName, toolArgs=$toolArgs');
+              debugPrint('Assistant: ⚠️ JSON parsed but toolName or toolArgs is still null.');
+              debugPrint('Assistant: Raw parsed response: $parsed');
            }
 
            // BRIAN ORCHESTRATION EXTRACTION

@@ -14,10 +14,16 @@ class VideoGenerationService {
   // Final renders MUST use Veo 3 / Veo 3.1.
   // NO External models allowed.
   
-  static const String _previewModel = 'veo-3.0-fast-generate-preview'; // DeepMind Fast variant
-  static const String _finalModel = 'veo-3.1-generate-001'; // DeepMind High-Fidelity (Corrected ID)
+  static const String modelVeo31 = 'veo-3.1-generate-preview';
+  static const String modelVeo31Fast = 'veo-3.1-fast-generate-preview';
+  static const String modelVeo3 = 'veo-3.0-generate-preview';
+  static const String modelVeo3Fast = 'veo-3.0-fast-generate-preview';
+  static const String modelVeo2 = 'veo-2.0-generate-001';
+
+  static const String _previewModel = modelVeo31Fast; // Default Preview
+  static const String _finalModel = modelVeo31; // Default Final
   
-  static const int _previewDurationParams = 5; 
+  static const int _previewDurationParams = 6; // Corrected from 5 to match [8, 4, 6] supported list
   static const String _previewAspectRatio = "16:9"; 
   static const String _previewResolution = "720p"; // Min resolution for Veo models
   
@@ -28,7 +34,8 @@ class VideoGenerationService {
   /// AGENT 3: Prioritizes REAL video generation with retries before fallback
   static Future<String> generatePreview(
     String prompt, {
-      bool useCulturalSafety = true,
+    String? modelId,
+    bool useCulturalSafety = true,
     bool includeSubtitles = false,
     Function(double)? onProgress,
     Function(String)? onStatusMessage, // NEW: User status messages
@@ -56,7 +63,7 @@ class VideoGenerationService {
         
         final result = await _generateVideoInternal(
           prompt: effectivePrompt,
-          modelId: _previewModel,
+          modelId: modelId ?? _previewModel,
           isPreview: true,
           onProgress: onProgress,
           onStatusMessage: onStatusMessage,
@@ -110,6 +117,7 @@ class VideoGenerationService {
   /// AGENT 3: This uses flagship model and may take up to 2-3 minutes.
   static Future<String> generateFinal(
     String prompt, {
+    String? modelId,
     bool confirmedByUser = false,
     bool useCulturalSafety = true,
     bool includeSubtitles = false,
@@ -138,7 +146,7 @@ class VideoGenerationService {
     try {
       final result = await _generateVideoInternal(
         prompt: effectivePrompt,
-        modelId: _finalModel, // Veo 3.1
+        modelId: modelId ?? _finalModel, // Veo 3.1
         isPreview: false,
         onProgress: onProgress,
       );

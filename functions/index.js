@@ -529,11 +529,11 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             // We also add fallbacks to handle regional availability and model retirements
             let modelVariations = [modelId];
 
-            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.0-flash')) {
+            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.0-flash')) {
                 // Try newer versions and then the official next-gen
                 modelVariations = ['gemini-1.5-flash-002', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.0-pro')) {
-                modelVariations = ['gemini-1.5-pro-002', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.0-pro')) {
+                modelVariations = ['gemini-1.5-pro-002', 'gemini-2.0-pro', 'gemini-2.0-flash', 'gemini-1.5-pro'];
             } else if (modelId.includes('gemini-2.')) {
                 modelVariations = ['gemini-2.0-flash', 'gemini-1.5-flash-002'];
             }
@@ -552,7 +552,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
                         const genModel = vAI.getGenerativeModel({
                             model: mVar,
                             systemInstruction: systemInstruction,
-                            generationConfig: config
+                            generationConfig: { ...config, ...generationParams }
                         });
 
                         const result = await genModel.generateContent(prompt);

@@ -25,6 +25,16 @@ import '../presentation/widgets/gen_ui/budget_chart_widget.dart';
 import '../presentation/widgets/gen_ui/kanban_board_widget.dart';
 import '../presentation/widgets/gen_ui/trend_report_widget.dart';
 import '../presentation/widgets/gen_ui/recipe_card_widget.dart';
+// New GenUI Imports
+import '../presentation/widgets/gen_ui/dynamic_form_widget.dart';
+import '../presentation/widgets/gen_ui/mind_map_widget.dart';
+import '../presentation/widgets/gen_ui/media_carousel_widget.dart';
+import '../presentation/widgets/gen_ui/interactive_table_widget.dart';
+import '../presentation/widgets/gen_ui/radial_gauge_widget.dart';
+import '../presentation/widgets/gen_ui/accordion_widget.dart';
+import '../presentation/widgets/gen_ui/stepper_wizard_widget.dart';
+import '../presentation/widgets/gen_ui/word_cloud_widget.dart';
+import '../presentation/widgets/gen_ui/calendar_widget.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../../../core/widgets/video_preview_player.dart';
 import '../../chat/models/chat_models.dart';
@@ -1118,6 +1128,25 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         return KanbanBoardWidget(data: payload);
       case 'recipe_card':
         return RecipeCardWidget(data: payload);
+      // New GenUI Cases
+      case 'dynamic_form':
+        return DynamicFormWidget(data: payload);
+      case 'mind_map':
+        return MindMapWidget(data: payload);
+      case 'carousel':
+        return MediaCarouselWidget(data: payload);
+      case 'interactive_table':
+        return InteractiveTableWidget(data: payload);
+      case 'radial_gauge':
+        return RadialGaugeWidget(data: payload);
+      case 'accordion':
+        return AccordionWidget(data: payload);
+      case 'stepper':
+        return StepperWizardWidget(data: payload);
+      case 'word_cloud':
+        return WordCloudWidget(data: payload);
+      case 'calendar':
+        return CalendarWidget(data: payload);
       case 'trend_report':
       case 'analysis_report':
         return TrendReportWidget(data: payload);

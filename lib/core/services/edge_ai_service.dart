@@ -60,6 +60,10 @@ class EdgeAIService {
     String? imageMimeType,
     Uint8List? audioBytes,
     String? audioMimeType,
+    Uint8List? videoBytes,
+    String? videoMimeType,
+    Uint8List? pdfBytes,
+    String? pdfMimeType,
     AIModelConfig? modelConfig,
     String? apiKey,
     String? gemmaKey,
@@ -124,6 +128,10 @@ class EdgeAIService {
         imageMimeType,
         audioBytes,
         audioMimeType,
+        videoBytes,
+        videoMimeType,
+        pdfBytes,
+        pdfMimeType,
         apiKey,
         vertexKey,
         ref,
@@ -188,6 +196,10 @@ class EdgeAIService {
     String? imageMimeType,
     Uint8List? audioBytes,
     String? audioMimeType,
+    Uint8List? videoBytes,
+    String? videoMimeType,
+    Uint8List? pdfBytes,
+    String? pdfMimeType,
     String? apiKey,
     String? vertexKey,
     dynamic ref,
@@ -197,9 +209,21 @@ class EdgeAIService {
     if (kIsWeb && config.provider == AIProvider.gemini) {
       try {
          _logger.i('EdgeAI: [WEB] Using Proxy as primary to ensure reliability.');
+         
+         // Build multimodal prompt for Proxy if needed
+         dynamic proxyPrompt = effectivePrompt;
+         if (imageBytes != null || audioBytes != null || videoBytes != null || pdfBytes != null) {
+            final parts = <Map<String, dynamic>>[{"text": effectivePrompt}];
+            if (imageBytes != null) parts.add({"inlineData": {"data": base64Encode(imageBytes), "mimeType": imageMimeType ?? "image/jpeg"}});
+            if (audioBytes != null) parts.add({"inlineData": {"data": base64Encode(audioBytes), "mimeType": audioMimeType ?? "audio/mp3"}});
+            if (videoBytes != null) parts.add({"inlineData": {"data": base64Encode(videoBytes), "mimeType": videoMimeType ?? "video/mp4"}});
+            if (pdfBytes != null) parts.add({"inlineData": {"data": base64Encode(pdfBytes), "mimeType": pdfMimeType ?? "application/pdf"}});
+            proxyPrompt = parts;
+         }
+
          final proxyRes = await retry(
            () => AIProxyService.generateContent(
-             prompt: effectivePrompt, 
+             prompt: proxyPrompt, 
              config: config,
              systemInstruction: effectiveMemory,
            ),
@@ -214,8 +238,12 @@ class EdgeAIService {
            final content = candidate['content'];
            final parts = content?['parts'] as List?;
            if (parts != null && parts.isNotEmpty) {
-             final firstPart = parts.first;
-             text = firstPart['text'] ?? firstPart.toString();
+              final firstPart = parts.first;
+              if (firstPart is Map) {
+                text = firstPart['text'] ?? jsonEncode(firstPart);
+              } else {
+                text = firstPart.toString();
+              }
            } else {
              _logger.w('EdgeAI: Proxy response has candidates but NO parts.');
            }
@@ -249,7 +277,11 @@ class EdgeAIService {
              imageBytes: imageBytes, 
              imageMimeType: imageMimeType,
              audioBytes: audioBytes,
-             audioMimeType: audioMimeType
+             audioMimeType: audioMimeType,
+             videoBytes: videoBytes,
+             videoMimeType: videoMimeType,
+             pdfBytes: pdfBytes,
+             pdfMimeType: pdfMimeType
            );
         } catch (e) {
            _logger.w('EdgeAI: FirebaseAI failed: $e. Using LiteRT/Mock fallback.');
@@ -274,7 +306,11 @@ class EdgeAIService {
              imageBytes: imageBytes, 
              imageMimeType: imageMimeType,
              audioBytes: audioBytes,
-             audioMimeType: audioMimeType
+             audioMimeType: audioMimeType,
+             videoBytes: videoBytes,
+             videoMimeType: videoMimeType,
+             pdfBytes: pdfBytes,
+             pdfMimeType: pdfMimeType
            );
     }
     
@@ -298,6 +334,10 @@ class EdgeAIService {
     String? imageMimeType,
     Uint8List? audioBytes,
     String? audioMimeType,
+    Uint8List? videoBytes,
+    String? videoMimeType,
+    Uint8List? pdfBytes,
+    String? pdfMimeType,
   }) async {
     final ai = FirebaseAI.vertexAI();
     // Note: apiKey and backend are now automatically handled by FirebaseAI based on project config
@@ -335,6 +375,14 @@ class EdgeAIService {
     
     if (audioBytes != null) {
       parts.add(InlineDataPart(audioMimeType ?? 'audio/mp3', audioBytes));
+    }
+
+    if (videoBytes != null) {
+      parts.add(InlineDataPart(videoMimeType ?? 'video/mp4', videoBytes));
+    }
+
+    if (pdfBytes != null) {
+      parts.add(InlineDataPart(pdfMimeType ?? 'application/pdf', pdfBytes));
     }
 
     final content = Content.multi(parts);
@@ -534,14 +582,14 @@ class EdgeAIService {
     return "https://images.unsplash.com/photo-1535591273668-578e31182c4f?q=80&w=2070&auto=format&fit=crop"; 
   }
 
-  static Future<String> generateVideo(String prompt, {bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, dynamic ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {
+  static Future<String> generateVideo(String prompt, {String? modelId, bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, dynamic ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {
     // Phase 95: Telemetry Injection via Ref if available
     final telemetry = ref?.read(telemetryServiceProvider);
     
     if (isFinal) {
-      return await VideoGenerationService.generateFinal(prompt, confirmedByUser: true, onProgress: onProgress, onStatusMessage: onStatusMessage, telemetry: telemetry);
+      return await VideoGenerationService.generateFinal(prompt, modelId: modelId, confirmedByUser: true, onProgress: onProgress, onStatusMessage: onStatusMessage, telemetry: telemetry);
     } else {
-      return await VideoGenerationService.generatePreview(prompt, onProgress: onProgress, telemetry: telemetry);
+      return await VideoGenerationService.generatePreview(prompt, modelId: modelId, onProgress: onProgress, telemetry: telemetry);
     }
   }
 

@@ -1,6 +1,6 @@
 firebase-functions
 firebase-admin
-google-cloud-aiplatform
 git+https://github.com/google/langextract.git
 functions-framework
+google-genai
 

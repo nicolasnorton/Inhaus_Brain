@@ -39,8 +39,8 @@ class CopilotRepository {
       final request = http.Request('POST', Uri.parse(_endpoint));
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
-        'method': 'chat',
         'messages': messages,
+        'flatten': true, // Required for v1.x single-route requests
       });
 
       final streamedResponse = await client.send(request);

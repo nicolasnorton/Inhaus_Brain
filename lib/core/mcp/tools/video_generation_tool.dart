@@ -17,30 +17,47 @@ class VideoGenerationTool extends AgentTool {
               'type': 'string',
               'description': 'The prompt to generate the video for.',
             },
+            'model_id': {
+              'type': 'string',
+              'description': 'Optional. Specific Veo model ID (e.g., veo-3.1-generate-preview, veo-2.0-generate-001).',
+            },
+            'is_final': {
+              'type': 'boolean',
+              'description': 'Whether to generate a high-quality final render (slower) or a preview.',
+            },
           },
         );
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final prompt = parameters['prompt'] as String?;
+    final modelId = parameters['model_id'] as String?;
+    final isFinal = parameters['is_final'] as bool? ?? false;
+    
     if (prompt == null || prompt.isEmpty) {
       return ToolResult.failure('Missing required parameter: prompt');
     }
 
-    final url = await EdgeAIService.generateVideo(
-      prompt, 
-      veoKey: veoKey, 
-      vertexKey: vertexKey, 
-      ref: ref,
-      onStatusMessage: (msg) {
-        // Agent 3: Update UI with "Generating real video..." status
-        try {
-          ref.read(assistantStatusProvider.notifier).state = msg;
-        } catch (e) {
-          // Ignore provider errors if disposed
+    try {
+      final url = await EdgeAIService.generateVideo(
+        prompt, 
+        modelId: modelId,
+        isFinal: isFinal,
+        veoKey: veoKey, 
+        vertexKey: vertexKey, 
+        ref: this.ref, // Use the tool's ref
+        onStatusMessage: (msg) {
+          // Agent 3: Update UI with "Generating real video..." status
+          try {
+            this.ref.read(assistantStatusProvider.notifier).state = msg;
+          } catch (e) {
+            // Ignore provider errors if disposed
+          }
         }
-      }
-    );
-    return ToolResult.success({'url': url});
+      );
+      return ToolResult.success({'url': url});
+    } catch (e) {
+      return ToolResult.failure('Video generation failed: $e');
+    }
   }
 }

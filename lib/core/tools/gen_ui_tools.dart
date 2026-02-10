@@ -30,55 +30,103 @@ class GenUIComponentTool extends AgentTool {
         'properties': {
           'component_type': {
             'type': 'string',
-            'enum': ['strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report'],
-            'description': 'The type of UI component to render. Use "recipe_card" for instructions or processes. Use "analysis_report" for deep dives on data or competitors. Use "strategy_board" for high level plans. Use "trend_report" for market research reports.'
+            'enum': [
+              'strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report',
+              'dynamic_form', 'mind_map', 'carousel', 'interactive_table', 'radial_gauge', 'accordion', 'stepper', 'word_cloud', 'calendar'
+            ],
+            'description': 'The type of UI component to render. NEW EXAMPLES: Use "dynamic_form" for intake briefs. "stepper" for guided workflows. "mind_map" for brainstorming. "carousel" for asset review. "interactive_table" for catalog/data. "radial_gauge" for KPIs.'
           },
           'data': {
             'type': 'object',
-            'description': '''The structured data for the component. CRITICAL: Generate REAL, DETAILED, SPECIFIC data. NO placeholders like "TBD". Use realistic numbers, competitor names, metrics, and insights.
+            'description': '''The structured data for the component. CRITICAL: Generate REAL, DETAILED, SPECIFIC data. NO placeholders.
+            
+--- SCHEMAS ---
 
-For "analysis_report" or "trend_report" (MUST include AT LEAST 5-7 diverse sections):
+For "dynamic_form":
 {
-  "title": "Specific Analysis Title (e.g., 'Risk Analysis: Entering Ecuadorian Motorcycle Market')",
-  "summary": "2-3 sentence executive summary with key findings",
-  "sections": [
-    {
-      "type": "stat_card",
-      "items": [
-        {"label": "Current Market Cap", "value": "\\\$12.5B", "trend": "up", "change": "+5%"},
-        {"label": "Risk Level", "value": "Medium", "trend": "down"}
-      ]
-    },
-    {
-      "type": "text",
-      "title": "Sector Overview",
-      "content": "Detailed 3-4 sentence analysis of the sector landscape."
-    },
-    {
-      "type": "chart",
-      "title": "Revenue Forecast",
-      "data": {"2024": 1500, "2025": 1850, "2026": 2300}
-    },
-    {
-       "type": "check_list",
-       "title": "Key Requirements",
-       "items": ["Local distribution permit", "Customs clearance", "VAT registration"]
-    }
+  "title": "Creative Brief Intake",
+  "fields": [
+    {"name": "campaign_name", "type": "text", "label": "Campaign Name", "required": true},
+    {"name": "budget", "type": "number", "label": "Budget ($)", "min": 1000},
+    {"name": "channels", "type": "checkbox_group", "label": "Channels", "options": ["Social", "TV", "OOH"]},
+    {"name": "launch_date", "type": "date", "label": "Launch Date"}
+  ],
+  "submit_label": "Generate Proposal"
+}
+
+For "mind_map" (GraphView):
+{
+  "nodes": [
+    {"id": 1, "label": "Main Idea", "color": "#FF5733"},
+    {"id": 2, "label": "Sub Idea A"},
+    {"id": 3, "label": "Sub Idea B"}
+  ],
+  "edges": [
+    {"source": 1, "target": 2},
+    {"source": 1, "target": 3}
   ]
 }
 
-For "recipe_card" (used for ANY step-by-step process, not just food):
+For "carousel" (Image/Video):
 {
-  "title": "Process/Recipe Name",
-  "duration": "Duration (e.g., 2 hours)",
-  "difficulty": "Easy/Medium/Hard",
-  "ingredients": ["Requirement 1", "Requirement 2"],
-  "steps": [
-    {"title": "Phase 1: Preparation", "description": "Detailed 2-sentence description of preparation steps."},
-    {"title": "Phase 2: Execution", "description": "..."},
-    {"title": "Phase 3: Finalization", "description": "..."}
+  "items": [
+    {"type": "image", "url": "https://...", "caption": "Concept A"},
+    {"type": "video", "url": "https://...", "caption": "TV Spot Draft"}
+  ],
+  "aspect_ratio": 16/9
+}
+
+For "interactive_table":
+{
+  "columns": [
+    {"name": "id", "label": "ID", "numeric": true},
+    {"name": "name", "label": "Service Name"},
+    {"name": "status", "label": "Status"}
+  ],
+  "rows": [
+    {"id": 101, "name": "SEO Audit", "status": "Active"},
+    {"id": 102, "name": "Content Pack", "status": "Pending"}
   ]
-}'''
+}
+
+For "radial_gauge" (KPIs):
+{
+  "title": "Campaign Health",
+  "value": 75,
+  "min": 0,
+  "max": 100,
+  "ranges": [
+    {"start": 0, "end": 40, "color": "red"},
+    {"start": 40, "end": 80, "color": "yellow"},
+    {"start": 80, "end": 100, "color": "green"}
+  ],
+  "annotation": "Good"
+}
+
+For "stepper" (Guided Workflow):
+{
+  "steps": [
+    {"title": "Research", "content": "Market analysis complete."},
+    {"title": "Ideation", "content": "3 concepts generated.", "state": "active"},
+    {"title": "Execution", "content": "Pending approval."}
+  ],
+  "current_step_index": 1
+}
+
+EXISTING SCHEMAS:
+For "analysis_report" / "trend_report":
+{
+  "title": "...",
+  "sections": [...] (stat_card, chart, text, table)
+}
+For "kanban_board":
+{
+  "columns": [
+    {"title": "To Do", "cards": ["Task 1", "Task 2"]},
+    {"title": "In Progress", "cards": []}
+  ]
+}
+'''
           },
           'summary_text': {
             'type': 'string',
