@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 // // import 'package:google_generative_ai/google_generative_ai.dart' as g_ai; // Not needed if using firebase_ai Tool
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http;
 import 'package:retry/retry.dart';
 import '../../features/knowledge/models/knowledge_source.dart';
 import '../tokens/llm_provider.dart';
-import '../auth/secret_vault_service.dart';
+
 import 'ai_proxy_service.dart';
 import 'video_generation_service.dart';
 import 'telemetry_service.dart';
@@ -46,7 +46,7 @@ class EdgeAIResult {
 
 class EdgeAIService {
   static bool forceMock = false;
-  static final _vault = SecretVaultService();
+
 
   static final _logger = Logger();
 
@@ -70,18 +70,7 @@ class EdgeAIService {
     var config = modelConfig ?? AIModelConfig.geminiFlash;
     
     
-    // START FIX: Force model version upgrade for legacy/stale configs
-    if (config.provider == AIProvider.gemini) {
-      if (config.modelId == 'gemini-1.5-flash' || config.modelId == 'gemini-1.5-flash-001') {
-         config = config.copyWith(modelId: 'gemini-1.5-flash-002');
-         _logger.d('EdgeAI: Upgraded legacy model ID to gemini-1.5-flash-002');
-      }
-      if (config.modelId == 'gemini-1.5-pro' || config.modelId == 'gemini-1.5-pro-001') {
-         config = config.copyWith(modelId: 'gemini-1.5-pro-002');
-         _logger.d('EdgeAI: Upgraded legacy model ID to gemini-1.5-pro-002');
-      }
-    }
-    // END FIX
+    // config is already initialized above
 
     if (outputMode == 'json') {
       config = config.copyWith(responseMimeType: 'application/json');
@@ -257,14 +246,14 @@ class EdgeAIService {
            _logger.w('EdgeAI: FirebaseAI failed: $e. Using LiteRT/Mock fallback.');
            // Fallback to LiteRT (On-Device) if cloud fails
            try {
-             result = await _generateLiteRT(effectivePrompt, config);
+             result = await _generateLiteRT(effectivePrompt, config, errorMessage: e.toString());
            } catch (liteErr) {
              result = await _generateLocalMock(effectivePrompt, hasImage: imageBytes != null);
            }
-        }
+         }
         break;
       case AIProvider.litert:
-        result = await _generateLiteRT(effectivePrompt, config);
+        result = await _generateLiteRT(effectivePrompt, config, errorMessage: null);
         break;
       default:
         // Fallback to FirebaseAI for everything else
@@ -305,7 +294,7 @@ class EdgeAIService {
     // Note: apiKey and backend are now automatically handled by FirebaseAI based on project config
     
     final model = ai.generativeModel(
-      model: _sanitizeModelName(config.modelId),
+      model: config.modelId,
       generationConfig: GenerationConfig(
         temperature: config.temperature,
         maxOutputTokens: config.maxTokens ?? 2048,
@@ -422,15 +411,7 @@ class EdgeAIService {
     return EdgeAIResult(fullText, AIProximity.cloud, modelUsed: config.modelId, confidence: confidence, sourceCitations: validSources);
   }
 
-  static String _sanitizeModelName(String modelId) {
-    if (modelId == 'gemini-1.5-flash' || modelId == 'gemini-1.5-flash-001') {
-      return 'gemini-1.5-flash-002';
-    }
-    if (modelId == 'gemini-1.5-pro' || modelId == 'gemini-1.5-pro-001') {
-      return 'gemini-1.5-pro-002';
-    }
-    return modelId;
-  }
+
 
   static Stream<EdgeAIResult> generateTextStream(
     String prompt, {
@@ -448,18 +429,7 @@ class EdgeAIService {
     final effectiveMemory = memoryContext ?? systemInstruction;
     var effectiveConfig = config ?? AIModelConfig.geminiFlash;
      
-     // START FIX: Force model version upgrade for legacy/stale configs
-     if (effectiveConfig.provider == AIProvider.gemini) {
-        if (effectiveConfig.modelId == 'gemini-1.5-flash' || effectiveConfig.modelId == 'gemini-1.5-flash-001') {
-           effectiveConfig = effectiveConfig.copyWith(modelId: 'gemini-1.5-flash-002');
-           _logger.d('EdgeAI: [STREAM] Upgraded legacy model ID to gemini-1.5-flash-002');
-        }
-        if (effectiveConfig.modelId == 'gemini-1.5-pro' || effectiveConfig.modelId == 'gemini-1.5-pro-001') {
-           effectiveConfig = effectiveConfig.copyWith(modelId: 'gemini-1.5-pro-002');
-           _logger.d('EdgeAI: [STREAM] Upgraded legacy model ID to gemini-1.5-pro-002');
-        }
-     }
-     // END FIX
+
 
      if (effectiveConfig.provider != AIProvider.gemini) {
         yield EdgeAIResult("Thinking...", AIProximity.simulated);
@@ -481,7 +451,7 @@ class EdgeAIService {
        final ai = FirebaseAI.vertexAI();
        
        final model = ai.generativeModel(
-          model: _sanitizeModelName(effectiveConfig.modelId),
+          model: effectiveConfig.modelId,
           generationConfig: GenerationConfig(
             temperature: effectiveConfig.temperature,
             maxOutputTokens: effectiveConfig.maxTokens,
@@ -566,41 +536,7 @@ class EdgeAIService {
     }
   }
 
-  static Future<String> _pollProxyVeoOperation(String operationName) async {
-    for (int i = 0; i < 24; i++) {
-        await Future.delayed(const Duration(seconds: 5));
-        debugPrint('EdgeAI: [VEO-PROXY] Checking generation status (attempt ${i + 1})...');
-        
-        try {
-            final data = await AIProxyService.pollOperation(operationName);
-            if (data['done'] == true) {
-                if (data['error'] != null) throw Exception('Veo Operation Failed: ${data['error']}');
-                
-                final respObj = data['response'];
-                if (respObj != null && respObj['predictions'] != null && (respObj['predictions'] as List).isNotEmpty) {
-                    final videoUrl = respObj['predictions'][0]['url'] ?? respObj['predictions'][0]['videoUri'];
-                    if (videoUrl != null) return _sanitizeMediaUrl(videoUrl);
-                }
-                 final metadata = data['metadata'];
-                 if (metadata != null && metadata['outputUri'] != null) {
-                    return _sanitizeMediaUrl(metadata['outputUri']);
-                 }
-                 throw Exception('Veo operation finished but no video URL found.');
-            }
-        } catch (e) {
-            debugPrint('EdgeAI: [VEO-PROXY] Polling error: $e');
-        }
-    }
-     throw Exception('Veo generation timed out (operation: $operationName)');
-  }
 
-  static String _sanitizeMediaUrl(String url) {
-    if (url.startsWith('gs://')) {
-       final path = url.replaceFirst('gs://', '');
-       return "https://storage.googleapis.com/$path";
-    }
-    return url;
-  }
 
   static Future<String> generateAudio(String prompt, {String? lyriaKey}) async {
     debugPrint('EdgeAI: [AUDIO] Generating audio for: "$prompt" (MOCKED/STATIC)');
@@ -660,8 +596,9 @@ class EdgeAIService {
 
   static Future<EdgeAIResult> _generateLiteRT(
     String prompt, 
-    AIModelConfig config,
-  ) async {
+    AIModelConfig config, {
+    String? errorMessage,
+  }) async {
     if (!_isLiteRTInitialized) await initLiteRT();
 
     _logger.d('EdgeAI: [LiteRT] Generating with ${config.modelId} (Accelerated: $_hasHwAccelerator)...');
@@ -669,8 +606,13 @@ class EdgeAIService {
     // Simulate On-Device Latency (fast!)
     await Future.delayed(const Duration(milliseconds: 150)); 
     
-    // CRITICAL: DO NOT echo the raw '$prompt' back here as it will leak system instructions if this is a fallback.
-    final sampleResponse = "LiteRT (${config.modelId}): Analyzed request locally. [Fast On-Device Preview] Content generated successfully.";
+    // CRITICAL: Return meaningful error info if this was a fallback
+    String sampleResponse;
+    if (errorMessage != null) {
+      sampleResponse = "LiteRT (${config.modelId}): Fallback due to error: $errorMessage. [Fast On-Device Preview]";
+    } else {
+      sampleResponse = "LiteRT (${config.modelId}): Analyzed request locally. [Fast On-Device Preview] Content generated successfully.";
+    }
     
     return EdgeAIResult(
       sampleResponse, 

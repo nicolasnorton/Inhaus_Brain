@@ -134,6 +134,21 @@ service cloud.firestore {
       match /knowledge/{docId} {
          allow read, write: if isOwner(userId);
       }
+
+      // Semantic Cache (Fix for permission-denied)
+      match /cache/{docId} {
+         allow read, write: if isOwner(userId);
+      }
+
+      // Analytics Events
+      match /events/{docId} {
+         allow read, write: if isOwner(userId);
+      }
+
+      // Blackboard Sessions
+      match /sessions/{docId} {
+         allow read, write: if isOwner(userId);
+      }
     }
 
     // DEFAULT DENY

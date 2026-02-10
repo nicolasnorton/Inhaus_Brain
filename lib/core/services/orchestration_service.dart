@@ -150,12 +150,12 @@ class OrchestrationService {
       // Analytics
       _ref.read(analyticsServiceProvider).logEvent(
         'proposal_generated',
-        payload: {
+        parameters: {
           'proposalId': proposal.id,
           'type': type,
           'hasPdf': pdfUrl != null,
+          'agentId': 'Proposal Specialist',
         },
-        agentId: 'Proposal Specialist'
       );
       
     } catch (e) {
@@ -209,7 +209,7 @@ class OrchestrationService {
     blackboard.updateAgentStatus(agentName, AgentStatus.working);
     final analytics = _ref.read(analyticsServiceProvider);
     
-    analytics.logEvent('agent_start', agentId: agentName, payload: {'input_length': input.length});
+    analytics.logEvent('agent_start', parameters: {'agentId': agentName, 'input_length': input.length});
 
     try {
       String resultText = "";
@@ -264,15 +264,17 @@ class OrchestrationService {
         data: {'agent': agentName, 'output': factValue}
       );
       
-      analytics.logEvent('agent_complete', agentId: agentName, payload: {'result_length': resultText.length});
+      analytics.logEvent('agent_complete', parameters: {'agentId': agentName, 'result_length': resultText.length});
       
     } catch (e) {
       debugPrint('OrchestrationService: Error executing $agentName: $e');
       _ref.read(analyticsServiceProvider).logEvent(
         'agent_error', 
-        agentId: agentName, 
-        severity: AnalyticsSeverity.error,
-        payload: {'error': e.toString()}
+        parameters: {
+           'agentId': agentName, 
+           'severity': 'error',
+           'error': e.toString()
+        }
       );
       
       final currentRetries = _agentRetries[agentName] ?? 0;

@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "inhausbrain"
-  }
+  },
+  "targets": {
+    "inhausbrain": {
+      "hosting": {
+        "staging": [
+          "inhausbrain-beta"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -7,7 +7,7 @@ const { copilotHandler } = require('./copilot');
 admin.initializeApp();
 
 // Initialize Vertex AI
-const project = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT;
+const project = process.env.GCP_PROJECT || process.env.GCLOUD_PROJECT || admin.instanceId().app.options.projectId;
 const location = 'us-central1';
 const vertexAI = new VertexAI({ project: project, location: location });
 
@@ -454,7 +454,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
                     },
                     body: JSON.stringify({
                         instances: [{ prompt: prompt }],
-                        parameters: config || { sampleCount: 1, aspectRatio: "1:1" }
+                        parameters: generationParams || config || { sampleCount: 1, aspectRatio: "1:1" }
                     })
                 });
 
@@ -492,7 +492,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
                     },
                     body: JSON.stringify({
                         instances: [{ prompt: prompt }],
-                        parameters: config || { sampleCount: 1, aspectRatio: "16:9", durationSeconds: 5 }
+                        parameters: generationParams || config || { sampleCount: 1, aspectRatio: "16:9", durationSeconds: 5 }
                     })
                 });
 
@@ -526,18 +526,19 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             const regions = ['us-central1', 'us-east4', 'us-west1'];
 
             // AGGRESSIVE SANITIZATION: Replace legacy aliases with stable versioned IDs
-            let targetModelId = modelId;
-            if (modelId === 'gemini-1.5-flash' || modelId === 'gemini-1.5-flash-001') {
-                targetModelId = 'gemini-1.5-flash-002';
-                console.log(`[PROXY] 🛡️ Sanitizing: ${modelId} -> ${targetModelId}`);
-            } else if (modelId === 'gemini-1.5-pro' || modelId === 'gemini-1.5-pro-001') {
-                targetModelId = 'gemini-1.5-pro-002';
-                console.log(`[PROXY] 🛡️ Sanitizing: ${modelId} -> ${targetModelId}`);
+            // We also add fallbacks to handle regional availability and model retirements
+            let modelVariations = [modelId];
+
+            if (modelId.includes('gemini-1.5-flash')) {
+                // Try newer versions and then the official next-gen
+                modelVariations = ['gemini-1.5-flash-002', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+            } else if (modelId.includes('gemini-1.5-pro')) {
+                modelVariations = ['gemini-1.5-pro-002', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+            } else if (modelId.includes('gemini-2.0')) {
+                modelVariations = ['gemini-2.0-flash', 'gemini-1.5-flash-002'];
             }
 
-            const modelVariations = [targetModelId];
-            // If sanitization didn't happen, we can still add fallback variations if needed, 
-            // but for now, we trust the versioned ones.
+            console.log(`[PROXY] 🛡️ Model strategy: ${JSON.stringify(modelVariations)}`);
 
             let lastResError = null;
             let success = false;
@@ -568,6 +569,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             }
 
             if (!success) {
+                console.error('[PROXY] ❌ ALL ATTEMPTS FAILED. Last error:', lastResError);
                 throw lastResError || new Error('All regions and model variations failed.');
             }
 
@@ -598,8 +600,7 @@ exports.copilotRuntime = functions.https.onRequest(copilotHandler);
  * Listens for events from GoHighLevel (Contact Created, Opportunity Update, etc.)
  * and syncs them to Firestore 'sales_leads' collection.
  */
-return 'newLead';
-}
+
 exports.ghlWebhook = functions.https.onRequest(async (req, res) => {
     // 1. Validate Method
     if (req.method !== 'POST') {

@@ -41,6 +41,12 @@ app.use(async (req, res, next) => {
             model: "gemini-1.5-pro",
             apiKey: apiKey,
         });
+
+        // Patch for v1.x compatibility: default to 'chat' if method is missing
+        if (req.body && !req.body.method) {
+            req.body.method = 'chat';
+        }
+
         next();
     } catch (error) {
         console.error('Error in Copilot Middleware:', error);

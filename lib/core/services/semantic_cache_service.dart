@@ -42,7 +42,14 @@ class SemanticCacheService {
       key = _generateKey(promptOrLabel as String, configOrKey);
       isAiResult = true;
     } else if (configOrKey is String) {
-      key = "generic:${promptOrLabel}:$configOrKey";
+      final rawKey = "generic:${promptOrLabel}:$configOrKey";
+      if (rawKey.length > 1000) {
+        final bytes = utf8.encode(rawKey);
+        final digest = sha256.convert(bytes);
+        key = "hashed:${digest.toString()}";
+      } else {
+        key = rawKey;
+      }
       isAiResult = false;
     } else {
       return null;
@@ -110,7 +117,17 @@ class SemanticCacheService {
         'promptPreview': (promptOrLabel as String).length > 50 ? promptOrLabel.substring(0, 50) : promptOrLabel,
       });
     } else if (configOrKey is String && resultOrText is String) {
-      key = "generic:${promptOrLabel}:$configOrKey";
+      final rawKey = "generic:${promptOrLabel}:$configOrKey";
+      // Firestore document ID limit is 1500 bytes. 
+      // If the generated key is too long, hash it.
+      if (rawKey.length > 1000) {
+        final bytes = utf8.encode(rawKey);
+        final digest = sha256.convert(bytes);
+        key = "hashed:${digest.toString()}";
+      } else {
+        key = rawKey;
+      }
+      
       payload.addAll({
         'text': resultOrText,
         'label': promptOrLabel,

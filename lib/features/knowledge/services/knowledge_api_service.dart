@@ -2,6 +2,7 @@ import 'dart:convert';
 // import 'dart:io'; // Removed for web compatibility
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http; // Kept for file upload if needed, or remove if unused
+import 'package:inhaus_brain/workflows/sre_incident_workflow.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:uuid/uuid.dart'; // Unused
 import '../../../core/services/vertex_ai_service.dart';
@@ -621,7 +622,7 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
                return result;
                */
            }
-        }
+
      } catch (e) {
         debugPrint('Vector Search Failed: $e');
      }

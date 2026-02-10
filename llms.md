@@ -102,4 +102,5 @@ The `PublishService` coordinates the deployment of workflows across multiple pla
 ## Important Configuration Notes
 - **Vertex AI API**: Must be enabled in Google Cloud Console for the project.
 - **App Check**: Enforced in Production (ReCaptcha). Local development uses a Debug Token and requires the Firestore Emulator (`npx firebase emulators:start --only functions,firestore`).
+- **Stabilization (v1.2.1)**: CopilotKit v1.x protocol alignment and Vertex AI Proxy hardening for generational model parameters.
 

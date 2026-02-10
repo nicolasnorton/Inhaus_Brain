@@ -1,7 +1,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inhaus_brain/core/adk/services/adk_service.dart';
-import 'package:inhaus_brain/lib/workflows/sre_incident_workflow.dart';
+import 'package:inhaus_brain/workflows/sre_incident_workflow.dart';
 import 'package:inhaus_brain/features/knowledge/models/knowledge_source.dart';
 
 void main() {

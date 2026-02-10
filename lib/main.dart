@@ -7,7 +7,7 @@
 // by the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -50,7 +50,7 @@ void main() async {
       final String host = Uri.base.host;
       // Only use emulators if we are actually local. Prevents hanging on hosted debug builds.
       if (host.contains('localhost') || host.contains('127.0.0.1')) {
-        final String emulatorHost = Platform.isAndroid ? '10.0.2.2' : '127.0.0.1';
+        final String emulatorHost = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : '127.0.0.1';
         FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8080);
         FirebaseFunctions.instance.useFunctionsEmulator(emulatorHost, 5005);
         print('🔥 Using Firestore Emulator on $emulatorHost:8080');
@@ -83,6 +83,7 @@ void main() async {
       if (host.contains('localhost') || 
           host.contains('127.0.0.1') || 
           host.contains('inhausbrain.web.app') || 
+          host.contains('inhausbrain-beta.web.app') || 
           host.contains('inhausbrain.firebaseapp.com')) {
         shouldActivate = false;
       }

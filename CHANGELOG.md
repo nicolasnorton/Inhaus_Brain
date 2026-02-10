@@ -1,5 +1,10 @@
-# Changelog
-<br>
+## [1.2.1-clean-fix] - 2026-02-09
+
+### Fixed
+- **CopilotKit Stabilization**: Resolved `400 Bad Request` by aligning with v1.x protocol (missing `method` field).
+- **Vertex AI Proxy Hardening**: Fixed ignored generation parameters for Imagen/Veo and improved error logging/regional fallbacks.
+- **Project ID Detection**: Improved resilience in Cloud Functions for custom project environments.
+
 ## [1.1.8] - 2026-02-06
 
 ### Fixed

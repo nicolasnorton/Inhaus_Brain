@@ -5,11 +5,7 @@ import '../data/copilot_repository.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../chat/widgets/approval_card.dart';
 
-// Use a simplified provider for now. In real app, use environment variable.
-final copilotRepositoryProvider = Provider((ref) {
-  return CopilotRepository(
-      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/copilotRuntime');
-});
+
 
 class CopilotView extends ConsumerStatefulWidget {
   const CopilotView({super.key});

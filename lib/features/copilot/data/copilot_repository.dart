@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:ag_ui/ag_ui.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CopilotRepository {
   final String _endpoint;
@@ -38,6 +39,7 @@ class CopilotRepository {
       final request = http.Request('POST', Uri.parse(_endpoint));
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
+        'method': 'chat',
         'messages': messages,
       });
 
@@ -75,3 +77,9 @@ class CopilotRepository {
     }
   }
 }
+
+// Global provider for CopilotRepository
+final copilotRepositoryProvider = Provider((ref) {
+  return CopilotRepository(
+      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/copilotRuntime');
+});
