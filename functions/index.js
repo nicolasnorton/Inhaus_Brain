@@ -184,7 +184,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             }
 
             // 2. Body Extraction
-            const { model, prompt, config, systemInstruction, operationName } = req.body;
+            const { model, prompt, config, systemInstruction, operationName, generationParams } = req.body;
 
             // --- PATH A: OPERATION POLLING ---
             // Priority: If operationName is present, we are polling status. No prompt required.
