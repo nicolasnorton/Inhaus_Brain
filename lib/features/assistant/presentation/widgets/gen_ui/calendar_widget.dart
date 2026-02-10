@@ -49,7 +49,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                  return isSameDay(date, day);
               }).toList();
             },
-            calendarStyle: const CalendarStyle(
+            calendarStyle: CalendarStyle(
               defaultTextStyle: TextStyle(color: Colors.white),
               weekendTextStyle: TextStyle(color: Colors.white54),
               outsideTextStyle: TextStyle(color: Colors.white24),

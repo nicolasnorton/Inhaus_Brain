@@ -70,12 +70,12 @@ class InteractiveTableWidget extends StatelessWidget {
 }
 
 class _JsonDataSource extends DataGridSource {
-  final List<dynamic> rows;
+  final List<dynamic> rawRows;
   final List<dynamic> columns;
   List<DataGridRow> _dataGridRows = [];
 
-  _JsonDataSource(this.rows, this.columns) {
-    _dataGridRows = rows.map<DataGridRow>((row) {
+  _JsonDataSource(this.rawRows, this.columns) {
+    _dataGridRows = rawRows.map<DataGridRow>((row) {
       return DataGridRow(cells: columns.map<DataGridCell>((col) {
         final colName = col['name'];
         final val = row[colName];

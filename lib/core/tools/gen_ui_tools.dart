@@ -47,7 +47,7 @@ For "dynamic_form":
   "title": "Creative Brief Intake",
   "fields": [
     {"name": "campaign_name", "type": "text", "label": "Campaign Name", "required": true},
-    {"name": "budget", "type": "number", "label": "Budget ($)", "min": 1000},
+    {"name": "budget", "type": "number", "label": "Budget (\$)", "min": 1000},
     {"name": "channels", "type": "checkbox_group", "label": "Channels", "options": ["Social", "TV", "OOH"]},
     {"name": "launch_date", "type": "date", "label": "Launch Date"}
   ],

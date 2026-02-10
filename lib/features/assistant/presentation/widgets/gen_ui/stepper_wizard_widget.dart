@@ -57,7 +57,7 @@ class _StepperWizardWidgetState extends State<StepperWizardWidget> {
 
           // Stepper
           IconStepper(
-            icons: _steps.map((s) => Icon(s['icon'] != null ? IconData(s['icon'], fontFamily: 'MaterialIcons') : Icons.circle)).toList(),
+            icons: _steps.map((s) => const Icon(Icons.circle)).toList(),
             activeStep: _activeStep,
             onStepReached: (index) {
               setState(() {
