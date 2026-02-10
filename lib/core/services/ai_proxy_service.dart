@@ -49,15 +49,8 @@ class AIProxyService {
       throw Exception('Failed to retrieve ID Token.');
     }
 
-    // Force Model ID Upgrade (Sanitization)
+    // Use model ID from config directly
     var effectiveModelId = config.modelId;
-    if (effectiveModelId == 'gemini-1.5-flash' || effectiveModelId == 'gemini-1.5-flash-001') {
-      effectiveModelId = 'gemini-1.5-flash-002';
-      debugPrint('AIProxyService: 🛡️ Upgrading legacy model ID -> $effectiveModelId');
-    } else if (effectiveModelId == 'gemini-1.5-pro' || effectiveModelId == 'gemini-1.5-pro-001') {
-      effectiveModelId = 'gemini-1.5-pro-002';
-      debugPrint('AIProxyService: 🛡️ Upgrading legacy model ID -> $effectiveModelId');
-    }
 
     // Prepare body
     final body = {
@@ -194,4 +187,55 @@ class AIProxyService {
     
     throw Exception('Embedding generation failed after $maxRetries attempts');
   }
+
+  /// Routes a structured extraction request to the specialized Python LangExtract function.
+  static Future<Map<String, dynamic>> extractStructured({
+    required String document,
+    required Map<String, dynamic> schema,
+    List<Map<String, dynamic>>? examples,
+    String model = 'gemini-1.5-flash',
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User must be logged in to use extraction services.');
+    }
+
+    final idToken = await user.getIdToken();
+    if (idToken == null) {
+      throw Exception('Failed to retrieve ID Token.');
+    }
+
+    // New Python function endpoint (assuming default us-central1)
+    final extractFunctionUrl = kDebugMode 
+      ? 'http://127.0.0.1:5005/inhausbrain/us-central1/extract_structured' 
+      : 'https://us-central1-inhausbrain.cloudfunctions.net/extract_structured';
+
+    final body = {
+      "document": document,
+      "schema": schema,
+      "examples": examples ?? [],
+      "model": model,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(extractFunctionUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 120)); // Extraction can take longer
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Extraction Error ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('AIProxyService Extraction Error: $e');
+      rethrow;
+    }
+  }
 }
+

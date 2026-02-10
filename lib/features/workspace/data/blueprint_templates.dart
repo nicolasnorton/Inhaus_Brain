@@ -919,4 +919,12 @@ final List<BlueprintTemplate> blueprintTemplates = [
     techStack: 'Vertex AI Evaluation',
     blueprintFlow: 'Model Output -> Eval Pipeline -> Scorecard.',
   ),
+  BlueprintTemplate(
+    id: 'langextract_structured_demo',
+    title: 'LangExtract: Structured Data Demo',
+    industry: 'Productivity & Cross-Industry',
+    challenge: 'Testing the official LangExtract integration for reliable schema enforcement.',
+    techStack: 'Google LangExtract, Python, Vertex AI',
+    blueprintFlow: 'Input Brief -> LangExtract (Python) -> Structured JSON + Grounding HTML -> Blackboard.',
+  ),
 ];

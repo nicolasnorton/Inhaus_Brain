@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
@@ -9,6 +10,8 @@ import '../../../features/knowledge/models/knowledge_source.dart';
 import '../models/chat_models.dart';
 import 'base_agent.dart';
 import '../../../core/services/system_prompts_service.dart';
+import '../../../core/services/ai_proxy_service.dart';
+import '../../../core/architecture/blackboard.dart';
 
 /// Helper to reduce boilerplate
 import 'package:inhaus_brain/features/copilot/data/copilot_repository.dart';
@@ -111,8 +114,76 @@ Future<String> _simpleExecute({
   return result.text;
 }
 
+/// Structured Extraction Helper for Agents
+mixin LangExtractMixin {
+  Future<void> extractFromContext({
+    required List<KnowledgeSource> context,
+    required Map<String, dynamic> schema,
+    required WidgetRef ref,
+    String? agentName,
+  }) async {
+    final docs = context.where((k) => k.type == KnowledgeSourceType.text || k.content.length > 500).toList();
+    if (docs.isEmpty) return;
+
+    final blackboard = ref.read(blackboardProvider.notifier);
+    
+    for (final doc in docs) {
+      try {
+        debugPrint('LangExtract: Attempting structured extraction for ${doc.title}');
+        final result = await AIProxyService.extractStructured(
+          document: doc.content,
+          schema: schema,
+        );
+        
+        String? groundingUrl;
+        final groundingHtml = result['extraction']?['grounding_html'] as String?;
+        
+        if (groundingHtml != null && groundingHtml.isNotEmpty) {
+           try {
+             final storageRef = FirebaseStorage.instance
+                 .ref()
+                 .child('extractions/${doc.id}_${DateTime.now().millisecondsSinceEpoch}.html');
+             
+             await storageRef.putString(
+               groundingHtml, 
+               format: PutStringFormat.raw, 
+               metadata: SettableMetadata(contentType: 'text/html')
+             );
+             groundingUrl = await storageRef.getDownloadURL();
+             debugPrint('LangExtract: Grounding HTML uploaded: $groundingUrl');
+           } catch (e) {
+             debugPrint('LangExtract: Grounding upload failed: $e');
+           }
+        }
+
+        final finalResult = {
+          ...result,
+          'grounding_url': groundingUrl,
+        };
+
+        // Post to Blackboard
+        blackboard.postFact('extraction_${doc.id}', finalResult);
+        blackboard.postFact('last_grounding_url', groundingUrl); // For quick UI preview
+        
+        blackboard.addEvent(
+          WorkflowEventType.agentAction, 
+          "Structured extraction completed for ${doc.title}",
+          data: {
+            'agent': agentName, 
+            'sourceId': doc.id, 
+            'summary': result['message'],
+            'grounding_url': groundingUrl
+          }
+        );
+      } catch (e) {
+        debugPrint('LangExtract: Extraction failed for ${doc.title}: $e');
+      }
+    }
+  }
+}
+
 /// 1. Trend Scout Agent
-class TrendScoutAgent extends BaseAgent {
+class TrendScoutAgent extends BaseAgent with LangExtractMixin {
   @override
   String get name => "Trend Scout";
   
@@ -149,6 +220,25 @@ class TrendScoutAgent extends BaseAgent {
       jsonMode: true,
       ref: ref,
     );
+
+    // LangExtract for deep market research
+    if (userPrompt.toLowerCase().contains('research') || context.length > 1) {
+      extractFromContext(
+        context: context,
+        schema: {
+          "type": "object",
+          "properties": {
+            "market_trends": {"type": "array", "items": {"type": "string"}},
+            "consumer_insights": {"type": "array", "items": {"type": "string"}},
+            "growth_opportunities": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        ref: ref,
+        agentName: name
+      );
+    }
+
+    return result;
   }
 }
 
@@ -193,7 +283,7 @@ class AccountDirectorAgent extends BaseAgent {
 }
 
 /// 3. Strategist Agent
-class StrategistAgent extends BaseAgent {
+class StrategistAgent extends BaseAgent with LangExtractMixin {
   @override
   String get name => "Strategist";
   
@@ -220,7 +310,7 @@ class StrategistAgent extends BaseAgent {
     final basePrompt = await promptService.getStrategistPrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT_DATA]', userPrompt);
 
-    return _simpleExecute(
+    final result = await _simpleExecute(
       agentName: name,
       systemPromptKey: systemPromptKey,
       systemPrompt: prompt,
@@ -235,6 +325,27 @@ class StrategistAgent extends BaseAgent {
       jsonMode: true,
       ref: ref,
     );
+
+    // BACKGROUND TASK: Structured Extraction of context docs if this is a deep analysis
+    if (userPrompt.toLowerCase().contains('analiza') || userPrompt.toLowerCase().contains('extract')) {
+      // Fire and forget extraction to Blackboard
+      extractFromContext(
+        context: context, 
+        schema: {
+          "type": "object",
+          "properties": {
+            "key_objectives": {"type": "array", "items": {"type": "string"}},
+            "budget_constraints": {"type": "string"},
+            "target_audience": {"type": "string"},
+            "competitors": {"type": "array", "items": {"type": "string"}}
+          }
+        }, 
+        ref: ref,
+        agentName: name
+      );
+    }
+
+    return result;
   }
 }
 
@@ -447,7 +558,7 @@ class AEOAgent extends BaseAgent {
 }
 
 /// 9. Proposal Specialist Agent
-class ProposalSpecialistAgent extends BaseAgent {
+class ProposalSpecialistAgent extends BaseAgent with LangExtractMixin {
   @override
   String get name => "Proposal Specialist";
   
@@ -521,6 +632,24 @@ Tone: Professional, Premium. Spanish PRIMARY (ES), English OPTIONAL.
       jsonMode: true,
       ref: ref,
     );
+    
+    // LangExtract for brief intake/structured proposal data
+    if (context.isNotEmpty) {
+      extractFromContext(
+        context: context,
+        schema: {
+          "type": "object",
+          "properties": {
+            "deliverables": {"type": "array", "items": {"type": "string"}},
+            "timeline": {"type": "string"},
+            "total_budget": {"type": "string"},
+            "legal_requirements": {"type": "string"}
+          }
+        },
+        ref: ref,
+        agentName: name
+      );
+    }
     
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return result;
