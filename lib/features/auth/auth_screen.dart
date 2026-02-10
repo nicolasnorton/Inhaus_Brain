@@ -194,7 +194,37 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (kIsWeb) {
       return (GoogleSignInPlatform.instance as web.GoogleSignInPlugin).renderButton();
     }
-    return const SizedBox.shrink();
+    
+    // Native platforms: iOS, macOS, Android (Manual button triggering signInWithGoogle)
+    return SizedBox(
+      width: 300,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: _isLoading ? null : () async {
+          setState(() => _isLoading = true);
+          try {
+            await ref.read(authServiceProvider).signInWithGoogle();
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Google Sign-In Error: $e'), backgroundColor: Colors.redAccent),
+              );
+            }
+          } finally {
+            if (mounted) setState(() => _isLoading = false);
+          }
+        },
+        icon: const Icon(FontAwesomeIcons.google, size: 18, color: Colors.white),
+        label: Text(
+          AppLocalizations.of(context)!.signInLabel + " with Google", 
+          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.white24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+    );
   }
 
   Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool obscureText = false}) {

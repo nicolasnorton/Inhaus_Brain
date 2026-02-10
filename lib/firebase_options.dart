@@ -25,11 +25,9 @@ class DefaultFirebaseOptions {
           'Android options are not configured. Run `flutterfire configure` to generate options.',
         );
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'iOS options are not configured. Run `flutterfire configure` to generate options.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        return web;
+        return macos;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'Windows options are not configured. Run `flutterfire configure` to generate options.',
@@ -53,5 +51,23 @@ class DefaultFirebaseOptions {
     authDomain: 'inhausbrain.firebaseapp.com',
     storageBucket: 'inhausbrain.firebasestorage.app',
     measurementId: 'G-05VDXB7D8N',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyC7OFEeMqbEHA_t5L12-uKbmVke_sbzQOU',
+    appId: '1:1096509611056:ios:8aa015397b2fe6054de1f5',
+    messagingSenderId: '1096509611056',
+    projectId: 'inhausbrain',
+    storageBucket: 'inhausbrain.firebasestorage.app',
+    iosBundleId: 'com.inhausbrain.inhausBrain',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyC7OFEeMqbEHA_t5L12-uKbmVke_sbzQOU',
+    appId: '1:1096509611056:ios:8aa015397b2fe6054de1f5',
+    messagingSenderId: '1096509611056',
+    projectId: 'inhausbrain',
+    storageBucket: 'inhausbrain.firebasestorage.app',
+    iosBundleId: 'com.inhausbrain.inhausBrain',
   );
 }

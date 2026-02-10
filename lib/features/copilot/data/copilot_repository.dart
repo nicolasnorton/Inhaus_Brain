@@ -40,6 +40,7 @@ class CopilotRepository {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
         'messages': messages,
+        'method': 'chat',
         'flatten': true, // Required for v1.x single-route requests
       });
 

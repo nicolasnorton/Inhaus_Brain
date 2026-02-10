@@ -5,7 +5,10 @@
   "targets": {
     "inhausbrain": {
       "hosting": {
-        "staging": [
+        "production": [
+          "inhausbrain"
+        ],
+        "inhaus-brain": [
           "inhausbrain-beta"
         ]
       }

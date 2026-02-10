@@ -1,103 +1,12 @@
 import json
 import os
-from firebase_functions import https_fn
+from firebase_functions import https_fn, options
 from firebase_admin import initialize_app, auth
+from gemini_client import GeminiClient
+import tools as custom_tools
 
 # Initialize Firebase Admin
 initialize_app()
-
-@https_fn.on_request()
-def extract_structured(req: https_fn.Request) -> https_fn.Response:
-    """
-    Secure Proxy for Google LangExtract.
-    Validates Firebase Auth ID Token before processing.
-    """
-    # 1. CORS Handling
-    if req.method == "OPTIONS":
-        headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Max-Age": "3600",
-        }
-        return https_fn.Response("", status=204, headers=headers)
-
-    headers = {"Access-Control-Allow-Origin": "*"}
-
-    if req.method != "POST":
-        return https_fn.Response("Method Not Allowed", status=405, headers=headers)
-
-    try:
-        # 2. Authentication Check
-        auth_header = req.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return https_fn.Response("Unauthorized", status=401, headers=headers)
-        
-        id_token = auth_header.split("Bearer ")[1]
-        try:
-            decoded_token = auth.verify_id_token(id_token)
-            uid = decoded_token['uid']
-            print(f"Auth Success: User {uid} is calling extract_structured")
-        except Exception as e:
-            return https_fn.Response(f"Unauthorized: {str(e)}", status=401, headers=headers)
-
-        # 3. Payload Extraction
-        data = req.get_json()
-        if not data:
-            return https_fn.Response("Missing JSON body", status=400, headers=headers)
-
-        document_text = data.get("document")
-        schema = data.get("schema")
-        examples = data.get("examples", [])
-        model_name = data.get("model", "gemini-1.5-flash")
-
-        if not document_text or not schema:
-            return https_fn.Response("Missing document or schema", status=400, headers=headers)
-
-        # 4. LangExtract logic
-        import langextract
-        
-        # Initialize Google GenAI Client for fallback or specific needs if LangExtract doesn't manage it
-        # LangExtract usually takes a model_name and handles its own client if not passed.
-        # But we want to ensure it uses our API key.
-        os.environ["GOOGLE_API_KEY"] = os.environ.get("GOOGLE_API_KEY", "")
-        
-        result = langextract.extract(
-            input_text=document_text,
-            schema=schema,
-            examples=examples,
-            model=model_name
-        )
-
-        return https_fn.Response(
-            json.dumps(result),
-            status=200,
-            headers={**headers, "Content-Type": "application/json"}
-        )
-
-    except Exception as e:
-        print(f"Error in extract_structured: {str(e)}")
-        return https_fn.Response(
-            json.dumps({"error": str(e)}),
-            status=500,
-            headers={**headers, "Content-Type": "application/json"}
-        )
-
-from gemini_client import GeminiClient
-
-def _handle_cors(req: https_fn.Request) -> tuple[dict, https_fn.Response | None]:
-    """Helper to handle CORS preflight."""
-    if req.method == "OPTIONS":
-        headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Max-Age": "3600",
-        }
-        return headers, https_fn.Response("", status=204, headers=headers)
-    
-    headers = {"Access-Control-Allow-Origin": "*"}
-    return headers, None
 
 def _verify_auth(req: https_fn.Request) -> tuple[str | None, str | None]:
     """Helper to verify Firebase Auth ID Token. Returns (uid, error_message)."""
@@ -112,76 +21,148 @@ def _verify_auth(req: https_fn.Request) -> tuple[str | None, str | None]:
     except Exception as e:
         return None, f"Unauthorized: {str(e)}"
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"])
-def generate_content(req: https_fn.Request) -> https_fn.Response:
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def extract_structured(req: https_fn.Request) -> https_fn.Response:
     """
-    Generate content using Gemini (Python SDK).
-    Supports text, chat, and structured output.
-    Secrets: GOOGLE_API_KEY
+    Secure Proxy for Google LangExtract.
+    Validates Firebase Auth ID Token before processing.
     """
-    headers, cors_resp = _handle_cors(req)
-    if cors_resp:
-        return cors_resp
-
     if req.method != "POST":
-        return https_fn.Response("Method Not Allowed", status=405, headers=headers)
+        return https_fn.Response("Method Not Allowed", status=405)
 
     uid, auth_error = _verify_auth(req)
     if auth_error:
-        return https_fn.Response(auth_error, status=401, headers=headers)
+        return https_fn.Response(auth_error, status=401)
 
     try:
         data = req.get_json()
         if not data:
-            return https_fn.Response("Missing JSON body", status=400, headers=headers)
+            return https_fn.Response("Missing JSON body", status=400)
+
+        document_text = data.get("document")
+        schema = data.get("schema")
+        examples = data.get("examples", [])
+        model_name = data.get("model", "gemini-1.5-flash")
+
+        if not document_text or not schema:
+            return https_fn.Response("Missing document or schema", status=400)
+
+        # 4. LangExtract logic
+        import langextract
+        
+        # Ensure API key is set
+        os.environ["GOOGLE_API_KEY"] = os.environ.get("GOOGLE_API_KEY", "")
+        
+        result = langextract.extract(
+            input_text=document_text,
+            schema=schema,
+            examples=examples,
+            model=model_name
+        )
+
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        print(f"Error in extract_structured: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def generate_content(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate content using Gemini (Python SDK).
+    """
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
+
+    uid, auth_error = _verify_auth(req)
+    if auth_error:
+        return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        if not data:
+            return https_fn.Response("Missing JSON body", status=400)
 
         # Extract parameters
         model_name = data.get("model", "gemini-1.5-flash")
         prompt = data.get("prompt")
         config = data.get("config", {})
         system_instruction = data.get("systemInstruction")
+        tools = data.get("tools")
+        thinking = data.get("thinking", False)
+        audio = data.get("audio", False)
         
+        # Inject custom tool definitions if requested by string
+        if isinstance(tools, list):
+            new_tools = []
+            for t in tools:
+                if t == "weather":
+                    new_tools.append(custom_tools.get_weather_schema().to_json_dict())
+                elif t == "charts":
+                    new_tools.append(custom_tools.get_charts_schema().to_json_dict())
+                elif t == "meetings":
+                    new_tools.append(custom_tools.get_meetings_schema().to_json_dict())
+                else:
+                    new_tools.append(t)
+            tools = new_tools
+
         # Initialize Client
-        # Note: In Cloud Functions, secrets are available as env vars when declared in decorator
         client = GeminiClient()
         
         # Call Generation
-        # TODO: Handle streaming if requested (req.args.get('stream') or data.get('stream'))
-        # For now, blocking response
-        
         response = client.generate_content(
-            prompt=prompt,
             model_name=model_name,
+            prompt=prompt,
             generation_config=config,
-            system_instruction=system_instruction
+            system_instruction=system_instruction,
+            tools=tools,
+            thinking=thinking,
+            audio=audio
         )
-        
-        # Serialize response
-        # We need to extract text and other parts safely
-        # google-generativeai response object needs conversion to dict
-        
+
+        # Manually serialize response as the GenAI types aren't JSON serializable directly
         candidates_data = []
         if response.candidates:
             for cand in response.candidates:
                 parts_data = []
                 for part in cand.content.parts:
-                    # Handle Text Part
+                    # Text Part
                     if hasattr(part, 'text') and part.text:
                         parts_data.append({"text": part.text})
                     
-                    # Handle Function Call Part (Native Tool Use)
-                    elif hasattr(part, 'function_call') and part.function_call:
-                        call = part.function_call
+                    # Thought Part (Thinking Mode)
+                    elif hasattr(part, 'thought') and part.thought:
+                        parts_data.append({"thought": part.thought})
+                    
+                    # Call Part
+                    elif hasattr(part, 'call') and part.call:
                         parts_data.append({
-                            "functionCall": {
-                                "name": call.name,
-                                "args": dict(call.args) if call.args else {}
+                            "executable_adunit": { # Internal structure mapped to what frontend expects
+                                "call": {
+                                    "function_name": part.call.name,
+                                    "args": part.call.args
+                                }
                             }
                         })
                     
-                    # Handle potentially raw objects in parts
-                    else:
-                        parts_data.append({"raw": str(part)})
+                    # Audio Part (Response Modality)
+                    elif hasattr(part, 'inline_data') and part.inline_data:
+                         parts_data.append({
+                             "inlineData": {
+                                 "mimeType": part.inline_data.mime_type,
+                                 "data": part.inline_data.data.hex() if hasattr(part.inline_data.data, 'hex') else str(part.inline_data.data)
+                             }
+                         })
                 
                 candidates_data.append({
                     "content": {
@@ -189,6 +170,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
                         "role": cand.content.role
                     },
                     "finishReason": cand.finish_reason.name if cand.finish_reason else None,
+                    "groundingMetadata": _serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
                 })
 
         result = {
@@ -203,58 +185,130 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(
             json.dumps(result),
             status=200,
-            headers={**headers, "Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"}
         )
 
     except Exception as e:
         print(f"Error in generate_content: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return https_fn.Response(
             json.dumps({"error": str(e)}),
             status=500,
-            headers={**headers, "Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"])
-def count_tokens(req: https_fn.Request) -> https_fn.Response:
-    """
-    Count tokens using Gemini (Python SDK).
-    Secrets: GOOGLE_API_KEY
-    """
-    headers, cors_resp = _handle_cors(req)
-    if cors_resp:
-        return cors_resp
+def _serialize_grounding(metadata):
+    """Helper to serialize grounding metadata."""
+    if not metadata: return None
+    return {
+        "searchEntryPoint": metadata.search_entry_point.rendered_content if hasattr(metadata, 'search_entry_point') and metadata.search_entry_point else None,
+        "groundingChunks": [
+            {"web": {"title": chunk.web.title, "uri": chunk.web.uri}} 
+            for chunk in (metadata.grounding_chunks or []) if hasattr(chunk, 'web') and chunk.web
+        ]
+    }
 
-    if req.method != "POST":
-        return https_fn.Response("Method Not Allowed", status=405, headers=headers)
-
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def start_research(req: https_fn.Request) -> https_fn.Response:
+    """Start a Deep Research interaction."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
     uid, auth_error = _verify_auth(req)
-    if auth_error:
-        return https_fn.Response(auth_error, status=401, headers=headers)
+    if auth_error: return https_fn.Response(auth_error, status=401)
 
     try:
         data = req.get_json()
-        if not data:
-            return https_fn.Response("Missing JSON body", status=400, headers=headers)
-
-        model_name = data.get("model", "gemini-1.5-flash")
         prompt = data.get("prompt")
+        model = data.get("model", "gemini-2.0-flash-thinking-exp-01-21") 
         
-        if not prompt:
-             return https_fn.Response("Missing 'prompt' in body", status=400, headers=headers)
-
         client = GeminiClient()
-        total_tokens = client.count_tokens(prompt, model_name)
+        interaction = client.create_interaction(model=model, prompt=prompt)
+        
+        return https_fn.Response(
+            json.dumps({"interactionId": interaction.id, "status": interaction.state}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def poll_research(req: https_fn.Request) -> https_fn.Response:
+    """Poll a Deep Research interaction."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        interaction_id = data.get("interactionId")
+        if not interaction_id: return https_fn.Response("Missing interactionId", status=400)
+        
+        client = GeminiClient()
+        interaction = client.get_interaction(interaction_id)
+        
+        return https_fn.Response(
+            json.dumps({
+                "interactionId": interaction.id,
+                "status": interaction.state,
+                "output": interaction.output,
+            }),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def generate_image(req: https_fn.Request) -> https_fn.Response:
+    """Generate image using Imagen via Gemini SDK."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        prompt = data.get("prompt")
+        model = data.get("model", "imagen-3.0-generate-001")
+        
+        client = GeminiClient()
+        images = client.generate_image(model=model, prompt=prompt)
+        
+        # Serialize images (base64)
+        image_data = []
+        for img in images:
+            image_data.append({
+                "mimeType": img.image.mime_type,
+                "data": img.image.data.hex() # Just a placeholder or hex for now
+            })
+            
+        return https_fn.Response(
+            json.dumps({"images": image_data}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def count_tokens(req: https_fn.Request) -> https_fn.Response:
+    """Count tokens using Gemini SDK."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        prompt = data.get("prompt")
+        model = data.get("model", "gemini-1.5-flash")
+        
+        client = GeminiClient()
+        total_tokens = client.count_tokens(model_name=model, prompt=prompt)
         
         return https_fn.Response(
             json.dumps({"totalTokens": total_tokens}),
             status=200,
-            headers={**headers, "Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"}
         )
-
     except Exception as e:
-        print(f"Error in count_tokens: {str(e)}")
-        return https_fn.Response(
-            json.dumps({"error": str(e)}),
-            status=500,
-            headers={**headers, "Content-Type": "application/json"}
-        )
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
