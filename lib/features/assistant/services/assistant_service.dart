@@ -387,9 +387,19 @@ class AssistantService {
       debugPrint('Assistant: Parsed Object: $parsed');
 
       if (parsed != null) {
-          debugPrint('Assistant: JSON decode successful via JsonParserService');
+          debugPrint('Assistant: JSON decode successful. Keys: ${parsed.keys.toList()}');
           String? toolName;
           Map<String, dynamic>? toolArgs;
+
+          // Helper for fuzzy key access
+          dynamic getFuzzy(Map map, String key) {
+            if (map.containsKey(key)) return map[key];
+            final matchingKey = map.keys.firstWhere(
+              (k) => k.toString().toLowerCase().trim() == key.toLowerCase(), 
+              orElse: () => null
+            );
+            return matchingKey != null ? map[matchingKey] : null;
+          }
 
            if (parsed.containsKey('tool')) {
              toolName = parsed['tool'];
@@ -405,9 +415,9 @@ class AssistantService {
                 toolName = call['name'];
                 toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
              }
-            } else if (parsed.containsKey('tool_calls')) {
-              debugPrint('Assistant: 🛠️ Found tool_calls in JSON response');
-              final calls = parsed['tool_calls'];
+            } else if (getFuzzy(parsed, 'tool_calls') != null) {
+              debugPrint('Assistant: 🛠️ Found tool_calls in JSON response (Fuzzy Match)');
+              final calls = getFuzzy(parsed, 'tool_calls');
               if (calls is List && calls.isNotEmpty) {
                  final call = calls[0];
                  debugPrint('Assistant: 🛠️ Processing first tool call: $call');
