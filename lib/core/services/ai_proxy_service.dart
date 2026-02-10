@@ -70,6 +70,7 @@ class AIProxyService {
     final body = {
       "model": config.modelId,
       "prompt": prompt,
+      "useGoogleSearch": config.useGoogleSearch,
       "config": {
         "temperature": config.temperature,
         "maxOutputTokens": config.maxTokens,

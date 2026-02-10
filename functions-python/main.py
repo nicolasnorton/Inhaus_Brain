@@ -94,13 +94,14 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             return https_fn.Response("Missing JSON body", status=400)
 
         # Extract parameters
-        model_name = data.get("model", "gemini-1.5-flash")
+        model_name = data.get("model", "gemini-3-flash-preview")
         prompt = data.get("prompt")
         config = data.get("config", {})
         system_instruction = data.get("systemInstruction")
         tools = data.get("tools")
         thinking = data.get("thinking", False)
         audio = data.get("audio", False)
+        use_google_search = data.get("useGoogleSearch", False)
         
         # Inject custom tool definitions if requested by string
         if isinstance(tools, list):
@@ -119,6 +120,13 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         # Initialize Client
         client = GeminiClient()
         
+        # Diagnostic: List models if it's the first call or for debugging
+        if os.environ.get("DEBUG_MODELS") == "true":
+            available = client.list_models()
+            print(f"Gemini Proxy: Available Models: {available}")
+
+        print(f"Gemini Proxy: Calling {model_name} with thinking={thinking}, search={use_google_search}")
+        
         # Call Generation
         response = client.generate_content(
             model_name=model_name,
@@ -127,60 +135,18 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             system_instruction=system_instruction,
             tools=tools,
             thinking=thinking,
-            audio=audio
+            audio=audio,
+            use_google_search=use_google_search
         )
 
-        # Manually serialize response as the GenAI types aren't JSON serializable directly
-        candidates_data = []
-        if response.candidates:
-            for cand in response.candidates:
-                parts_data = []
-                for part in cand.content.parts:
-                    # Text Part
-                    if hasattr(part, 'text') and part.text:
-                        parts_data.append({"text": part.text})
-                    
-                    # Thought Part (Thinking Mode)
-                    elif hasattr(part, 'thought') and part.thought:
-                        parts_data.append({"thought": part.thought})
-                    
-                    # Call Part
-                    elif hasattr(part, 'call') and part.call:
-                        parts_data.append({
-                            "executable_adunit": { # Internal structure mapped to what frontend expects
-                                "call": {
-                                    "function_name": part.call.name,
-                                    "args": part.call.args
-                                }
-                            }
-                        })
-                    
-                    # Audio Part (Response Modality)
-                    elif hasattr(part, 'inline_data') and part.inline_data:
-                         parts_data.append({
-                             "inlineData": {
-                                 "mimeType": part.inline_data.mime_type,
-                                 "data": part.inline_data.data.hex() if hasattr(part.inline_data.data, 'hex') else str(part.inline_data.data)
-                             }
-                         })
-                
-                candidates_data.append({
-                    "content": {
-                        "parts": parts_data,
-                        "role": cand.content.role
-                    },
-                    "finishReason": cand.finish_reason.name if cand.finish_reason else None,
-                    "groundingMetadata": _serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
-                })
-
-        result = {
-            "candidates": candidates_data,
-            "usageMetadata": {
-                "promptTokenCount": response.usage_metadata.prompt_token_count if response.usage_metadata else 0,
-                "candidatesTokenCount": response.usage_metadata.candidates_token_count if response.usage_metadata else 0,
-                "totalTokenCount": response.usage_metadata.total_token_count if response.usage_metadata else 0,
-            } if response.usage_metadata else {}
-        }
+        # Use the built-in serializer for clean output
+        result = client._serialize_response(response)
+        
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
         
         return https_fn.Response(
             json.dumps(result),

@@ -18,7 +18,12 @@ class GeminiClient:
             print("Warning: GOOGLE_API_KEY not found in environment.")
         
         # Initialize the new Client
-        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
+        if self.api_key:
+            print(f"GeminiClient: Initializing with API key (Length: {len(self.api_key)})")
+            self.client = genai.Client(api_key=self.api_key)
+        else:
+            print("GeminiClient: No API key found. Attempting ADC...")
+            self.client = genai.Client()
 
     def generate_content(
         self, 
@@ -29,7 +34,8 @@ class GeminiClient:
         system_instruction: Optional[str] = None,
         tools: Optional[List[Any]] = None,
         thinking: bool = False,
-        audio: bool = False
+        audio: bool = False,
+        use_google_search: bool = False
     ) -> Any:
         """
         Generate content using the specified model.
@@ -42,6 +48,7 @@ class GeminiClient:
             system_instruction: Optional system instruction.
             tools: Optional list of tools (functions, google search, etc).
             thinking: Whether to enable thinking mode.
+            use_google_search: Whether to enable Google Search tool.
             
         Returns:
             The generation response.
@@ -59,10 +66,15 @@ class GeminiClient:
             # Remove from config_params if it was passed there too
             config_params.pop("thinking_config", None)
 
+        # Process Tools
+        processed_tools = []
+        
+        # Add Google Search if requested
+        if use_google_search:
+            processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
+
         # Handle tools conversion from dict to types.Tool
-        processed_tools = None
         if tools:
-            processed_tools = []
             for tool in tools:
                 if isinstance(tool, dict):
                     # Grounding: Google Search
@@ -117,9 +129,17 @@ class GeminiClient:
                 if isinstance(item, dict):
                     # Handle multimodal dictionaries (e.g., {"mime_type": "image/jpeg", "data": "..."})
                     if "inline_data" in item:
+                        import base64
                         data = item["inline_data"]
+                        raw_data = data["data"]
+                        if isinstance(raw_data, str):
+                            try:
+                                # Check if it's base64
+                                raw_data = base64.b64decode(raw_data)
+                            except:
+                                pass
                         processed_contents.append(types.Part.from_bytes(
-                            data=data["data"], 
+                            data=raw_data, 
                             mime_type=data["mime_type"]
                         ))
                     elif "file_data" in item:
@@ -146,7 +166,71 @@ class GeminiClient:
                 config=config
             )
 
-    def generate_image(self, prompt: str, model: str = "imagen-3", **kwargs) -> Any:
+    def _serialize_response(self, response: Any) -> Dict[str, Any]:
+        """Helper to serialize a GenAI response object to a dict."""
+        candidates_data = []
+        if response.candidates:
+            for cand in response.candidates:
+                parts_data = []
+                for part in cand.content.parts:
+                    # Text Part
+                    if hasattr(part, 'text') and part.text:
+                        parts_data.append({"text": part.text})
+                    
+                    # Thought Part (Thinking Mode)
+                    elif hasattr(part, 'thought') and part.thought:
+                        parts_data.append({"thought": part.thought})
+                    
+                    # Function Call Part
+                    elif hasattr(part, 'function_call') and part.function_call:
+                        parts_data.append({
+                            "executable_adunit": { # Internal structure mapped to what frontend expects
+                                "call": {
+                                    "function_name": part.function_call.name,
+                                    "args": part.function_call.args
+                                }
+                            }
+                        })
+                    
+                    # Audio Part (Response Modality)
+                    elif hasattr(part, 'inline_data') and part.inline_data:
+                         parts_data.append({
+                             "inlineData": {
+                                 "mimeType": part.inline_data.mime_type,
+                                 "data": part.inline_data.data.hex() if hasattr(part.inline_data.data, 'hex') else str(part.inline_data.data)
+                             }
+                         })
+                
+                candidates_data.append({
+                    "content": {
+                        "parts": parts_data,
+                        "role": cand.content.role
+                    },
+                    "finishReason": cand.finish_reason.name if cand.finish_reason else None,
+                    "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
+                })
+
+        return {
+            "candidates": candidates_data,
+            "usageMetadata": {
+                "promptTokenCount": response.usage_metadata.prompt_token_count if response.usage_metadata else 0,
+                "candidatesTokenCount": response.usage_metadata.candidates_token_count if response.usage_metadata else 0,
+                "totalTokenCount": response.usage_metadata.total_token_count if response.usage_metadata else 0,
+            } if response.usage_metadata else {}
+        }
+
+    def _serialize_grounding(self, metadata: Any) -> Optional[Dict[str, Any]]:
+        """Helper to serialize grounding metadata."""
+        if not metadata: return None
+        return {
+            "searchEntryPoint": metadata.search_entry_point.rendered_content if hasattr(metadata.search_entry_point, 'rendered_content') else None,
+            "groundingChunks": [
+                {"web": {"title": chunk.web.title, "uri": chunk.web.uri}} 
+                for chunk in (metadata.grounding_chunks or []) if hasattr(chunk, 'web') and chunk.web
+            ]
+        }
+
+    def generate_image(self, prompt: str, model: str = "gemini-2.5-flash-image", **kwargs) -> Any:
         """Generate an image using Imagen."""
         if not self.client:
              raise Exception("GeminiClient not initialized with API Key.")
@@ -156,7 +240,7 @@ class GeminiClient:
             config=types.GenerateImageConfig(**kwargs)
         )
 
-    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-1.5-flash") -> int:
+    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-3-flash-preview") -> int:
         """Count tokens for the given prompt."""
         if not self.client:
             raise Exception("GeminiClient not initialized with API Key.")
@@ -200,3 +284,14 @@ class GeminiClient:
         if not self.client:
             raise Exception("GeminiClient not initialized with API Key.")
         self.client.files.delete(name=name)
+
+    def list_models(self) -> List[str]:
+        """List available models."""
+        if not self.client:
+            return []
+        try:
+            models = self.client.models.list()
+            return [m.name for m in models]
+        except Exception as e:
+            print(f"Error listing models: {str(e)}")
+            return []
