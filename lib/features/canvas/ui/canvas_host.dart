@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../providers/canvas_provider.dart';
+import 'monaco_editor_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/strategy_board_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/budget_chart_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/kanban_board_widget.dart';
@@ -19,19 +20,27 @@ import '../../assistant/presentation/widgets/gen_ui/calendar_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/dialogue_scene_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/avatar_conversation_widget.dart';
 
-class CanvasHost extends ConsumerWidget {
+class CanvasHost extends ConsumerStatefulWidget {
   const CanvasHost({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CanvasHost> createState() => _CanvasHostState();
+}
+
+class _CanvasHostState extends ConsumerState<CanvasHost> {
+  bool _showPinboard = false;
+
+  @override
+  Widget build(BuildContext context) {
     final canvasState = ref.watch(canvasProvider);
+    final hasPinned = canvasState.pinnedItems.isNotEmpty;
 
     return Container(
       color: const Color(0xFF1E1E1E),
       child: Column(
         children: [
           // Header
-          if (canvasState.type != CanvasContentType.empty)
+          if (canvasState.type != CanvasContentType.empty || _showPinboard)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -40,22 +49,55 @@ class CanvasHost extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(_getIconForType(canvasState.type), size: 16, color: Colors.blueAccent),
-                  const SizedBox(width: 8),
-                  Text(
-                    canvasState.title?.toUpperCase() ?? 'CANVAS',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white70,
-                      letterSpacing: 1.0,
+                  GestureDetector(
+                    onTap: hasPinned ? () => setState(() => _showPinboard = !_showPinboard) : null,
+                    child: Row(
+                      children: [
+                        Icon(
+                          _showPinboard ? Icons.collections_bookmark : _getIconForType(canvasState.type), 
+                          size: 16, 
+                          color: _showPinboard ? Colors.amberAccent : Colors.blueAccent
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _showPinboard ? 'PINBOARD' : (canvasState.title?.toUpperCase() ?? 'CANVAS'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _showPinboard ? Colors.amberAccent : Colors.white70,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const Spacer(),
+                  if (!_showPinboard && canvasState.type != CanvasContentType.empty)
+                    IconButton(
+                      icon: Icon(
+                        canvasState.isPinned ? Icons.push_pin : Icons.push_pin_outlined, 
+                        size: 16, 
+                        color: canvasState.isPinned ? Colors.amberAccent : Colors.white38
+                      ),
+                      onPressed: () => ref.read(canvasProvider.notifier).togglePin(),
+                      tooltip: canvasState.isPinned ? 'Unpin' : 'Pin to Canvas',
+                    ),
+                  if (hasPinned && !_showPinboard)
+                    IconButton(
+                      icon: const Icon(Icons.collections_bookmark_outlined, size: 16, color: Colors.white38),
+                      onPressed: () => setState(() => _showPinboard = true),
+                      tooltip: 'View Pinboard',
+                    ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 16, color: Colors.white38),
-                    onPressed: () => ref.read(canvasProvider.notifier).clear(),
-                    tooltip: 'Close Canvas',
+                    onPressed: () {
+                      if (_showPinboard) {
+                        setState(() => _showPinboard = false);
+                      } else {
+                        ref.read(canvasProvider.notifier).clear();
+                      }
+                    },
+                    tooltip: 'Close',
                   ),
                 ],
               ),
@@ -63,10 +105,76 @@ class CanvasHost extends ConsumerWidget {
           
           // Content
           Expanded(
-            child: _buildContent(context, canvasState),
+            child: _showPinboard ? _buildPinboard(canvasState) : _buildContent(context, canvasState),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPinboard(CanvasState state) {
+    if (state.pinnedItems.isEmpty) {
+       return Center(
+         child: Text("No pinned items", style: TextStyle(color: Colors.white.withOpacity(0.2))),
+       );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.2,
+      ),
+      itemCount: state.pinnedItems.length,
+      itemBuilder: (context, index) {
+        final item = state.pinnedItems[index];
+        return GestureDetector(
+          onTap: () {
+            // "Open" item from pinboard
+            if (item.type == CanvasContentType.html) ref.read(canvasProvider.notifier).showHtml(item.content!, title: item.title);
+            if (item.type == CanvasContentType.code) ref.read(canvasProvider.notifier).showCode(item.content!, title: item.title);
+            if (item.type == CanvasContentType.markdown) ref.read(canvasProvider.notifier).showMarkdown(item.content!, title: item.title);
+            if (item.type == CanvasContentType.image) ref.read(canvasProvider.notifier).showImage(item.content!, title: item.title);
+            if (item.type == CanvasContentType.custom) ref.read(canvasProvider.notifier).showGenUI(item.metadata!, title: item.title);
+            setState(() => _showPinboard = false);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(_getIconForType(item.type), size: 14, color: Colors.blueAccent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item.title ?? 'Untitled',
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  item.type == CanvasContentType.code ? 'Code Snippet' : (item.content ?? 'Artifact'),
+                  style: TextStyle(color: Colors.white38, fontSize: 10),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -89,12 +197,9 @@ class CanvasHost extends ConsumerWidget {
         );
 
       case CanvasContentType.code:
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: SelectableText(
-            state.content ?? '',
-            style: const TextStyle(fontFamily: 'monospace', color: Colors.cyanAccent),
-          ),
+        return MonacoEditorWidget(
+          code: state.content ?? '',
+          language: state.metadata?['language'] ?? 'javascript',
         );
 
       case CanvasContentType.image:
