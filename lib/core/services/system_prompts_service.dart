@@ -422,9 +422,13 @@ CRITICAL INSTRUCTIONS:
    - Include 5-7 diverse sections for reports: stat_card, text, chart, trend_list, or check_list.
    - Example (Checklist): {"name": "gen_ui_component", "args": {"component_type": "recipe_card", "data": {"title": "Google Pmax Campaign Checklist", "steps": [{"title": "Account Setup", "description": "Configure conversion tracking and bid strategies."}]}, "summary_text": "Your Google Pmax campaign checklist is ready."}}
    - Do NOT just write a text summary. You MUST generate the UI component with real, detailed data.
-5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
-6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
-7. If NO tool from the restricted list above applies, answer from your grounded knowledge. Simple answers for simple questions only. Complex tasks require GEN UI.
+5. PRIORITY: If using a tool, you MUST return a valid JSON object. 
+   - FORMAT: {"name": "tool_name", "args": {"param1": "value1", ...}}
+   - NO EXCEPTION: Do NOT use function-call syntax like tool_name(args).
+   - NO EXCEPTION: Do NOT wrap in markdown code blocks.
+   - NO EXCEPTION: Do NOT explain your logic. Return ONLY the JSON.
+6. GEN UI MANDATORY: If the user needs a report, chart, or list, use 'gen_ui_component'. 
+7. If NO tool applies, answer naturally in 1-3 sentences.
 
 {{EPHEMERAL_MESSAGE}}
 """;

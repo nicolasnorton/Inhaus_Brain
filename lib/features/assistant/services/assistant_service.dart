@@ -144,12 +144,13 @@ class AssistantService {
       audioAttachment: audioAttachment,
     );
 
-    // Special Command: /clean-cache
-    if (text.trim().toLowerCase() == '/clean-cache') {
+    // Special Commands: /clean-cache, /clear-cache, /clear cache
+    final cmd = text.trim().toLowerCase();
+    if (cmd == '/clean-cache' || cmd == '/clear-cache' || cmd == '/clear cache') {
        await _ref.read(semanticCacheServiceProvider).clearCache();
        final response = AssistantMessage(
          id: DateTime.now().toString(),
-         text: "🛡️ Semantic Cache has been cleared. I will now generate fresh responses for your queries.",
+         text: "🛡️ Workspace Cache Cleared. Local context reset. I'm ready for fresh instructions.",
          isUser: false,
          timestamp: DateTime.now(),
        );
