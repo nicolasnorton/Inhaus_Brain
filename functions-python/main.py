@@ -142,7 +142,8 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             tools=tools,
             thinking=thinking,
             audio=audio,
-            use_google_search=use_google_search
+            use_google_search=use_google_search,
+            generation_params=data.get("generationParams")
         )
 
         # Use the built-in serializer for clean output
@@ -219,6 +220,30 @@ def poll_research(req: https_fn.Request) -> https_fn.Response:
                 "status": interaction.state,
                 "output": interaction.output,
             }),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def poll_operation(req: https_fn.Request) -> https_fn.Response:
+    """Poll a standard LRO (e.g. Veo)."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        name = data.get("operationName")
+        if not name: return https_fn.Response("Missing operationName", status=400)
+        
+        client = GeminiClient()
+        op = client.get_operation(name)
+        
+        result = client._serialize_response(op)
+        return https_fn.Response(
+            json.dumps(result),
             status=200,
             headers={"Content-Type": "application/json"}
         )

@@ -97,6 +97,29 @@ class LocalPersistenceService {
     return [];
   }
 
+  // --- Canvas Pinned Items Persistence ---
+  Future<void> savePinnedItems(List<Map<String, dynamic>> items) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('canvas_pinned_items', jsonEncode(items));
+    } catch (e) {
+      debugPrint('Error saving pinned items: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getPinnedItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonString = prefs.getString('canvas_pinned_items');
+      if (jsonString != null) {
+        return List<Map<String, dynamic>>.from(jsonDecode(jsonString));
+      }
+    } catch (e) {
+      debugPrint('Error getting pinned items: $e');
+    }
+    return [];
+  }
+
   // --- Task Persistence ---
   Future<void> saveTasks(List<ProjectTask> tasks) async {
     final List<Map<String, dynamic>> json = tasks.map((t) => t.toJson()).toList();

@@ -10,7 +10,7 @@ This document outlines the expanded suite of Generative UI components available 
 | Component Type | Usage | Package Used |
 | :--- | :--- | :--- |
 | **`dynamic_form`** | Brief intake forms, surveys, data entry | `flutter_form_builder` |
-| **`kanban_board`** | Task tracking, workflow status, agent management | Custom / `kanban_board_widget` |
+| **`Much better but gen ui is not co`** | Task tracking, workflow status, agent management | Custom / `kanban_board_widget` |
 | **`mind_map`** | Brainstorming, concept mapping, flow diagrams | `graphview` (BuchheimWalker Tree) |
 | **`carousel`** | Asset previews (image/video), portfolio review | `carousel_slider` |
 | **`interactive_table`** | Service catalogs, data grids, sortable lists | `syncfusion_flutter_datagrid` |
@@ -19,6 +19,8 @@ This document outlines the expanded suite of Generative UI components available 
 | **`stepper`** | Guided workflows, multi-step processes, tutorials | `im_stepper` |
 | **`word_cloud`** | Keyword analysis, sentiment visualization, tag clouds | Custom `Wrap` (Weighted) |
 | **`calendar`** | Content schedules, editorial calendars, event timelines | `table_calendar` |
+| **`code_viewer`** | Syntax-highlighted code snippets with copy action | Custom / `SelectableText` |
+| **`video_player`** | Video playback with captions and autoplay | `video_player` wrapper |
 
 ---
 
@@ -130,6 +132,27 @@ Use for guiding users through a process.
 }
 ```
 *Note: Icon codes are optional integer code points for Material Icons.*
+
+### Code Viewer (`code_viewer`)
+Use for displaying syntax-highlighted code.
+```json
+{
+  "title": "Example Function",
+  "language": "dart",
+  "code": "void main() {\n  print('Hello World');\n}"
+}
+```
+
+### Video Player (`video_player`)
+Use for embedding video content.
+```json
+{
+  "title": "Product Demo",
+  "url": "https://example.com/demo.mp4",
+  "caption": "Walkthrough of new features",
+  "autoplay": false
+}
+```
 
 ---
 

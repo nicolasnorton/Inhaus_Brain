@@ -63,6 +63,7 @@ class AIProxyService {
 
   static String get _startResearchUrl => kDebugMode ? '$_pythonBaseUrl/start_research' : 'https://start-research-btdf7nijqa-uc.a.run.app';
   static String get _pollResearchUrl => kDebugMode ? '$_pythonBaseUrl/poll_research' : 'https://poll-research-btdf7nijqa-uc.a.run.app';
+  static String get _pollOperationUrl => kDebugMode ? '$_pythonBaseUrl/poll_operation' : 'https://poll-operation-btdf7nijqa-uc.a.run.app';
   static String get _extractStructuredUrl => kDebugMode ? '$_pythonBaseUrl/extract_structured' : 'https://extract-structured-btdf7nijqa-uc.a.run.app';
 
   /// Routes a generation request through the secure Cloud Function proxy.
@@ -296,8 +297,9 @@ class AIProxyService {
     };
 
     try {
+      // Route to Python proxy for modern LROs (Veo)
       final response = await http.post(
-        Uri.parse(_functionUrl),
+        Uri.parse(_pollOperationUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $idToken',
@@ -308,16 +310,28 @@ class AIProxyService {
       if (response.statusCode == 200) {
         if (response.body.isEmpty) {
            debugPrint('AIProxyService: ⚠️ Empty response body for polling.');
-           return {'done': false}; // Assume still valid or just keep polling
+           return {'done': false};
         }
         return jsonDecode(response.body);
       } else {
+        // Fallback to legacy JS proxy if python check fails (old operations)
+        debugPrint('AIProxyService: Python Poll failed (${response.statusCode}), trying legacy...');
+        final legacyRes = await http.post(
+          Uri.parse(_functionUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $idToken',
+          },
+          body: jsonEncode(body),
+        ).timeout(const Duration(seconds: 30));
+        
+        if (legacyRes.statusCode == 200) return jsonDecode(legacyRes.body);
+        
         throw Exception('Proxy Poll Error ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       if (e is http.ClientException || e.toString().contains('XMLHttpRequest')) {
         debugPrint('AIProxyService: ⚠️ Network error during poll (likely retriable): $e');
-        // Return a "not done" state to force a retry by the caller instead of crashing
         return {'done': false, 'error': 'network_transient'};
       }
       debugPrint('AIProxyService Poll Error: $e');

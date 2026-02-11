@@ -37,6 +37,8 @@ import '../presentation/widgets/gen_ui/word_cloud_widget.dart';
 import '../presentation/widgets/gen_ui/calendar_widget.dart';
 import '../presentation/widgets/gen_ui/dialogue_scene_widget.dart';
 import '../presentation/widgets/gen_ui/avatar_conversation_widget.dart';
+import '../presentation/widgets/gen_ui/code_viewer_widget.dart';
+import '../presentation/widgets/gen_ui/video_player_widget.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../../../core/widgets/video_preview_player.dart';
 import '../../canvas/ui/canvas_host.dart';
@@ -1217,6 +1219,10 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           avatarUrl: payload['avatar_url'],
           isRightAligned: payload['is_right_aligned'] ?? false,
         );
+      case 'code_viewer':
+        return CodeViewerWidget(data: payload);
+      case 'video_player':
+        return VideoPlayerWidget(data: payload);
       default:
         // Fallback for any other type that might have sections (generic report)
         if (payload.containsKey('sections') || payload.containsKey('trends')) {

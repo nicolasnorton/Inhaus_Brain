@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+
 import '../providers/canvas_provider.dart';
-import 'monaco_editor_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/strategy_board_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/budget_chart_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/kanban_board_widget.dart';
@@ -19,6 +19,8 @@ import '../../assistant/presentation/widgets/gen_ui/word_cloud_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/calendar_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/dialogue_scene_widget.dart';
 import '../../assistant/presentation/widgets/gen_ui/avatar_conversation_widget.dart';
+import '../../assistant/presentation/widgets/gen_ui/code_viewer_widget.dart';
+import '../../assistant/presentation/widgets/gen_ui/video_player_widget.dart';
 
 class CanvasHost extends ConsumerStatefulWidget {
   const CanvasHost({super.key});
@@ -136,42 +138,65 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
             if (item.type == CanvasContentType.code) ref.read(canvasProvider.notifier).showCode(item.content!, title: item.title);
             if (item.type == CanvasContentType.markdown) ref.read(canvasProvider.notifier).showMarkdown(item.content!, title: item.title);
             if (item.type == CanvasContentType.image) ref.read(canvasProvider.notifier).showImage(item.content!, title: item.title);
+            if (item.type == CanvasContentType.video) ref.read(canvasProvider.notifier).showVideo(item.content!, title: item.title);
             if (item.type == CanvasContentType.custom) ref.read(canvasProvider.notifier).showGenUI(item.metadata!, title: item.title);
             setState(() => _showPinboard = false);
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(_getIconForType(item.type), size: 14, color: Colors.blueAccent),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        item.title ?? 'Untitled',
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Row(
+                      children: [
+                        Icon(_getIconForType(item.type), size: 14, color: Colors.blueAccent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item.title ?? 'Untitled',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Text(
+                      item.type == CanvasContentType.code ? 'Code Snippet' : (item.content ?? 'Artifact'),
+                      style: const TextStyle(color: Colors.white38, fontSize: 10),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-                const Spacer(),
-                Text(
-                  item.type == CanvasContentType.code ? 'Code Snippet' : (item.content ?? 'Artifact'),
-                  style: TextStyle(color: Colors.white38, fontSize: 10),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: GestureDetector(
+                  onTap: () {
+                    // Logic to unpin specific item would go here, for now just toggle current if it matches
+                    // To do this properly we need an ID or explicit remove method in provider
+                    if (state.pinnedItems.contains(item)) {
+                       // Temporary: Select it then toggle pin
+                       if (item.type == CanvasContentType.html) ref.read(canvasProvider.notifier).showHtml(item.content!, title: item.title);
+                       // ... (other types)
+                       // Ideally we add removePin(item) to provider
+                       ref.read(canvasProvider.notifier).togglePin(); 
+                    }
+                  },
+                  child: const Icon(Icons.close, size: 16, color: Colors.white30),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -188,6 +213,18 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
           child: Text(state.content ?? '', style: const TextStyle(fontFamily: 'monospace')),
         );
       
+      case CanvasContentType.code:
+        return Center(
+          child: SizedBox(
+            width: 800, // Constrain width for better readability on large screens
+            child: CodeViewerWidget(data: {
+              'code': state.content,
+              'language': state.metadata?['language'] ?? 'text',
+              'title': state.title ?? 'Code Snippet',
+            }),
+          ),
+        );
+      
       case CanvasContentType.markdown:
         return Markdown(
           data: state.content ?? '',
@@ -196,11 +233,6 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
           ),
         );
 
-      case CanvasContentType.code:
-        return MonacoEditorWidget(
-          code: state.content ?? '',
-          language: state.metadata?['language'] ?? 'javascript',
-        );
 
       case CanvasContentType.image:
         return Center(
@@ -210,6 +242,19 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
             errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white24, size: 48),
           ),
         );
+
+      case CanvasContentType.video:
+        return Center(
+          child: SizedBox(
+            width: 800,
+            child: VideoPlayerWidget(data: {
+              'url': state.content,
+              'autoplay': false,
+              'title': state.title ?? 'Video',
+            }),
+          ),
+        );
+
 
       case CanvasContentType.custom:
         final type = state.metadata?['type'] as String?;
@@ -242,12 +287,16 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
               avatarUrl: data['avatarUrl'],
               isRightAligned: data['isRightAligned'] ?? false,
             ));
+          case 'code_viewer':
+            return Center(child: SizedBox(width: 800, child: CodeViewerWidget(data: data)));
+          case 'video_player':
+            return Center(child: SizedBox(width: 800, child: VideoPlayerWidget(data: data)));
           default:
             return Center(child: Text("Unknown component: $type", style: const TextStyle(color: Colors.white54)));
         }
 
       case CanvasContentType.empty:
-      default:
+
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -276,3 +325,5 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
     }
   }
 }
+
+

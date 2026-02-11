@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/local_persistence_service.dart';
 
 enum CanvasContentType {
   empty,
@@ -49,10 +50,59 @@ class CanvasState {
       pinnedItems: pinnedItems ?? this.pinnedItems,
     );
   }
+
+  factory CanvasState.fromJson(Map<String, dynamic> json) {
+    return CanvasState(
+      type: CanvasContentType.values.firstWhere(
+        (e) => e.toString() == json['type'],
+        orElse: () => CanvasContentType.empty,
+      ),
+      content: json['content'] as String?,
+      metadata: json['metadata'] != null
+          ? Map<String, dynamic>.from(json['metadata'])
+          : null,
+      title: json['title'] as String?,
+      isMobileCanvasOpen: json['isMobileCanvasOpen'] as bool? ?? false,
+      isPinned: json['isPinned'] as bool? ?? false,
+      pinnedItems: (json['pinnedItems'] as List<dynamic>?)
+              ?.map((e) => CanvasState.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type.toString(),
+      'content': content,
+      'metadata': metadata,
+      'title': title,
+      'isMobileCanvasOpen': isMobileCanvasOpen,
+      'isPinned': isPinned,
+      'pinnedItems': pinnedItems.map((e) => e.toJson()).toList(),
+    };
+  }
 }
 
 class CanvasNotifier extends StateNotifier<CanvasState> {
-  CanvasNotifier() : super(const CanvasState());
+  final LocalPersistenceService _persistence;
+
+  CanvasNotifier(this._persistence) : super(const CanvasState()) {
+    _loadPinnedItems();
+  }
+
+  Future<void> _loadPinnedItems() async {
+    final items = await _persistence.getPinnedItems();
+    if (items.isNotEmpty) {
+      final pinnedStates = items.map((data) => CanvasState.fromJson(Map<String, dynamic>.from(data))).toList();
+      state = state.copyWith(pinnedItems: pinnedStates);
+    }
+  }
+
+  Future<void> _savePinnedItems() async {
+    final items = state.pinnedItems.map((s) => s.toJson()).toList();
+    await _persistence.savePinnedItems(items);
+  }
   
   void toggleMobileCanvas(bool isOpen) {
     state = state.copyWith(isMobileCanvasOpen: isOpen);
@@ -77,6 +127,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
     }
 
     state = state.copyWith(isPinned: newPinned, pinnedItems: newPinnedItems);
+    _savePinnedItems();
   }
 
   void showHtml(String html, {String? title}) {
@@ -120,6 +171,16 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
     );
   }
   
+  void showVideo(String url, {String? title}) {
+    state = state.copyWith(
+      type: CanvasContentType.video,
+      content: url,
+      title: title ?? 'Video',
+      isMobileCanvasOpen: true,
+      isPinned: state.pinnedItems.any((item) => item.content == url),
+    );
+  }
+  
   void showGenUI(Map<String, dynamic> data, {String? title}) {
     state = state.copyWith(
       type: CanvasContentType.custom,
@@ -142,5 +203,6 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
 }
 
 final canvasProvider = StateNotifierProvider<CanvasNotifier, CanvasState>((ref) {
-  return CanvasNotifier();
+  final persistence = ref.watch(persistenceServiceProvider);
+  return CanvasNotifier(persistence);
 });

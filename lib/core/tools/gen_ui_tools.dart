@@ -12,7 +12,21 @@ class GenUIComponentTool extends AgentTool {
        },
        'data': {
           'type': 'object',
-           'description': 'The structured data required by the component'
+           'description': '''The structured data required by the component.
+For "code_viewer":
+{
+  "code": "void main() { print('Hello'); }",
+  "language": "dart",
+  "title": "Example Code"
+}
+
+For "video_player":
+{
+  "url": "https://example.com/video.mp4",
+  "caption": "Demo video",
+  "autoplay": false,
+  "title": "My Video"
+}'''
        },
        'summary_text': {
           'type': 'string',
@@ -33,9 +47,10 @@ class GenUIComponentTool extends AgentTool {
             'enum': [
               'strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report',
               'dynamic_form', 'mind_map', 'carousel', 'interactive_table', 'radial_gauge', 'accordion', 'stepper', 'word_cloud', 'calendar',
-              'dialogue_scene', 'avatar_conversation'
+              'dialogue_scene', 'avatar_conversation',
+              'code_viewer', 'video_player'
             ],
-            'description': 'The type of UI component to render.'
+            'description': 'The type of UI component to render. NEW EXAMPLES: Use "dialogue_scene" for 3D/immersive scenes. "avatar_conversation" for character interactions. "code_viewer" for code snippets. "video_player" for video content.'
           },
           'data': {
             'type': 'object',

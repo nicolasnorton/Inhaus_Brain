@@ -226,9 +226,9 @@ class EdgeAIService {
              prompt: proxyPrompt, 
              config: config,
              systemInstruction: effectiveMemory,
-             tools: [], // Native tools aren't fully supported via proxy yet, but we pass empty list to avoid None
-             thinking: false, // Default to false for now unless specifically requested
-             audio: false,
+             tools: [], 
+             thinking: config.modelId.contains('thinking') || effectivePrompt.toLowerCase().contains('deep research'),
+             audio: config.modelId.contains('lyra'),
            ),
            maxAttempts: 2,
            delayFactor: const Duration(milliseconds: 500),
@@ -240,16 +240,29 @@ class EdgeAIService {
            final candidate = candidates.first;
            final content = candidate['content'];
            final parts = content?['parts'] as List?;
-           if (parts != null && parts.isNotEmpty) {
-              final firstPart = parts.first;
-              if (firstPart is Map) {
-                text = firstPart['text'] ?? jsonEncode(firstPart);
-              } else {
-                text = firstPart.toString();
-              }
-           } else {
-             _logger.w('EdgeAI: Proxy response has candidates but NO parts.');
-           }
+            if (parts != null && parts.isNotEmpty) {
+               final buffer = StringBuffer();
+               for (var part in parts) {
+                 if (part is Map) {
+                   if (part.containsKey('thought')) {
+                      buffer.writeln("> *Thinking: ${part['thought']}* \n");
+                   }
+                   if (part.containsKey('text')) {
+                      buffer.write(part['text']);
+                   }
+                   // If it's a direct tool call from the parts list, preserve it for AssistantService
+                   if (part.containsKey('executable_adunit')) {
+                      buffer.write(jsonEncode(part));
+                   }
+                 }
+               }
+               text = buffer.toString();
+               if (text.isEmpty && parts.isNotEmpty) {
+                  text = jsonEncode(parts.first);
+               }
+            } else {
+              _logger.w('EdgeAI: Proxy response has candidates but NO parts.');
+            }
          } else {
            _logger.w('EdgeAI: Proxy response has NO candidates. Fallback text used.');
            if (proxyRes['error'] != null) {

@@ -1,4 +1,6 @@
 import os
+import json
+import base64
 from google import genai
 from google.genai import types
 from typing import Optional, List, Union, Dict, Any
@@ -9,9 +11,6 @@ class GeminiClient:
     def __init__(self, api_key: Optional[str] = None):
         """
         Initialize Gemini Client.
-        
-        Args:
-            api_key: Optional API key. If not provided, attempts to read from GOOGLE_API_KEY environment variable.
         """
         self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
         if not self.api_key:
@@ -26,7 +25,7 @@ class GeminiClient:
             self.client = genai.Client()
 
     def _normalize_model_name(self, model_name: str) -> str:
-        """Normalize model names to ensure availability."""
+        """Normalize model names that might be legacy or aliased."""
         if not model_name:
             return "gemini-2.5-flash"
 
@@ -35,19 +34,27 @@ class GeminiClient:
         if any(sm in model_name.lower() for sm in SPECIALIZED_MODELS):
             return model_name
             
-        # Standardize gemini-3 placeholders to 2.5 stable
-        if "gemini-3" in model_name:
-             # Map gemini-3-flash -> gemini-2.5-flash
-             # Map gemini-3-pro -> gemini-2.5-pro
-             # Unless it's image, which maps to gemini-2.5-flash-image
-             if "image" in model_name:
-                 return "gemini-2.5-flash-image"
-             return "gemini-2.5-flash" if "flash" in model_name else "gemini-2.5-pro"
+        # Map Gemini 3 (Frontier)
+        if "gemini-3" in model_name.lower():
+            if "image" in model_name:
+                return "gemini-3-pro-image-preview"
+            return "gemini-3-pro-preview" if "pro" in model_name.lower() else "gemini-3-flash-preview"
             
-        # Standardize simple/legacy names to 2.5 versioned names
-        if model_name == "gemini-1.5-flash" or model_name == "gemini-1.5-flash-002" or model_name == "gemini-flash":
+        # Map Gemini 2.5 (High Performance)
+        if "gemini-2.5" in model_name.lower():
+            if "lite" in model_name:
+                return "gemini-2.5-flash-lite"
+            return "gemini-2.5-pro" if "pro" in model_name.lower() else "gemini-2.5-flash"
+
+        # Map Thinking requests
+        if "thinking" in model_name.lower():
+            return "gemini-2.0-flash-thinking-exp-01-21"
+
+        # Standardize simple/legacy names to latest 2.5 versioned names for stability
+        if model_name in ["gemini-1.5-flash", "gemini-1.5-flash-002", "gemini-flash", "gemini-2.0-flash"]:
             return "gemini-2.5-flash"
-        if model_name == "gemini-1.5-pro" or model_name == "gemini-1.5-pro-002" or model_name == "gemini-pro":
+        
+        if model_name in ["gemini-1.5-pro", "gemini-1.5-pro-002", "gemini-pro", "gemini-2.0-pro"]:
             return "gemini-2.5-pro"
             
         return model_name
@@ -55,92 +62,68 @@ class GeminiClient:
     def generate_content(
         self, 
         prompt: Union[str, List[Union[str, Any]]], 
-        model_name: str = "gemini-1.5-flash-002",
+        model_name: str = "gemini-2.0-flash",
         generation_config: Optional[Dict[str, Any]] = None,
         stream: bool = False,
         system_instruction: Optional[str] = None,
         tools: Optional[List[Any]] = None,
         thinking: bool = False,
         audio: bool = False,
-        use_google_search: bool = False
+        use_google_search: bool = False,
+        generation_params: Optional[Dict[str, Any]] = None
     ) -> Any:
         """
         Generate content using the specified model.
-        
-        Args:
-            prompt: The input prompt (string or list of parts).
-            model_name: Model to use.
-            generation_config: Configuration for generation (temperature, etc).
-            stream: Whether to stream the response.
-            system_instruction: Optional system instruction.
-            tools: Optional list of tools (functions, google search, etc).
-            thinking: Whether to enable thinking mode.
-            use_google_search: Whether to enable Google Search tool.
-            
-        Returns:
-            The generation response.
+        Automatically routes Veo models to generate_video.
         """
+        model = self._normalize_model_name(model_name)
+        
+        # Route Veo models to generate_video
+        if "veo" in model.lower():
+            return self.generate_video(prompt, model=model, config=generation_params)
+
         if not self.client:
             raise Exception("GeminiClient not initialized with API Key.")
 
-        # Prepare generation config
         config_params = (generation_config or {}).copy()
         
         # Handle thinking mode
         thinking_config = None
         if thinking:
             thinking_config = types.ThinkingConfig(include_thoughts=True)
-            # Remove from config_params if it was passed there too
             config_params.pop("thinking_config", None)
 
-        # Process Tools
         processed_tools = []
-        
-        # Add Google Search if requested
         if use_google_search:
             processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
 
-        # Handle tools conversion from dict to types.Tool
         if tools:
             for tool in tools:
                 if isinstance(tool, dict):
-                    # Grounding: Google Search
                     if "google_search" in tool or "web_search" in tool:
                         processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
-                    # Grounding: Google Maps
                     elif "google_maps" in tool or "googleMaps" in tool:
                         processed_tools.append(types.Tool(google_maps=types.GoogleMaps()))
-                    # Code Execution
                     elif "code_execution" in tool:
                         processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
-                    # Computer Use
-                    elif "computer_use" in tool:
-                        processed_tools.append(types.Tool(computer_use=types.ComputerUse()))
-                    # Function Calling (Declarations)
                     elif "function_declarations" in tool:
                         decls = [types.FunctionDeclaration(**d) for d in (tool["function_declarations"] or [])]
                         processed_tools.append(types.Tool(function_declarations=decls))
                     else:
                         processed_tools.append(tool)
                 elif isinstance(tool, str):
-                     # Handle common string-based tool aliases
                     if tool in ["google_search", "web_search"]:
                         processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
-                    elif tool in ["google_maps", "googleMaps"]:
-                        processed_tools.append(types.Tool(google_maps=types.GoogleMaps()))
                     elif tool == "code_execution":
                         processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
                     else:
-                        # For now, if it's an unknown string, we keep it (might be a system tool)
                         processed_tools.append(tool)
                 else:
                     processed_tools.append(tool)
 
-        # Handle Audio Modality
         if audio:
             config_params["response_modalities"] = ["AUDIO"]
 
-        # Construct the final config
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
             tools=processed_tools,
@@ -148,57 +131,73 @@ class GeminiClient:
             **config_params
         )
 
-        # Process prompt if it's a list (handle multimodal parts)
         processed_contents = prompt
         if isinstance(prompt, list):
             processed_contents = []
             for item in prompt:
-                if isinstance(item, dict):
-                    # Handle multimodal dictionaries (e.g., {"mime_type": "image/jpeg", "data": "..."})
-                    if "inline_data" in item:
-                        import base64
-                        data = item["inline_data"]
-                        raw_data = data["data"]
-                        if isinstance(raw_data, str):
-                            try:
-                                # Check if it's base64
-                                raw_data = base64.b64decode(raw_data)
-                            except:
-                                pass
-                        processed_contents.append(types.Part.from_bytes(
-                            data=raw_data, 
-                            mime_type=data["mime_type"]
-                        ))
-                    elif "file_data" in item:
-                        file_data = item["file_data"]
-                        processed_contents.append(types.Part.from_uri(
-                            file_uri=file_data["file_uri"],
-                            mime_type=file_data["mime_type"]
-                        ))
-                    else:
-                        processed_contents.append(item)
+                if isinstance(item, dict) and "inline_data" in item:
+                    data = item["inline_data"]
+                    raw_data = base64.b64decode(data["data"]) if isinstance(data["data"], str) else data["data"]
+                    processed_contents.append(types.Part.from_bytes(data=raw_data, mime_type=data["mime_type"]))
+                elif isinstance(item, dict) and "file_data" in item:
+                    processed_contents.append(types.Part.from_uri(file_uri=item["file_data"]["file_uri"], mime_type=item["file_data"]["mime_type"]))
                 else:
                     processed_contents.append(item)
 
         if stream:
-            return self.client.models.generate_content_stream(
-                model=self._normalize_model_name(model_name),
-                contents=processed_contents,
-                config=config
-            )
+            return self.client.models.generate_content_stream(model=model, contents=processed_contents, config=config)
         else:
-            return self.client.models.generate_content(
-                model=self._normalize_model_name(model_name),
-                contents=processed_contents,
-                config=config
-            )
+            return self.client.models.generate_content(model=model, contents=processed_contents, config=config)
+
+    def generate_video(self, prompt: str, model: str = "veo-2.0-generate-001", config: Optional[Dict[str, Any]] = None) -> Any:
+        """Generate a video using Veo."""
+        if not self.client:
+            raise Exception("GeminiClient not initialized.")
+        
+        cv = {
+            "duration_seconds": 5,
+            "aspect_ratio": "16:9",
+        }
+        if config:
+            if 'durationSeconds' in config: cv['duration_seconds'] = config['durationSeconds']
+            if 'aspectRatio' in config: cv['aspect_ratio'] = config['aspectRatio']
+            if 'resolution' in config: cv['resolution'] = config['resolution']
+            cv.update({k: v for k, v in config.items() if k not in ['durationSeconds', 'aspectRatio', 'resolution']})
+
+        return self.client.models.generate_video(
+            model=model,
+            prompt=prompt,
+            config=types.GenerateVideoConfig(**cv)
+        )
+
+    def get_operation(self, name: str) -> Any:
+        """Get status of an LRO."""
+        if not self.client:
+            raise Exception("GeminiClient not initialized.")
+        return self.client.operations.get(name=name)
 
     def _serialize_response(self, response: Any) -> Dict[str, Any]:
-        """Helper to serialize a GenAI response object to a dict."""
-        candidates_data = []
+        """Helper to serialize a GenAI response object (Content OR Operation) to a dict."""
         
-        # Guard against completely empty/failed response
+        # Handle LRO/Operation responses
+        if hasattr(response, 'name') and (hasattr(response, 'done') or hasattr(response, 'metadata')):
+            return {
+                "operationName": response.name,
+                "done": getattr(response, 'done', False),
+                "metadata": response.metadata if hasattr(response, 'metadata') else None,
+                "custom_type": "veo_lro" if "veo" in response.name.lower() else "lro_op",
+                "result": self._serialize_response(response.result) if getattr(response, 'done', False) and hasattr(response, 'result') else None
+            }
+
+        candidates_data = []
         if not hasattr(response, 'candidates') or not response.candidates:
+            if hasattr(response, 'generated_images'):
+                return self._serialize_images(response)
+            
+            # Check for direct video result (if LRO already finished in-line, rare but possible)
+            if hasattr(response, 'video'):
+                 return {"videoUri": response.video.uri, "custom_type": "veo_result"}
+
             return {
                 "candidates": [],
                 "usageMetadata": self._serialize_usage(response)
@@ -206,35 +205,26 @@ class GeminiClient:
 
         for cand in response.candidates:
             parts_data = []
-            
-            # Guard against candidates with no content or parts (e.g. safety blocks)
             if cand.content and cand.content.parts:
                 for part in cand.content.parts:
-                    # Text Part
                     if hasattr(part, 'text') and part.text:
                         parts_data.append({"text": part.text})
-                    
-                    # Thought Part (Thinking Mode)
                     elif hasattr(part, 'thought') and part.thought:
                         parts_data.append({"thought": part.thought})
-                    
-                    # Function Call Part
                     elif hasattr(part, 'function_call') and part.function_call:
                         parts_data.append({
-                            "executable_adunit": { # Internal structure mapped to what frontend expects
+                            "executable_adunit": {
                                 "call": {
                                     "function_name": part.function_call.name,
                                     "args": part.function_call.args
                                 }
                             }
                         })
-                    
-                    # Audio Part (Response Modality)
                     elif hasattr(part, 'inline_data') and part.inline_data:
                          parts_data.append({
                              "inlineData": {
                                  "mimeType": part.inline_data.mime_type,
-                                 "data": part.inline_data.data.hex() if hasattr(part.inline_data.data, 'hex') else str(part.inline_data.data)
+                                 "data": base64.b64encode(part.inline_data.data).decode('utf-8')
                              }
                          })
             
@@ -252,8 +242,16 @@ class GeminiClient:
             "usageMetadata": self._serialize_usage(response)
         }
 
+    def _serialize_images(self, response: Any) -> Dict[str, Any]:
+        image_data = []
+        for img in getattr(response, 'generated_images', []):
+            image_data.append({
+                "mimeType": img.image.mime_type,
+                "data": base64.b64encode(img.image.data).decode('utf-8')
+            })
+        return {"images": image_data, "custom_type": "imagen"}
+
     def _serialize_usage(self, response: Any) -> Dict[str, Any]:
-        """Helper to serialize usage metadata."""
         if not hasattr(response, 'usage_metadata') or not response.usage_metadata:
             return {}
         return {
@@ -263,7 +261,6 @@ class GeminiClient:
         }
 
     def _serialize_grounding(self, metadata: Any) -> Optional[Dict[str, Any]]:
-        """Helper to serialize grounding metadata."""
         if not metadata: return None
         return {
             "searchEntryPoint": metadata.search_entry_point.rendered_content if hasattr(metadata.search_entry_point, 'rendered_content') else None,
@@ -273,21 +270,18 @@ class GeminiClient:
             ]
         }
 
-    def generate_image(self, prompt: str, model: str = "gemini-2.5-flash-image", **kwargs) -> Any:
-        """Generate an image using Imagen."""
+    def generate_image(self, prompt: str, model: str = "imagen-3.0-generate-001", **kwargs) -> Any:
         if not self.client:
-             raise Exception("GeminiClient not initialized with API Key.")
+             raise Exception("GeminiClient not initialized.")
         return self.client.models.generate_image(
             model=model,
             prompt=prompt,
             config=types.GenerateImageConfig(**kwargs)
         )
 
-    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-1.5-flash-002") -> int:
-        """Count tokens for the given prompt."""
+    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.0-flash") -> int:
         if not self.client:
-            raise Exception("GeminiClient not initialized with API Key.")
-            
+            raise Exception("GeminiClient not initialized.")
         response = self.client.models.count_tokens(
             model=self._normalize_model_name(model_name),
             contents=prompt
@@ -295,46 +289,11 @@ class GeminiClient:
         return response.total_tokens
 
     def create_interaction(self, model: str, prompt: str, **kwargs) -> Any:
-        """Create a deep research interaction."""
         if not self.client:
             raise Exception("GeminiClient not initialized.")
-        return self.client.interactions.create(
-             model=model,
-             contents=prompt,
-             **kwargs
-        )
+        return self.client.interactions.create(model=model, contents=prompt, **kwargs)
 
     def get_interaction(self, id: str) -> Any:
-        """Get the status/result of a deep research interaction."""
         if not self.client:
              raise Exception("GeminiClient not initialized.")
         return self.client.interactions.get(id=id)
-
-    def upload_file(self, path: str, mime_type: Optional[str] = None, display_name: Optional[str] = None) -> Any:
-        """Upload a file to the File API."""
-        if not self.client:
-            raise Exception("GeminiClient not initialized with API Key.")
-        return self.client.files.upload(path=path, config=types.UploadFileConfig(mime_type=mime_type, display_name=display_name))
-
-    def get_file(self, name: str) -> Any:
-        """Get a file from the File API."""
-        if not self.client:
-            raise Exception("GeminiClient not initialized with API Key.")
-        return self.client.files.get(name=name)
-
-    def delete_file(self, name: str) -> None:
-        """Delete a file from the File API."""
-        if not self.client:
-            raise Exception("GeminiClient not initialized with API Key.")
-        self.client.files.delete(name=name)
-
-    def list_models(self) -> List[str]:
-        """List available models."""
-        if not self.client:
-            return []
-        try:
-            models = self.client.models.list()
-            return [m.name for m in models]
-        except Exception as e:
-            print(f"Error listing models: {str(e)}")
-            return []
