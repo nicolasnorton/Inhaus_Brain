@@ -143,6 +143,22 @@ class AssistantService {
       attachment: attachment,
       audioAttachment: audioAttachment,
     );
+
+    // Special Command: /clean-cache
+    if (text.trim().toLowerCase() == '/clean-cache') {
+       await _ref.read(semanticCacheServiceProvider).clearCache();
+       final response = AssistantMessage(
+         id: DateTime.now().toString(),
+         text: "🛡️ Semantic Cache has been cleared. I will now generate fresh responses for your queries.",
+         isUser: false,
+         timestamp: DateTime.now(),
+       );
+       _history.add(userMsg);
+       _history.add(response);
+       await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
+       return response;
+    }
+
     _history.add(userMsg);
     await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
 
@@ -196,7 +212,7 @@ class AssistantService {
       // FIRE-AND-FORGET: Non-blocking Knowledge Ingestion
       // Agent 2: Prevent blocking video generation flow
       // We start this immediately but DO NOT await it, so the UI updates instantly.
-      debugPrint('AssitantService: 🚀 Starting background knowledge ingestion...');
+      debugPrint('AssistantService: 🚀 Starting background knowledge ingestion...');
       unawaited(
         _ref.read(knowledgeIngestionServiceProvider).ingestCopilotScreencap(
           "Query: $text\nResponse: ${message.text}",
@@ -543,8 +559,13 @@ class AssistantService {
     blackboard.updateAgentStatus('Creative', AgentStatus.idle);
     blackboard.updateAgentStatus('Strategist', AgentStatus.idle);
 
-    // Store in Cache (only if valid/successful)
-    if (!responseText.contains("No content generated") && 
+    // Store in Cache (only if valid/successful/real)
+    final isMock = responseText.contains("Mock") || 
+                   responseText.contains("Simulated") || 
+                   responseText.contains("unavailable");
+    
+    if (!isMock &&
+        !responseText.contains("No content generated") && 
         !responseText.contains("I encountered an error") &&
         responseText.length > 20) {
       await semanticCache.store(intentEnum.toString().split('.').last, mainPrompt, responseText);

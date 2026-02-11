@@ -151,6 +151,29 @@ class SemanticCacheService {
     }
   }
 
+  /// Clears the entire cache for the current user.
+  Future<void> clearCache() async {
+    final user = _ref.read(authServiceProvider).currentUser;
+    if (user == null) return;
+
+    try {
+      final docs = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('cache')
+          .get();
+      
+      final batch = _firestore.batch();
+      for (var doc in docs.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      debugPrint('SemanticCache: 🛡️ Cache cleared for user ${user.uid}');
+    } catch (e) {
+      debugPrint('SemanticCache: Clear Error: $e');
+    }
+  }
+
   /// Alias for store (backward compatibility)
   Future<void> set(String prompt, AIModelConfig config, EdgeAIResult result) async {
     return store(prompt, config, result);

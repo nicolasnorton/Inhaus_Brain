@@ -32,7 +32,7 @@ import 'core/services/blackboard_persistence_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.2.1-clean-fix STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.2.2-clean-fix STARTED');
   
   // Load environment variables
   try {
