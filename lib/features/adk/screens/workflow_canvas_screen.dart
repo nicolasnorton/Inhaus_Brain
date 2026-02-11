@@ -779,6 +779,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.variableAssigner: return FontAwesomeIcons.penToSquare;
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
       case WorkflowNodeType.note: return FontAwesomeIcons.noteSticky;
+      case WorkflowNodeType.dialogueScene: return FontAwesomeIcons.comments;
     }
   }
 
@@ -813,6 +814,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return Colors.pinkAccent;
       case WorkflowNodeType.note:
         return Colors.amberAccent;
+      case WorkflowNodeType.dialogueScene:
+        return Colors.deepOrangeAccent;
     }
   }
 

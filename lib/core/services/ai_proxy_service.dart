@@ -37,6 +37,29 @@ class AIProxyService {
   static String get _generateImageUrl => kDebugMode ? '$_pythonBaseUrl/generate_image' : 'https://generate-image-btdf7nijqa-uc.a.run.app';
   static String get _generateContentUrl => kDebugMode ? '$_pythonBaseUrl/generate_content' : 'https://generate-content-btdf7nijqa-uc.a.run.app';
   static String get _countTokensUrl => kDebugMode ? '$_pythonBaseUrl/count_tokens' : 'https://count-tokens-btdf7nijqa-uc.a.run.app';
+  static String get _liveTokenUrl => kDebugMode ? '$_pythonBaseUrl/get_live_token' : 'https://get-live-token-btdf7nijqa-uc.a.run.app';
+
+  /// Fetch a short-lived access token for the Multimodal Live API.
+  Future<Map<String, dynamic>> getLiveToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('User must be logged in.');
+
+    final idToken = await user.getIdToken();
+    final response = await http.post(
+      Uri.parse(_liveTokenUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to get Live API Token: ${response.body}');
+    }
+  }
 
   static String get _startResearchUrl => kDebugMode ? '$_pythonBaseUrl/start_research' : 'https://start-research-btdf7nijqa-uc.a.run.app';
   static String get _pollResearchUrl => kDebugMode ? '$_pythonBaseUrl/poll_research' : 'https://poll-research-btdf7nijqa-uc.a.run.app';
@@ -224,7 +247,7 @@ class AIProxyService {
   /// Counts tokens using the Python Gemini SDK.
   static Future<int> countTokens({
     required String prompt,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-2.5-flash',
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -364,7 +387,7 @@ class AIProxyService {
     required String document,
     required Map<String, dynamic> schema,
     List<Map<String, dynamic>>? examples,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-2.5-flash',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {

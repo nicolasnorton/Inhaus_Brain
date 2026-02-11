@@ -69,7 +69,8 @@ enum WorkflowNodeType {
   parameterExtractor,
   httpRequest,
   listOperator,
-  note
+  note,
+  dialogueScene
 }
 
 enum PipelineStepType { sequential, parallel, loop }

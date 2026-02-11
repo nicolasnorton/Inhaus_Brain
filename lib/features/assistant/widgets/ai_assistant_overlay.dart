@@ -35,6 +35,8 @@ import '../presentation/widgets/gen_ui/accordion_widget.dart';
 import '../presentation/widgets/gen_ui/stepper_wizard_widget.dart';
 import '../presentation/widgets/gen_ui/word_cloud_widget.dart';
 import '../presentation/widgets/gen_ui/calendar_widget.dart';
+import '../presentation/widgets/gen_ui/dialogue_scene_widget.dart';
+import '../presentation/widgets/gen_ui/avatar_conversation_widget.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../../../core/widgets/video_preview_player.dart';
 import '../../chat/models/chat_models.dart';
@@ -1150,6 +1152,18 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       case 'trend_report':
       case 'analysis_report':
         return TrendReportWidget(data: payload);
+      case 'dialogue_scene':
+        return DialogueSceneWidget(
+          initialUrl: payload['initial_url'],
+          htmlContent: payload['html_content'],
+        );
+      case 'avatar_conversation':
+        return AvatarConversationWidget(
+          speakerName: payload['speaker_name'] ?? 'Speaker',
+          text: payload['text'] ?? '',
+          avatarUrl: payload['avatar_url'],
+          isRightAligned: payload['is_right_aligned'] ?? false,
+        );
       default:
         // Fallback for any other type that might have sections (generic report)
         if (payload.containsKey('sections') || payload.containsKey('trends')) {

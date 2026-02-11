@@ -399,7 +399,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
                 throw { status: 400, message: 'Bad Request: Missing "prompt" or "instances" in body.' };
             }
 
-            const modelId = model || 'gemini-2.0-flash';
+            const modelId = model || 'gemini-2.5-flash';
 
             // --- PATH B: EMBEDDINGS (New) ---
             if (modelId.toLowerCase().includes('embedding') || req.body.instances) {
@@ -529,13 +529,11 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             // We also add fallbacks to handle regional availability and model retirements
             let modelVariations = [modelId];
 
-            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.0-flash')) {
+            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.5-flash') || modelId.includes('gemini-2.0-flash')) {
                 // Try newer versions and then the official next-gen
-                modelVariations = ['gemini-1.5-flash-002', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.0-pro')) {
-                modelVariations = ['gemini-1.5-pro-002', 'gemini-2.0-pro', 'gemini-2.0-flash', 'gemini-1.5-pro'];
-            } else if (modelId.includes('gemini-2.')) {
-                modelVariations = ['gemini-2.0-flash', 'gemini-1.5-flash-002'];
+                modelVariations = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-002'];
+            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.5-pro') || modelId.includes('gemini-2.0-pro')) {
+                modelVariations = ['gemini-2.5-pro', 'gemini-1.5-pro-002', 'gemini-1.5-pro'];
             }
 
             console.log(`[PROXY] 🛡️ Model strategy: ${JSON.stringify(modelVariations)}`);
@@ -593,8 +591,12 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
     });
 });
 
-// Expose CopilotKit Runtime
+// Expose CopilotKit Runtime (Legacy - to be deprecated)
 exports.copilotRuntime = functions.https.onRequest(copilotHandler);
+
+// Expose Vertex AI Chat (Direct LangChain - Recommended)
+const { vertexChatHandler } = require('./vertex-chat');
+exports.vertexChat = functions.https.onRequest(vertexChatHandler);
 
 /**
  * GHL WEBHOOK RECEIVER

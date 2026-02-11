@@ -25,10 +25,37 @@ class GeminiClient:
             print("GeminiClient: No API key found. Attempting ADC...")
             self.client = genai.Client()
 
+    def _normalize_model_name(self, model_name: str) -> str:
+        """Normalize model names to ensure availability."""
+        if not model_name:
+            return "gemini-2.5-flash"
+
+        # Explicitly preserve specialized models
+        SPECIALIZED_MODELS = ["veo", "imagen", "lyra"]
+        if any(sm in model_name.lower() for sm in SPECIALIZED_MODELS):
+            return model_name
+            
+        # Standardize gemini-3 placeholders to 2.5 stable
+        if "gemini-3" in model_name:
+             # Map gemini-3-flash -> gemini-2.5-flash
+             # Map gemini-3-pro -> gemini-2.5-pro
+             # Unless it's image, which maps to gemini-2.5-flash-image
+             if "image" in model_name:
+                 return "gemini-2.5-flash-image"
+             return "gemini-2.5-flash" if "flash" in model_name else "gemini-2.5-pro"
+            
+        # Standardize simple/legacy names to 2.5 versioned names
+        if model_name == "gemini-1.5-flash" or model_name == "gemini-1.5-flash-002" or model_name == "gemini-flash":
+            return "gemini-2.5-flash"
+        if model_name == "gemini-1.5-pro" or model_name == "gemini-1.5-pro-002" or model_name == "gemini-pro":
+            return "gemini-2.5-pro"
+            
+        return model_name
+
     def generate_content(
         self, 
         prompt: Union[str, List[Union[str, Any]]], 
-        model_name: str = "gemini-1.5-flash",
+        model_name: str = "gemini-1.5-flash-002",
         generation_config: Optional[Dict[str, Any]] = None,
         stream: bool = False,
         system_instruction: Optional[str] = None,
@@ -155,13 +182,13 @@ class GeminiClient:
 
         if stream:
             return self.client.models.generate_content_stream(
-                model=model_name,
+                model=self._normalize_model_name(model_name),
                 contents=processed_contents,
                 config=config
             )
         else:
             return self.client.models.generate_content(
-                model=model_name,
+                model=self._normalize_model_name(model_name),
                 contents=processed_contents,
                 config=config
             )
@@ -240,13 +267,13 @@ class GeminiClient:
             config=types.GenerateImageConfig(**kwargs)
         )
 
-    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-3-flash-preview") -> int:
+    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-1.5-flash-002") -> int:
         """Count tokens for the given prompt."""
         if not self.client:
             raise Exception("GeminiClient not initialized with API Key.")
             
         response = self.client.models.count_tokens(
-            model=model_name,
+            model=self._normalize_model_name(model_name),
             contents=prompt
         )
         return response.total_tokens

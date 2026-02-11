@@ -552,20 +552,18 @@ class EdgeAIService {
     if (kIsWeb) {
        try {
          debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy (Imagen 3)...');
-         final proxyResponse = await AIProxyService.generateContent(
+         final proxyResponse = await AIProxyService.generateImage(
            prompt: prompt,
-           config: AIModelConfig(provider: AIProvider.vertex, modelId: 'imagen-3.0-generate-001'),
-           generationParams: generationParams,
+           model: 'imagen-3.0-generate-001',
+           config: generationParams,
          );
          
-         if (proxyResponse['custom_type'] == 'imagen') {
-            final predictions = proxyResponse['predictions'] as List?;
-            if (predictions != null && predictions.isNotEmpty) {
-               final firstPred = predictions[0];
-               final base64Image = firstPred['bytesBase64Encoded'];
-               if (base64Image != null) {
-                  return "data:image/png;base64,$base64Image";
-               }
+         final images = proxyResponse['images'] as List?;
+         if (images != null && images.isNotEmpty) {
+            final firstImg = images[0];
+            final base64Image = firstImg['data'];
+            if (base64Image != null) {
+               return "data:${firstImg['mimeType'] ?? 'image/png'};base64,$base64Image";
             }
          }
        } catch (e) {

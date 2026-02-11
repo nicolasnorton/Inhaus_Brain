@@ -6,7 +6,7 @@ class AgentConfig {
   final Map<String, dynamic> customSettings;
 
   const AgentConfig({
-    this.model = 'gemini-1.5-flash-002',
+    this.model = 'gemini-2.5-flash',
     this.temperature = 0.7,
     this.maxTokens = 2048,
     this.customSettings = const {},

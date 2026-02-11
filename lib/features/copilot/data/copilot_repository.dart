@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class CopilotRepository {
+class VertexChatRepository {
   final String _endpoint;
 
-  CopilotRepository({required String endpoint}) : _endpoint = endpoint;
+  VertexChatRepository({required String endpoint}) : _endpoint = endpoint;
 
   Stream<BaseEvent> sendMessage(String text, {List<Message> history = const [], SystemMessage? systemMessage}) async* {
     final List<Map<String, dynamic>> messages = [];
@@ -40,8 +40,7 @@ class CopilotRepository {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
         'messages': messages,
-        'method': 'chat',
-        'flatten': true, // Required for v1.x single-route requests
+        'tools': [], // Tools can be added here if needed
       });
 
       final streamedResponse = await client.send(request);
@@ -79,8 +78,14 @@ class CopilotRepository {
   }
 }
 
-// Global provider for CopilotRepository
+// Global provider for VertexChatRepository
+final vertexChatRepositoryProvider = Provider((ref) {
+  return VertexChatRepository(
+      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/vertexChat');
+});
+
+// Legacy CopilotKit provider (deprecated - use vertexChatRepositoryProvider instead)
 final copilotRepositoryProvider = Provider((ref) {
-  return CopilotRepository(
+  return VertexChatRepository(
       endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/copilotRuntime');
 });

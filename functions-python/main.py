@@ -4,6 +4,12 @@ from firebase_functions import https_fn, options
 from firebase_admin import initialize_app, auth
 from gemini_client import GeminiClient
 import tools as custom_tools
+from dialogue_manager import DialogueManager
+
+# Initialize global managers (note: these might reset on cold starts, strict statelessness preferred usually)
+# but for simple caching, we can keep them.
+# However, DialogueManager is designed to be instantiated per request or handle statelessness.
+
 
 # Initialize Firebase Admin
 initialize_app()
@@ -42,7 +48,7 @@ def extract_structured(req: https_fn.Request) -> https_fn.Response:
         document_text = data.get("document")
         schema = data.get("schema")
         examples = data.get("examples", [])
-        model_name = data.get("model", "gemini-1.5-flash")
+        model_name = data.get("model", "gemini-2.5-flash")
 
         if not document_text or not schema:
             return https_fn.Response("Missing document or schema", status=400)
@@ -94,7 +100,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             return https_fn.Response("Missing JSON body", status=400)
 
         # Extract parameters
-        model_name = data.get("model", "gemini-3-flash-preview")
+        model_name = data.get("model", "gemini-2.5-flash")
         prompt = data.get("prompt")
         config = data.get("config", {})
         system_instruction = data.get("systemInstruction")
@@ -243,9 +249,11 @@ def generate_image(req: https_fn.Request) -> https_fn.Response:
         # Serialize images (base64)
         image_data = []
         for img in images:
+            import base64
+            image_b64 = base64.b64encode(img.image.data).decode('utf-8')
             image_data.append({
                 "mimeType": img.image.mime_type,
-                "data": img.image.data.hex() # Just a placeholder or hex for now
+                "data": image_b64
             })
             
         return https_fn.Response(
@@ -266,7 +274,7 @@ def count_tokens(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-1.5-flash")
+        model = data.get("model", "gemini-2.5-flash")
         
         client = GeminiClient()
         total_tokens = client.count_tokens(model_name=model, prompt=prompt)
@@ -278,3 +286,113 @@ def count_tokens(req: https_fn.Request) -> https_fn.Response:
         )
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def get_live_token(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate a short-lived access token for Gemini Multimodal Live API (Vertex AI).
+    Validates Firebase Auth ID Token before processing.
+    """
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
+
+    uid, auth_error = _verify_auth(req)
+    if auth_error:
+        return https_fn.Response(auth_error, status=401)
+
+    try:
+        import google.auth
+        import google.auth.transport.requests
+
+        # Use the default service account to generate an access token
+        credentials, project_id = google.auth.default(
+            scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+        auth_req = google.auth.transport.requests.Request()
+        credentials.refresh(auth_req)
+
+        # Return the token and necessary metadata for the client.
+        result = {
+            "token": credentials.token,
+            "projectId": project_id,
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+            "expiresAt": credentials.expiry.isoformat() if credentials.expiry else None
+        }
+
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        print(f"Error in get_live_token: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def dialogue_engine(req: https_fn.Request) -> https_fn.Response:
+    """
+    Core Dialogue Engine Endpoint.
+    Handles 'init' and 'process_turn' actions.
+    """
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
+    
+    uid, auth_error = _verify_auth(req)
+    if auth_error:
+        return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        action = data.get("action")
+        
+        manager = DialogueManager()
+        
+        if action == "init":
+            flow = data.get("flow_definition")
+            personas = data.get("personas", [])
+            if not flow:
+                return https_fn.Response("Missing flow_definition", status=400)
+            
+            result = manager.initialize_session(flow, personas)
+            return https_fn.Response(
+                json.dumps(result),
+                status=200,
+                headers={"Content-Type": "application/json"}
+            )
+            
+        elif action == "turn":
+            session_state = data.get("session_state")
+            user_input = data.get("user_input", "")
+            flow = data.get("flow_definition") # Re-required for now due to statelessness
+            personas = data.get("personas", []) # Re-required for now
+            
+            # Rehydrating state
+            # Optimization: In future, load from Firestore using session_id
+            manager.initialize_session(flow, personas)
+            
+            result = manager.process_turn(session_state, user_input)
+            return https_fn.Response(
+                json.dumps(result),
+                status=200,
+                headers={"Content-Type": "application/json"}
+            )
+            
+        else:
+            return https_fn.Response(f"Unknown entity action: {action}", status=400)
+
+    except Exception as e:
+        print(f"Error in dialogue_engine: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )

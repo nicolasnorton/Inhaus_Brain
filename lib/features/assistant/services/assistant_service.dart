@@ -177,7 +177,7 @@ class AssistantService {
         isToolOutput: executionResult.assetPath != null,
         generatedAssetPath: executionResult.assetPath,
         generatedAssetType: executionResult.assetType,
-        modelName: executionResult.modelName ?? 'Gemini 2.0 Flash',
+        modelName: executionResult.modelName ?? 'Gemini 2.5 Flash',
         processingTime: stopwatch.elapsed,
         sources: executionResult.sources,
         artifacts: executionResult.artifacts,
@@ -255,7 +255,7 @@ class AssistantService {
        // Use RouterAgent via EdgeAIService directly for speed, or properly instantiate Agent
        final routerRes = await EdgeAIService.generateText(
           routerPrompt, 
-          modelConfig: const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002'), // Fast router
+          modelConfig: AIModelConfig.geminiFlash, // Fast router
           ref: _ref
        );
        
@@ -564,7 +564,7 @@ class AssistantService {
     // Config: Force JSON
     final config = AIModelConfig(
       provider: AIProvider.gemini, 
-      modelId: 'gemini-1.5-flash-002',
+      modelId: 'gemini-3-flash-preview',
       responseMimeType: 'application/json',
       temperature: 0.2, // Lower temp for logic
       maxTokens: 4096,

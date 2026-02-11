@@ -88,6 +88,7 @@ dependencies:
   printing: ^5.13.2
   google_generative_ai: ^0.4.7
   crypto: ^3.0.7
+  web_socket_channel: ^3.0.1
   
   # GenUI Expansion
   flutter_form_builder: any
@@ -97,6 +98,7 @@ dependencies:
   syncfusion_flutter_core: any
   graphview: ^1.2.0
   im_stepper: ^1.0.1+1
+  webview_flutter: ^4.13.1
 
 
 dev_dependencies:

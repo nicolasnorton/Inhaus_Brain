@@ -1,4 +1,5 @@
-const { CopilotRuntime, GoogleGenerativeAIAdapter, copilotRuntimeNodeHttpEndpoint } = require('@copilotkit/runtime');
+const { CopilotRuntime, LangChainAdapter, copilotRuntimeNodeHttpEndpoint } = require('@copilotkit/runtime');
+const { ChatVertexAI } = require('@langchain/google-vertexai');
 const functions = require('firebase-functions');
 const express = require('express');
 
@@ -7,17 +8,12 @@ const app = express();
 // Use JSON body parser
 app.use(express.json());
 
-// Middleware to handle Gemini API Key and Runtime setup
 app.use(async (req, res, next) => {
     // Diagnostic Logging
     console.log(`[COPILOT] 📥 Request Method: ${req.method}`);
     console.log(`[COPILOT] 📥 Request Path: ${req.path}`);
     if (req.method === 'POST') {
         console.log(`[COPILOT] 📦 Request Body: ${JSON.stringify(req.body)}`);
-        if (req.body && req.body.method === 'chat') {
-            console.log(`[COPILOT] ⚠️ Stripping 'method: chat' for v1 compatibility`);
-            delete req.body.method;
-        }
     }
 
     // CORS Header is needed for all responses
@@ -31,28 +27,26 @@ app.use(async (req, res, next) => {
     }
 
     try {
-        let apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-
-        if (!apiKey) {
-            try {
-                if (functions.config().google) {
-                    apiKey = functions.config().google.api_key;
-                }
-            } catch (e) { }
-        }
-
-        if (!apiKey) {
-            console.error('Gemini API Key is missing.');
-            res.status(500).send('Configuration Error: API Key Missing');
-            return;
-        }
-
+        // Initialize Copilot Runtime
         req.runtime = new CopilotRuntime();
-        req.serviceAdapter = new GoogleGenerativeAIAdapter({
-            model: "gemini-1.5-pro-002",
-            apiKey: apiKey,
-        });
 
+        // Use LangChainAdapter with ChatVertexAI
+        // Vertex AI handles auth automatically via Application Default Credentials (ADC) in Cloud Functions
+        req.serviceAdapter = new LangChainAdapter({
+            chainFn: async ({ messages, tools }) => {
+                let model = new ChatVertexAI({
+                    model: "gemini-2.5-pro",
+                    location: "us-central1",
+                    maxOutputTokens: 8192,
+                });
+
+                if (tools && tools.length > 0) {
+                    model = model.bindTools(tools);
+                }
+
+                return model.stream(messages);
+            }
+        });
 
         next();
     } catch (error) {

@@ -84,5 +84,32 @@ class DefaultPipelines {
         ),
       ],
     ),
+    Pipeline(
+      id: 'dialoglab-pitch-v1',
+      name: 'Client Pitch Simulation',
+      description: 'Simulates a client pitch with multiple AI characters and 3D avatars.',
+      steps: [
+        PipelineStep(
+          id: const Uuid().v4(),
+          nodeType: WorkflowNodeType.dialogueScene,
+          instruction: 'Initialize 3D conference room with Client and Strategist.',
+          config: {
+            'action': 'init',
+            'personas': [
+              {'id': 'client_ceo', 'name': 'CEO (Client)', 'role': 'Decision Maker'},
+              {'id': 'agency_lead', 'name': 'Strategy Lead', 'role': 'Presenter'}
+            ]
+          },
+        ),
+        PipelineStep(
+          id: const Uuid().v4(),
+          nodeType: WorkflowNodeType.agent,
+          agentType: MessageSender.strategistAgent,
+          instruction: 'Present the value proposition of the campaign.',
+          type: PipelineStepType.sequential,
+        ),
+      ],
+    ),
   ];
+
 }

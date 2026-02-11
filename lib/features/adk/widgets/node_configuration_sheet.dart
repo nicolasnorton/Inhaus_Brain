@@ -200,6 +200,8 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
         return _buildQuestionClassifierConfig(step);
       case WorkflowNodeType.note:
         return _buildNoteConfig(step);
+      case WorkflowNodeType.dialogueScene:
+        return const Center(child: Text("Dialogue Scene Config (Coming Soon)"));
     }
   }
 
@@ -262,7 +264,7 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
            Row(
               children: [
                  Expanded(
-                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro-002", "gemini-1.5-flash-002", "grok-beta"], model, (val) {
+                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-3-pro-preview", "gemini-3-flash-preview", "grok-beta"], model, (val) {
                        _updateStep(step.id, config: {...step.config, 'model': val});
                     }),
                  ),
@@ -1340,7 +1342,7 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
            Row(
               children: [
                  Expanded(
-                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"], model, (val) {
+                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-3-pro-preview"], model, (val) {
                        _updateStep(step.id, config: {...step.config, 'model': val});
                     }),
                  ),
