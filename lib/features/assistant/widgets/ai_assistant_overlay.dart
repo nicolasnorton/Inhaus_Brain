@@ -39,6 +39,9 @@ import '../presentation/widgets/gen_ui/dialogue_scene_widget.dart';
 import '../presentation/widgets/gen_ui/avatar_conversation_widget.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../../../core/widgets/video_preview_player.dart';
+import '../../canvas/ui/canvas_host.dart';
+import '../../canvas/providers/canvas_provider.dart';
+import '../../../core/ui/split_pane_layout.dart';
 import '../../chat/models/chat_models.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
@@ -304,6 +307,28 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
           if (_autoRead) {
             _speak(textToSpeak);
           }
+          
+          // AUTO-OPEN IN CANVAS
+          if (lastMessage.uiPayload != null) {
+            Future.delayed(const Duration(milliseconds: 300), () {
+               if (mounted) {
+                 ref.read(canvasProvider.notifier).showGenUI(
+                   lastMessage.uiPayload!, 
+                   title: lastMessage.uiPayload!['title'] ?? 'Generated Component'
+                 );
+               }
+            });
+          } else if (lastMessage.generatedAssetPath != null) {
+             Future.delayed(const Duration(milliseconds: 300), () {
+               if (mounted && lastMessage.generatedAssetType != 'video') {
+                   // Video support todo
+                   ref.read(canvasProvider.notifier).showImage(
+                     lastMessage.generatedAssetPath!, 
+                     title: 'Generated Image'
+                   );
+               }
+            });
+          }
         }
       }
     });
@@ -369,10 +394,21 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             elevation: 16,
             borderRadius: BorderRadius.circular(borderRadius),
             color: const Color(0xFF1C2128), // Dark workspace background
-            child: Column(
-              children: [
-                // Header
-                Container(
+            child: Consumer(
+              builder: (context, ref, _) {
+                final canvasState = ref.watch(canvasProvider);
+                return SplitPaneLayout(
+                  childLeft: const CanvasHost(),
+                  initialRatio: 0.5,
+                  minLeftWidth: 300,
+                  minRightWidth: 350,
+                  showLeftPaneOnMobile: canvasState.isMobileCanvasOpen,
+                  childRight: Stack(
+                    children: [
+                      Column(
+                        children: [
+                          // Header
+                          Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
@@ -550,12 +586,26 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                           ),
                           const SizedBox(width: 64), // Space for FAB/Send button
                         ],
+                            ),
+                  ),
+                ],
+              ),
+                    if (ref.watch(canvasProvider).type != CanvasContentType.empty && 
+                        !ref.watch(canvasProvider).isMobileCanvasOpen && 
+                        MediaQuery.of(context).size.width < 650)
+                      Positioned(
+                        right: 16,
+                        top: 60, 
+                        child: FloatingActionButton.small(
+                          backgroundColor: Colors.blueAccent,
+                          child: const Icon(Icons.auto_awesome_mosaic, color: Colors.white),
+                          onPressed: () => ref.read(canvasProvider.notifier).toggleMobileCanvas(true),
+                        ),
                       ),
-                    ),
                   ],
                 ),
-              ],
-            ),
+              );
+            }
           ),
         ),
       ),

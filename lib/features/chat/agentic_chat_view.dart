@@ -6,6 +6,9 @@ import 'package:inhaus_brain/core/widgets/app_video_player.dart';
 import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
 import 'package:inhaus_brain/core/widgets/app_audio_player.dart';
 import '../../core/services/voice_service.dart';
+import '../../core/ui/split_pane_layout.dart';
+import '../canvas/ui/canvas_host.dart';
+import '../canvas/providers/canvas_provider.dart';
 import 'providers/chat_provider.dart';
 import 'models/chat_models.dart';
 import '../campaigns/widgets/multi_modal_input_section.dart';
@@ -86,31 +89,83 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(chatProvider);
+    final canvasState = ref.watch(canvasProvider);
 
-    return Column(
+    // Auto-open logic
+    ref.listen(chatProvider, (previous, next) {
+      if (next != null && (previous == null || next.messages.length > previous.messages.length)) {
+        final lastMsg = next.messages.last;
+        if (lastMsg.sender != MessageSender.user) {
+           // Auto-open attachments
+           if (lastMsg.attachments.isNotEmpty) {
+              final att = lastMsg.attachments.first;
+              // Simple check for image/video/code types
+              if (att.url.endsWith('.png') || att.url.endsWith('.jpg') || att.type.toString().contains('image')) {
+                 ref.read(canvasProvider.notifier).showImage(att.url, title: att.name);
+              }
+           }
+           // Auto-open GenUI if present in metadata
+           if (lastMsg.metadata != null && lastMsg.metadata!['uiPayload'] != null) {
+              ref.read(canvasProvider.notifier).showGenUI(
+                Map<String, dynamic>.from(lastMsg.metadata!['uiPayload']), 
+                title: lastMsg.metadata!['title'] ?? 'Generated Content'
+              );
+           }
+        }
+      }
+    });
+
+    // The existing chat UI (Right Pane)
+    final chatUi = Stack(
       children: [
-        Expanded(
-          child: session == null || session.messages.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(20),
-                  itemCount: session.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = session.messages[index];
-                    // Auto-read logic
-                    if (_isAutoReadEnabled && index == session.messages.length - 1 && message.sender != MessageSender.user) {
-                       ref.read(voiceServiceProvider).speak(message.content);
-                    }
-                    return KeyedSubtree(
-                      key: ValueKey(message.id),
-                      child: _buildMessageBubble(message),
-                    );
-                  },
-                ),
+        Column(
+          children: [
+            Expanded(
+              child: session == null || session.messages.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(20),
+                      itemCount: session.messages.length,
+                      itemBuilder: (context, index) {
+                        final message = session.messages[index];
+                        // Auto-read logic
+                        if (_isAutoReadEnabled && index == session.messages.length - 1 && message.sender != MessageSender.user) {
+                           ref.read(voiceServiceProvider).speak(message.content);
+                        }
+                        return KeyedSubtree(
+                          key: ValueKey(message.id),
+                          child: _buildMessageBubble(message),
+                        );
+                      },
+                    ),
+            ),
+            _buildInputArea(),
+          ],
         ),
-        _buildInputArea(),
+        // Mobile Toggle Button (Visible only when content exists, canvas is closed, and screen is small)
+        if (canvasState.type != CanvasContentType.empty && 
+            !canvasState.isMobileCanvasOpen && 
+            MediaQuery.of(context).size.width < 750) // < minLeft + minRight
+          Positioned(
+            right: 16,
+            top: 16,
+            child: FloatingActionButton.small(
+              backgroundColor: Colors.blueAccent,
+              child: const Icon(Icons.auto_awesome_mosaic, color: Colors.white),
+              onPressed: () => ref.read(canvasProvider.notifier).toggleMobileCanvas(true),
+            ),
+          ),
       ],
+    );
+
+    return SplitPaneLayout(
+      childLeft: const CanvasHost(),
+      childRight: chatUi,
+      initialRatio: 0.5, // 50/50 split on desktop
+      minLeftWidth: 350,
+      minRightWidth: 400,
+      showLeftPaneOnMobile: canvasState.isMobileCanvasOpen,
     );
   }
 
@@ -467,12 +522,17 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         if (attachment.type == AttachmentType.video || 
             attachment.url.toLowerCase().endsWith('.mp4') ||
             attachment.url.toLowerCase().endsWith('.mov')) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 300, 
-              // Using a restricted width for chat bubbles, player handles aspect ratio
-              child: AppVideoPlayer(videoUrl: attachment.url),
+          return GestureDetector(
+            onTap: () {
+               // todo: add video support to canvas
+               // ref.read(canvasProvider.notifier).showVideo(attachment.url, title: attachment.name);
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 300, 
+                child: AppVideoPlayer(videoUrl: attachment.url),
+              ),
             ),
           );
         }
@@ -488,14 +548,19 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         }
         
         // Handle Images (Default)
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 200,
-            width: 300, // Fixed constraint for consistency
-            child: WatermarkedImage(
-              imageUrl: attachment.url,
-              fit: BoxFit.cover,
+        return GestureDetector(
+          onTap: () {
+            ref.read(canvasProvider.notifier).showImage(attachment.url, title: attachment.name);
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 200,
+              width: 300, 
+              child: WatermarkedImage(
+                imageUrl: attachment.url,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         );

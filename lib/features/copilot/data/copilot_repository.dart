@@ -9,7 +9,13 @@ class VertexChatRepository {
 
   VertexChatRepository({required String endpoint}) : _endpoint = endpoint;
 
-  Stream<BaseEvent> sendMessage(String text, {List<Message> history = const [], SystemMessage? systemMessage}) async* {
+  Stream<BaseEvent> sendMessage(
+      String text, 
+      {
+        List<Message> history = const [], 
+        SystemMessage? systemMessage,
+        List<Map<String, dynamic>> tools = const [],
+      }) async* {
     final List<Map<String, dynamic>> messages = [];
     
     if (systemMessage != null) {
@@ -40,7 +46,7 @@ class VertexChatRepository {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode({
         'messages': messages,
-        'tools': [], // Tools can be added here if needed
+        'tools': tools,
       });
 
       final streamedResponse = await client.send(request);

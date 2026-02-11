@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/copilot_repository.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../chat/widgets/approval_card.dart';
+import '../../assistant/services/assistant_tool_registry.dart';
+import 'package:inhaus_brain/core/mcp/agent_tool.dart';
 
 
 
@@ -49,8 +51,10 @@ class _CopilotViewState extends ConsumerState<CopilotView> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     final repo = ref.read(vertexChatRepositoryProvider);
+    final toolRegistry = ref.read(assistantToolRegistryProvider);
+    final tools = toolRegistry.map((t) => t.toFunctionSchema()).toList();
 
-    repo.sendMessage(text, history: _messages).listen((event) {
+    repo.sendMessage(text, history: _messages, tools: tools).listen((event) {
         if (event is TextMessageContentEvent) {
              _handleTextDelta(event.delta);
         } else if (event is TextMessageChunkEvent) {
