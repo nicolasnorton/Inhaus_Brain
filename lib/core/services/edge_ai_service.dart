@@ -226,6 +226,9 @@ class EdgeAIService {
              prompt: proxyPrompt, 
              config: config,
              systemInstruction: effectiveMemory,
+             tools: [], // Native tools aren't fully supported via proxy yet, but we pass empty list to avoid None
+             thinking: false, // Default to false for now unless specifically requested
+             audio: false,
            ),
            maxAttempts: 2,
            delayFactor: const Duration(milliseconds: 500),

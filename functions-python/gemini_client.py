@@ -118,7 +118,7 @@ class GeminiClient:
                         processed_tools.append(types.Tool(computer_use=types.ComputerUse()))
                     # Function Calling (Declarations)
                     elif "function_declarations" in tool:
-                        decls = [types.FunctionDeclaration(**d) for d in tool["function_declarations"]]
+                        decls = [types.FunctionDeclaration(**d) for d in (tool["function_declarations"] or [])]
                         processed_tools.append(types.Tool(function_declarations=decls))
                     else:
                         processed_tools.append(tool)
@@ -196,9 +196,19 @@ class GeminiClient:
     def _serialize_response(self, response: Any) -> Dict[str, Any]:
         """Helper to serialize a GenAI response object to a dict."""
         candidates_data = []
-        if response.candidates:
-            for cand in response.candidates:
-                parts_data = []
+        
+        # Guard against completely empty/failed response
+        if not hasattr(response, 'candidates') or not response.candidates:
+            return {
+                "candidates": [],
+                "usageMetadata": self._serialize_usage(response)
+            }
+
+        for cand in response.candidates:
+            parts_data = []
+            
+            # Guard against candidates with no content or parts (e.g. safety blocks)
+            if cand.content and cand.content.parts:
                 for part in cand.content.parts:
                     # Text Part
                     if hasattr(part, 'text') and part.text:
@@ -227,23 +237,29 @@ class GeminiClient:
                                  "data": part.inline_data.data.hex() if hasattr(part.inline_data.data, 'hex') else str(part.inline_data.data)
                              }
                          })
-                
-                candidates_data.append({
-                    "content": {
-                        "parts": parts_data,
-                        "role": cand.content.role
-                    },
-                    "finishReason": cand.finish_reason.name if cand.finish_reason else None,
-                    "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
-                })
+            
+            candidates_data.append({
+                "content": {
+                    "parts": parts_data,
+                    "role": cand.content.role if cand.content else "model"
+                },
+                "finishReason": cand.finish_reason.name if cand.finish_reason else None,
+                "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
+            })
 
         return {
             "candidates": candidates_data,
-            "usageMetadata": {
-                "promptTokenCount": response.usage_metadata.prompt_token_count if response.usage_metadata else 0,
-                "candidatesTokenCount": response.usage_metadata.candidates_token_count if response.usage_metadata else 0,
-                "totalTokenCount": response.usage_metadata.total_token_count if response.usage_metadata else 0,
-            } if response.usage_metadata else {}
+            "usageMetadata": self._serialize_usage(response)
+        }
+
+    def _serialize_usage(self, response: Any) -> Dict[str, Any]:
+        """Helper to serialize usage metadata."""
+        if not hasattr(response, 'usage_metadata') or not response.usage_metadata:
+            return {}
+        return {
+            "promptTokenCount": response.usage_metadata.prompt_token_count or 0,
+            "candidatesTokenCount": response.usage_metadata.candidates_token_count or 0,
+            "totalTokenCount": response.usage_metadata.total_token_count or 0,
         }
 
     def _serialize_grounding(self, metadata: Any) -> Optional[Dict[str, Any]]:

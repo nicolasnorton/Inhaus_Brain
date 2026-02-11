@@ -114,11 +114,11 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             new_tools = []
             for t in tools:
                 if t == "weather":
-                    new_tools.append(custom_tools.get_weather_schema().to_json_dict())
+                    new_tools.append(custom_tools.get_weather_schema())
                 elif t == "charts":
-                    new_tools.append(custom_tools.get_charts_schema().to_json_dict())
+                    new_tools.append(custom_tools.get_charts_schema())
                 elif t == "meetings":
-                    new_tools.append(custom_tools.get_meetings_schema().to_json_dict())
+                    new_tools.append(custom_tools.get_meetings_schema())
                 else:
                     new_tools.append(t)
             tools = new_tools
@@ -147,12 +147,6 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
 
         # Use the built-in serializer for clean output
         result = client._serialize_response(response)
-        
-        return https_fn.Response(
-            json.dumps(result),
-            status=200,
-            headers={"Content-Type": "application/json"}
-        )
         
         return https_fn.Response(
             json.dumps(result),
@@ -248,7 +242,9 @@ def generate_image(req: https_fn.Request) -> https_fn.Response:
         
         # Serialize images (base64)
         image_data = []
-        for img in images:
+        # Modern v1 SDK uses 'generated_images' attribute
+        image_list = getattr(images, 'generated_images', [])
+        for img in image_list:
             import base64
             image_b64 = base64.b64encode(img.image.data).decode('utf-8')
             image_data.append({
