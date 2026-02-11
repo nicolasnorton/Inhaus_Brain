@@ -1,6 +1,40 @@
 {
   "models": [
     {
+      "name": "models/gemini-2.5-pro",
+      "version": "2.5",
+      "displayName": "Gemini 2.5 Pro",
+      "description": "Our most powerful state-of-the-art multimodal model. Supports 1M+ context, Vision, Audio, Code Execution, and JSON mode.",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent"
+      ],
+      "temperature": 1,
+      "topP": 0.95,
+      "topK": 64,
+      "thinking": true
+    },
+    {
+      "name": "models/gemini-2.5-flash",
+      "version": "2.5",
+      "displayName": "Gemini 2.5 Flash",
+      "description": "Fast and versatile multimodal model for scaling. Supports Vision, Audio, 1M+ context, and JSON mode.",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent"
+      ],
+      "temperature": 1,
+      "topP": 0.95,
+      "topK": 64,
+      "thinking": true
+    },
+    {
       "name": "models/embedding-gecko-001",
       "version": "001",
       "displayName": "Embedding Gecko",

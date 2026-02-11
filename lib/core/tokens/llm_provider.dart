@@ -51,12 +51,12 @@ class AIModelConfig {
 
   String get displayName {
     switch (provider) {
-      case AIProvider.gemini: return 'Google Gemini 2.0 (${modelId})';
-      case AIProvider.vertex: return 'Google Vertex AI 2.0 (${modelId})';
-      case AIProvider.openai: return 'Google Gemini 2.0 (Compatible Mode)';
-      case AIProvider.claude: return 'Google Gemini 2.0 (Compatible Mode)';
-      case AIProvider.grok: return 'Google Gemini 2.0 (Compatible Mode)';
-      case AIProvider.mistral: return 'Google Gemini 2.0 (Compatible Mode)';
+      case AIProvider.gemini: return 'Google Gemini 2.5 (${modelId})';
+      case AIProvider.vertex: return 'Google Vertex AI 2.5 (${modelId})';
+      case AIProvider.openai: return 'Google Gemini 2.5 (Compatible Mode)';
+      case AIProvider.claude: return 'Google Gemini 2.5 (Compatible Mode)';
+      case AIProvider.grok: return 'Google Gemini 2.5 (Compatible Mode)';
+      case AIProvider.mistral: return 'Google Gemini 2.5 (Compatible Mode)';
       case AIProvider.runway: return 'Runway Gen-2';
       case AIProvider.midjourney: return 'Midjourney v6';
       case AIProvider.litert: return 'LiteRT On-Device (${modelId})';
@@ -64,26 +64,26 @@ class AIModelConfig {
   }
 
   // Factory for known heavy hitters
-  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
-  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-001', temperature: 1.0);
-  static AIModelConfig get geminiFlashLite => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-lite', temperature: 1.0);
+  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
+  static AIModelConfig get geminiFlashLite => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
   
   // Image Models
   static AIModelConfig get geminiFlashImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3', temperature: 1.0);
   static AIModelConfig get geminiProImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3', temperature: 1.0);
 
   // Re-mapped Legacy Presets (All route to Gemini 3.0)
-  static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-thinking-exp-01-21', useGoogleSearch: true, temperature: 1.0);
-  static AIModelConfig get geminiDeepResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-thinking-exp-01-21', useGoogleSearch: true, temperature: 1.0); // Alias for now
+  static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', useGoogleSearch: true, temperature: 1.0);
+  static AIModelConfig get geminiDeepResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', useGoogleSearch: true, temperature: 1.0);
   
-  static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
-  static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
-  static AIModelConfig get gpt35 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002');
+  static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+  static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+  static AIModelConfig get gpt35 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash');
 
-  static AIModelConfig get claude3Opus => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
-  static AIModelConfig get claude3Sonnet => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002', temperature: 1.0);
+  static AIModelConfig get claude3Opus => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+  static AIModelConfig get claude3Sonnet => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
   
-  static AIModelConfig get grok1 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
+  static AIModelConfig get grok1 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
 
   // LiteRT Models
   static AIModelConfig get gemma2n => const AIModelConfig(provider: AIProvider.litert, modelId: 'gemma-2b-it-gpu');

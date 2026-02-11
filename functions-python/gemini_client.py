@@ -27,7 +27,7 @@ class GeminiClient:
     def _normalize_model_name(self, model_name: str) -> str:
         """Normalize model names that might be legacy or aliased."""
         if not model_name:
-            return "gemini-3.0-flash-001"
+            return "gemini-2.5-flash"
 
         name_lower = model_name.lower()
 
@@ -47,8 +47,8 @@ class GeminiClient:
         # Map Gemini 3 (Frontier)
         if "gemini-3" in name_lower:
             if "image" in name_lower:
-                return "gemini-3.0-pro-image-preview" # Hypothetical multimodal-native image gen
-            return "gemini-3.0-pro-001" if "pro" in name_lower else "gemini-3.0-flash-001"
+                return "gemini-3-pro-image-preview"
+            return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
             
         # Map Gemini 2.5 (Legacy High Performance)
         if "gemini-2.5" in name_lower:
@@ -63,7 +63,7 @@ class GeminiClient:
 
         # Standardize simple/legacy names to latest 3.0 versioned names for Flawless v1.5
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
-             return "gemini-3.0-pro-001" if "pro" in name_lower else "gemini-3.0-flash-001"
+             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
             
         return model_name
 
@@ -84,9 +84,9 @@ class GeminiClient:
              estimated_tokens = sum(len(str(p)) for p in prompt) / 4
 
         if task_complexity == "high" or estimated_tokens > 10000:
-             return "gemini-3.0-pro-001"
+             return "gemini-2.5-pro"
         
-        return "gemini-3.0-flash-001"
+        return "gemini-2.5-flash"
 
     def generate_content(
         self, 
@@ -341,7 +341,7 @@ class GeminiClient:
             config=types.GenerateImagesConfig(**kwargs)
         )
 
-    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-3.0-flash-001") -> int:
+    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.5-flash") -> int:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
         response = self.client.models.count_tokens(

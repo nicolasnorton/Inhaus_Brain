@@ -151,6 +151,27 @@ service cloud.firestore {
       }
     }
 
+    // AUDIT LOGS (Written by AuditLogService — tamper-evident, append-only)
+    match /audit_logs/{logId} {
+      allow create: if isAuthenticated();
+      allow read: if isAgencyStaff();
+      allow update, delete: if false;
+    }
+
+    // GLOBAL ANALYTICS EVENTS (Written by AnalyticsService — BigQuery target)
+    match /global_events/{eventId} {
+      allow create: if isAuthenticated();
+      allow read: if isAgencyStaff();
+      allow update, delete: if false;
+    }
+
+    // AGENT TASKS (Written by enqueue_agent_task Python function)
+    match /agent_tasks/{taskId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow update, delete: if isAgencyStaff();
+    }
+
     // DEFAULT DENY
     match /{document=**} {
       allow read, write: if false;

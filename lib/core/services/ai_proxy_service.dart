@@ -200,7 +200,7 @@ class AIProxyService {
   /// Starts a Deep Research task.
   static Future<Map<String, dynamic>> startResearch({
     required String prompt,
-    String model = 'gemini-2.0-flash-thinking-exp-01-21',
+    String model = 'gemini-2.5-flash',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');

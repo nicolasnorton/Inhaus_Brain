@@ -126,7 +126,7 @@ exports.generateFinalAssets = functions.https.onCall(async (data, context) => {
 
     try {
         const generativeModel = vertexAI.getGenerativeModel({
-            model: 'gemini-1.5-pro',
+            model: 'gemini-2.5-pro',
         });
 
         // 1. Generate High-Tier Copy
@@ -530,10 +530,10 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             let modelVariations = [modelId];
 
             if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.5-flash') || modelId.includes('gemini-2.0-flash')) {
-                // Try newer versions and then the official next-gen
-                modelVariations = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-002'];
+                // Try stable 2.5 Flash variants
+                modelVariations = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
             } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.5-pro') || modelId.includes('gemini-2.0-pro')) {
-                modelVariations = ['gemini-2.5-pro', 'gemini-1.5-pro-002', 'gemini-1.5-pro'];
+                modelVariations = ['gemini-2.5-pro', 'gemini-3-pro-preview'];
             }
 
             console.log(`[PROXY] 🛡️ Model strategy: ${JSON.stringify(modelVariations)}`);

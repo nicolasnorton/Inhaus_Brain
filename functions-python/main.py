@@ -308,7 +308,7 @@ def create_cache(req: https_fn.Request) -> https_fn.Response:
 
     try:
         data = req.get_json()
-        model = data.get("model", "gemini-3.0-flash-001")
+        model = data.get("model", "gemini-2.5-flash")
         contents = data.get("contents", []) # Expects serialized Part/Content list
         ttl = data.get("ttl", 3600)
         
