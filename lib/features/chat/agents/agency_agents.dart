@@ -42,7 +42,7 @@ Future<String> _simpleExecute({
   // If we have a Ref, use the CopilotRepository to execute via the Runtime
   if (ref != null) {
       try {
-          final repo = ref.read(copilotRepositoryProvider);
+          final repo = ref.read(vertexChatRepositoryProvider);
           final buffer = StringBuffer();
           final completer = Completer<String>();
           

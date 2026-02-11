@@ -48,7 +48,7 @@ class _CopilotViewState extends ConsumerState<CopilotView> {
     // Scroll to bottom after frame
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
-    final repo = ref.read(copilotRepositoryProvider);
+    final repo = ref.read(vertexChatRepositoryProvider);
 
     repo.sendMessage(text, history: _messages).listen((event) {
         if (event is TextMessageContentEvent) {

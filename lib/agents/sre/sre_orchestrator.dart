@@ -83,7 +83,7 @@ Future<String> _sreExecute({
   // COPILOTKIT INTEGRATION
   if (ref != null) {
       try {
-          final repo = ref.read(copilotRepositoryProvider);
+          final repo = ref.read(vertexChatRepositoryProvider);
           final buffer = StringBuffer();
           final completer = Completer<String>();
           

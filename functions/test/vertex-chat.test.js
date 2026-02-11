@@ -48,7 +48,7 @@ describe('Vertex Chat Function', () => {
             mockReq.body = {};
 
             // Test validation logic
-            const hasMessages = mockReq.body.messages && Array.isArray(mockReq.body.messages);
+            const hasMessages = !!(mockReq.body.messages && Array.isArray(mockReq.body.messages));
             expect(hasMessages).to.be.false;
         });
 
