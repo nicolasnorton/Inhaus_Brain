@@ -14,16 +14,19 @@ import '../../../core/architecture/blackboard.dart';
 import '../../../core/architecture/memory.dart';
 
 enum RouterIntent {
-  research,    // Competitive analysis, trends, facts
-  creative,    // Visual concepts, design, moodboards
-  copywriting, // Writing, editing, tone
-  development, // Code, technical architecture
-  pipeline,    // Complex multi-step requests
-  management,  // Client, Project, Task management
-  directChat,   // Simple questions, greetings, small talk
-  seo,          // SEO optimization
-  aeo,          // AEO optimization
-  proposal      // PDF Proposals
+  research,       // Competitive analysis, trends, facts
+  creative,       // Visual concepts, design, moodboards
+  creativeImage,  // Specific image generation
+  creativeVideo,  // Specific video generation
+  genUiReport,    // Strategy, plans, interactive reports
+  copywriting,    // Writing, editing, tone
+  development,    // Code, technical architecture
+  pipeline,       // Complex multi-step requests
+  management,     // Client, Project, Task management
+  directChat,      // Simple questions, greetings, small talk
+  seo,             // SEO optimization
+  aeo,             // AEO optimization
+  proposal         // PDF Proposals
 }
 
 class RouterResult {

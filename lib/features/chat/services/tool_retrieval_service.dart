@@ -25,17 +25,21 @@ class ToolRetrievalService {
 
     switch (intent) {
       case RouterIntent.research:
-        return allTools.where((t) => researchTools.contains(t.name)).toList();
+        return allTools.where((t) => researchTools.contains(t.name) || t.name == 'gen_ui_component').toList();
       case RouterIntent.creative:
-        return allTools.where((t) => creativeTools.contains(t.name)).toList();
+      case RouterIntent.creativeImage:
+      case RouterIntent.creativeVideo:
+        return allTools.where((t) => creativeTools.contains(t.name) || t.name == 'image_generation' || t.name == 'video_generation' || t.name == 'gen_ui_component').toList();
+      case RouterIntent.genUiReport:
+        return allTools.where((t) => t.name == 'gen_ui_component' || researchTools.contains(t.name)).toList();
       case RouterIntent.management:
-        return allTools.where((t) => managementTools.contains(t.name)).toList();
+        return allTools.where((t) => managementTools.contains(t.name) || t.name == 'gen_ui_component').toList();
       case RouterIntent.development:
-        return allTools.where((t) => devTools.contains(t.name)).toList();
+        return allTools.where((t) => devTools.contains(t.name) || t.name == 'gen_ui_component').toList();
       case RouterIntent.seo:
-        return allTools.where((t) => seoTools.contains(t.name)).toList();
+        return allTools.where((t) => seoTools.contains(t.name) || t.name == 'gen_ui_component').toList();
       case RouterIntent.aeo:
-        return allTools.where((t) => aeoTools.contains(t.name)).toList();
+        return allTools.where((t) => aeoTools.contains(t.name) || t.name == 'gen_ui_component').toList();
       case RouterIntent.pipeline:
       case RouterIntent.directChat:
       default:

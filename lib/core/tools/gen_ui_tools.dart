@@ -35,99 +35,11 @@ class GenUIComponentTool extends AgentTool {
               'dynamic_form', 'mind_map', 'carousel', 'interactive_table', 'radial_gauge', 'accordion', 'stepper', 'word_cloud', 'calendar',
               'dialogue_scene', 'avatar_conversation'
             ],
-            'description': 'The type of UI component to render. NEW EXAMPLES: Use "dialogue_scene" for 3D/immersive scenes. "avatar_conversation" for character interactions.'
+            'description': 'The type of UI component to render.'
           },
           'data': {
             'type': 'object',
-            'description': '''The structured data for the component. CRITICAL: Generate REAL, DETAILED, SPECIFIC data. NO placeholders.
-            
---- SCHEMAS ---
-
-For "dynamic_form":
-{
-  "title": "Creative Brief Intake",
-  "fields": [
-    {"name": "campaign_name", "type": "text", "label": "Campaign Name", "required": true},
-    {"name": "budget", "type": "number", "label": "Budget (\$)", "min": 1000},
-    {"name": "channels", "type": "checkbox_group", "label": "Channels", "options": ["Social", "TV", "OOH"]},
-    {"name": "launch_date", "type": "date", "label": "Launch Date"}
-  ],
-  "submit_label": "Generate Proposal"
-}
-
-For "mind_map" (GraphView):
-{
-  "nodes": [
-    {"id": 1, "label": "Main Idea", "color": "#FF5733"},
-    {"id": 2, "label": "Sub Idea A"},
-    {"id": 3, "label": "Sub Idea B"}
-  ],
-  "edges": [
-    {"source": 1, "target": 2},
-    {"source": 1, "target": 3}
-  ]
-}
-
-For "carousel" (Image/Video):
-{
-  "items": [
-    {"type": "image", "url": "https://...", "caption": "Concept A"},
-    {"type": "video", "url": "https://...", "caption": "TV Spot Draft"}
-  ],
-  "aspect_ratio": 16/9
-}
-
-For "interactive_table":
-{
-  "columns": [
-    {"name": "id", "label": "ID", "numeric": true},
-    {"name": "name", "label": "Service Name"},
-    {"name": "status", "label": "Status"}
-  ],
-  "rows": [
-    {"id": 101, "name": "SEO Audit", "status": "Active"},
-    {"id": 102, "name": "Content Pack", "status": "Pending"}
-  ]
-}
-
-For "radial_gauge" (KPIs):
-{
-  "title": "Campaign Health",
-  "value": 75,
-  "min": 0,
-  "max": 100,
-  "ranges": [
-    {"start": 0, "end": 40, "color": "red"},
-    {"start": 40, "end": 80, "color": "yellow"},
-    {"start": 80, "end": 100, "color": "green"}
-  ],
-  "annotation": "Good"
-}
-
-For "stepper" (Guided Workflow):
-{
-  "steps": [
-    {"title": "Research", "content": "Market analysis complete."},
-    {"title": "Ideation", "content": "3 concepts generated.", "state": "active"},
-    {"title": "Execution", "content": "Pending approval."}
-  ],
-  "current_step_index": 1
-}
-
-EXISTING SCHEMAS:
-For "analysis_report" / "trend_report":
-{
-  "title": "...",
-  "sections": [...] (stat_card, chart, text, table)
-}
-For "kanban_board":
-{
-  "columns": [
-    {"title": "To Do", "cards": ["Task 1", "Task 2"]},
-    {"title": "In Progress", "cards": []}
-  ]
-}
-'''
+            'description': 'The structured data for the component. CRITICAL: Generate REAL, DETAILED, SPECIFIC data. Match the schema for the chosen component_type.'
           },
           'summary_text': {
             'type': 'string',

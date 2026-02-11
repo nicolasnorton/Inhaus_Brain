@@ -365,23 +365,22 @@ Provide clear, actionable insights and always cite your sources.
 """;
 
   static const String originalIntentClassifierPrompt = """
-Analyze the user's request and determine the user's intent.
-User Input: {{USER_INPUT}}
+Analyze the user's request and determine the user's intent and required tools.
 
-Classify into one of:
-- CREATIVE: User wants to GENERATE or CREATE an image, video, logo, or artistic asset.
-- RESEARCH: User is asking for facts, searching for info, or analysis.
-- MANAGEMENT: User wants to create/manage clients, campaigns, or tasks.
-- DEVELOPMENT: User is asking for code or technical help.
-- SEO: User is asking for search engine optimization, keywords, or site audits.
-- AEO: User is asking for answer engine optimization, snippets, or voice search.
-- DIRECT_CHAT: Simple conversation or greeting.
+Intents & Specialized Tools Mapping:
+- CREATIVE_IMAGE: Use 'image_generation'.
+- CREATIVE_VIDEO: Use 'video_generation'.
+- GEN_UI_REPORT: Use 'gen_ui_component' (Strategy, Plans, Reports, Analysis).
+- RESEARCH: Use 'web_search' or 'read_url'.
+- MANAGEMENT: Use 'navigate_to', 'create_client', etc.
+- SEO_AEO: Use marketing tools.
+- DIRECT_CHAT: No specific tools.
 
 Return ONLY a JSON object:
 {
   "intent": "INTENT_NAME",
   "confidence": 0.9,
-  "required_tools": ["tool_name_1", "tool_name_2"]
+  "required_tools": ["image_generation", "video_generation", "gen_ui_component", "web_search", "navigate_to"]
 }
 """;
 
@@ -411,6 +410,7 @@ CRITICAL INSTRUCTIONS:
 1. NATIVE SEARCH: You have direct BUILT-IN Google Search "Grounding". Use it for ALL factual research.
 2. NAVIGATION: Use 'navigate_to' tool for navigation.
 3. GENERATION: Use 'image_generation' or 'video_generation' for media.
+   - **CRITICAL**: If the user asks for a video and 'video_generation' is in the AVAILABLE_TOOLS list, you MUST use it. **NEVER** say "I cannot create videos" if the tool is available.
 4. GEN UI - MANDATORY FOR MULTIMEDIA CONTENT:
    - **ALWAYS use 'gen_ui_component' for**: Checklists, Campaigns, Strategy reports, TREND REPORTS, Market research, Competitor analysis, RECIPES, Comparison charts, Process flows, Marketing plans, and ANY request that can be visualized.
    - **TRIGGER KEYWORDS**: If the user mentions "checklist", "campaign", "strategy", "report", "analysis", "plan", "comparison", "trends", "recipe", or "Gen UI", you MUST use gen_ui_component.

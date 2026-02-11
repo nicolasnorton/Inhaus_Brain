@@ -331,10 +331,11 @@ class AssistantService {
     final blackboard = _ref.read(blackboardProvider.notifier);
     
     // Transition based on Intent
-    if (intentEnum == RouterIntent.research) {
-      blackboard.transitionTo(BlackboardPhase.analyzingIntent); // Or specific research phase
+    if (intentEnum == RouterIntent.research || intentEnum == RouterIntent.genUiReport) {
+      blackboard.transitionTo(BlackboardPhase.analyzingIntent); 
       blackboard.updateAgentStatus('TrendScout', AgentStatus.working);
-    } else if (intentEnum == RouterIntent.creative) {
+      blackboard.updateAgentStatus('Strategist', AgentStatus.working);
+    } else if (intentEnum == RouterIntent.creative || intentEnum == RouterIntent.creativeImage || intentEnum == RouterIntent.creativeVideo) {
        blackboard.transitionTo(BlackboardPhase.creative);
        blackboard.updateAgentStatus('Creative', AgentStatus.working);
     } else if (intentEnum == RouterIntent.management) {
@@ -384,7 +385,31 @@ class AssistantService {
     List<String>? sources;
     try {
       _ref.read(assistantStatusProvider.notifier).state = "Thinking...";
-      final mainConfig = AIModelConfig.geminiResearch;
+      
+      // Use Pro for complex intents to ensure Gen UI compliance, Flash for simple tasks
+      AIModelConfig mainConfig;
+      final textLower = text.toLowerCase();
+      final isComplexIntent = intentEnum == RouterIntent.research || 
+                            intentEnum == RouterIntent.management || 
+                            intentEnum == RouterIntent.copywriting ||
+                            intentEnum == RouterIntent.creative ||
+                            intentEnum == RouterIntent.creativeImage ||
+                            intentEnum == RouterIntent.creativeVideo ||
+                            intentEnum == RouterIntent.genUiReport ||
+                            intentEnum == RouterIntent.proposal;
+      
+      final forcesPro = textLower.contains('video') || 
+                       textLower.contains('generate a video') || 
+                       textLower.contains('create a video') ||
+                       textLower.contains('report') ||
+                       textLower.contains('checklist');
+
+      if (isComplexIntent || forcesPro) {
+        // useGoogleSearch is enabled by default for research, but we force it here for Pro users
+        mainConfig = AIModelConfig.geminiPro.copyWith(useGoogleSearch: true);
+      } else {
+        mainConfig = AIModelConfig.geminiFlash;
+      }
       
       final edgeResult = await EdgeAIService.generateText(
         mainPrompt,
