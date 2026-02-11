@@ -9,6 +9,7 @@ class SplitPaneLayout extends StatefulWidget {
   final double minLeftWidth;
   final double minRightWidth;
   final bool showLeftPaneOnMobile; // For mobile toggle logic
+  final bool showLeftPane; // New property for desktop toggle
 
   const SplitPaneLayout({
     super.key,
@@ -18,6 +19,7 @@ class SplitPaneLayout extends StatefulWidget {
     this.minLeftWidth = 300,
     this.minRightWidth = 300,
     this.showLeftPaneOnMobile = false,
+    this.showLeftPane = true, // Default to true
   });
 
   @override
@@ -56,6 +58,11 @@ class _SplitPaneLayoutState extends State<SplitPaneLayout> {
     // If constraints are infinite (e.g. inside a Row/Column without Expanded), default to screen width or a safe fallback
     final width = constraints.maxWidth.isFinite ? constraints.maxWidth : MediaQuery.of(context).size.width;
     
+    // Check if left pane should be shown
+    if (!widget.showLeftPane) {
+      return widget.childRight;
+    }
+
     // Ensure ratio is clamped
     final effectiveRatio = _ratio.clamp(0.1, 0.9);
     final leftWidth = width * effectiveRatio;

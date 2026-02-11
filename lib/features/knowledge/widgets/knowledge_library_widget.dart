@@ -589,6 +589,18 @@ class _KnowledgeLibraryWidgetState extends ConsumerState<KnowledgeLibraryWidget>
         icon = FontAwesomeIcons.chartLine;
         color = Colors.cyanAccent;
         break;
+      case KnowledgeSourceType.meta:
+      case KnowledgeSourceType.instagram:
+      case KnowledgeSourceType.linkedin:
+      case KnowledgeSourceType.tiktok:
+      case KnowledgeSourceType.twitter:
+      case KnowledgeSourceType.metaAds:
+      case KnowledgeSourceType.linkedinAds:
+      case KnowledgeSourceType.tiktokAds:
+      case KnowledgeSourceType.twitterAds:
+        icon = FontAwesomeIcons.shareNodes;
+        color = Colors.blueAccent;
+        break;
     }
 
     return Container(

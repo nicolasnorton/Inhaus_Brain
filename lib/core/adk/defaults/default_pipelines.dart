@@ -110,6 +110,47 @@ class DefaultPipelines {
         ),
       ],
     ),
+    Pipeline(
+      id: 'flawless-campaign-demo-v1',
+      name: 'Flawless Campaign Overhaul',
+      description: 'The ultimate AI-driven campaign workflow: Deep Research -> AI Creative -> Production -> PDF Export.',
+      steps: [
+        PipelineStep(
+          id: const Uuid().v4(),
+          nodeType: WorkflowNodeType.deepResearch,
+          instruction: 'Conduct deep market research on the target industry and audience.',
+          config: {
+            'topic': 'Next-gen sustainable fashion trends 2026',
+            'clientId': 'flawless_demo'
+          },
+        ),
+        PipelineStep(
+          id: const Uuid().v4(),
+          nodeType: WorkflowNodeType.imageGeneration,
+          instruction: 'Generate high-fidelity key visuals using Gemini Nano Banana.',
+          config: {
+            'prompt': 'Futuristic sustainable storefront, emerald green and recycled glass aesthetic, photorealistic, 8k',
+            'aspectRatio': '16:9'
+          },
+        ),
+        PipelineStep(
+          id: const Uuid().v4(),
+          nodeType: WorkflowNodeType.videoGeneration,
+          instruction: 'Produce a 5-second cinematic product teaser using Veo 3.1.',
+          config: {
+            'prompt': 'Cinematic slow motion of recycled fabric flowing in the wind, studio lighting, luxurious texture',
+            'model': 'veo_3_1'
+          },
+        ),
+        PipelineStep(
+          id: const Uuid().v4(),
+          nodeType: WorkflowNodeType.agent,
+          agentType: MessageSender.editorialManagerAgent,
+          instruction: 'Verify consistency across all assets and finalize the research report.',
+          requiresApproval: true,
+        ),
+      ],
+    ),
   ];
 
 }

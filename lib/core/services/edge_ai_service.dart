@@ -222,14 +222,17 @@ class EdgeAIService {
          }
 
          final proxyRes = await retry(
-           () => AIProxyService.generateContent(
-             prompt: proxyPrompt, 
-             config: config,
-             systemInstruction: effectiveMemory,
-             tools: [], 
-             thinking: config.modelId.contains('thinking') || effectivePrompt.toLowerCase().contains('deep research'),
-             audio: config.modelId.contains('lyra'),
-           ),
+           () {
+             final proxy = ref is Ref ? ref.read(aiProxyServiceProvider) : (ref as WidgetRef).read(aiProxyServiceProvider);
+             return proxy.generateContent(
+              prompt: proxyPrompt, 
+              config: config,
+              systemInstruction: effectiveMemory,
+              tools: [], 
+              thinking: config.modelId.contains('thinking') || effectivePrompt.toLowerCase().contains('deep research'),
+              audio: config.modelId.contains('lyra'),
+             );
+           },
            maxAttempts: 2,
            delayFactor: const Duration(milliseconds: 500),
          );
@@ -563,14 +566,19 @@ class EdgeAIService {
   }
 
 
-  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref, Map<String, dynamic>? generationParams}) async {
+  static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref, Map<String, dynamic>? generationParams, String? modelId}) async {
     // 1. WEB PROXY PATH (Vertex Imagen - Primary)
     if (kIsWeb) {
        try {
-         debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy (Imagen 3)...');
-         final proxyResponse = await AIProxyService.generateImage(
+         final effectiveModel = modelId ?? 'imagen-3.0-generate-001';
+         debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy ($effectiveModel)...');
+         
+         if (ref == null) throw Exception('Ref is required for Image Proxy in Web mode');
+         final proxy = ref is Ref ? ref.read(aiProxyServiceProvider) : (ref as WidgetRef).read(aiProxyServiceProvider);
+
+         final proxyResponse = await proxy.generateImage(
            prompt: prompt,
-           model: 'imagen-3.0-generate-001',
+           model: effectiveModel,
            config: generationParams,
          );
          

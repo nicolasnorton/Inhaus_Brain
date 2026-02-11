@@ -26,7 +26,8 @@ enum RouterIntent {
   directChat,      // Simple questions, greetings, small talk
   seo,             // SEO optimization
   aeo,             // AEO optimization
-  proposal         // PDF Proposals
+  proposal,        // PDF Proposals
+  knowledge        // Explicit knowledge/data retrieval
 }
 
 class RouterResult {

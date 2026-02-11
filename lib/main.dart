@@ -32,7 +32,7 @@ import 'core/services/blackboard_persistence_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.2.4-proxy-fix STARTED');
+  debugPrint('🚀 INHAUS BRAIN v1.2.6-deep-search STARTED');
   
   // Load environment variables
   try {
@@ -81,10 +81,7 @@ void main() async {
       final String host = Uri.base.host;
       // Skip App Check on local and known difficult testing domains
       if (host.contains('localhost') || 
-          host.contains('127.0.0.1') || 
-          host.contains('inhausbrain.web.app') || 
-          host.contains('inhausbrain-beta.web.app') || 
-          host.contains('inhausbrain.firebaseapp.com')) {
+          host.contains('127.0.0.1')) {
         shouldActivate = false;
       }
       

@@ -70,7 +70,10 @@ enum WorkflowNodeType {
   httpRequest,
   listOperator,
   note,
-  dialogueScene
+  dialogueScene,
+  deepResearch,
+  imageGeneration,
+  videoGeneration
 }
 
 enum PipelineStepType { sequential, parallel, loop }

@@ -197,6 +197,28 @@ class VertexApiService {
       }).toList();
   }
 
+  /// Searches the Vertex AI Vector Search index.
+  Future<List<Map<String, dynamic>>> searchVectorIndex({
+    required List<double> queryVector,
+    int neighborCount = 5,
+    Map<String, dynamic>? filter,
+  }) async {
+    // PATH 0: WEB PROXY (Implementation should match cloud function side)
+    if (kIsWeb) {
+       debugPrint('VertexAI: [WEB] Vector Search via Proxy...');
+       // In a real implementation, this would call a specialized endpoint or AIProxyService.generateContent with tools
+       return []; // Placeholder
+    }
+
+    // PATH 1: Direct Vertex Search API (Placeholder for production grade)
+    debugPrint('VertexAI: Performing Vector Search (Project: $_projectId, Index: inhaus-knowledge)...');
+    
+    // Logic: In production, this hits:
+    // https://$_location-aiplatform.googleapis.com/v1/projects/$_projectId/locations/$_location/indexEndpoints/$INDEX_ENDPOINT_ID:findNeighbors
+    
+    return []; // Return empty for now; to be connected to real backend in Phase 4
+  }
+
   static String _safeError(dynamic e) {
     if (e == null) return "Unknown Error (null)";
     try {

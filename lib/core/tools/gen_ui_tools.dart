@@ -26,6 +26,14 @@ For "video_player":
   "caption": "Demo video",
   "autoplay": false,
   "title": "My Video"
+}
+
+For "dialogue_scene":
+{
+  "personas": [{"id": "user1", "name": "Agent A", "avatar_url": "..."}],
+  "text": "Hello, how can I help?",
+  "environment_id": "office|zen_garden|stage",
+  "camera_anchor": "default|presenter|audience|orbit"
 }'''
        },
        'summary_text': {
@@ -48,9 +56,9 @@ For "video_player":
               'strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report',
               'dynamic_form', 'mind_map', 'carousel', 'interactive_table', 'radial_gauge', 'accordion', 'stepper', 'word_cloud', 'calendar',
               'dialogue_scene', 'avatar_conversation',
-              'code_viewer', 'video_player'
+              'code_viewer', 'video_player', 'knowledge_dashboard'
             ],
-            'description': 'The type of UI component to render. NEW EXAMPLES: Use "dialogue_scene" for 3D/immersive scenes. "avatar_conversation" for character interactions. "code_viewer" for code snippets. "video_player" for video content.'
+            'description': 'The type of UI component to render. NEW EXAMPLES: Use "dialogue_scene" for 3D/immersive scenes. "avatar_conversation" for character interactions. "code_viewer" for code snippets. "video_player" for video content. "knowledge_dashboard" for knowledge base overviews.'
           },
           'data': {
             'type': 'object',

@@ -1,12 +1,24 @@
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../tokens/llm_provider.dart';
+import '../utils/resilience_utils.dart';
+import 'audit_log_service.dart';
 
 class AIProxyService {
+  static late Ref globalRef;
+  final Ref _ref;
+  
+  // Circuit Breakers for production resilience (Static because they should be shared across instances/calls)
+  static final _contentCircuit = CircuitBreaker(name: 'GeminiContent', failureThreshold: 5);
+  static final _imageCircuit = CircuitBreaker(name: 'ImagenImage', failureThreshold: 3);
+
+  AIProxyService(this._ref) {
+    globalRef = _ref;
+  }
   // TODO: Update this URL after deployment. For local testing, use the emulator URL.
   // Emulator default: http://127.0.0.1:5005/inhausbrain/us-central1/proxyVertexAI
   // Production default: https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI
@@ -40,7 +52,7 @@ class AIProxyService {
   static String get _liveTokenUrl => kDebugMode ? '$_pythonBaseUrl/get_live_token' : 'https://get-live-token-btdf7nijqa-uc.a.run.app';
 
   /// Fetch a short-lived access token for the Multimodal Live API.
-  Future<Map<String, dynamic>> getLiveToken() async {
+  static Future<Map<String, dynamic>> getLiveToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User must be logged in.');
 
@@ -110,20 +122,33 @@ class AIProxyService {
     if (usePython) {
       try {
         debugPrint('AIProxyService: 🐍 Routing to Python Gemini SDK (Thinking: $thinking)...');
-        final response = await http.post(
+        final response = await _contentCircuit.execute(() => http.post(
           Uri.parse(_generateContentUrl),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $idToken',
           },
           body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 120)); // Longer timeout for complex tasks
+        ).timeout(const Duration(seconds: 120))); // Longer timeout for complex tasks
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           if (data['error'] != null) {
              throw Exception('Python API Error: ${data['error']}');
           }
+          
+          // Audit Log (v2.0 Performance & Cost Tracking)
+          globalRef.read(auditLogServiceProvider).log(
+            action: 'ai/generate_content',
+            resourceType: 'model',
+            resourceId: config.modelId,
+            metadata: {
+              'promptLength': prompt.toString().length,
+              'thinking': thinking,
+              'audio': audio,
+            }
+          );
+
           return data;
         } else {
           debugPrint('AIProxyService: Python Proxy failed (${response.statusCode}): ${response.body}');
@@ -143,14 +168,14 @@ class AIProxyService {
     // Legacy JS Proxy Fallback
     try {
       debugPrint('AIProxyService: 📦 Routing to Legacy JS Proxy...');
-      final response = await http.post(
+      final response = await _contentCircuit.execute(() => http.post(
         Uri.parse(_functionUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $idToken',
         },
         body: jsonEncode(body),
-      );
+      ));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -173,7 +198,7 @@ class AIProxyService {
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
 
-    final response = await http.post(
+    final response = await _imageCircuit.execute(() => http.post(
       Uri.parse(_generateImageUrl),
       headers: {
         'Content-Type': 'application/json',
@@ -184,9 +209,16 @@ class AIProxyService {
         "model": model,
         "config": config ?? {},
       }),
-    ).timeout(const Duration(seconds: 60));
+    ).timeout(const Duration(seconds: 60)));
 
     if (response.statusCode == 200) {
+      // Audit Log
+      globalRef.read(auditLogServiceProvider).log(
+        action: 'ai/generate_image',
+        resourceType: 'model',
+        resourceId: model,
+        metadata: {'prompt': prompt}
+      );
       return jsonDecode(response.body);
     } else {
       throw Exception('Image Generation Failed (${response.statusCode}): ${response.body}');
@@ -202,7 +234,7 @@ class AIProxyService {
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
 
-    final response = await http.post(
+    final response = await _contentCircuit.execute(() => http.post(
       Uri.parse(_startResearchUrl),
       headers: {
         'Content-Type': 'application/json',
@@ -212,9 +244,14 @@ class AIProxyService {
         "prompt": prompt,
         "model": model,
       }),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(const Duration(seconds: 30)));
 
     if (response.statusCode == 200) {
+      // Audit Log
+      globalRef.read(auditLogServiceProvider).log(
+        action: 'ai/research_start',
+        metadata: {'prompt': prompt}
+      );
       return jsonDecode(response.body);
     } else {
       throw Exception('Start Research Failed (${response.statusCode}): ${response.body}');
@@ -246,7 +283,7 @@ class AIProxyService {
   }
 
   /// Counts tokens using the Python Gemini SDK.
-  static Future<int> countTokens({
+  Future<int> countTokens({
     required String prompt,
     String model = 'gemini-2.5-flash',
   }) async {
@@ -279,7 +316,6 @@ class AIProxyService {
       return 0;
     }
   }
-
 
   static Future<Map<String, dynamic>> pollOperation(String operationName) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -364,14 +400,14 @@ class AIProxyService {
           "instances": instances,
         };
 
-        final response = await http.post(
+        final response = await _contentCircuit.execute(() => http.post(
           Uri.parse(_functionUrl),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $idToken',
           },
           body: jsonEncode(body),
-        ).timeout(timeout); // Add explicit timeout
+        ).timeout(timeout)); // Add explicit timeout
 
         if (response.statusCode == 200) {
           return jsonDecode(response.body);
@@ -443,4 +479,6 @@ class AIProxyService {
     }
   }
 }
+
+final aiProxyServiceProvider = Provider<AIProxyService>((ref) => AIProxyService(ref));
 

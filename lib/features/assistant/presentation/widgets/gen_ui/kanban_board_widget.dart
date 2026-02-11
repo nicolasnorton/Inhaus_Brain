@@ -29,11 +29,17 @@ class KanbanBoardWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: columns.map((col) {
                 final colTitle = col['title'] ?? 'Column';
-                final cards = List<String>.from(col['cards'] ?? []);
+                final cardsRaw = col['cards'] as List?;
+                final cards = cardsRaw?.map((card) {
+                  if (card is String) return card;
+                  if (card is Map) return card['title']?.toString() ?? card['content']?.toString() ?? card['description']?.toString() ?? card.toString();
+                  return card.toString();
+                }).toList() ?? [];
+                
                 final color = _getColumnColor(colTitle);
 
                 return Container(
-                  width: 200,
+                  width: 250, // Slightly wider for better readability
                   margin: const EdgeInsets.only(right: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -52,22 +58,37 @@ class KanbanBoardWidget extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Expanded(child: Text(colTitle, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13))),
+                          if (cards.isNotEmpty)
+                             Container(
+                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                               decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(10)),
+                               child: Text('${cards.length}', style: const TextStyle(fontSize: 10, color: Colors.white54)),
+                             )
                         ],
                       ),
                       const SizedBox(height: 12),
-                      ...cards.map((card) => Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2D333B),
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
-                          ]
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: cards.length,
+                          itemBuilder: (context, index) {
+                            final card = cards[index];
+                            return Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2D333B),
+                                borderRadius: BorderRadius.circular(6),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                                ],
+                                border: Border.all(color: Colors.white.withOpacity(0.05))
+                              ),
+                              child: Text(card, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4)),
+                            );
+                          },
                         ),
-                        child: Text(card, style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
-                      )),
+                      ),
                     ],
                   ),
                 );

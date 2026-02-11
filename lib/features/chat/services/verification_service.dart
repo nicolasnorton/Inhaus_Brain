@@ -18,6 +18,8 @@ CRITICAL:
 4. If the output is good, return it AS IS.
 5. If the output needs improvement, REWRITE it while keeping all tool logic intact.
 6. Return ONLY the final output. Do not add "Here is the improved version:".
+7. BRAND GUARDRAILS: Ensure tone is premium/editorial. Remove any unintended competitor mentions or non-inclusive language.
+8. BILINGUAL CONSISTENCY: If the original prompt is in Spanish or asks for bilingual content, ensure the verification preserves or enforces that (e.g., providing translations if missing).
 """;
 
     final prompt = """

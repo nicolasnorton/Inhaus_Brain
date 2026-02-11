@@ -54,6 +54,39 @@ Custom Fields: ${client.customFields}
     );
   }
 
+  Future<void> ingestSocialData({
+    required String clientId,
+    required String platform,
+    required String postContent,
+    Map<String, dynamic>? metrics,
+  }) async {
+    debugPrint('Social Ingestion: Processing $platform for Client $clientId...');
+    final content = "Platform: $platform\nContent: $postContent\nMetrics: ${jsonEncode(metrics ?? {})}";
+
+    await _knowledgeApi.createDocumentFromText(
+      datasetId: 'social-intelligence-$clientId',
+      name: '$platform Post ${DateTime.now().millisecondsSinceEpoch}',
+      text: content,
+      chunkSize: _calculateChunkSize(KnowledgeSourceType.values.firstWhere((e) => e.toString().contains(platform)), content),
+    );
+  }
+
+  Future<void> ingestPaidMediaData({
+    required String clientId,
+    required String platform,
+    required Map<String, dynamic> performanceData,
+  }) async {
+    debugPrint('Paid Media Ingestion: Processing $platform for Client $clientId...');
+    final content = _formatStructuredData(jsonEncode(performanceData), KnowledgeSourceType.values.firstWhere((e) => e.toString().contains(platform)));
+
+    await _knowledgeApi.createDocumentFromText(
+      datasetId: 'paid-media-intelligence-$clientId',
+      name: '$platform Performance ${DateTime.now().toIso8601String().split('T')[0]}',
+      text: content,
+      chunkSize: _calculateChunkSize(KnowledgeSourceType.values.firstWhere((e) => e.toString().contains(platform)), content),
+    );
+  }
+
   String _formatStructuredData(String raw, KnowledgeSourceType type) {
     // Basic CSV/JSON heuristic to make data more readable for embedding
     try {
@@ -182,7 +215,17 @@ $taskSummary
     switch (type) {
       case KnowledgeSourceType.googleAds:
       case KnowledgeSourceType.ga4:
+      case KnowledgeSourceType.metaAds:
+      case KnowledgeSourceType.linkedinAds:
+      case KnowledgeSourceType.tiktokAds:
+      case KnowledgeSourceType.twitterAds:
         return 300; // Granular chunks for data records
+      case KnowledgeSourceType.meta:
+      case KnowledgeSourceType.instagram:
+      case KnowledgeSourceType.linkedin:
+      case KnowledgeSourceType.tiktok:
+      case KnowledgeSourceType.twitter:
+        return 400; // Specific for social posts
       case KnowledgeSourceType.googleWorkspace:
       case KnowledgeSourceType.gmail:
         return 600; // Medium chunks for emails/docs

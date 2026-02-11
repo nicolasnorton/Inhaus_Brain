@@ -202,6 +202,12 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
         return _buildNoteConfig(step);
       case WorkflowNodeType.dialogueScene:
         return const Center(child: Text("Dialogue Scene Config (Coming Soon)"));
+      case WorkflowNodeType.deepResearch:
+        return const Center(child: Text("Deep Research Config (Coming Soon)"));
+      case WorkflowNodeType.imageGeneration:
+        return const Center(child: Text("Image Generation Config (Coming Soon)"));
+      case WorkflowNodeType.videoGeneration:
+        return const Center(child: Text("Video Generation Config (Coming Soon)"));
     }
   }
 

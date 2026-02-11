@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -158,3 +159,8 @@ class LiveApiService {
     _eventController.close();
   }
 }
+
+final liveApiServiceProvider = Provider((ref) {
+  final proxyService = ref.watch(aiProxyServiceProvider);
+  return LiveApiService(proxyService);
+});

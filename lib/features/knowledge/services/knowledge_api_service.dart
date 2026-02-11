@@ -11,6 +11,7 @@ import '../../../core/services/semantic_cache_service.dart';
 import '../../../core/utils/security_utils.dart';
 import '../../../core/utils/security_utils.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart'; // PDF Parsing
+import '../../../core/services/bigquery_service.dart';
 import '../models/knowledge_api_models.dart';
 
 /// Service for Knowledge Base operations (Native Vertex + Firestore)
@@ -18,6 +19,7 @@ class KnowledgeApiService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final VertexApiService _vertexService;
   final SecretVaultService _vault;
+  final BigQueryService? _bq;
   final SemanticCacheService? _cache;
   final String? _userId;
   final Future<String?> Function() tokenProvider; // Kept for interface compatibility, though Firestore handles auth natively
@@ -26,11 +28,12 @@ class KnowledgeApiService {
     required VertexApiService vertexService,
     required SecretVaultService vault,
     required this.tokenProvider,
+    BigQueryService? bq,
     String? userId,
     SemanticCacheService? cache,
     String? baseUrl, // Deprecated, kept for signature compatibility
     http.Client? client,
-  }) : _vertexService = vertexService, _vault = vault, _cache = cache, _userId = userId;
+  }) : _vertexService = vertexService, _vault = vault, _bq = bq, _cache = cache, _userId = userId;
 
   static const String _collectionDatasets = 'knowledge_datasets';
   static const String _collectionDocuments = 'documents';
@@ -313,6 +316,30 @@ Map<String, dynamic> _processTextInIsolate(Map<String, dynamic> args) {
     
     batch.set(docRef, doc.toJson());
     await batch.commit();
+
+    // 6. [NEW] Production Scale Storage: BigQuery Ingestion
+    if (_bq != null) {
+      try {
+        debugPrint('KnowledgeApi: [DUAL-WRITE] Ingesting to BigQuery for production-grade retrieval...');
+        await _bq.ingestDocument(
+          documentId: docId,
+          clientId: datasetId, // Assuming datasetId is the client isolation key or similar for now
+          platform: 'file_upload', // Default for text/file, will be specific in connectors
+          type: 'text_document',
+          title: name,
+          content: text,
+          embeddings: embeddings,
+          metadata: {
+            'word_count': wordCount,
+            'token_count': totalTokens,
+            'original_id': docId,
+          }
+        );
+      } catch (e) {
+        debugPrint('KnowledgeApi: ⚠️ BigQuery Dual-Write failed: $e. System continuing with Firestore fallback.');
+        // Non-blocking for now
+      }
+    }
 
     return doc;
   }

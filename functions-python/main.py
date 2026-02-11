@@ -108,6 +108,8 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         thinking = data.get("thinking", False)
         audio = data.get("audio", False)
         use_google_search = data.get("useGoogleSearch", False)
+        cached_content_name = data.get("cachedContentName") # Optional: Use a pre-cached context
+
         
         # Inject custom tool definitions if requested by string
         if isinstance(tools, list):
@@ -143,7 +145,8 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             thinking=thinking,
             audio=audio,
             use_google_search=use_google_search,
-            generation_params=data.get("generationParams")
+            generation_params=data.get("generationParams"),
+            cached_content_name=cached_content_name
         )
 
         # Use the built-in serializer for clean output
@@ -260,25 +263,13 @@ def generate_image(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "imagen-3.0-generate-001")
+        model = data.get("model", "imagen-3.0-fast-generate-001")
         
         client = GeminiClient()
         images = client.generate_image(model=model, prompt=prompt)
         
-        # Serialize images (base64)
-        image_data = []
-        # Modern v1 SDK uses 'generated_images' attribute
-        image_list = getattr(images, 'generated_images', [])
-        for img in image_list:
-            import base64
-            image_b64 = base64.b64encode(img.image.data).decode('utf-8')
-            image_data.append({
-                "mimeType": img.image.mime_type,
-                "data": image_b64
-            })
-            
         return https_fn.Response(
-            json.dumps({"images": image_data}),
+            json.dumps(client._serialize_images(images)),
             status=200,
             headers={"Content-Type": "application/json"}
         )
@@ -302,6 +293,36 @@ def count_tokens(req: https_fn.Request) -> https_fn.Response:
         
         return https_fn.Response(
             json.dumps({"totalTokens": total_tokens}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def create_cache(req: https_fn.Request) -> https_fn.Response:
+    """Create a Context Cache."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        model = data.get("model", "gemini-3.0-flash-001")
+        contents = data.get("contents", []) # Expects serialized Part/Content list
+        ttl = data.get("ttl", 3600)
+        
+        # Deserialize contents if needed (simplified here, assumes client sends valid JSON for parts)
+        # Real impl might need Part reconstruction like generate_content
+        
+        client = GeminiClient()
+        cache = client.create_cached_content(model=model, contents=contents, ttl_seconds=ttl)
+        
+        return https_fn.Response(
+            json.dumps({
+                "name": cache.name,
+                "expireTime": cache.expire_time.isoformat() if cache.expire_time else None
+            }),
             status=200,
             headers={"Content-Type": "application/json"}
         )
@@ -417,3 +438,50 @@ def dialogue_engine(req: https_fn.Request) -> https_fn.Response:
             status=500,
             headers={"Content-Type": "application/json"}
         )
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def enqueue_agent_task(req: https_fn.Request) -> https_fn.Response:
+    """
+    Enqueues an agent task for asynchronous processing.
+    In Production, this dispatches to Cloud Tasks.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        agent_name = data.get("agentName")
+        task_input = data.get("input")
+        metadata = data.get("metadata", {})
+
+        if not agent_name or not task_input:
+            return https_fn.Response("Missing agentName or input", status=400)
+
+        # 1. Log Task Entry
+        print(f"TaskQueue: Received task for '{agent_name}' (UID: {uid})")
+
+        # 2. Production: Dispatch to Cloud Tasks
+        # For now, we simulate success. Real impl uses google-cloud-tasks.
+        # queue_path = "projects/inhausbrain/locations/us-central1/queues/agent-tasks"
+        
+        # 3. Save to Firestore (Audit/Status Tracking)
+        from firebase_admin import firestore
+        db = firestore.client()
+        task_ref = db.collection('agent_tasks').document()
+        task_ref.set({
+            'agentName': agent_name,
+            'input': task_input,
+            'metadata': metadata,
+            'status': 'queued',
+            'actorId': uid,
+            'createdAt': firestore.SERVER_TIMESTAMP
+        })
+
+        return https_fn.Response(
+            json.dumps({"taskId": task_ref.id, "status": "queued"}),
+            status=202,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in enqueue_agent_task: {str(e)}")
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})

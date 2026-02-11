@@ -18,17 +18,32 @@ class AnalyticsService {
     final user = _ref.read(authServiceProvider).currentUser;
     if (user == null) return;
 
+    final timestamp = FieldValue.serverTimestamp();
+    final eventData = {
+      'name': eventName,
+      'parameters': parameters ?? {},
+      'timestamp': timestamp,
+      'userId': user.uid,
+      'userEmail': user.email,
+      'platform': kIsWeb ? 'web' : 'mobile',
+    };
+
     try {
-      await _firestore
+      final batch = _firestore.batch();
+      
+      // 1. Per-user event (for individual history/debugging)
+      final userEventRef = _firestore
           .collection('users')
           .doc(user.uid)
           .collection('events')
-          .add({
-        'name': eventName,
-        'parameters': parameters ?? {},
-        'timestamp': FieldValue.serverTimestamp(),
-        'platform': kIsWeb ? 'web' : 'mobile',
-      });
+          .doc();
+      batch.set(userEventRef, eventData);
+
+      // 2. Global event stream (BigQuery target)
+      final globalEventRef = _firestore.collection('global_events').doc();
+      batch.set(globalEventRef, eventData);
+
+      await batch.commit();
     } catch (e) {
       debugPrint('Analytics: Failed to log event $eventName: $e');
     }

@@ -25,6 +25,8 @@ import '../../../core/services/json_parser_service.dart';
 
 import '../domain/agent_outputs.dart';
 import '../providers/assistant_provider.dart';
+import '../../reports/providers/reports_provider.dart';
+import '../../knowledge/services/knowledge_retriever_service.dart';
 
 enum AssistantMode { fast, planning }
 
@@ -354,6 +356,30 @@ class AssistantService {
        blackboard.updateAgentStatus('Strategist', AgentStatus.working);
     }
     // ... add more as needed
+    
+    // E. Knowledge Retrieval & Grounding (v2.0 Upgrade)
+    String retrievedGroundingContext = "";
+    List<String> groundingSources = [];
+    
+    final knowledgeIntents = [RouterIntent.research, RouterIntent.knowledge, RouterIntent.proposal, RouterIntent.genUiReport];
+    if (knowledgeIntents.contains(intentEnum)) {
+      _ref.read(assistantStatusProvider.notifier).state = "Searching knowledge base...";
+      try {
+        final retriever = _ref.read(knowledgeRetrieverProvider);
+        final results = await retriever.retrieve(
+          query: text, 
+          clientId: 'client_1', // TODO: Get active client from provider
+        );
+        
+        if (results.isNotEmpty) {
+           retrievedGroundingContext = retriever.formatForGrounding(results);
+           groundingSources = results.map((r) => "${r.sourceTitle} (${r.platform})").toList();
+           debugPrint('Assistant: Grounding successful with ${results.length} sources.');
+        }
+      } catch (e) {
+        debugPrint('Assistant: Grounding failed: $e');
+      }
+    }
 
     final promptService = _ref.read(systemPromptsProvider);
     final brianPersona = await promptService.getBrianPrompt();
@@ -373,7 +399,8 @@ class AssistantService {
       .replaceAll('{{CONVERSATION_HISTORY}}', recentHistory)
       .replaceAll('{{AVAILABLE_TOOLS}}', toolDefinitions)
       .replaceAll('{{USER_INPUT}}', text)
-      .replaceAll('{{EPHEMERAL_MESSAGE}}', ephemeralMsg);
+      .replaceAll('{{EPHEMERAL_MESSAGE}}', ephemeralMsg)
+      .replaceAll('{{KNOWLEDGE_GROUNDING}}', retrievedGroundingContext);
 
     // Semantic Cache Check
     final semanticCache = _ref.read(semanticCacheServiceProvider);
@@ -397,22 +424,58 @@ class AssistantService {
     try {
       _ref.read(assistantStatusProvider.notifier).state = "Thinking...";
       
+      // SPECIAL HANDLING: Deep Research & Reports
+      if (intentEnum == RouterIntent.research || intentEnum == RouterIntent.genUiReport) {
+          debugPrint('Assistant: 🕵️ Routing to ReportsService for Deep Research/Report...');
+          _ref.read(blackboardProvider.notifier).updateAgentStatus('TrendScout', AgentStatus.working);
+          
+          final reportsService = _ref.read(reportsServiceProvider);
+          final report = await reportsService.generateReport(
+              title: "Research: ${text.length > 30 ? text.substring(0, 30) + '...' : text}", 
+              prompt: text, 
+              userId: "user_current", // Placeholder or fetch from provider
+              clientId: "client_1",
+              useDeepResearch: intentEnum == RouterIntent.research // Use Deep Research for 'research' intent
+          );
+          
+          // Construct UI Payload for GenUI (Report View)
+          Map<String, dynamic> reportData = {};
+          if (report.outputs.isNotEmpty && report.outputs[0].content != null) {
+              try {
+                  reportData = jsonDecode(report.outputs[0].content!);
+              } catch (e) {
+                  debugPrint('Assistant: Failed to parse report JSON: $e');
+                  reportData = {'raw_content': report.outputs[0].content};
+              }
+          }
+          
+          return ToolExecutionSummary(
+              text: "I've completed the research and generated a detailed report for you.",
+              modelName: 'Gemini 3.0 Pro (Deep Research)',
+              uiPayload: {
+                  'type': 'deep_analysis',
+                  'id': report.id,
+                  'title': report.title,
+                  'client_id': report.clientId,
+                  'created_at': report.createdAt.toIso8601String(),
+                  ...reportData
+              }
+          );
+      }
+
       // Use Pro for complex intents to ensure Gen UI compliance, Flash for simple tasks
       AIModelConfig mainConfig;
       final textLower = text.toLowerCase();
-      final isComplexIntent = intentEnum == RouterIntent.research || 
-                            intentEnum == RouterIntent.management || 
+      final isComplexIntent = intentEnum == RouterIntent.management || 
                             intentEnum == RouterIntent.copywriting ||
                             intentEnum == RouterIntent.creative ||
                             intentEnum == RouterIntent.creativeImage ||
                             intentEnum == RouterIntent.creativeVideo ||
-                            intentEnum == RouterIntent.genUiReport ||
                             intentEnum == RouterIntent.proposal;
       
       final forcesPro = textLower.contains('video') || 
                        textLower.contains('generate a video') || 
                        textLower.contains('create a video') ||
-                       textLower.contains('report') ||
                        textLower.contains('checklist');
 
       if (isComplexIntent || forcesPro) {
@@ -705,76 +768,6 @@ class AssistantService {
     );
   }
 
-  Future<ToolExecutionSummary?> _runStrictAgent<T extends AgentOutput>(
-      String prompt, 
-      T Function(Map<String, dynamic>) factory, 
-      String schemaDescription) async {
-    
-    // Config: Force JSON
-    final config = AIModelConfig(
-      provider: AIProvider.gemini, 
-      modelId: 'gemini-3-flash-preview',
-      responseMimeType: 'application/json',
-      temperature: 0.2, // Lower temp for logic
-      maxTokens: 4096,
-    );
-
-    final fullPrompt = "$prompt\n\nCRITICAL: Output must be valid JSON adhering to this schema:\n$schemaDescription";
-
-    try {
-       final result = await EdgeAIService.generateText(
-         fullPrompt,
-         modelConfig: config,
-         ref: _ref
-       );
-
-     // Confidence Check
-     if (result.confidence < 0.7) {
-        throw Exception('Low Confidence Generation (${result.confidence}). Requesting retry.');
-     }
-     
-     final Map<String, dynamic> json = jsonDecode(result.text);
-     
-     debugPrint('Assistant: Strict Agent Success! Type: $T');
-     
-      // 1. Determine Component Type based on intent/type
-      String targetLower = prompt.toLowerCase();
-      String componentType = 'trend_report';
-      if (targetLower.contains('strategy')) {
-         componentType = 'strategy_board';
-      } else if (targetLower.contains('recipe') || targetLower.contains('process') || targetLower.contains('steps')) {
-         componentType = 'recipe_card';
-      } else if (targetLower.contains('analysis') || targetLower.contains('audit') || targetLower.contains('research')) {
-         componentType = 'analysis_report';
-      }
-
-     _ref.read(blackboardProvider.notifier).resetRetry();
-     
-     return ToolExecutionSummary(
-       text: "I've analyzed the data and generated a report for you.",
-       uiPayload: {
-         'type': componentType,
-         ...json,
-       }
-     );
-  } catch (e) {
-       debugPrint('Assistant: Strict Agent Error: $e');
-       
-       // ARBITER LOGIC
-       final blackboard = _ref.read(blackboardProvider.notifier);
-       blackboard.incrementRetry();
-       
-       if (_ref.read(blackboardProvider).retryCount > 2) {
-           debugPrint('Assistant: Agent Stalled. Calling Arbiter.');
-           blackboard.transitionTo(BlackboardPhase.userArbitration);
-           return ToolExecutionSummary(text: "I'm having trouble structuring the strategy correctly. I've paused so you can review the partial output or redirect me.");
-       }
-
-       return null; // Fallback to normal chat
-    }
-  }
-
-
   Future<ToolExecutionSummary> _executeTool(List<AgentTool> tools, String name, Map<String, dynamic> args) async {
     final tool = tools.firstWhere((t) => t.name == name, orElse: () => throw Exception('Tool not found: $name'));
     try {
@@ -851,6 +844,14 @@ class AssistantService {
                sources: sources,
              );
         }
+        if (name == 'direct_scene') {
+              // Real-time update for Dialogue Scenes
+              _ref.read(dialogueSceneCommandProvider.notifier).state = {
+                'action': args['action'],
+                'params': args['params'],
+              };
+              return ToolExecutionSummary(text: result.data['message'] ?? 'Scene updated.');
+        }
         return ToolExecutionSummary(text: "Executed $name successfully.\n\n```json\n${jsonEncode(result.data)}\n```");
       } else {
         return ToolExecutionSummary(text: "Error executing $name: ${result.errorMessage}");
@@ -863,12 +864,6 @@ class AssistantService {
   void clearHistory() {
     _history.clear();
   }
-
-  String get _planningModeInstructions => '''
-5. You are in PLANNING mode. Prioritize creating detailed plans and artifacts.
-6. Use the 'create_artifact' tool to generate documents (plans, code snippets, etc.).
-7. Before executing complex tasks, ALWAYS propose a plan.
-''';
 
   String _injectEphemeralMessages(AssistantMode mode) {
     if (mode == AssistantMode.planning) {

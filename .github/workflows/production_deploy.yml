@@ -1,0 +1,53 @@
+name: Production Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - feature/production-completion-everything-else-v2.0-safe
+
+jobs:
+  build_production:
+    name: Build & Deploy Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Flutter Web
+        run: flutter build web --release --dart-define=FLAVOR=production
+
+      - name: Setup Python (Cloud Functions)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          cd functions-python
+          pip install -r requirements.txt
+
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting,functions,firestore,storage
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+  audit_trail:
+    name: Post-Deployment Audit
+    runs-on: ubuntu-latest
+    needs: build_production
+    steps:
+      - name: Log Deployment to Audit Service
+        run: |
+          echo "Production deployment successful at $(date)"
+          # In a real environment, we'd call an internal API to log the deployment event to AuditLogService

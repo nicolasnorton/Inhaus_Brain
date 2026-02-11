@@ -391,6 +391,7 @@ Context:
 - Current Mode: {{CURRENT_MODE}}
 - Detected Intent: {{DETECTED_INTENT}}
 - System Memory: {{SYSTEM_MEMORY}}
+- Knowledge Grounding: {{KNOWLEDGE_GROUNDING}}
 
 CONVERSATION HISTORY:
 {{CONVERSATION_HISTORY}}

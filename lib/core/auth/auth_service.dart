@@ -7,7 +7,10 @@ import '../../features/auth/models/user_model.dart';
 import 'package:flutter/foundation.dart'; // for kDebugMode
 import 'secret_vault_service.dart';
 
+import 'package:inhaus_brain/core/services/audit_log_service.dart';
+
 class AuthService {
+  final Ref _ref;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final SecretVaultService _vault = SecretVaultService();
@@ -19,7 +22,7 @@ class AuthService {
     ],
   );
 
-  AuthService() {
+  AuthService(this._ref) {
     // Listen for Google Sign-In changes (especially for GIS on Web)
     _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? googleUser) async {
       if (googleUser != null) {
@@ -150,6 +153,14 @@ class AuthService {
       await _firestore.collection('users').doc(userId).update({
         'role': role.name,
       });
+      
+      // Audit Log
+      _ref.read(auditLogServiceProvider).logPermissionChange(
+        targetUserId: userId,
+        oldRole: 'unknown', // Profile fetch might be needed for old role
+        newRole: role.name,
+      );
+
       // Clear from profile cache to force refresh on next fetch
       _userProfiles.remove(userId);
     } catch (e) {
@@ -175,6 +186,9 @@ class AuthService {
       if (user != null) {
         // Ensure profile exists/is up to date
         await getAppUser(user);
+        
+        // Audit Log
+        _ref.read(auditLogServiceProvider).logLogin(user.email ?? 'google-auth');
       }
       
       return user;
@@ -216,6 +230,9 @@ class AuthService {
       final user = userCredential.user;
        if (user != null) {
         await getAppUser(user);
+        
+        // Audit Log
+        _ref.read(auditLogServiceProvider).logLogin(user.email ?? 'email-auth');
       }
       return user;
     } catch (e) {
@@ -247,6 +264,13 @@ class AuthService {
         );
          _userProfiles[user.uid] = newUser;
         await _syncUserWithFirestore(newUser);
+         
+         // Audit Log
+         _ref.read(auditLogServiceProvider).log(
+           action: 'auth/signup',
+           metadata: {'email': email},
+           isCritical: true,
+         );
       }
       return user;
     } catch (e) {
@@ -254,7 +278,13 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() async {
+   Future<void> signOut() async {
+    // Audit Log before clearing state
+    final user = currentUser;
+    if (user != null) {
+      _ref.read(auditLogServiceProvider).logLogout();
+    }
+
     _userProfiles.clear();
     await _googleSignIn.signOut();
     await _auth.signOut();
@@ -290,7 +320,7 @@ class AuthService {
   }
 }
 
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+final authServiceProvider = Provider<AuthService>((ref) => AuthService(ref));
 
 final authStateProvider = StreamProvider<User?>((ref) {
   return ref.watch(authServiceProvider).authStateChanges;

@@ -51,6 +51,12 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
               ),
               child: Row(
                 children: [
+                  if (MediaQuery.of(context).size.width < 600)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 18, color: Colors.white70),
+                      onPressed: () => ref.read(canvasProvider.notifier).toggleMobileCanvas(false),
+                      tooltip: 'Back to Chat',
+                    ),
                   GestureDetector(
                     onTap: hasPinned ? () => setState(() => _showPinboard = !_showPinboard) : null,
                     child: Row(

@@ -10,7 +10,7 @@ class PdfStyles {
   static final PdfColor inhausTextSecondary = PdfColor.fromInt(0xFFA0A0A0); // #A0A0A0
 
   static PdfColor withOpacity(PdfColor color, double opacity) {
-    return PdfColor(color.red * opacity, color.green * opacity, color.blue * opacity, opacity);
+    return PdfColor(color.red, color.green, color.blue, opacity);
   }
 
   // Text Styles

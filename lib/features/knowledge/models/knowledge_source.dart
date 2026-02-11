@@ -12,7 +12,16 @@ enum KnowledgeSourceType {
   gmail,
   googleWorkspace,
   googleAds,
-  ga4
+  ga4,
+  meta,
+  instagram,
+  linkedin,
+  tiktok,
+  twitter,
+  metaAds,
+  linkedinAds,
+  tiktokAds,
+  twitterAds
 }
 
 class KnowledgeSource {

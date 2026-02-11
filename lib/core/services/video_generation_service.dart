@@ -14,8 +14,8 @@ class VideoGenerationService {
   // Final renders MUST use Veo 3 / Veo 3.1.
   // NO External models allowed.
   
-  static const String modelVeo31 = 'veo-3.1-generate-preview';
-  static const String modelVeo31Fast = 'veo-3.1-fast-generate-preview';
+  static const String modelVeo31 = 'veo-3.1-generate-001';
+  static const String modelVeo31Fast = 'veo-3.1-generate-001'; // Python maps all 3.1 to this
   static const String modelVeo3 = 'veo-3.0-generate-preview';
   static const String modelVeo3Fast = 'veo-3.0-fast-generate-preview';
   static const String modelVeo2 = 'veo-2.0-generate-001';

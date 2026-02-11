@@ -10,6 +10,9 @@ final assistantStatusProvider = StateProvider<String?>((ref) => null);
 // Trigger for sending message from FAB
 final assistantSendTriggerProvider = StateProvider<int>((ref) => 0);
 
+// Command for real-time dialogue scene updates (passed to WebView)
+final dialogueSceneCommandProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+
 // Chat history state
 class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
   final AssistantService _service;

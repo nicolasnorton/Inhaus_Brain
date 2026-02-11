@@ -37,8 +37,11 @@ import '../presentation/widgets/gen_ui/word_cloud_widget.dart';
 import '../presentation/widgets/gen_ui/calendar_widget.dart';
 import '../presentation/widgets/gen_ui/dialogue_scene_widget.dart';
 import '../presentation/widgets/gen_ui/avatar_conversation_widget.dart';
+import '../presentation/widgets/gen_ui/live_session_widget.dart';
 import '../presentation/widgets/gen_ui/code_viewer_widget.dart';
 import '../presentation/widgets/gen_ui/video_player_widget.dart';
+import '../presentation/widgets/gen_ui/deep_analysis_report_widget.dart';
+import '../presentation/widgets/gen_ui/knowledge_dashboard_widget.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../../../core/widgets/video_preview_player.dart';
 import '../../canvas/ui/canvas_host.dart';
@@ -369,7 +372,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       }
     } else {
       top = 20; bottom = 20; left = null;
-      width = 520;
+      width = (screenWidth > 940) ? 900 : (screenWidth - 40);
       borderRadius = 16;
       
       if (isOpen) {
@@ -398,13 +401,14 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
             color: const Color(0xFF1C2128), // Dark workspace background
             child: Consumer(
               builder: (context, ref, _) {
-                final canvasState = ref.watch(canvasProvider);
+                  final canvasState = ref.watch(canvasProvider);
                 return SplitPaneLayout(
                   childLeft: const CanvasHost(),
                   initialRatio: 0.5,
                   minLeftWidth: 300,
                   minRightWidth: 350,
                   showLeftPaneOnMobile: canvasState.isMobileCanvasOpen,
+                  showLeftPane: canvasState.isDesktopCanvasOpen, // Added desktop toggle
                   childRight: Stack(
                     children: [
                       Column(
@@ -466,12 +470,23 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                            );
                         }
                       ),
-                      if (!isSmallScreen)
+                      if (!isSmallScreen) ...[
+                        // Canvas Toggle Button
+                        IconButton(
+                          icon: Icon(
+                             canvasState.isDesktopCanvasOpen ? Icons.view_sidebar : Icons.view_sidebar_outlined, 
+                             size: 20, 
+                             color: canvasState.isDesktopCanvasOpen ? Colors.blueAccent : Colors.white54
+                          ),
+                          onPressed: () => ref.read(canvasProvider.notifier).toggleDesktopCanvas(!canvasState.isDesktopCanvasOpen),
+                          tooltip: canvasState.isDesktopCanvasOpen ? 'Close Canvas' : 'Open Canvas',
+                        ),
                         IconButton(
                           icon: Icon(_isFullWidth ? Icons.fullscreen_exit : Icons.fullscreen, size: 20, color: Colors.white54),
                           onPressed: () => setState(() => _isFullWidth = !_isFullWidth),
                           tooltip: _isFullWidth ? 'Collapse' : 'Expand Full Width',
                         ),
+                      ],
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20, color: Colors.white54),
                         onPressed: () => ref.read(assistantChatProvider.notifier).clearChat(),
@@ -1208,10 +1223,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       case 'analysis_report':
         return TrendReportWidget(data: payload);
       case 'dialogue_scene':
-        return DialogueSceneWidget(
-          initialUrl: payload['initial_url'],
-          htmlContent: payload['html_content'],
-        );
+        return DialogueSceneWidget(data: payload);
       case 'avatar_conversation':
         return AvatarConversationWidget(
           speakerName: payload['speaker_name'] ?? 'Speaker',
@@ -1223,6 +1235,12 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
         return CodeViewerWidget(data: payload);
       case 'video_player':
         return VideoPlayerWidget(data: payload);
+      case 'deep_analysis':
+        return DeepAnalysisReportWidget(data: payload);
+      case 'knowledge_dashboard':
+        return KnowledgeDashboardWidget(data: payload);
+      case 'live_multimodal_session':
+        return LiveMultimodalSessionWidget(data: payload);
       default:
         // Fallback for any other type that might have sections (generic report)
         if (payload.containsKey('sections') || payload.containsKey('trends')) {

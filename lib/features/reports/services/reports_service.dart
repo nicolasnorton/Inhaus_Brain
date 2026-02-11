@@ -1,6 +1,8 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/report_model.dart';
+import '../../../core/services/ai_proxy_service.dart';
+import '../../../core/tokens/llm_provider.dart';
 
 class ReportsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -47,4 +49,105 @@ class ReportsService {
   Future<void> deleteReport(String reportId) async {
     await _firestore.collection(_collection).doc(reportId).delete();
   }
+
+  /// PROD-GRADE: Generate a report using Deep Research + Strict Schema (Gemini 3 Pro)
+  Future<Report> generateReport({
+    required String title,
+    required String prompt,
+    required String userId, // Keep for potential future use or logging
+    required String clientId,
+    bool useDeepResearch = false,
+  }) async {
+    String content = "";
+
+    // 1. Gather Data (Deep Research or Standard Search)
+    if (useDeepResearch) {
+        final researchPrompt = "Deep Research Task: $prompt\n\nObjective: Gather comprehensive data for a $title report.";
+        final interaction = await AIProxyService.startResearch(prompt: researchPrompt);
+        final id = interaction['interactionId'];
+        
+        // Poll until done
+        int attempts = 0;
+        while (attempts < 60) {
+          await Future.delayed(const Duration(seconds: 5));
+          final res = await AIProxyService.pollResearch(id);
+          if (res['status'] == 'completed' || res['status'] == 'complete') {
+            content = res['output'];
+            break;
+          }
+          attempts++;
+        }
+    } else {
+      // Standard Gemini 3 Pro with Search
+       final config = AIModelConfig.geminiResearch;
+       final res = await AIProxyService.generateContent(
+         prompt: prompt,
+         config: config,
+         usePython: true
+       );
+       // Handle candidates safely
+       if (res['candidates'] != null && (res['candidates'] as List).isNotEmpty) {
+           content = res['candidates'][0]['content']['parts'][0]['text'];
+       } else {
+           content = "No data found.";
+       }
+    }
+
+    // 2. Format with Strict Schema (Gemini 3 Pro JSON Mode)
+    final strictPrompt = """
+    You are an expert analyst. Convert the following research data into a strictly structured JSON report.
+    
+    RESEARCH DATA:
+    $content
+    
+    OUTPUT SCHEMA (JSON):
+    {
+      "executive_summary": "string",
+      "key_insights": ["string"],
+      "strategic_recommendations": ["string"],
+      "detailed_analysis": "markdown_string",
+      "metrics": [{"name": "string", "value": "string", "trend": "up|down|flat"}]
+    }
+    """;
+
+    final formatConfig = AIModelConfig.geminiPro.copyWith(
+      responseMimeType: 'application/json'
+    );
+    
+    final formattedRes = await AIProxyService.generateContent(
+      prompt: strictPrompt,
+      config: formatConfig,
+      usePython: true
+    );
+    
+    String jsonText = "{}";
+    if (formattedRes['candidates'] != null && (formattedRes['candidates'] as List).isNotEmpty) {
+        jsonText = formattedRes['candidates'][0]['content']['parts'][0]['text'];
+    }
+    
+    // 3. Create Report Object
+    final now = DateTime.now();
+    final reportId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    final newReport = Report(
+      id: reportId,
+      title: title,
+      clientId: clientId,
+      createdAt: now,
+      updatedAt: now,
+      outputs: [
+          ReportOutput(
+              id: "${reportId}_out_1",
+              title: "Analysis JSON",
+              type: ReportOutputType.text, // Using text to store JSON
+              content: jsonText,
+              createdAt: now
+          )
+      ]
+    );
+
+    await createReport(newReport);
+    return newReport;
+  }
 }
+

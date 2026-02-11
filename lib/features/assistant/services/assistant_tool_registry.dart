@@ -15,6 +15,8 @@ import 'package:inhaus_brain/core/mcp/tools/audio_generation_tool.dart';
 import 'package:inhaus_brain/core/tools/web_tools.dart';
 import 'package:inhaus_brain/core/tools/gen_ui_tools.dart';
 import 'package:inhaus_brain/core/tools/data_tools.dart';
+import 'package:inhaus_brain/core/tools/research_tools.dart';
+import 'package:inhaus_brain/core/tools/director_tools.dart';
 import 'package:inhaus_brain/core/auth/secret_vault_service.dart';
 
 import 'package:inhaus_brain/features/marketing/tools/seo_aeo_tools.dart';
@@ -31,6 +33,7 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
   final webTools = ref.watch(webToolsProvider);
   final dataTools = ref.watch(dataToolsProvider);
   final marketingTools = ref.watch(marketingToolsProvider);
+  final researchTools = ref.watch(researchToolsProvider);
 
   // Generation Tools
   final aiKeysAsync = ref.watch(aiKeysProvider);
@@ -62,7 +65,9 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...dataTools,
     ...marketingTools,
     ...generationTools,
+    ...researchTools,
     ...ucpTools,
+    DirectorTool(),
     GenUIComponentTool(),
   ];
 });

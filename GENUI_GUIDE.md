@@ -1,4 +1,4 @@
-# InhausBrain GenUI Guide (v1.4)
+# InhausBrain GenUI Guide (v1.5 - Flawless Export Upgrade)
 
 ## Overview
 This document outlines the expanded suite of Generative UI components available in InhausBrain. These components allow the AI Assistant to render rich, interactive interfaces directly in the chat stream, enhancing the user's ability to visualize data, plan workflows, and execute tasks.
@@ -21,6 +21,7 @@ This document outlines the expanded suite of Generative UI components available 
 | **`calendar`** | Content schedules, editorial calendars, event timelines | `table_calendar` |
 | **`code_viewer`** | Syntax-highlighted code snippets with copy action | Custom / `SelectableText` |
 | **`video_player`** | Video playback with captions and autoplay | `video_player` wrapper |
+| **`deep_analysis`** | Strictly structured research reports with PDF export | Custom / `deep_analysis_report_widget` |
 
 ---
 
@@ -154,13 +155,67 @@ Use for embedding video content.
 }
 ```
 
+### Deep Analysis Report (`deep_analysis`)
+Strictly structured report with metrics and markdown content.
+```json
+{
+  "title": "Market Trends 2026",
+  "executive_summary": "Sustainable luxury is dominating high-end retail...",
+  "metrics": [
+    {"name": "Growth", "value": "12.4%", "trend": "up"},
+    {"name": "Market Cap", "value": "$4.2B", "trend": "flat"}
+  ],
+  "key_insights": [
+    "Digital twins are becoming standard",
+    "Circular economy is a key driver"
+  ],
+  "strategic_recommendations": [
+    "Invest in recycled material R&D",
+    "Partner with green supply chains"
+  ],
+  "detailed_analysis": "# Sector Overview\nDetailed markdown content goes here..."
+}
+```
+
 ---
 
 ## Implementation Notes
 - All components are rendered in `AiAssistantOverlay` via `_buildGenUI`.
 - Styles automatically adapt to Dark Mode (InhausBrain default).
 - For `carousel` and `mind_map`, ensure external URLs are valid/whitelisted if using strict CSP (though InhausBrain is loose on this currently).
-## Canvas Behavior (New in v1.4)
+### 3D Dialogue Scene (`dialogue_scene`)
+Immersive character interactions with environment and camera control.
+```json
+{
+  "personas": [
+    {"id": "agent_a", "name": "Strategist", "avatar_url": "https://models.readyplayer.me/avatar1.glb"},
+    {"id": "agent_b", "name": "Creative", "avatar_url": "https://models.readyplayer.me/avatar2.glb"}
+  ],
+  "text": "Let's review the campaign concept.",
+  "environment_id": "office", // "office", "zen_garden", "stage"
+  "camera_anchor": "presenter" // "default", "presenter", "audience", "orbit"
+}
+```
+
+### Director Tool (`direct_scene`)
+Used by the assistant to update a scene in real-time.
+```json
+{
+  "action": "set_camera",
+  "params": {"anchor": "orbit"}
+}
+```
+
+### Live Multimodal Session (`live_multimodal_session`)
+Real-time, bidirectional voice and audio interaction with Gemini 2.0 Flash (Preview).
+```json
+{
+  "objective": "Analyze the live brief and provide feedback.",
+  "stream_url": null // Optional URL for external stream
+}
+```
+
+---
 
 ### Default State
 - **Desktop**: The side canvas now defaults to a **closed (dismissed)** state on application load.

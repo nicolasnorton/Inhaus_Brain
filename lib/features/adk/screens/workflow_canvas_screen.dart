@@ -780,6 +780,9 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
       case WorkflowNodeType.note: return FontAwesomeIcons.noteSticky;
       case WorkflowNodeType.dialogueScene: return FontAwesomeIcons.comments;
+      case WorkflowNodeType.deepResearch: return FontAwesomeIcons.magnifyingGlassChart;
+      case WorkflowNodeType.imageGeneration: return FontAwesomeIcons.image;
+      case WorkflowNodeType.videoGeneration: return FontAwesomeIcons.video;
     }
   }
 
@@ -816,6 +819,12 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return Colors.amberAccent;
       case WorkflowNodeType.dialogueScene:
         return Colors.deepOrangeAccent;
+      case WorkflowNodeType.deepResearch:
+        return Colors.indigoAccent;
+      case WorkflowNodeType.imageGeneration:
+        return Colors.pinkAccent;
+      case WorkflowNodeType.videoGeneration:
+        return Colors.redAccent;
     }
   }
 
