@@ -586,27 +586,30 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                           ),
                           const SizedBox(width: 64), // Space for FAB/Send button
                         ],
-                            ),
-                  ),
-                ],
-              ),
-                    if (ref.watch(canvasProvider).type != CanvasContentType.empty && 
-                        !ref.watch(canvasProvider).isMobileCanvasOpen && 
-                        MediaQuery.of(context).size.width < 650)
-                      Positioned(
-                        right: 16,
-                        top: 60, 
-                        child: FloatingActionButton.small(
-                          backgroundColor: Colors.blueAccent,
-                          child: const Icon(Icons.auto_awesome_mosaic, color: Colors.white),
-                          onPressed: () => ref.read(canvasProvider.notifier).toggleMobileCanvas(true),
-                        ),
                       ),
+                    ),
                   ],
                 ),
-              );
-            }
-          ),
+              ],
+            ),
+            if (ref.watch(canvasProvider).type != CanvasContentType.empty && 
+                !ref.watch(canvasProvider).isMobileCanvasOpen && 
+                MediaQuery.of(context).size.width < 650)
+              Positioned(
+                right: 16,
+                top: 60, 
+                child: FloatingActionButton.small(
+                  backgroundColor: Colors.blueAccent,
+                  child: const Icon(Icons.auto_awesome_mosaic, color: Colors.white),
+                  onPressed: () => ref.read(canvasProvider.notifier).toggleMobileCanvas(true),
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  ),
+),
         ),
       ),
     ),
