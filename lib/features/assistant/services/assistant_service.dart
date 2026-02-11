@@ -82,35 +82,46 @@ class AssistantMessage {
   };
 
   factory AssistantMessage.fromJson(Map<String, dynamic> json) {
-    return AssistantMessage(
-      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      text: json['text']?.toString() ?? '',
-      isUser: json['isUser'] == true,
-      timestamp: json['timestamp'] != null 
-          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      isToolOutput: json['isToolOutput'] == true,
-      generatedAssetPath: json['generatedAssetPath']?.toString(),
-      generatedAssetType: json['generatedAssetType']?.toString(),
-      modelName: json['modelName']?.toString(),
-      processingTime: json['processingTimeMs'] != null 
-          ? Duration(milliseconds: int.tryParse(json['processingTimeMs'].toString()) ?? 0) 
-          : null,
-      sources: (json['sources'] as List?)?.map((e) => e.toString()).toList(),
-      attachment: (json['attachment'] != null && json['attachment'] is String) 
-          ? base64Decode(json['attachment'] as String) 
-          : null,
-      audioAttachment: (json['audioAttachment'] != null && json['audioAttachment'] is String) 
-          ? base64Decode(json['audioAttachment'] as String) 
-          : null,
-      artifacts: (json['artifacts'] as List?)
-          ?.map((e) => Artifact.fromJson(Map<String, dynamic>.from(e as Map? ?? {})))
-          .toList(),
-      uiPayload: (json['uiPayload'] != null && json['uiPayload'] is Map) 
-          ? Map<String, dynamic>.from(json['uiPayload'] as Map) 
-          : null,
-      clarificationQuestions: (json['clarificationQuestions'] as List?)?.map((e) => e.toString()).toList(),
-    );
+    try {
+      return AssistantMessage(
+        id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        text: json['text']?.toString() ?? '',
+        isUser: json['isUser'] == true,
+        timestamp: json['timestamp'] != null 
+            ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
+            : DateTime.now(),
+        isToolOutput: json['isToolOutput'] == true,
+        generatedAssetPath: json['generatedAssetPath']?.toString(),
+        generatedAssetType: json['generatedAssetType']?.toString(),
+        modelName: json['modelName']?.toString(),
+        processingTime: json['processingTimeMs'] != null 
+            ? Duration(milliseconds: int.tryParse(json['processingTimeMs'].toString()) ?? 0) 
+            : null,
+        sources: (json['sources'] as List?)?.map((e) => e.toString()).toList(),
+        attachment: (json['attachment'] != null && json['attachment'] is String) 
+            ? base64Decode(json['attachment'] as String) 
+            : null,
+        audioAttachment: (json['audioAttachment'] != null && json['audioAttachment'] is String) 
+            ? base64Decode(json['audioAttachment'] as String) 
+            : null,
+        artifacts: (json['artifacts'] as List?)
+            ?.map((e) => Artifact.fromJson(Map<String, dynamic>.from(e as Map? ?? {})))
+            .toList(),
+        uiPayload: (json['uiPayload'] != null && json['uiPayload'] is Map) 
+            ? Map<String, dynamic>.from(json['uiPayload'] as Map) 
+            : null,
+        clarificationQuestions: (json['clarificationQuestions'] as List?)?.map((e) => e.toString()).toList(),
+      );
+    } catch (e, stack) {
+      debugPrint('Error parsing AssistantMessage: $e\nData: $json');
+      // Return a safe error message object
+      return AssistantMessage(
+        id: 'error_${DateTime.now().millisecondsSinceEpoch}',
+        text: 'Error parsing message data: $e',
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+    }
   }
 }
 
@@ -450,6 +461,38 @@ class AssistantService {
              // NEW: Support for {"name": "tool_name", "args": {...}}
              toolName = parsed['name'];
              toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
+           } else if (parsed.containsKey('call')) {
+             // NEW: Support for {"call": {"function_name": "...", "args": ...}} (Gemini 2.5/3 Proxy Format)
+             print('DEBUG: Found "call" key in parsed JSON.');
+             final call = parsed['call'];
+             print('DEBUG: "call" value: $call');
+             print('DEBUG: "call" type: ${call.runtimeType}');
+             
+             if (call is Map) {
+                // Ensure it's a Map<String, dynamic>
+                final callMap = Map<String, dynamic>.from(call);
+                print('DEBUG: callMap keys: ${callMap.keys}');
+                
+                // Handle "google:image_generation" -> "image_generation"
+                String rawName = callMap['function_name'] ?? callMap['function'] ?? callMap['name'] ?? '';
+                print('DEBUG: extracted rawName: "$rawName"');
+                
+                if (rawName.contains(':')) {
+                   rawName = rawName.split(':').last;
+                }
+                toolName = rawName;
+                
+                final args = callMap['args'] ?? callMap['arguments'] ?? callMap['parameters'] ?? {};
+                print('DEBUG: extracted args: $args');
+                if (args is Map) {
+                   toolArgs = Map<String, dynamic>.from(args);
+                } else {
+                   print('DEBUG: Args is not a map! Type: ${args.runtimeType}');
+                   toolArgs = {};
+                }
+             } else {
+                print('DEBUG: "call" is NOT a Map.');
+             }
            } else if (parsed.containsKey('functionCall')) {
              // NATIVE GEMINI FORMAT (passed through proxy)
              final call = parsed['functionCall'];
@@ -516,18 +559,77 @@ class AssistantService {
               }
            }
 
+           // FINAL FALLBACK: Deep Search / Wrapper Unwrap
+           // e.g. { "executable_adunit": { "call": { "function_name": "...", ... } } }
+           if (toolName == null) {
+              print('Assistant: 🕵️ Standard parsing failed. Attempting deep search for tool call...');
+              
+              void searchMap(Map<dynamic, dynamic> map) {
+                  if (toolName != null) return; // Found it
+
+                  // Case A: Map has "call" -> { "function_name": ... }
+                  if (map.containsKey('call')) {
+                      final call = map['call'];
+                      if (call is Map) {
+                          final fName = call['function_name'] ?? call['function'] ?? call['name'];
+                          if (fName != null && fName is String) {
+                             String rawName = fName;
+                             if (rawName.contains(':')) rawName = rawName.split(':').last;
+                             toolName = rawName;
+                             toolArgs = Map<String, dynamic>.from(call['args'] ?? call['arguments'] ?? call['parameters'] ?? {});
+                             print('Assistant: 🎯 Deep search found nested "call" object. Tool: $toolName');
+                             return;
+                          }
+                      }
+                  }
+
+                  // Case B: Map IS the call -> { "function_name": ... }
+                  // Only valid if clearly a function object, careful not to match random maps
+                  if (map.containsKey('function_name') && (map.containsKey('args') || map.containsKey('arguments'))) {
+                      final fName = map['function_name'];
+                      if (fName is String) {
+                          String rawName = fName;
+                          if (rawName.contains(':')) rawName = rawName.split(':').last;
+                          toolName = rawName;
+                          toolArgs = Map<String, dynamic>.from(map['args'] ?? map['arguments'] ?? map['parameters'] ?? {});
+                          print('Assistant: 🎯 Deep search found direct function object. Tool: $toolName');
+                          return;
+                      }
+                  }
+
+                  // Recurse
+                  for (final value in map.values) {
+                      if (value is Map) {
+                          searchMap(value);
+                      } else if (value is List) {
+                          for (final item in value) {
+                              if (item is Map) {
+                                  searchMap(item);
+                              }
+                          }
+                      }
+                      if (toolName != null) return;
+                  }
+              }
+
+              searchMap(parsed);
+           }
+
            debugPrint('Assistant: 🕵️ Resolved toolName: $toolName');
            debugPrint('Assistant: 🕵️ Resolved toolArgs keys: ${toolArgs?.keys}');
 
            if (toolName != null && toolArgs != null) {
-             if (toolArgs.containsKey('args') && toolArgs['args'] is Map) {
-               toolArgs = Map<String, dynamic>.from(toolArgs['args']);
+             final String safeToolName = toolName!;
+             Map<String, dynamic> safeToolArgs = toolArgs!;
+
+             if (safeToolArgs.containsKey('args') && safeToolArgs['args'] is Map) {
+               safeToolArgs = Map<String, dynamic>.from(safeToolArgs['args']);
              }
-             debugPrint('Assistant: ✅ Attempting to execute tool: $toolName');
-             _ref.read(assistantStatusProvider.notifier).state = "Using $toolName...";
-             final result = await _executeTool(combinedTools.toList(), toolName, toolArgs);
+             debugPrint('Assistant: ✅ Attempting to execute tool: $safeToolName');
+             _ref.read(assistantStatusProvider.notifier).state = "Using $safeToolName...";
+             final result = await _executeTool(combinedTools.toList(), safeToolName, safeToolArgs);
              _ref.read(assistantStatusProvider.notifier).state = null;
-             debugPrint('Assistant: 🏁 Tool execution completed for: $toolName');
+             debugPrint('Assistant: 🏁 Tool execution completed for: $safeToolName');
              return result;
            } else {
               debugPrint('Assistant: ⚠️ JSON parsed but toolName or toolArgs is still null.');

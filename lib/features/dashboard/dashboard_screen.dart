@@ -140,18 +140,17 @@ class DashboardScreen extends ConsumerWidget {
                     return Column(
                       children: [
                         _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
-                        if (!isClient) _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
+                        _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
                         _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
                         _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
-                        if (!isClient) _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref),
-                        if (!isClient) _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref),
-                        if (!isClient) _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref),
+                        _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref), // Enabled for all
+                        _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref), // Enabled for all
+                        _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref), // Enabled for all
                         _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
-                        _buildNavItem(context, 11, FontAwesomeIcons.building, "Agency", ref), // Added
+                        _buildNavItem(context, 11, FontAwesomeIcons.building, "Agency", ref),
                         _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
                         if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
-                        if (user?.role == UserRole.superAdmin || user?.role == UserRole.admin)
-                          _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref),
+                        _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref), // Enabled for all
                         const SizedBox(height: 20),
                       ],
                     );
@@ -355,7 +354,7 @@ class DashboardHome extends ConsumerWidget {
                     crossAxisSpacing: 16,
                     childAspectRatio: childAspectRatio,
                     children: [
-                      if (appUser?.role != UserRole.clientUser) ...[
+                      if (true) ...[
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.usersViewfinder,
@@ -416,37 +415,11 @@ class DashboardHome extends ConsumerWidget {
                           label: AppLocalizations.of(context)!.navDebug,
                           onTap: () => context.go('/debug'),
                         ),
-                      ] else ...[
-                         // Client User View
-                          _buildNavCard(
-                          context,
-                          icon: FontAwesomeIcons.gaugeHigh,
-                          label: AppLocalizations.of(context)!.navDashboard,
-                          onTap: () => context.go('/'),
-                        ),
                         _buildNavCard(
                           context,
-                          icon: FontAwesomeIcons.clipboardList,
-                          label: "Reports",
-                          onTap: () => context.go('/reports'),
-                        ),
-                        _buildNavCard(
-                          context,
-                          icon: FontAwesomeIcons.bullhorn,
-                          label: AppLocalizations.of(context)!.navCampaigns,
-                          onTap: () => context.go('/campaigns'),
-                        ),
-                         _buildNavCard(
-                          context,
-                          icon: FontAwesomeIcons.chartLine,
-                          label: AppLocalizations.of(context)!.navAnalytics,
-                          onTap: () => context.go('/analytics'),
-                        ),
-                         _buildNavCard(
-                          context,
-                          icon: FontAwesomeIcons.gear,
-                          label: AppLocalizations.of(context)!.navSettings,
-                          onTap: () => context.go('/settings'),
+                          icon: FontAwesomeIcons.userShield,
+                          label: "Admin",
+                          onTap: () => context.go('/admin'),
                         ),
                       ],
                     ],

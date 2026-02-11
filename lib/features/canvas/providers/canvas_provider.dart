@@ -18,6 +18,7 @@ class CanvasState {
   final String? title;
 
   final bool isMobileCanvasOpen;
+  final bool isDesktopCanvasOpen; // New state for desktop
   final bool isPinned;
   final List<CanvasState> pinnedItems;
 
@@ -27,6 +28,7 @@ class CanvasState {
     this.metadata,
     this.title,
     this.isMobileCanvasOpen = false,
+    this.isDesktopCanvasOpen = false, // Default to closed on desktop
     this.isPinned = false,
     this.pinnedItems = const [],
   });
@@ -37,6 +39,7 @@ class CanvasState {
     Map<String, dynamic>? metadata,
     String? title,
     bool? isMobileCanvasOpen,
+    bool? isDesktopCanvasOpen,
     bool? isPinned,
     List<CanvasState>? pinnedItems,
   }) {
@@ -46,6 +49,7 @@ class CanvasState {
       metadata: metadata ?? this.metadata,
       title: title ?? this.title,
       isMobileCanvasOpen: isMobileCanvasOpen ?? this.isMobileCanvasOpen,
+      isDesktopCanvasOpen: isDesktopCanvasOpen ?? this.isDesktopCanvasOpen,
       isPinned: isPinned ?? this.isPinned,
       pinnedItems: pinnedItems ?? this.pinnedItems,
     );
@@ -63,6 +67,7 @@ class CanvasState {
           : null,
       title: json['title'] as String?,
       isMobileCanvasOpen: json['isMobileCanvasOpen'] as bool? ?? false,
+      isDesktopCanvasOpen: json['isDesktopCanvasOpen'] as bool? ?? false,
       isPinned: json['isPinned'] as bool? ?? false,
       pinnedItems: (json['pinnedItems'] as List<dynamic>?)
               ?.map((e) => CanvasState.fromJson(Map<String, dynamic>.from(e)))
@@ -78,6 +83,7 @@ class CanvasState {
       'metadata': metadata,
       'title': title,
       'isMobileCanvasOpen': isMobileCanvasOpen,
+      'isDesktopCanvasOpen': isDesktopCanvasOpen,
       'isPinned': isPinned,
       'pinnedItems': pinnedItems.map((e) => e.toJson()).toList(),
     };
@@ -108,6 +114,10 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
     state = state.copyWith(isMobileCanvasOpen: isOpen);
   }
 
+  void toggleDesktopCanvas(bool isOpen) {
+    state = state.copyWith(isDesktopCanvasOpen: isOpen);
+  }
+
   void togglePin() {
     final newPinned = !state.isPinned;
     List<CanvasState> newPinnedItems = List.from(state.pinnedItems);
@@ -136,6 +146,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       content: html,
       title: title ?? 'Preview',
       isMobileCanvasOpen: true,
+      isDesktopCanvasOpen: true,
       isPinned: state.pinnedItems.any((item) => item.content == html),
     );
   }
@@ -147,6 +158,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       metadata: {'language': language},
       title: title ?? 'Code snippet',
       isMobileCanvasOpen: true,
+      isDesktopCanvasOpen: true,
       isPinned: state.pinnedItems.any((item) => item.content == code),
     );
   }
@@ -157,6 +169,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       content: markdown,
       title: title ?? 'Document',
       isMobileCanvasOpen: true,
+      isDesktopCanvasOpen: true,
       isPinned: state.pinnedItems.any((item) => item.content == markdown),
     );
   }
@@ -167,6 +180,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       content: url,
       title: title ?? 'Image',
       isMobileCanvasOpen: true,
+      isDesktopCanvasOpen: true,
       isPinned: state.pinnedItems.any((item) => item.content == url),
     );
   }
@@ -177,6 +191,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       content: url,
       title: title ?? 'Video',
       isMobileCanvasOpen: true,
+      isDesktopCanvasOpen: true,
       isPinned: state.pinnedItems.any((item) => item.content == url),
     );
   }
@@ -187,6 +202,7 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       metadata: data,
       title: title ?? 'Interactive Component',
       isMobileCanvasOpen: true,
+      isDesktopCanvasOpen: true,
       isPinned: false, // GenUI items usually new
     );
   }
@@ -198,6 +214,8 @@ class CanvasNotifier extends StateNotifier<CanvasState> {
       metadata: null,
       title: null,
       isPinned: false,
+      isMobileCanvasOpen: false,
+      isDesktopCanvasOpen: true, // Reset to default true for next time?
     );
   }
 }

@@ -88,7 +88,7 @@ final routerProvider = Provider<GoRouter>((ref) {
          final path = state.uri.toString();
          // List of restricted prefixes/paths for Client Users
          const restricted = [
-           '/clients', 
+           // '/clients', // Restored access 
            '/workflows', 
            '/publish', 
            '/knowledge', 
