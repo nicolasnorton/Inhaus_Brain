@@ -1,0 +1,8 @@
+# Terraform Variables for InhausBrain
+# Copy this to terraform.tfvars and fill in your values
+
+project_id  = "inhausbrain"
+region      = "us-central1"
+environment = "production"
+image_tag   = "latest"
+alert_email = "nicolas@inhausbrain.com"

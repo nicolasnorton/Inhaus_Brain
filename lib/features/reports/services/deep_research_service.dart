@@ -9,7 +9,7 @@ class DeepResearchService {
 
   /// Starts a Deep Research task
   Future<String> startDeepResearch(String prompt) async {
-    final result = await _ref.read(aiProxyServiceProvider).startResearch(
+    final result = await AIProxyService.startResearch(
       prompt: prompt,
       model: 'gemini-2.0-flash-thinking-exp-01-21', // Best available thinking model for research
     );
@@ -19,7 +19,7 @@ class DeepResearchService {
   /// Polls for Deep Research status
   /// Returns null if still processing, or final text result if complete.
   Future<String?> pollDeepResearch(String interactionId) async {
-    final result = await _ref.read(aiProxyServiceProvider).pollResearch(interactionId);
+    final result = await AIProxyService.pollResearch(interactionId);
     
     final status = result['status']; // 'processing' or 'complete'
     if (status == 'complete' || status == 'completed') {

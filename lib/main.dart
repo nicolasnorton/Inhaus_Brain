@@ -29,10 +29,15 @@ import 'package:flutter/services.dart';
 import 'core/globals.dart';
 import 'core/services/orchestration_service.dart';
 import 'core/services/blackboard_persistence_service.dart';
+import 'core/utils/global_error_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint('🚀 INHAUS BRAIN v1.2.6-deep-search STARTED');
+  
+  // Initialize Global Error Handler (Production v2.0)
+  GlobalErrorHandler.initialize();
+  
+  debugPrint('🚀 INHAUS BRAIN v2.0-production STARTED');
   
   // Load environment variables
   try {

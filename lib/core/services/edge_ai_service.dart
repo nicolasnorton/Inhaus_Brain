@@ -224,7 +224,7 @@ class EdgeAIService {
          final proxyRes = await retry(
            () {
              final proxy = ref is Ref ? ref.read(aiProxyServiceProvider) : (ref as WidgetRef).read(aiProxyServiceProvider);
-             return proxy.generateContent(
+             return AIProxyService.generateContent(
               prompt: proxyPrompt, 
               config: config,
               systemInstruction: effectiveMemory,
@@ -576,7 +576,7 @@ class EdgeAIService {
          if (ref == null) throw Exception('Ref is required for Image Proxy in Web mode');
          final proxy = ref is Ref ? ref.read(aiProxyServiceProvider) : (ref as WidgetRef).read(aiProxyServiceProvider);
 
-         final proxyResponse = await proxy.generateImage(
+         final proxyResponse = await AIProxyService.generateImage(
            prompt: prompt,
            model: effectiveModel,
            config: generationParams,

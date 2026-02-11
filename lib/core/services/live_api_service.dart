@@ -30,7 +30,7 @@ class LiveApiService {
 
     try {
       debugPrint('LiveApiService: Fetching secure access token...');
-      final tokenData = await _proxyService.getLiveToken();
+      final tokenData = await AIProxyService.getLiveToken();
       
       final token = tokenData['token'];
       final project = tokenData['projectId'];

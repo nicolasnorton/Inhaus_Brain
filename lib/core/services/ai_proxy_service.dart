@@ -12,44 +12,29 @@ class AIProxyService {
   static late Ref globalRef;
   final Ref _ref;
   
-  // Circuit Breakers for production resilience (Static because they should be shared across instances/calls)
+  // Circuit Breakers for production resilience
   static final _contentCircuit = CircuitBreaker(name: 'GeminiContent', failureThreshold: 5);
   static final _imageCircuit = CircuitBreaker(name: 'ImagenImage', failureThreshold: 3);
 
   AIProxyService(this._ref) {
     globalRef = _ref;
   }
-  // TODO: Update this URL after deployment. For local testing, use the emulator URL.
-  // Emulator default: http://127.0.0.1:5005/inhausbrain/us-central1/proxyVertexAI
-  // Production default: https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI
-  // Enable Firebase App Check in console for abuse protection
+
   static String get _functionUrl {
-    if (kDebugMode) {
-      // Use 10.0.2.2 for Android Emulator, 127.0.0.1 for others
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:5005/inhausbrain/us-central1/proxyVertexAI';
-      }
-      return 'http://127.0.0.1:5005/inhausbrain/us-central1/proxyVertexAI';
-    }
+    if (kIsWeb) return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
     return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
   }
 
-  static String get _pythonBaseUrl {
-    // Note: 2nd Gen Python functions have unique Cloud Run URLs.
-    if (kDebugMode) {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:5005/inhausbrain/us-central1';
-      }
-      return 'http://127.0.0.1:5005/inhausbrain/us-central1';
-    }
-    // These are the actual 2nd Gen URLs from deployment
-    return 'https://generate-content-btdf7nijqa-uc.a.run.app'; 
-  }
+  static String get _pythonBaseUrl => 'https://generate-content-btdf7nijqa-uc.a.run.app'; 
 
-  static String get _generateImageUrl => kDebugMode ? '$_pythonBaseUrl/generate_image' : 'https://generate-image-btdf7nijqa-uc.a.run.app';
-  static String get _generateContentUrl => kDebugMode ? '$_pythonBaseUrl/generate_content' : 'https://generate-content-btdf7nijqa-uc.a.run.app';
-  static String get _countTokensUrl => kDebugMode ? '$_pythonBaseUrl/count_tokens' : 'https://count-tokens-btdf7nijqa-uc.a.run.app';
-  static String get _liveTokenUrl => kDebugMode ? '$_pythonBaseUrl/get_live_token' : 'https://get-live-token-btdf7nijqa-uc.a.run.app';
+  static String get _generateImageUrl => 'https://generate-image-btdf7nijqa-uc.a.run.app';
+  static String get _generateContentUrl => 'https://generate-content-btdf7nijqa-uc.a.run.app';
+  static String get _countTokensUrl => 'https://count-tokens-btdf7nijqa-uc.a.run.app';
+  static String get _liveTokenUrl => 'https://get-live-token-btdf7nijqa-uc.a.run.app';
+  static String get _startResearchUrl => 'https://start-research-btdf7nijqa-uc.a.run.app';
+  static String get _pollResearchUrl => 'https://poll-research-btdf7nijqa-uc.a.run.app';
+  static String get _pollOperationUrl => 'https://poll-operation-btdf7nijqa-uc.a.run.app';
+  static String get _extractStructuredUrl => 'https://extract-structured-btdf7nijqa-uc.a.run.app';
 
   /// Fetch a short-lived access token for the Multimodal Live API.
   static Future<Map<String, dynamic>> getLiveToken() async {
@@ -73,14 +58,7 @@ class AIProxyService {
     }
   }
 
-  static String get _startResearchUrl => kDebugMode ? '$_pythonBaseUrl/start_research' : 'https://start-research-btdf7nijqa-uc.a.run.app';
-  static String get _pollResearchUrl => kDebugMode ? '$_pythonBaseUrl/poll_research' : 'https://poll-research-btdf7nijqa-uc.a.run.app';
-  static String get _pollOperationUrl => kDebugMode ? '$_pythonBaseUrl/poll_operation' : 'https://poll-operation-btdf7nijqa-uc.a.run.app';
-  static String get _extractStructuredUrl => kDebugMode ? '$_pythonBaseUrl/extract_structured' : 'https://extract-structured-btdf7nijqa-uc.a.run.app';
-
   /// Routes a generation request through the secure Cloud Function proxy.
-  /// 
-  /// [prompt] can be a String or a List<Map<String, dynamic>> for multimodal.
   static Future<Map<String, dynamic>> generateContent({
     required dynamic prompt, 
     required AIModelConfig config,
@@ -102,7 +80,6 @@ class AIProxyService {
       throw Exception('Failed to retrieve ID Token.');
     }
 
-    // Prepare body
     final body = {
       "model": config.modelId,
       "prompt": prompt,
@@ -129,7 +106,7 @@ class AIProxyService {
             'Authorization': 'Bearer $idToken',
           },
           body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 120))); // Longer timeout for complex tasks
+        ).timeout(const Duration(seconds: 120)));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -137,7 +114,6 @@ class AIProxyService {
              throw Exception('Python API Error: ${data['error']}');
           }
           
-          // Audit Log (v2.0 Performance & Cost Tracking)
           globalRef.read(auditLogServiceProvider).log(
             action: 'ai/generate_content',
             resourceType: 'model',
@@ -152,16 +128,13 @@ class AIProxyService {
           return data;
         } else {
           debugPrint('AIProxyService: Python Proxy failed (${response.statusCode}): ${response.body}');
-          // Fall through to JS proxy if this was a standard text request
           if (thinking || tools != null || prompt is List) {
-             // These features are ONLY in Python, so don't fallback to legacy JS which won't support them
              throw Exception('Python Proxy failed (${response.statusCode}) and features are not available in legacy fallback.');
           }
         }
       } catch (e) {
         debugPrint('AIProxyService Python Error: $e');
         if (thinking || tools != null || prompt is List) rethrow;
-        debugPrint('Falling back to legacy JS proxy...');
       }
     }
 
@@ -212,7 +185,6 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 60)));
 
     if (response.statusCode == 200) {
-      // Audit Log
       globalRef.read(auditLogServiceProvider).log(
         action: 'ai/generate_image',
         resourceType: 'model',
@@ -234,7 +206,7 @@ class AIProxyService {
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
 
-    final response = await _contentCircuit.execute(() => http.post(
+    final response = await http.post(
       Uri.parse(_startResearchUrl),
       headers: {
         'Content-Type': 'application/json',
@@ -244,10 +216,9 @@ class AIProxyService {
         "prompt": prompt,
         "model": model,
       }),
-    ).timeout(const Duration(seconds: 30)));
+    ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
-      // Audit Log
       globalRef.read(auditLogServiceProvider).log(
         action: 'ai/research_start',
         metadata: {'prompt': prompt}
@@ -283,7 +254,7 @@ class AIProxyService {
   }
 
   /// Counts tokens using the Python Gemini SDK.
-  Future<int> countTokens({
+  static Future<int> countTokens({
     required String prompt,
     String model = 'gemini-2.5-flash',
   }) async {
@@ -312,127 +283,55 @@ class AIProxyService {
       }
       return 0;
     } catch (e) {
-      debugPrint('AIProxyService countTokens Error: $e');
       return 0;
     }
   }
 
   static Future<Map<String, dynamic>> pollOperation(String operationName) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('User must be logged in to poll operations.');
-    }
-
+    if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
-    if (idToken == null) {
-      throw Exception('Failed to retrieve ID Token.');
-    }
 
-    final body = {
-      "operationName": operationName,
-    };
+    final response = await http.post(
+      Uri.parse(_pollOperationUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({"operationName": operationName}),
+    ).timeout(const Duration(seconds: 60));
 
-    try {
-      // Route to Python proxy for modern LROs (Veo)
-      final response = await http.post(
-        Uri.parse(_pollOperationUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 60));
-
-      if (response.statusCode == 200) {
-        if (response.body.isEmpty) {
-           debugPrint('AIProxyService: ⚠️ Empty response body for polling.');
-           return {'done': false};
-        }
-        return jsonDecode(response.body);
-      } else {
-        // Fallback to legacy JS proxy if python check fails (old operations)
-        debugPrint('AIProxyService: Python Poll failed (${response.statusCode}), trying legacy...');
-        final legacyRes = await http.post(
-          Uri.parse(_functionUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $idToken',
-          },
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 30));
-        
-        if (legacyRes.statusCode == 200) return jsonDecode(legacyRes.body);
-        
-        throw Exception('Proxy Poll Error ${response.statusCode}: ${response.body}');
-      }
-    } catch (e) {
-      if (e is http.ClientException || e.toString().contains('XMLHttpRequest')) {
-        debugPrint('AIProxyService: ⚠️ Network error during poll (likely retriable): $e');
-        return {'done': false, 'error': 'network_transient'};
-      }
-      debugPrint('AIProxyService Poll Error: $e');
-      rethrow;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Poll Operation Failed: ${response.body}');
     }
   }
 
-  /// Specialized routing for Embeddings with retry logic
   static Future<Map<String, dynamic>> generateEmbeddings({
     required String model,
     required List<Map<String, dynamic>> instances,
   }) async {
-    const maxRetries = 2; // Fewer retries for embeddings to keep total time reasonable
-    const timeout = Duration(seconds: 60);
-    
-    for (int attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user == null) {
-          throw Exception('User must be logged in to use AI Proxy.');
-        }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Unauthenticated');
+    final idToken = await user.getIdToken();
 
-        final idToken = await user.getIdToken();
-        if (idToken == null) {
-          throw Exception('Failed to retrieve ID Token.');
-        }
+    final response = await http.post(
+      Uri.parse(_functionUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({"model": model, "instances": instances}),
+    ).timeout(const Duration(seconds: 60));
 
-        final body = {
-          "model": model,
-          "instances": instances,
-        };
-
-        final response = await _contentCircuit.execute(() => http.post(
-          Uri.parse(_functionUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $idToken',
-          },
-          body: jsonEncode(body),
-        ).timeout(timeout)); // Add explicit timeout
-
-        if (response.statusCode == 200) {
-          return jsonDecode(response.body);
-        } else {
-          throw Exception('Proxy Embedding Error ${response.statusCode}: ${response.body}');
-        }
-      } catch (e) {
-        final isLastAttempt = attempt == maxRetries - 1;
-        
-        if (isLastAttempt) {
-          debugPrint('AIProxyService Embedding Error (Final): $e');
-          rethrow;
-        }
-        
-        // Exponential backoff: 1s, 2s
-        final delay = Duration(seconds: 1 << attempt);
-        debugPrint('AIProxyService Embedding Attempt ${attempt + 1} Failed: $e. Retrying in ${delay.inSeconds}s...');
-        await Future.delayed(delay);
-      }
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Embeddings Failed: ${response.body}');
     }
-    
-    throw Exception('Embedding generation failed after $maxRetries attempts');
   }
 
-  /// Routes a structured extraction request to the specialized Python LangExtract function.
   static Future<Map<String, dynamic>> extractStructured({
     required String document,
     required Map<String, dynamic> schema,
@@ -440,45 +339,29 @@ class AIProxyService {
     String model = 'gemini-2.5-flash',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('User must be logged in to use extraction services.');
-    }
-
+    if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
-    if (idToken == null) {
-      throw Exception('Failed to retrieve ID Token.');
-    }
 
-    final extractFunctionUrl = _extractStructuredUrl;
+    final response = await http.post(
+      Uri.parse(_extractStructuredUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({
+        "document": document,
+        "schema": schema,
+        "examples": examples ?? [],
+        "model": model,
+      }),
+    ).timeout(const Duration(seconds: 120));
 
-    final body = {
-      "document": document,
-      "schema": schema,
-      "examples": examples ?? [],
-      "model": model,
-    };
-
-    try {
-      final response = await http.post(
-        Uri.parse(extractFunctionUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 120)); // Extraction can take longer
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Extraction Error ${response.statusCode}: ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('AIProxyService Extraction Error: $e');
-      rethrow;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Extraction Failed: ${response.body}');
     }
   }
 }
 
 final aiProxyServiceProvider = Provider<AIProxyService>((ref) => AIProxyService(ref));
-

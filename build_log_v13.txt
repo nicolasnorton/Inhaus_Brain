@@ -70,21 +70,66 @@ Consider addressing these issues to enable wasm builds. See docs for more info: 
 
 Use --no-wasm-dry-run to disable these warnings.
 Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
-lib/core/services/edge_ai_service.dart:227:27:
-Error: The method 'generateContent' isn't defined for the type 'AIProxyService'.
- - 'AIProxyService' is from 'package:inhaus_brain/core/services/ai_proxy_service.dart' ('lib/core/services/ai_proxy_service.dart').
-             return proxy.generateContent(
-                          ^^^^^^^^^^^^^^^
-lib/core/services/edge_ai_service.dart:579:44:
-Error: The method 'generateImage' isn't defined for the type 'AIProxyService'.
- - 'AIProxyService' is from 'package:inhaus_brain/core/services/ai_proxy_service.dart' ('lib/core/services/ai_proxy_service.dart').
-         final proxyResponse = await proxy.generateImage(
-                                           ^^^^^^^^^^^^^
-lib/core/services/live_api_service.dart:33:45:
-Error: The method 'getLiveToken' isn't defined for the type 'AIProxyService'.
- - 'AIProxyService' is from 'package:inhaus_brain/core/services/ai_proxy_service.dart' ('lib/core/services/ai_proxy_service.dart').
-      final tokenData = await _proxyService.getLiveToken();
-                                            ^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:180:39:
+Error: 'generateContent' is already declared in this scope.
+  static Future<Map<String, dynamic>> generateContent({
+                                      ^^^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:78:32:
+Info: Previous declaration of 'generateContent'.
+  Future<Map<String, dynamic>> generateContent({
+                               ^^^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:238:39:
+Error: 'generateImage' is already declared in this scope.
+  static Future<Map<String, dynamic>> generateImage({
+                                      ^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:203:32:
+Info: Previous declaration of 'generateImage'.
+  Future<Map<String, dynamic>> generateImage({
+                               ^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:280:39:
+Error: 'startResearch' is already declared in this scope.
+  static Future<Map<String, dynamic>> startResearch({
+                                      ^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:249:32:
+Info: Previous declaration of 'startResearch'.
+  Future<Map<String, dynamic>> startResearch({
+                               ^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:309:39:
+Error: 'pollResearch' is already declared in this scope.
+  static Future<Map<String, dynamic>> pollResearch(String interactionId) => 
+                                      ^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:286:32:
+Info: Previous declaration of 'pollResearch'.
+  Future<Map<String, dynamic>> pollResearch(String interactionId) async {
+                               ^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:372:39:
+Error: 'pollOperation' is already declared in this scope.
+  static Future<Map<String, dynamic>> pollOperation(String operationName) =>
+                                      ^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:351:32:
+Info: Previous declaration of 'pollOperation'.
+  Future<Map<String, dynamic>> pollOperation(String operationName) async {
+                               ^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:399:39:
+Error: 'generateEmbeddings' is already declared in this scope.
+  static Future<Map<String, dynamic>> generateEmbeddings({
+                                      ^^^^^^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:375:32:
+Info: Previous declaration of 'generateEmbeddings'.
+  Future<Map<String, dynamic>> generateEmbeddings({
+                               ^^^^^^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:435:39:
+Error: 'extractStructured' is already declared in this scope.
+  static Future<Map<String, dynamic>> extractStructured({
+                                      ^^^^^^^^^^^^^^^^^
+lib/core/services/ai_proxy_service.dart:404:32:
+Info: Previous declaration of 'extractStructured'.
+  Future<Map<String, dynamic>> extractStructured({
+                               ^^^^^^^^^^^^^^^^^
+lib/features/chat/agents/agency_agents.dart:160:14:
+Error: Unexpected type 'invalid-type' of a map spread entry.  Expected 'dynamic' or a Map.
+          ...result,
+             ^
 Error: Compilation failed.
   Command: /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/homebrew/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/1527ae0ec577a4ef50e65f6fefcfc1326707d9bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/flutter_build/42ddcac4c138f456d4b573213464645d/app.dill --packages=/Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/package_config.json --cfe-only /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/flutter_build/42ddcac4c138f456d4b573213464645d/main.dart
 #0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
@@ -127,5 +172,5 @@ Error: Compilation failed.
 #19     main (package:flutter_tools/executable.dart:103:3)
 <asynchronous suspension>
 
-Compiling lib/main.dart for the Web...                             38.1s
+Compiling lib/main.dart for the Web...                             38.0s
 Error: Failed to compile application for the Web.

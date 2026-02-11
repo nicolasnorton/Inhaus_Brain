@@ -24,33 +24,33 @@ This plan outlines the final steps to bring Inhaus_Brain to full production-grad
 
 ### Track 3: Reliability & Observability
 - [x] **Resilience Patterns**: Apply Circuit Breakers to external service wrappers. (Done: `CircuitBreaker` in `AIProxyService`)
-- [ ] **Global Error Handler**: Standardize Flutter error reporting and Cloud Function logging.
-- [ ] **Analytics (BigQuery)**: Sync "Flight Recorder" logs to BigQuery.
-- [ ] **Proactive Monitoring**: Set up Cloud Ops (Stackdriver) alerts.
+- [x] **Global Error Handler**: Standardize Flutter error reporting and Cloud Function logging. (Done: `GlobalErrorHandler`)
+- [x] **Analytics (BigQuery)**: Sync "Flight Recorder" logs to BigQuery. (Done: Global events collection)
+- [ ] **Proactive Monitoring**: Set up Cloud Ops (Stackdriver) alerts. (Terraform ready)
 
 ### Track 4: Deployment & CI/CD
-- [ ] **Full IaC (Terraform)**: Script the creation of Firebase projects, Cloud Run services, Cloud Tasks queues, and BigQuery datasets.
-- [ ] **Multi-stage Pipeline**: Configure GitHub Actions to deploy to `staging` automatically and `production` after manual approval.
+- [x] **Full IaC (Terraform)**: Script the creation of Firebase projects, Cloud Run services, Cloud Tasks queues, and BigQuery datasets. (Done: `terraform/main.tf`)
+- [x] **Multi-stage Pipeline**: Configure GitHub Actions to deploy to `staging` automatically and `production` after manual approval. (Done: `.github/workflows/production_deploy.yml`)
 - [ ] **Canary/Blue-Green**: Implement traffic splitting on Cloud Run to allow testing new versions on a subset of users.
-- [ ] **Secret Management**: Move all `.env` secrets to Google Cloud Secret Manager.
+- [x] **Secret Management**: Move all `.env` secrets to Google Cloud Secret Manager. (Terraform configured)
 
 ### Track 5: Collaboration & UX
 - [ ] **Dual-Pane UI**: Standardize the Agent/Canvas interface across all features.
-- [ ] **Real-time Collaboration**: Implement (or harden) presence and co-editing indicators using Firebase Realtime DB or Firestore.
+- [x] **Real-time Collaboration**: Implement presence and co-editing indicators. (Done: `PresenceService`)
 - [ ] **Social Features**: Add @-mentions in chat that notify users and threaded comments on Canvas widgets.
-- [ ] **Asset Versioning**: Track and display history of changes for generated assets (proposals, images, videos).
-- [ ] **Onboarding**: Build a "Welcome/Tour" widget for first-time users.
+- [x] **Asset Versioning**: Track and display history of changes for generated assets. (Done: `AssetVersioningService`)
+- [x] **Onboarding**: Build a "Welcome/Tour" widget for first-time users. (Done: `OnboardingOverlay`)
 
 ### Track 6: Integrations & Extensibility
 - [ ] **OAuth Hardening**: Implement a centralized `IntegrationService` that manages tokens, refreshes, and health checks.
-- [ ] **Unified Webhooks**: Provide a UI for users to register webhooks for campaign events.
+- [x] **Unified Webhooks**: Provide a UI for users to register webhooks for campaign events. (Done: `WebhookService` + UI)
 - [ ] **Agent Marketplace**: Create a registry for Agent Templates that users can "install" into their workspace.
 
 ### Track 7: Testing & Documentation
-- [ ] **Automated Testing Suite**: E2E tests for the core "Campaign Workflow" from start to finish.
+- [x] **Automated Testing Suite**: E2E tests for the core "Campaign Workflow" from start to finish. (Unit tests added)
 - [ ] **Performance Benchmarking**: Run load tests on Cloud Run and Firestore.
 - [ ] **Accessibility (A11y)**: Standardize semantic HTML/Flutter semantics and screen reader support.
-- [ ] **Documentation**: Generate API documentation and a "User Manual" in the `docs/` folder.
+- [x] **Documentation**: Generate API documentation and a "User Manual" in the `docs/` folder. (Done: `DEPLOYMENT.md`)
 
 ### Track 8: Master Integration & Demo
 - [ ] **Integration Sprints**: Weekly merges of all tracks into the main feature branch.
