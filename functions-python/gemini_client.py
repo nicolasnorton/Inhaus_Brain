@@ -1,6 +1,9 @@
 import os
 import json
 import base64
+import requests
+import google.auth
+import google.auth.transport.requests
 from google import genai
 from google.genai import types
 from typing import Optional, List, Union, Dict, Any
@@ -374,12 +377,66 @@ class GeminiClient:
         return self.client.interactions.get(id=id)
 
     def embed_content(self, model: str, contents: List[str], task_type: str = "RETRIEVAL_DOCUMENT") -> Any:
-        """Generate embeddings using the Gemini SDK."""
-        if not self.client:
-            raise Exception("GeminiClient not initialized.")
+        """Generate embeddings using the Vertex AI REST API directly to keep the function light."""
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+        location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+        model_id = model.split("/")[-1] if "/" in model else model
         
-        return self.client.models.embed_content(
-            model=self._normalize_model_name(model),
-            contents=contents,
-            config=types.EmbedContentConfig(task_type=task_type)
-        )
+        try:
+            print(f"GeminiClient: Calling Vertex AI REST API for {model_id}...")
+            
+            # Get credentials and project ID
+            credentials, _ = google.auth.default(
+                scopes=['https://www.googleapis.com/auth/cloud-platform']
+            )
+            auth_req = google.auth.transport.requests.Request()
+            credentials.refresh(auth_req)
+            
+            url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/publishers/google/models/{model_id}:predict"
+            
+            headers = {
+                "Authorization": f"Bearer {credentials.token}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "instances": [{"content": text, "task_type": task_type} for text in contents]
+            }
+            
+            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+            
+            if resp.status_code != 200:
+                raise Exception(f"Vertex REST API failed ({resp.status_code}): {resp.text}")
+                
+            data = resp.json()
+            predictions = data.get("predictions", [])
+            
+            # Map back to a structure the existing proxy expectations
+            class MockEmbedding:
+                def __init__(self, values):
+                    self.values = values
+            
+            class MockResponse:
+                def __init__(self, embeddings):
+                    self.embeddings = embeddings
+
+            embeddings = []
+            for pred in predictions:
+                # Vertex REST returns {"embeddings": {"values": [...]}}
+                if isinstance(pred, dict) and 'embeddings' in pred:
+                     embeddings.append(MockEmbedding(pred['embeddings']['values']))
+                else:
+                     embeddings.append(MockEmbedding(pred))
+
+            return MockResponse(embeddings)
+            
+        except Exception as e:
+            print(f"GeminiClient: Vertex REST failed: {str(e)}. Attempting GenAI fallback...")
+            if not self.client:
+                raise Exception(f"GeminiClient not initialized and REST failed: {str(e)}")
+            
+            return self.client.models.embed_content(
+                model=self._normalize_model_name(model),
+                contents=contents,
+                config=types.EmbedContentConfig(task_type=task_type)
+            )

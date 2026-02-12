@@ -3,4 +3,5 @@ firebase-admin
 git+https://github.com/google/langextract.git
 functions-framework
 google-genai>=1.0.0
+requests
 
