@@ -229,3 +229,11 @@ The canvas will **automatically open** when:
 4. `CanvasNotifier.show[Content]` methods are invoked programmatically.
 
 This ensures a clean initial interface while maintaining immediate access to rich content when it becomes available.
+
+---
+
+## Validation & Error Handling (v1.6 Update)
+To ensure high-quality outputs, the `gen_ui_component` tool now includes a **Validation Layer**:
+- **Strict Data Requirement**: Components like `code_viewer` MUST include their required fields (e.g., `code`).
+- **Placeholder Rejection**: Tools will fail if data is detected as mock or placeholder (e.g., "TBD", "XX%").
+- **Graceful Failure**: If validation fails, the Assistant will receive a system error and attempt to regenerate the component with valid data rather than rendering a broken UI.

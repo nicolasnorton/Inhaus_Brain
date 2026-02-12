@@ -14,7 +14,8 @@ class VertexChatRepository {
       {
         List<Message> history = const [], 
         SystemMessage? systemMessage,
-        List<Map<String, dynamic>> tools = const [],
+      List<Map<String, dynamic>> tools = const [],
+      bool thinking = true, // Default to true for better reasoning
       }) async* {
     final List<Map<String, dynamic>> messages = [];
     
@@ -47,35 +48,40 @@ class VertexChatRepository {
       request.body = jsonEncode({
         'messages': messages,
         'tools': tools,
+        'thinking': thinking, // Control thinking models
+        'model': thinking ? 'gemini-2.0-flash-thinking-exp-01-21' : 'gemini-2.5-flash',
       });
 
       final streamedResponse = await client.send(request);
+      final body = await streamedResponse.stream.bytesToString();
       
       if (streamedResponse.statusCode == 200) {
-        String? currentMessageId;
-        await for (final chunk in streamedResponse.stream.transform(utf8.decoder).transform(const LineSplitter())) {
-          if (chunk.startsWith('data: ')) {
-            final dataStr = chunk.substring(6).trim();
-            if (dataStr == '[DONE]') break;
-            
-            try {
-              final data = jsonDecode(dataStr);
-              // CopilotKit protocol: content chunks
-              if (data['type'] == 'content' || data['content'] != null || data['delta'] != null) {
-                final delta = data['content'] ?? data['delta'] ?? '';
-                currentMessageId ??= data['messageId'] ?? DateTime.now().millisecondsSinceEpoch.toString();
-                yield TextMessageContentEvent(
-                  delta: delta,
-                  messageId: currentMessageId!,
-                );
-              }
-            } catch (_) {
-              // Ignore non-json data
-            }
+        try {
+          final data = jsonDecode(body);
+          if (data['candidates'] != null && (data['candidates'] as List).isNotEmpty) {
+             final candidate = data['candidates'][0];
+             final parts = candidate['content']['parts'] as List;
+             
+             String fullText = '';
+             for (var part in parts) {
+               if (part['text'] != null) {
+                 fullText += part['text'];
+               } else if (part['thought'] != null) {
+                  // If we want to show thoughts, we can. For now, maybe just append or ignore.
+                  // The UI might not handle thoughts yet.
+                  // Let's ignore thoughts for now to mimic standard chat unless specifically requested.
+               }
+             }
+             
+             yield TextMessageContentEvent(
+               delta: fullText,
+               messageId: DateTime.now().millisecondsSinceEpoch.toString(),
+             );
           }
+        } catch (e) {
+          yield RunErrorEvent(code: 'parse_error', message: 'Failed to parse JSON: $e');
         }
       } else {
-        final body = await streamedResponse.stream.bytesToString();
         yield RunErrorEvent(code: streamedResponse.statusCode.toString(), message: 'Server error: $body');
       }
     } catch (e) {
@@ -87,11 +93,11 @@ class VertexChatRepository {
 // Global provider for VertexChatRepository
 final vertexChatRepositoryProvider = Provider((ref) {
   return VertexChatRepository(
-      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/vertexChat');
+      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/generate_content');
 });
 
 // Legacy CopilotKit provider (deprecated - use vertexChatRepositoryProvider instead)
 final copilotRepositoryProvider = Provider((ref) {
   return VertexChatRepository(
-      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/copilotRuntime');
+      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/generate_content');
 });

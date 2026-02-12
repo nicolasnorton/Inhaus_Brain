@@ -12,6 +12,8 @@ import 'base_agent.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/services/ai_proxy_service.dart';
 import '../../../core/architecture/blackboard.dart';
+import '../../assistant/services/assistant_tool_registry.dart';
+import '../../../core/mcp/agent_tool.dart';
 
 /// Helper to reduce boilerplate
 import 'package:inhaus_brain/features/copilot/data/copilot_repository.dart';
@@ -32,6 +34,7 @@ Future<String> _simpleExecute({
   Function(AdkEvent)? onEvent,
   AIModelConfig? modelConfig,
   bool jsonMode = false,
+  List<AgentTool>? tools, // Native Tools Support
   dynamic ref, // Phase 89: Required for CopilotKit
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
@@ -107,6 +110,7 @@ Future<String> _simpleExecute({
     gemmaKey: gemmaKey,
     modelConfig: modelConfig,
     outputMode: jsonMode ? 'json' : null,
+    tools: tools,
     ref: ref,
   );
   
@@ -732,6 +736,15 @@ class CreativeAgent extends BaseAgent {
     final basePrompt = await promptService.getCreativePrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT_DATA]', userPrompt);
 
+    // Fetch Tools from Registry
+    final registry = ref.read(assistantToolRegistryProvider);
+    final creativeTools = registry.where((t) => 
+      t.name == 'image_generation' || 
+      t.name == 'video_generation'
+    ).toList();
+
+    debugPrint('CreativeAgent: Loaded ${creativeTools.length} tools.');
+
     final result = await _simpleExecute(
       agentName: name,
       systemPromptKey: systemPromptKey,
@@ -744,6 +757,7 @@ class CreativeAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       modelConfig: AIModelConfig.geminiPro,
+      tools: creativeTools,
       ref: ref,
     );
     

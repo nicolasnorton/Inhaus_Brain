@@ -75,12 +75,26 @@ For "dialogue_scene":
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> args, {dynamic ref}) async {
-    // This tool is a "UI Trigger". The actual rendering happens in the presentation layer.
-    // We just return the data so AssistantService can package it into the message.
+    final type = args['component_type'] as String?;
+    final data = args['data'];
+    
+    if (type == null || type.isEmpty) {
+      return ToolResult.failure('Missing component_type');
+    }
+    
+    if (data == null || (data is! Map && data is! List)) {
+      return ToolResult.failure('Invalid or missing data for GenUI component: $type');
+    }
+
+    // Basic structure validation based on type
+    if (type == 'code_viewer' && data is Map && !data.containsKey('code')) {
+       return ToolResult.failure('data for code_viewer must contain "code" field');
+    }
+
     return ToolResult.success({
       'is_gen_ui': true,
-      'component_type': args['component_type'],
-      'ui_data': args['data'],
+      'component_type': type,
+      'ui_data': data,
       'summary': args['summary_text'],
     });
   }

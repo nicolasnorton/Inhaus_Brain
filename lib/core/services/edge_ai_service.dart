@@ -15,6 +15,8 @@ import 'video_generation_service.dart';
 import 'telemetry_service.dart';
 import 'semantic_cache_service.dart';
 import 'analytics_service.dart';
+import '../mcp/agent_tool.dart';
+import '../utils/function_schema_mapper.dart';
 
 
 enum AIProximity {
@@ -68,6 +70,7 @@ class EdgeAIService {
     String? apiKey,
     String? gemmaKey,
     String? vertexKey,
+    List<AgentTool>? tools, // Native Tools Support
     dynamic ref, // Phase 89: Support both WidgetRef and Ref for proximity sync
   }) async {
     final effectiveMemory = memoryContext ?? systemInstruction;
@@ -134,6 +137,7 @@ class EdgeAIService {
         pdfMimeType,
         apiKey,
         vertexKey,
+        tools,
         ref,
       ).timeout(const Duration(seconds: 45));
 
@@ -202,6 +206,7 @@ class EdgeAIService {
     String? pdfMimeType,
     String? apiKey,
     String? vertexKey,
+    List<AgentTool>? tools,
     dynamic ref,
   ) async {
     EdgeAIResult result;
@@ -228,7 +233,7 @@ class EdgeAIService {
               prompt: proxyPrompt, 
               config: config,
               systemInstruction: effectiveMemory,
-              tools: [], 
+              tools: tools?.map((t) => t.toFunctionSchema()).toList() ?? [], 
               thinking: config.modelId.contains('thinking') || effectivePrompt.toLowerCase().contains('deep research'),
               audio: config.modelId.contains('lyra'),
              );
@@ -300,7 +305,9 @@ class EdgeAIService {
              videoBytes: videoBytes,
              videoMimeType: videoMimeType,
              pdfBytes: pdfBytes,
-             pdfMimeType: pdfMimeType
+
+             pdfMimeType: pdfMimeType,
+             tools: tools,
            );
         } catch (e) {
            _logger.w('EdgeAI: FirebaseAI failed: $e. Using LiteRT/Mock fallback.');
@@ -329,8 +336,11 @@ class EdgeAIService {
              videoBytes: videoBytes,
              videoMimeType: videoMimeType,
              pdfBytes: pdfBytes,
-             pdfMimeType: pdfMimeType
+
+             pdfMimeType: pdfMimeType,
+             tools: tools,
            );
+
     }
     
     // Phase 89: Global Proximity Sync (Only if ref is provided)
@@ -356,11 +366,39 @@ class EdgeAIService {
     Uint8List? videoBytes,
     String? videoMimeType,
     Uint8List? pdfBytes,
+    Uint8List? pdfBytes,
     String? pdfMimeType,
+    List<AgentTool>? tools,
   }) async {
     final ai = FirebaseAI.vertexAI();
     // Note: apiKey and backend are now automatically handled by FirebaseAI based on project config
     
+    // Map AgentTools to Firebase AI Schema
+    final List<Tool> nativeTools = [];
+    if (tools != null && tools.isNotEmpty) {
+      final declarations = tools.map((t) {
+         final schema = t.toFunctionSchema();
+         return FunctionDeclaration(
+           t.name,
+           t.description,
+           FunctionSchemaMapper.map(t.inputSchema), // Removed 'properties' wrapper as inputSchema is already correct map for mapper
+         );
+      }).toList();
+      nativeTools.add(Tool(functionDeclarations: declarations));
+    }
+    
+    // Config: If formatting as JSON, do NOT use tools (they conflict in Gemini 1.5)
+    // BUT for Gemini 2.0+, tools + JSON might be supported. For now, stick to standard behavior.
+    if (config.responseMimeType == 'application/json') {
+       nativeTools.clear(); 
+    } else {
+       if (config.useGoogleSearch) {
+         nativeTools.add(Tool.googleSearch());
+       }
+       // Code Execution enables dangerous Python sandbox, use carefully
+       // nativeTools.add(Tool.codeExecution()); 
+    }
+
     final model = ai.generativeModel(
       model: config.modelId,
       generationConfig: GenerationConfig(
@@ -374,16 +412,7 @@ class EdgeAIService {
             SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.high, HarmBlockMethod.probability),
             SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.high, HarmBlockMethod.probability),
       ],
-      // CRITICAL: Code Execution is incompatible with JSON mode (controlled generation)
-      // Only enable tools when NOT using responseMimeType: 'application/json'
-      tools: config.responseMimeType == 'application/json' 
-        ? [] // No tools for JSON mode
-        : [
-            Tool.codeExecution(),
-            // Enable Google Search Grounding when useGoogleSearch is true
-            if (config.useGoogleSearch) 
-              Tool.googleSearch(),
-          ],
+      tools: nativeTools,
     );
 
     final parts = <Part>[TextPart(prompt)];
@@ -517,6 +546,7 @@ class EdgeAIService {
            imageMimeType: imageMimeType, 
            modelConfig: effectiveConfig, 
            apiKey: apiKey, 
+           tools: [], // Stream doesn't support tools yet in this wrapper
            ref: ref
         );
         return;
@@ -574,7 +604,7 @@ class EdgeAIService {
          debugPrint('EdgeAI: [WEB] Routing Image Generation via Secure Proxy ($effectiveModel)...');
          
          if (ref == null) throw Exception('Ref is required for Image Proxy in Web mode');
-         final proxy = ref is Ref ? ref.read(aiProxyServiceProvider) : (ref as WidgetRef).read(aiProxyServiceProvider);
+         final proxy = (ref is Ref) ? ref.read(aiProxyServiceProvider) : (ref as WidgetRef).read(aiProxyServiceProvider);
 
          final proxyResponse = await AIProxyService.generateImage(
            prompt: prompt,
@@ -593,15 +623,43 @@ class EdgeAIService {
        } catch (e) {
          debugPrint('EdgeAI: [WEB] Proxy Image Gen Failed: $e. Using fallback chain.');
        }
-    } 
+    } else {
+      // 2. NATIVE CLOUD PATH (Firebase Functions)
+      try {
+        final result = await _generateCloudImage(prompt, modelId: modelId, config: generationParams);
+        if (result != null) return result;
+      } catch (e) {
+        debugPrint('EdgeAI: [NATIVE] Cloud Image Gen Failed: $e');
+      }
+    }
     
-    // 2. SAFE MOCKS (Fallback)
-
-    // 4. SAFE MOCKS (Clawd / Lobster Mock Fallback)
+    // 3. SAFE MOCKS (Fallback)
     debugPrint('EdgeAI: 🚨 ALL Image/AI services failed. Providing SAFE MOCK asset.');
-    // Return a guaranteed safe, cached asset path or reliable placeholder
-    // In production, these should be local assets. For now, using a reliable Unsplash lobster/tech fallback.
     return "https://images.unsplash.com/photo-1535591273668-578e31182c4f?q=80&w=2070&auto=format&fit=crop"; 
+  }
+
+  static Future<String?> _generateCloudImage(String prompt, {String? modelId, Map<String, dynamic>? config}) async {
+    try {
+      debugPrint('EdgeAI: [NATIVE] Calling generate_image Cloud Function...');
+      final response = await AIProxyService.generateImage(
+        prompt: prompt,
+        model: modelId ?? 'imagen-3.0-fast-generate-001',
+        config: config,
+      );
+
+      final images = response['images'] as List?;
+      if (images != null && images.isNotEmpty) {
+        final firstImg = images[0];
+        final base64Image = firstImg['data'];
+        if (base64Image != null) {
+          return "data:${firstImg['mimeType'] ?? 'image/png'};base64,$base64Image";
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('EdgeAI: _generateCloudImage failed: $e');
+      return null;
+    }
   }
 
   static Future<String> generateVideo(String prompt, {String? modelId, bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, dynamic ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {

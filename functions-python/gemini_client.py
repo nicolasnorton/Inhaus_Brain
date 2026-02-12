@@ -100,7 +100,8 @@ class GeminiClient:
         audio: bool = False,
         use_google_search: bool = False,
         generation_params: Optional[Dict[str, Any]] = None,
-        cached_content_name: Optional[str] = None
+        cached_content_name: Optional[str] = None,
+        contents: Optional[List[Any]] = None
     ) -> Any:
         """
         Generate content using the specified model with intelligent routing.
@@ -140,6 +141,10 @@ class GeminiClient:
                     elif "function_declarations" in tool:
                         decls = [types.FunctionDeclaration(**d) for d in (tool["function_declarations"] or [])]
                         processed_tools.append(types.Tool(function_declarations=decls))
+                    elif "name" in tool and "parameters" in tool:
+                        # Auto-wrap single function declaration
+                        decl = types.FunctionDeclaration(**tool)
+                        processed_tools.append(types.Tool(function_declarations=[decl]))
                     else:
                         processed_tools.append(tool)
                 elif isinstance(tool, str):
@@ -163,18 +168,21 @@ class GeminiClient:
             **config_params
         )
 
-        processed_contents = prompt
-        if isinstance(prompt, list):
-            processed_contents = []
-            for item in prompt:
-                if isinstance(item, dict) and "inline_data" in item:
-                    data = item["inline_data"]
-                    raw_data = base64.b64decode(data["data"]) if isinstance(data["data"], str) else data["data"]
-                    processed_contents.append(types.Part.from_bytes(data=raw_data, mime_type=data["mime_type"]))
-                elif isinstance(item, dict) and "file_data" in item:
-                    processed_contents.append(types.Part.from_uri(file_uri=item["file_data"]["file_uri"], mime_type=item["file_data"]["mime_type"]))
-                else:
-                    processed_contents.append(item)
+        if contents:
+            processed_contents = contents
+        else:
+            processed_contents = prompt
+            if isinstance(prompt, list):
+                processed_contents = []
+                for item in prompt:
+                    if isinstance(item, dict) and "inline_data" in item:
+                        data = item["inline_data"]
+                        raw_data = base64.b64decode(data["data"]) if isinstance(data["data"], str) else data["data"]
+                        processed_contents.append(types.Part.from_bytes(data=raw_data, mime_type=data["mime_type"]))
+                    elif isinstance(item, dict) and "file_data" in item:
+                        processed_contents.append(types.Part.from_uri(file_uri=item["file_data"]["file_uri"], mime_type=item["file_data"]["mime_type"]))
+                    else:
+                        processed_contents.append(item)
 
         if stream:
             return self.client.models.generate_content_stream(model=model, contents=processed_contents, config=config)

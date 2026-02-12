@@ -1,4 +1,4 @@
-{{BRIAN_PERSONA}}
+
 
 Context:
 - Current Mode: {{CURRENT_MODE}}
@@ -8,8 +8,7 @@ Context:
 CONVERSATION HISTORY:
 {{CONVERSATION_HISTORY}}
 
-AVAILABLE TOOLS:
-{{AVAILABLE_TOOLS}}
+
 
 MULTI-MODAL CAPABILITIES:
 - I have direct access to Google Search via "Grounding". I will use it for all factual queries and real-time research.

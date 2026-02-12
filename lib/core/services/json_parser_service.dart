@@ -14,7 +14,7 @@ class JsonParserService {
     String cleanText = rawText.trim();
 
     // 1. Strip Markdown Code Blocks
-    final codeBlockRegex = RegExp(r'```(?:json)?\s*(.*?)\s*```', dotAll: true);
+    final codeBlockRegex = RegExp(r'```(?:[a-zA-Z0-9]+)?\s*(.*?)\s*```', dotAll: true);
     final match = codeBlockRegex.firstMatch(cleanText);
     if (match != null) {
       cleanText = match.group(1)!.trim();
@@ -94,8 +94,6 @@ class JsonParserService {
         } catch (_) {
           // TRY 2: Handle single quotes (Common in LLM Python-like output)
           try {
-             // Replace single quotes with double quotes, but ONLY for keys and string values
-             // This is a naive but often effective fix for LLM 'JSON'
              String fixed = candidate
                 .replaceAll("'", '"') // Extreme fallback
                 .replaceAll('None', 'null')
@@ -109,11 +107,11 @@ class JsonParserService {
             debugPrint('JsonParserService: Skipped invalid JSON candidate: $e2');
           }
         }
-        // Move past this block to find next candidate
-        startIndex = jsonEnd + 1;
+        // If we found a balanced block but failed to parse, we should keep looking
+        startIndex = jsonStart + 1;
       } else {
-        // Unclosed brace, stop searching
-        break;
+        // Unclosed brace, keep searching from next character
+        startIndex = jsonStart + 1;
       }
     }
 

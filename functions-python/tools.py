@@ -90,3 +90,74 @@ def get_meetings_schema():
             )
         ]
     )
+
+def get_image_generation_schema():
+    """Returns the tool definition for image generation."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="image_generation",
+                description="Generate a production-grade image concept.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "prompt": types.Schema(
+                            type="STRING",
+                            description="The prompt to generate the image for."
+                        )
+                    },
+                    required=["prompt"]
+                )
+            )
+        ]
+    )
+
+def get_video_generation_schema():
+    """Returns the tool definition for video generation."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="video_generation",
+                description="Generate a high-fidelity video asset.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "prompt": types.Schema(
+                            type="STRING",
+                            description="The prompt to generate the video for."
+                        ),
+                        "model_id": types.Schema(
+                            type="STRING",
+                            description="Optional. Specific Veo model ID (e.g., veo-3.1-generate-preview, veo-2.0-generate-001)."
+                        ),
+                        "is_final": types.Schema(
+                            type="BOOLEAN",
+                            description="Whether to generate a high-quality final render (slower) or a preview."
+                        )
+                    },
+                    required=["prompt"]
+                )
+            )
+        ]
+    )
+
+def get_audio_generation_schema():
+    """Returns the tool definition for audio generation."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="audio_generation",
+                description="Compose advanced music or soundtracks.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "prompt": types.Schema(
+                            type="STRING",
+                            description="The prompt to compose audio for."
+                        )
+                    },
+                    required=["prompt"]
+                )
+            )
+        ]
+    )

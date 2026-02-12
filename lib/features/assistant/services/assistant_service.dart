@@ -323,18 +323,21 @@ class AssistantService {
     final Set<AgentTool> combinedTools = {...intentTools, ...specificTools};
     
     // Always ensure generation and navigation tools are available
-    combinedTools.addAll(allTools.where((t) => 
+    final alwaysAvailable = allTools.where((t) => 
       t.name == 'image_generation' || 
       t.name == 'video_generation' || 
       t.name == 'navigate_to' || 
       t.name == 'gen_ui_component'
-    ));
+    );
+    combinedTools.addAll(alwaysAvailable);
 
-    final toolDefinitions = combinedTools.map((t) {
-      final schema = t.toFunctionSchema();
-      final params = (schema['parameters'] as Map?)?['properties'] ?? {};
-      return "- ${t.name}: ${t.description}. Params: ${jsonEncode(params)}";
-    }).join("\n");
+    debugPrint('Assistant: All Registry Tools: ${allTools.length}');
+    debugPrint('Assistant: Intent Tools: ${intentTools.length}');
+    debugPrint('Assistant: Specific Tools: ${specificTools.length}');
+    debugPrint('Assistant: Always Available Tools: ${alwaysAvailable.length}');
+    debugPrint('Assistant: Final Combined Tools: ${combinedTools.length}');
+
+    // Tool Definitions are now handled natively by EdgeAIService via tools list
 
     // D. Main Execution
     final currentMode = _ref.read(assistantModeProvider);
@@ -392,12 +395,10 @@ class AssistantService {
 
     final rawMainPrompt = await systemPrompts.getAssistantMainPrompt();
     final mainPrompt = rawMainPrompt
-      .replaceAll('{{BRIAN_PERSONA}}', brianPersona)
       .replaceAll('{{CURRENT_MODE}}', currentMode.toString().split('.').last.toUpperCase())
       .replaceAll('{{DETECTED_INTENT}}', intentEnum.toString().split('.').last.toUpperCase())
       .replaceAll('{{SYSTEM_MEMORY}}', longTermMemory)
       .replaceAll('{{CONVERSATION_HISTORY}}', recentHistory)
-      .replaceAll('{{AVAILABLE_TOOLS}}', toolDefinitions)
       .replaceAll('{{USER_INPUT}}', text)
       .replaceAll('{{EPHEMERAL_MESSAGE}}', ephemeralMsg)
       .replaceAll('{{KNOWLEDGE_GROUNDING}}', retrievedGroundingContext);
@@ -489,6 +490,8 @@ class AssistantService {
         mainPrompt,
         modelConfig: mainConfig,
         ref: _ref,
+        systemInstruction: brianPersona, // Passed as System Instruction
+        tools: combinedTools.toList(),   // Native Tool Passing
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
       );
 
@@ -607,7 +610,48 @@ class AssistantService {
              // DIRECT COMPONENT OUTPUT SUPPORT
              toolName = 'gen_ui_component';
               toolArgs = Map<String, dynamic>.from(parsed);
-           } else {
+            } else if (parsed.containsKey('tool_code')) {
+               // HANDLE Gemini 2.0/2.5 "Code Execution" style output
+               debugPrint('Assistant: 🛠️ Found "tool_code" in JSON response');
+               final String code = parsed['tool_code'].toString();
+               
+               // Regex to match tool_name(key=val, ...)
+               final match = RegExp(r"(\w+)\((.*)\)").firstMatch(code);
+               if (match != null) {
+                 final String rawName = match.group(1)!;
+                 toolName = rawName.contains(':') ? rawName.split(':').last : rawName;
+                 
+                 final argsString = match.group(2) ?? "";
+                 debugPrint('Assistant: 🛠️ Extracted tool: $toolName, raw args: $argsString');
+                 
+                 // CRUDE PYTHON-STYLE ARG PARSER
+                 // Look for component_type='...' and data={...}
+                 final typeMatch = RegExp(r"component_type=['" + '"' + r"]([^'" + '"' + r"]+)['" + '"' + r"]").firstMatch(argsString);
+                 final dataMatch = RegExp(r"data=(\{.*\})").firstMatch(argsString);
+                 final promptMatch = RegExp(r"prompt=['" + '"' + r"]([^'" + '"' + r"]+)['" + '"' + r"]").firstMatch(argsString);
+                 
+                 final Map<String, dynamic> extractedArgs = {};
+                 if (typeMatch != null) extractedArgs['component_type'] = typeMatch.group(1);
+                 if (promptMatch != null) extractedArgs['prompt'] = promptMatch.group(1);
+                 
+                 if (dataMatch != null) {
+                    try {
+                      // Python uses single quotes in dict repr, convert to double for JSON
+                      String jsonStr = dataMatch.group(1)!.replaceAll("'", '"');
+                      extractedArgs['data'] = jsonDecode(jsonStr);
+                    } catch (e) {
+                      debugPrint('Assistant: Failed to parse data from tool_code: $e');
+                    }
+                 }
+                 
+                 // If specific extraction failed, just take everything as prompt for generation tools
+                 if (extractedArgs.isEmpty && argsString.isNotEmpty) {
+                    extractedArgs['prompt'] = argsString.replaceAll("'", "").replaceAll('"', "");
+                 }
+                 
+                 toolArgs = extractedArgs;
+               }
+            } else {
               // Fallback: Check if the root key corresponds to a known tool
               // e.g. {"video_generation": {"prompt": "..."}}
               for (final tool in combinedTools) {
@@ -771,7 +815,9 @@ class AssistantService {
   Future<ToolExecutionSummary> _executeTool(List<AgentTool> tools, String name, Map<String, dynamic> args) async {
     final tool = tools.firstWhere((t) => t.name == name, orElse: () => throw Exception('Tool not found: $name'));
     try {
+      debugPrint('Assistant: 🚀 Executing tool [$name] with payload: ${jsonEncode(args)}');
       final result = await tool.execute(args);
+      debugPrint('Assistant: 🏁 Tool [$name] execution result: ${result.isSuccess ? "Success" : "Failed (${result.errorMessage})"}');
       if (result.isSuccess) {
         if (name == 'image_generation') {
           return ToolExecutionSummary(
@@ -854,10 +900,31 @@ class AssistantService {
         }
         return ToolExecutionSummary(text: "Executed $name successfully.\n\n```json\n${jsonEncode(result.data)}\n```");
       } else {
-        return ToolExecutionSummary(text: "Error executing $name: ${result.errorMessage}");
+        return ToolExecutionSummary(
+          text: "⚠️ **Tool Execution Failed**\n\nThe tool `$name` encountered an issue: ${result.errorMessage}\n\n**Suggestion**: Please check your inputs or try the command again. If this persists, it might be a temporary service issue.",
+        );
       }
+    } on TimeoutException catch (e) {
+      debugPrint('Assistant: ⏳ Tool [$name] timed out: $e');
+      return ToolExecutionSummary(
+        text: "🕒 **Request Timed Out**\n\nThe tool `$name` took too long to respond. This usually happens with complex generations like video or deep research.\n\n**Suggestion**: You can try again now, or wait a moment for the background process to complete if applicable.",
+      );
+    } on SocketException catch (e) {
+      debugPrint('Assistant: 🌐 Tool [$name] network error: $e');
+      return ToolExecutionSummary(
+        text: "🚫 **Connection Error**\n\nI couldn't reach the backend services to execute `$name`. Please check your internet connection.\n\n**Suggestion**: Ensure you are online and click 'Retry' or type your request again.",
+      );
     } catch (e) {
-      return ToolExecutionSummary(text: "System error: $e");
+      debugPrint('Assistant: ❌ Tool [$name] unexpected error: $e');
+      
+      String friendlyError = "Something went wrong while executing `$name`.";
+      if (e.toString().contains('NameError')) {
+        friendlyError = "The system encountered a configuration error while calling `$name`. Our engineers have been notified.";
+      }
+      
+      return ToolExecutionSummary(
+        text: "🛑 **System Error**\n\n$friendlyError\n\n**Details**: `${e.toString().split('\n').first}`\n\n**Suggestion**: Try a different request or refresh the workspace.",
+      );
     }
   }
 

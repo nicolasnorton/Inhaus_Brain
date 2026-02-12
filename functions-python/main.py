@@ -108,20 +108,58 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         thinking = data.get("thinking", False)
         audio = data.get("audio", False)
         use_google_search = data.get("useGoogleSearch", False)
-        cached_content_name = data.get("cachedContentName") # Optional: Use a pre-cached context
-
+        cached_content_name = data.get("cachedContentName")
+        
+        # Handle Chat History (messages -> contents)
+        messages = data.get("messages")
+        contents = None
+        
+        if messages and isinstance(messages, list):
+            contents = []
+            for msg in messages:
+                role = msg.get("role")
+                content = msg.get("content")
+                
+                if role == "system":
+                    # Prefer systemInstruction from body, else use system message
+                    if not system_instruction:
+                        system_instruction = content
+                elif role in ["user", "model", "assistant"]:
+                    # Map 'assistant' to 'model' for Gemini
+                    if role == "assistant": role = "model"
+                    
+                    contents.append({
+                        "role": role,
+                        "parts": [{"text": content}]
+                    })
         
         # Inject custom tool definitions if requested by string
         if isinstance(tools, list):
             new_tools = []
             for t in tools:
-                if t == "weather":
-                    new_tools.append(custom_tools.get_weather_schema())
-                elif t == "charts":
-                    new_tools.append(custom_tools.get_charts_schema())
-                elif t == "meetings":
-                    new_tools.append(custom_tools.get_meetings_schema())
-                else:
+                try:
+                    print(f"Gemini Proxy: Injecting tool '{t}'")
+                    if t == "weather":
+                        new_tools.append(custom_tools.get_weather_schema())
+                    elif t == "charts":
+                        new_tools.append(custom_tools.get_charts_schema())
+                    elif t == "meetings":
+                        new_tools.append(custom_tools.get_meetings_schema())
+                    elif t == "image_generation":
+                        print("Gemini Proxy: Fetching image_generation schema...")
+                        new_tools.append(custom_tools.get_image_generation_schema())
+                    elif t == "video_generation":
+                        new_tools.append(custom_tools.get_video_generation_schema())
+                    elif t == "audio_generation":
+                        new_tools.append(custom_tools.get_audio_generation_schema())
+                    else:
+                        new_tools.append(t)
+                except AttributeError as ae:
+                    print(f"Gemini Proxy: AttributeError injecting tool '{t}': {str(ae)}")
+                    # Fallback or re-raise if critical
+                    new_tools.append(t)
+                except Exception as te:
+                    print(f"Gemini Proxy: Error injecting tool '{t}': {str(te)}")
                     new_tools.append(t)
             tools = new_tools
 
@@ -146,7 +184,8 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             audio=audio,
             use_google_search=use_google_search,
             generation_params=data.get("generationParams"),
-            cached_content_name=cached_content_name
+            cached_content_name=cached_content_name,
+            contents=contents
         )
 
         # Use the built-in serializer for clean output

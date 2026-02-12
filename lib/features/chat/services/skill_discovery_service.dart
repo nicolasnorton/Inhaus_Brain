@@ -20,6 +20,7 @@ class SkillDiscoveryService {
     _skills.clear();
     final discovered = await SkillDiscoveryIO.discover(baseDir, _parseSkillFile);
     _skills.addAll(discovered);
+    debugPrint('SkillDiscoveryService: Discovered ${_skills.length} skills.');
   }
 
   AgentSkill _parseSkillFile(String content, String path) {
