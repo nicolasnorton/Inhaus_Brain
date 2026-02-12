@@ -47,7 +47,7 @@ app.post('*', async (req, res) => {
 
         // Initialize ChatVertexAI model
         let model = new ChatVertexAI({
-            model: "gemini-2.5-pro",
+            model: "gemini-1.5-pro",
             location: "us-central1",
             maxOutputTokens: 8192,
         });

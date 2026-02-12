@@ -65,7 +65,7 @@ def extract_structured(req: https_fn.Request) -> https_fn.Response:
         document_text = data.get("document")
         schema = data.get("schema")
         examples = data.get("examples", [])
-        model_name = data.get("model", "gemini-2.5-flash")
+        model_name = data.get("model", "gemini-1.5-flash")
 
         if not document_text or not schema:
             return _cors_response(req, "Missing document or schema", status=400)
@@ -104,7 +104,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         if not data:
             return _cors_response(req, "Missing JSON body", status=400)
 
-        model_name = data.get("model", "gemini-2.5-flash")
+        model_name = data.get("model", "gemini-1.5-flash")
         prompt = data.get("prompt")
         config = data.get("config", {})
         system_instruction = data.get("systemInstruction")
@@ -216,7 +216,7 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         client = GeminiClient()
-        interaction = client.create_interaction(model=data.get("model", "gemini-2.5-pro"), prompt=data.get("prompt"))
+        interaction = client.create_interaction(model=data.get("model", "gemini-1.5-pro"), prompt=data.get("prompt"))
         return _cors_response(req, {"interactionId": interaction.id, "status": interaction.state})
     except Exception as e: return _cors_response(req, {"error": str(e)}, status=500)
 
@@ -295,7 +295,7 @@ def count_tokens(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         client = GeminiClient()
-        return _cors_response(req, {"totalTokens": client.count_tokens(data.get("model", "gemini-2.5-flash"), data.get("prompt"))})
+        return _cors_response(req, {"totalTokens": client.count_tokens(data.get("model", "gemini-1.5-flash"), data.get("prompt"))})
     except Exception as e: return _cors_response(req, {"error": str(e)}, status=500)
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", memory=512)
@@ -307,7 +307,7 @@ def create_cache(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         client = GeminiClient()
-        cache = client.create_cached_content(model=data.get("model", "gemini-2.5-flash"), contents=data.get("contents", []), ttl_seconds=data.get("ttl", 3600))
+        cache = client.create_cached_content(model=data.get("model", "gemini-1.5-flash"), contents=data.get("contents", []), ttl_seconds=data.get("ttl", 3600))
         return _cors_response(req, {"name": cache.name, "expireTime": cache.expire_time.isoformat() if cache.expire_time else None})
     except Exception as e: return _cors_response(req, {"error": str(e)}, status=500)
 

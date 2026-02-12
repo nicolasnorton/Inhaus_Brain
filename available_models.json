@@ -1,9 +1,9 @@
 {
   "models": [
     {
-      "name": "models/gemini-2.5-pro",
-      "version": "2.5",
-      "displayName": "Gemini 2.5 Pro",
+      "name": "models/gemini-1.5-pro",
+      "version": "1.5",
+      "displayName": "Gemini 1.5 Pro",
       "description": "Our most powerful state-of-the-art multimodal model. Supports 1M+ context, Vision, Audio, Code Execution, and JSON mode.",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
@@ -18,9 +18,9 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-2.5-flash",
-      "version": "2.5",
-      "displayName": "Gemini 2.5 Flash",
+      "name": "models/gemini-1.5-flash",
+      "version": "1.5",
+      "displayName": "Gemini 1.5 Flash",
       "description": "Fast and versatile multimodal model for scaling. Supports Vision, Audio, 1M+ context, and JSON mode.",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
@@ -420,9 +420,9 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-2.5-flash-lite",
+      "name": "models/gemini-1.5-flash-lite",
       "version": "001",
-      "displayName": "Gemini 2.5 Flash-Lite",
+      "displayName": "Gemini 1.5 Flash-Lite",
       "description": "Stable version of Gemini 2.5 Flash-Lite, released in July of 2025",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
@@ -439,10 +439,10 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-2.5-flash-image",
-      "version": "2.0",
-      "displayName": "Nano Banana",
-      "description": "Gemini 2.5 Flash Preview Image",
+      "name": "models/gemini-1.5-flash-image",
+      "version": "1.5",
+      "displayName": "Gemini 1.5 Flash Image",
+      "description": "Gemini 1.5 Flash Preview Image",
       "inputTokenLimit": 32768,
       "outputTokenLimit": 32768,
       "supportedGenerationMethods": [
@@ -456,9 +456,9 @@
       "maxTemperature": 1
     },
     {
-      "name": "models/gemini-2.5-flash-preview-09-2025",
-      "version": "Gemini 2.5 Flash Preview 09-2025",
-      "displayName": "Gemini 2.5 Flash Preview Sep 2025",
+      "name": "models/gemini-1.5-flash-preview-09-2025",
+      "version": "Gemini 1.5 Flash Preview 09-2025",
+      "displayName": "Gemini 1.5 Flash Preview Sep 2025",
       "description": "Gemini 2.5 Flash Preview Sep 2025",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
@@ -585,9 +585,9 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-2.5-computer-use-preview-10-2025",
-      "version": "Gemini 2.5 Computer Use Preview 10-2025",
-      "displayName": "Gemini 2.5 Computer Use Preview 10-2025",
+      "name": "models/gemini-1.5-computer-use-preview-10-2025",
+      "version": "Gemini 1.5 Computer Use Preview 10-2025",
+      "displayName": "Gemini 1.5 Computer Use Preview 10-2025",
       "description": "Gemini 2.5 Computer Use Preview 10-2025",
       "inputTokenLimit": 131072,
       "outputTokenLimit": 65536,

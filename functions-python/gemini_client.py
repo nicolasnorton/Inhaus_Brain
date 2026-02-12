@@ -361,7 +361,7 @@ class GeminiClient:
             config=types.GenerateImagesConfig(**kwargs)
         )
 
-    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.5-flash") -> int:
+    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-1.5-flash") -> int:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
         response = self.client.models.count_tokens(

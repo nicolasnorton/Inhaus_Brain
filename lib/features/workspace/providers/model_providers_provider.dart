@@ -143,8 +143,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
         ),
         availableModels: [
           ModelConfig(
-            id: 'gemini-2.5-pro',
-            name: 'Gemini 2.5 Pro (Reasoning)',
+            id: 'gemini-1.5-pro',
+            name: 'Gemini 1.5 Pro (Reasoning)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
             contextWindow: 2000000,
@@ -154,8 +154,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'gemini-2.5-flash',
-            name: 'Gemini 2.5 Flash (High Volume)',
+            id: 'gemini-1.5-flash',
+            name: 'Gemini 1.5 Flash (High Volume)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
             contextWindow: 1000000,
@@ -165,8 +165,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'gemini-2.5-flash-lite',
-            name: 'Gemini 2.5 Flash-Lite (Cost Efficient)',
+            id: 'gemini-1.5-flash',
+            name: 'Gemini 1.5 Flash (Standard)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
             contextWindow: 1000000,
@@ -176,8 +176,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'gemini-2.5-flash-image',
-            name: 'Gemini 2.5 Flash Image (Low Latency)',
+            id: 'gemini-1.5-flash-image',
+            name: 'Gemini 1.5 Flash Image',
             provider: ModelProvider.google,
             type: ModelProviderType.image,
             contextWindow: 1000000,
