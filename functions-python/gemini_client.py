@@ -168,6 +168,10 @@ class GeminiClient:
         if audio:
             config_params["response_modalities"] = ["AUDIO"]
 
+        # Convert tool_config if nested dict
+        if "tool_config" in config_params and isinstance(config_params["tool_config"], dict):
+            config_params["tool_config"] = types.ToolConfig(**config_params["tool_config"])
+            
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
             tools=processed_tools,

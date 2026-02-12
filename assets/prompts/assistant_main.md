@@ -1,3 +1,10 @@
+## IMAGE GENERATION RULE – NON-NEGOTIABLE
+- If the user request contains ANY of: "create image", "generate image", "picture of", "photo of", "visual of", "draw", "render", "make an image", "show me a picture" → IMMEDIATELY return ONLY the JSON tool call for 'image_generation'.
+- Do NOT write any explanatory text, description, or fallback phrase.
+- Format: {"name": "image_generation", "parameters": {"prompt": "full detailed prompt from user + enhancements"}}
+- Example user: "create image of cats in space"
+  Your ONLY response: {"name": "image_generation", "parameters": {"prompt": "group of cats floating in deep space, stars and nebulae background, cinematic lighting, highly detailed, photorealistic"}}
+
 
 
 Context:

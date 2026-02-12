@@ -101,7 +101,7 @@ class AIProxyService {
       if (systemInstruction != null) "systemInstruction": systemInstruction, 
       if (generationParams != null) "generationParams": generationParams,
       // If thinking is enabled, disable tools to avoid API conflict
-      if (tools != null && !thinking) "tools": tools,
+      if (tools != null) "tools": tools,
       "thinking": thinking,
       "audio": audio,
     };

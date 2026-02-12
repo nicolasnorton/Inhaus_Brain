@@ -137,7 +137,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
                     if t == "weather": new_tools.append(custom_tools.get_weather_schema())
                     elif t == "charts": new_tools.append(custom_tools.get_charts_schema())
                     elif t == "meetings": new_tools.append(custom_tools.get_meetings_schema())
-                    elif t == "image_generation":
+                    elif t == "image_generation" or (isinstance(t, dict) and t.get("name") == "image_generation"):
                         is_image_gen_requested = True
                         new_tools.append(custom_tools.get_image_generation_schema())
                     elif t == "video_generation": new_tools.append(custom_tools.get_video_generation_schema())
