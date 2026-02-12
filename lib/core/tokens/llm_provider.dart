@@ -50,23 +50,32 @@ class AIModelConfig {
   }
 
   String get displayName {
+    if (modelId.contains('gemini-3')) return 'Google Gemini 3.0 Preview ($modelId)';
+    if (modelId.contains('gemini-2.5')) return 'Google Gemini 2.5 ($modelId)';
+    if (modelId.contains('gemini-1.5')) return 'Google Gemini 1.5 ($modelId)';
+    
     switch (provider) {
-      case AIProvider.gemini: return 'Google Gemini 1.5 (${modelId})';
-      case AIProvider.vertex: return 'Google Vertex AI 1.5 (${modelId})';
-      case AIProvider.openai: return 'Google Gemini 1.5 (Compatible Mode)';
-      case AIProvider.claude: return 'Google Gemini 1.5 (Compatible Mode)';
-      case AIProvider.grok: return 'Google Gemini 1.5 (Compatible Mode)';
-      case AIProvider.mistral: return 'Google Gemini 1.5 (Compatible Mode)';
+      case AIProvider.gemini: return 'Google Gemini ($modelId)';
+      case AIProvider.vertex: return 'Google Vertex AI ($modelId)';
+      case AIProvider.openai: return 'OpenAI Compatible ($modelId)';
+      case AIProvider.claude: return 'Anthropic Compatible ($modelId)';
+      case AIProvider.grok: return 'xAI Compatible ($modelId)';
+      case AIProvider.mistral: return 'Mistral Compatible ($modelId)';
       case AIProvider.runway: return 'Runway Gen-2';
       case AIProvider.midjourney: return 'Midjourney v6';
-      case AIProvider.litert: return 'LiteRT On-Device (${modelId})';
+      case AIProvider.litert: return 'LiteRT On-Device ($modelId)';
     }
   }
 
   // Factory for known heavy hitters
-  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-3-pro-preview', temperature: 0.7);
-  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
-  static AIModelConfig get geminiFlashLite => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
+  // Baseline Stable Models (Recommended)
+  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-pro', temperature: 0.7);
+  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash', temperature: 1.0);
+  static AIModelConfig get geminiFlashLite => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-1.5-flash', temperature: 1.0);
+  
+  // Experimental Cutting-Edge Models
+  static AIModelConfig get gemini3Pro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-3-pro-preview', temperature: 0.7);
+  static AIModelConfig get gemini3Flash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
   
   // Image Models
   static AIModelConfig get geminiFlashImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3.0-generate-001', temperature: 1.0);

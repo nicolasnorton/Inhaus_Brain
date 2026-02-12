@@ -65,7 +65,7 @@ def extract_structured(req: https_fn.Request) -> https_fn.Response:
         document_text = data.get("document")
         schema = data.get("schema")
         examples = data.get("examples", [])
-        model_name = data.get("model", "gemini-3-flash-preview")
+        model_name = data.get("model", "gemini-1.5-flash")
 
         if not document_text or not schema:
             return _cors_response(req, "Missing document or schema", status=400)
@@ -104,7 +104,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         if not data:
             return _cors_response(req, "Missing JSON body", status=400)
 
-        model_name = data.get("model", "gemini-3-flash-preview")
+        model_name = data.get("model", "gemini-1.5-flash")
         prompt = data.get("prompt")
         config = data.get("config", {})
         system_instruction = data.get("systemInstruction")
@@ -154,19 +154,40 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             config["tool_config"] = {"function_calling_config": {"mode": mode}}
 
         client = GeminiClient()
-        response = client.generate_content(
-            model_name=model_name,
-            prompt=prompt,
-            generation_config=config,
-            system_instruction=system_instruction,
-            tools=tools,
-            thinking=thinking,
-            audio=audio,
-            use_google_search=use_google_search,
-            generation_params=data.get("generationParams"),
-            cached_content_name=cached_content_name,
-            contents=contents
-        )
+        try:
+            response = client.generate_content(
+                model_name=model_name,
+                prompt=prompt,
+                generation_config=config,
+                system_instruction=system_instruction,
+                tools=tools,
+                thinking=thinking,
+                audio=audio,
+                use_google_search=use_google_search,
+                generation_params=data.get("generationParams"),
+                cached_content_name=cached_content_name,
+                contents=contents
+            )
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "unsupported" in error_msg or "function calling" in error_msg:
+                fallback_model = "gemini-1.5-flash"
+                print(f"[BACKEND] 🔄 Model {model_name} failed tool call → Falling back to {fallback_model}. Error: {e}")
+                response = client.generate_content(
+                    model_name=fallback_model,
+                    prompt=prompt,
+                    generation_config=config,
+                    system_instruction=system_instruction,
+                    tools=tools,
+                    thinking=thinking,
+                    audio=audio,
+                    use_google_search=use_google_search,
+                    generation_params=data.get("generationParams"),
+                    cached_content_name=cached_content_name,
+                    contents=contents
+                )
+            else:
+                raise e
 
         result = client._serialize_response(response)
         

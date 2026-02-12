@@ -1,10 +1,45 @@
 {
   "models": [
     {
+      "name": "models/gemini-1.5-pro",
+      "version": "1.5",
+      "displayName": "Gemini 1.5 Pro (Stable)",
+      "description": "Powerful state-of-the-art multimodal model. Full tool support.",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent"
+      ],
+      "temperature": 1,
+      "topP": 0.95,
+      "topK": 64,
+      "thinking": false
+    },
+    {
+      "name": "models/gemini-1.5-flash",
+      "version": "1.5",
+      "displayName": "Gemini 1.5 Flash (Stable)",
+      "description": "Fast and versatile multimodal model. Reliable and recommended for production tools.",
+      "inputTokenLimit": 1048576,
+      "outputTokenLimit": 65536,
+      "supportedGenerationMethods": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent"
+      ],
+      "temperature": 1,
+      "topP": 0.95,
+      "topK": 64,
+      "thinking": false
+    },
+    {
       "name": "models/gemini-3-pro-preview",
       "version": "3.0",
-      "displayName": "Gemini 3 Pro",
-      "description": "Our most powerful state-of-the-art multimodal model. Supports 1M+ context, Vision, Audio, Code Execution, and JSON mode.",
+      "displayName": "Gemini 3 Pro Preview (Experimental)",
+      "description": "Next generation reasoning. May have inconsistent tool support.",
+      "experimental": true,
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
       "supportedGenerationMethods": [
@@ -20,8 +55,9 @@
     {
       "name": "models/gemini-3-flash-preview",
       "version": "3.0",
-      "displayName": "Gemini 3 Flash",
-      "description": "Fast and versatile multimodal model for scaling. Supports Vision, Audio, 1M+ context, and JSON mode.",
+      "displayName": "Gemini 3 Flash Preview (Experimental)",
+      "description": "Next generation performance. Use with caution for function calling.",
+      "experimental": true,
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
       "supportedGenerationMethods": [
