@@ -366,7 +366,6 @@ class EdgeAIService {
     Uint8List? videoBytes,
     String? videoMimeType,
     Uint8List? pdfBytes,
-    Uint8List? pdfBytes,
     String? pdfMimeType,
     List<AgentTool>? tools,
   }) async {
@@ -378,13 +377,13 @@ class EdgeAIService {
     if (tools != null && tools.isNotEmpty) {
       final declarations = tools.map((t) {
          final schema = t.toFunctionSchema();
-         return FunctionDeclaration(
-           t.name,
-           t.description,
-           FunctionSchemaMapper.map(t.inputSchema), // Removed 'properties' wrapper as inputSchema is already correct map for mapper
-         );
+          return FunctionDeclaration(
+            t.name,
+            t.description,
+            parameters: (FunctionSchemaMapper.map(t.inputSchema)).properties ?? {}, 
+          );
       }).toList();
-      nativeTools.add(Tool(functionDeclarations: declarations));
+      nativeTools.add(Tool.functionDeclarations(declarations));
     }
     
     // Config: If formatting as JSON, do NOT use tools (they conflict in Gemini 1.5)

@@ -57,9 +57,12 @@ class FunctionSchemaMapper {
            }
         });
         
+        final allProps = mappedProps.keys.toList();
+        final optional = allProps.where((key) => !required.contains(key)).toList();
+        
         return Schema.object(
           properties: mappedProps,
-          requiredProperties: required,
+          optionalProperties: optional,
           description: jsonSchema['description'],
           nullable: jsonSchema['nullable'] == true
         );

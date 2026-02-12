@@ -904,18 +904,21 @@ class AssistantService {
           text: "⚠️ **Tool Execution Failed**\n\nThe tool `$name` encountered an issue: ${result.errorMessage}\n\n**Suggestion**: Please check your inputs or try the command again. If this persists, it might be a temporary service issue.",
         );
       }
-    } on TimeoutException catch (e) {
-      debugPrint('Assistant: ⏳ Tool [$name] timed out: $e');
-      return ToolExecutionSummary(
-        text: "🕒 **Request Timed Out**\n\nThe tool `$name` took too long to respond. This usually happens with complex generations like video or deep research.\n\n**Suggestion**: You can try again now, or wait a moment for the background process to complete if applicable.",
-      );
-    } on SocketException catch (e) {
-      debugPrint('Assistant: 🌐 Tool [$name] network error: $e');
-      return ToolExecutionSummary(
-        text: "🚫 **Connection Error**\n\nI couldn't reach the backend services to execute `$name`. Please check your internet connection.\n\n**Suggestion**: Ensure you are online and click 'Retry' or type your request again.",
-      );
     } catch (e) {
-      debugPrint('Assistant: ❌ Tool [$name] unexpected error: $e');
+      final errorString = e.toString();
+      debugPrint('Assistant: ❌ Tool [$name] error: $errorString');
+      
+      if (errorString.contains('SocketException') || errorString.contains('NetworkImage') || errorString.contains('Failed host lookup')) {
+        return ToolExecutionSummary(
+          text: "🚫 **Connection Error**\n\nI couldn't reach the backend services to execute `$name`. Please check your internet connection.\n\n**Suggestion**: Ensure you are online and click 'Retry' or type your request again.",
+        );
+      }
+      
+      if (e is TimeoutException) {
+         return ToolExecutionSummary(
+          text: "🕒 **Request Timed Out**\n\nThe tool `$name` took too long to respond. This usually happens with complex generations like video or deep research.\n\n**Suggestion**: You can try again now, or wait a moment for the background process to complete if applicable.",
+        );
+      }
       
       String friendlyError = "Something went wrong while executing `$name`.";
       if (e.toString().contains('NameError')) {
