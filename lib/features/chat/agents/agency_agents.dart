@@ -274,7 +274,7 @@ class AccountDirectorAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      modelConfig: AIModelConfig.geminiFlashLite, // Lightweight coordination — no search needed
       ref: ref,
     );
   }
@@ -319,7 +319,7 @@ class StrategistAgent extends BaseAgent with LangExtractMixin {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiResearch,
+      modelConfig: AIModelConfig.geminiDeepResearch, // Complex reasoning needs Pro + search
       jsonMode: true,
       ref: ref,
     );
@@ -381,7 +381,7 @@ class EditorialManagerAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      modelConfig: AIModelConfig.geminiFlash, // Standard editorial tasks
       ref: ref,
     );
   }
@@ -421,7 +421,7 @@ class MediaBuyerAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      modelConfig: AIModelConfig.geminiFlash, // Budget/placement analysis
       ref: ref,
     );
   }
@@ -461,7 +461,7 @@ class PerformanceAnalystAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      modelConfig: AIModelConfig.geminiFlash, // Data analysis
       ref: ref,
     );
   }
@@ -694,7 +694,7 @@ class CopywriterAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiPro,
+      modelConfig: AIModelConfig.geminiFlash, // Speed over deep reasoning for copy
       ref: ref,
     );
     
@@ -743,7 +743,7 @@ class CreativeAgent extends BaseAgent {
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
       onEvent: onEvent,
-      modelConfig: AIModelConfig.geminiPro,
+      modelConfig: AIModelConfig.geminiFlash, // Tool dispatch mainly
       ref: ref,
     );
     
