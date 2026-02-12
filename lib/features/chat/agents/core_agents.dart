@@ -74,45 +74,6 @@ class ResearchAgent extends BaseAgent {
   }
 }
 
-class CreativeAgent extends BaseAgent {
-  @override
-  String get name => "Creative Agent";
-  @override
-  MessageSender get type => MessageSender.creativeAgent;
-  @override
-  String get systemPromptKey => "creative_prompt";
-
-  @override
-  Future<String> execute({
-    required String userPrompt,
-    required List<KnowledgeSource> context,
-    String? systemPrompt,
-    String? apiKey,
-    String? gemmaKey,
-    Uint8List? imageBytes,
-    String? imageMimeType,
-    Function(AdkEvent)? onEvent,
-    dynamic ref,
-  }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    
-    final promptService = ref!.read(systemPromptsProvider);
-    final basePrompt = await promptService.getCreativePrompt();
-    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
-
-    final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
-      context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
-      ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-    );
-
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
-  }
-}
 
 class DesignAgent extends BaseAgent {
   @override

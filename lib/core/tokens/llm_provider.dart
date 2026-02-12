@@ -69,10 +69,10 @@ class AIModelConfig {
   static AIModelConfig get geminiFlashLite => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
   
   // Image Models
-  static AIModelConfig get geminiFlashImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3', temperature: 1.0);
-  static AIModelConfig get geminiProImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3', temperature: 1.0);
+  static AIModelConfig get geminiFlashImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3.0-generate-001', temperature: 1.0);
+  static AIModelConfig get geminiProImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3.0-generate-001', temperature: 1.0);
 
-  // Re-mapped Legacy Presets (All route to Gemini 3.0)
+  // Re-mapped Legacy Presets (All route to Gemini 2.5)
   static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', useGoogleSearch: true, temperature: 1.0);
   

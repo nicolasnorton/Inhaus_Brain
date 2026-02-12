@@ -3,6 +3,7 @@ import 'package:ag_ui/ag_ui.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Added for Auth
 
 class VertexChatRepository {
   final String _endpoint;
@@ -17,6 +18,15 @@ class VertexChatRepository {
       List<Map<String, dynamic>> tools = const [],
       bool thinking = true, // Default to true for better reasoning
       }) async* {
+    
+    // Auth Check
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+       yield RunErrorEvent(code: '401', message: 'User must be logged in.');
+       return;
+    }
+    final idToken = await user.getIdToken();
+
     final List<Map<String, dynamic>> messages = [];
     
     if (systemMessage != null) {
@@ -45,11 +55,13 @@ class VertexChatRepository {
       final client = http.Client();
       final request = http.Request('POST', Uri.parse(_endpoint));
       request.headers['Content-Type'] = 'application/json';
+      request.headers['Authorization'] = 'Bearer $idToken'; // Added Token
+      
       request.body = jsonEncode({
         'messages': messages,
         'tools': tools,
         'thinking': thinking, // Control thinking models
-        'model': thinking ? 'gemini-2.0-flash-thinking-exp-01-21' : 'gemini-2.5-flash',
+        'model': thinking ? 'gemini-2.0-flash-thinking-exp-01-21' : 'gemini-1.5-pro-002', // Reverted to stable 1.5 for non-thinking
       });
 
       final streamedResponse = await client.send(request);
@@ -93,11 +105,11 @@ class VertexChatRepository {
 // Global provider for VertexChatRepository
 final vertexChatRepositoryProvider = Provider((ref) {
   return VertexChatRepository(
-      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/generate_content');
+      endpoint: 'https://generate-content-btdf7nijqa-uc.a.run.app'); // Updated to Cloud Run
 });
 
 // Legacy CopilotKit provider (deprecated - use vertexChatRepositoryProvider instead)
 final copilotRepositoryProvider = Provider((ref) {
   return VertexChatRepository(
-      endpoint: 'https://us-central1-inhausbrain.cloudfunctions.net/generate_content');
+      endpoint: 'https://generate-content-btdf7nijqa-uc.a.run.app'); // Updated to Cloud Run
 });

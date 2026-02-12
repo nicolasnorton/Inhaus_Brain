@@ -58,8 +58,8 @@ class GeminiClient:
 
         # Map Thinking requests
         if "thinking" in name_lower:
-            # Upgrade thinking to Gemini 3 reasoning if available, else fallback
-            return "gemini-2.0-flash-thinking-exp-01-21"
+            # gemini-2.5-pro supports thinking/reasoning natively
+            return "gemini-2.5-pro"
 
         # Standardize simple/legacy names to latest 3.0 versioned names for Flawless v1.5
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
@@ -339,7 +339,7 @@ class GeminiClient:
             ]
         }
 
-    def generate_image(self, prompt: str, model: str = "imagen-3.0-nano-banana-001", **kwargs) -> Any:
+    def generate_image(self, prompt: str, model: str = "imagen-3.0-generate-001", **kwargs) -> Any:
         """Generate image using Nano Banana models."""
         if not self.client:
              raise Exception("GeminiClient not initialized.")
@@ -367,3 +367,14 @@ class GeminiClient:
         if not self.client:
              raise Exception("GeminiClient not initialized.")
         return self.client.interactions.get(id=id)
+
+    def embed_content(self, model: str, contents: List[str], task_type: str = "RETRIEVAL_DOCUMENT") -> Any:
+        """Generate embeddings using the Gemini SDK."""
+        if not self.client:
+            raise Exception("GeminiClient not initialized.")
+        
+        return self.client.models.embed_content(
+            model=self._normalize_model_name(model),
+            contents=contents,
+            config=types.EmbedContentConfig(task_type=task_type)
+        )

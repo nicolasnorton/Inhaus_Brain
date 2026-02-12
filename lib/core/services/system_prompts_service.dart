@@ -219,7 +219,23 @@ class SystemPromptsService {
   // Helper
   Future<String> _getPrompt(String storageKey, String assetPath, String fallback) async {
     final stored = await _storage.read(key: storageKey);
-    if (stored != null) return stored;
+    
+    // Bypass logic: If stored prompt contains maintenance keywords, ignore it and load from assets
+    if (stored != null) {
+      final lowers = stored.toLowerCase();
+      if (lowers.contains('maintenance') || 
+          lowers.contains('unavailable') || 
+          lowers.contains('offline') || 
+          lowers.contains('mantenimiento') || 
+          lowers.contains('desactivado') || 
+          lowers.contains('deshabilitado') || 
+          lowers.contains('fuera de servicio')) {
+        debugPrint('⚠️ SystemPromptsService: Stored prompt for $storageKey contains maintenance/offline guard. Bypassing storage.');
+      } else {
+        return stored;
+      }
+    }
+    
     try {
       final content = await rootBundle.loadString(assetPath);
       // Safeguard against HTML fallback (index.html) served by hosting for missing assets

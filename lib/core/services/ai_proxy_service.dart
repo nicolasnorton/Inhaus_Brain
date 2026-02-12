@@ -21,14 +21,16 @@ class AIProxyService {
   }
 
   static String get _functionUrl {
-    if (kIsWeb) return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
-    return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
+    // Legacy mapping to Python backend to avoid 404s/401s on old URLs
+    if (kIsWeb) return 'https://generate-content-btdf7nijqa-uc.a.run.app';
+    return 'https://generate-content-btdf7nijqa-uc.a.run.app';
   }
 
   static String get _pythonBaseUrl => 'https://generate-content-btdf7nijqa-uc.a.run.app'; 
 
   static String get _generateImageUrl => 'https://generate-image-btdf7nijqa-uc.a.run.app';
   static String get _generateContentUrl => 'https://generate-content-btdf7nijqa-uc.a.run.app';
+  static String get _generateEmbeddingsUrl => 'https://generate-embeddings-btdf7nijqa-uc.a.run.app';
   static String get _countTokensUrl => 'https://count-tokens-btdf7nijqa-uc.a.run.app';
   static String get _liveTokenUrl => 'https://get-live-token-btdf7nijqa-uc.a.run.app';
   static String get _startResearchUrl => 'https://start-research-btdf7nijqa-uc.a.run.app';
@@ -91,7 +93,8 @@ class AIProxyService {
       },
       if (systemInstruction != null) "systemInstruction": systemInstruction, 
       if (generationParams != null) "generationParams": generationParams,
-      if (tools != null) "tools": tools,
+      // If thinking is enabled, disable tools to avoid API conflict
+      if (tools != null && !thinking) "tools": tools,
       "thinking": thinking,
       "audio": audio,
     };
@@ -109,7 +112,11 @@ class AIProxyService {
         ).timeout(const Duration(seconds: 120)));
 
         if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
+          final dynamic rawData = jsonDecode(response.body);
+          if (rawData is! Map) {
+             throw Exception('Python Proxy returned invalid JSON (not a Map)');
+          }
+          final data = Map<String, dynamic>.from(rawData);
           if (data['error'] != null) {
              throw Exception('Python API Error: ${data['error']}');
           }
@@ -151,7 +158,9 @@ class AIProxyService {
       ));
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final dynamic rawData = jsonDecode(response.body);
+        if (rawData is! Map) return {};
+        return Map<String, dynamic>.from(rawData);
       } else {
         throw Exception('Proxy Error ${response.statusCode}: ${response.body}');
       }
@@ -164,7 +173,7 @@ class AIProxyService {
   /// Generates an image using Imagen 3 via the Python proxy.
   static Future<Map<String, dynamic>> generateImage({
     required String prompt,
-    String model = 'imagen-3',
+    String model = 'imagen-3.0-generate-001',
     Map<String, dynamic>? config,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -191,7 +200,9 @@ class AIProxyService {
         resourceId: model,
         metadata: {'prompt': prompt}
       );
-      return jsonDecode(response.body);
+      final dynamic rawData = jsonDecode(response.body);
+      if (rawData is! Map) return {};
+      return Map<String, dynamic>.from(rawData);
     } else {
       throw Exception('Image Generation Failed (${response.statusCode}): ${response.body}');
     }
@@ -200,7 +211,7 @@ class AIProxyService {
   /// Starts a Deep Research task.
   static Future<Map<String, dynamic>> startResearch({
     required String prompt,
-    String model = 'gemini-2.5-flash',
+    String model = 'gemini-2.5-pro',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');
@@ -223,7 +234,9 @@ class AIProxyService {
         action: 'ai/research_start',
         metadata: {'prompt': prompt}
       );
-      return jsonDecode(response.body);
+      final dynamic rawData = jsonDecode(response.body);
+      if (rawData is! Map) return {};
+      return Map<String, dynamic>.from(rawData);
     } else {
       throw Exception('Start Research Failed (${response.statusCode}): ${response.body}');
     }
@@ -247,7 +260,9 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final dynamic rawData = jsonDecode(response.body);
+      if (rawData is! Map) return {};
+      return Map<String, dynamic>.from(rawData);
     } else {
       throw Exception('Poll Research Failed (${response.statusCode}): ${response.body}');
     }
@@ -278,8 +293,10 @@ class AIProxyService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['totalTokens'] ?? 0;
+        final dynamic rawData = jsonDecode(response.body);
+        if (rawData is Map) {
+           return rawData['totalTokens'] ?? 0;
+        }
       }
       return 0;
     } catch (e) {
@@ -302,7 +319,9 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final dynamic rawData = jsonDecode(response.body);
+      if (rawData is! Map) return {};
+      return Map<String, dynamic>.from(rawData);
     } else {
       throw Exception('Poll Operation Failed: ${response.body}');
     }
@@ -316,18 +335,25 @@ class AIProxyService {
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
 
+    debugPrint('AIProxyService: Routing Embeddings via Secure Proxy...');
     final response = await http.post(
-      Uri.parse(_functionUrl),
+      Uri.parse(_generateEmbeddingsUrl),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $idToken',
       },
-      body: jsonEncode({"model": model, "instances": instances}),
+      body: jsonEncode({
+        "model": model,
+        "instances": instances,
+      }),
     ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final dynamic rawData = jsonDecode(response.body);
+      if (rawData is! Map) return {};
+      return Map<String, dynamic>.from(rawData);
     } else {
+      debugPrint('AIProxyService: Direct Vertex Embeddings Failed (${response.statusCode}): ${response.body}');
       throw Exception('Embeddings Failed: ${response.body}');
     }
   }
@@ -357,7 +383,9 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 120));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      final dynamic rawData = jsonDecode(response.body);
+      if (rawData is! Map) return {};
+      return Map<String, dynamic>.from(rawData);
     } else {
       throw Exception('Extraction Failed: ${response.body}');
     }

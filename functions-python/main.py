@@ -228,7 +228,7 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-2.0-flash-thinking-exp-01-21") 
+        model = data.get("model", "gemini-2.5-pro") 
         
         client = GeminiClient()
         interaction = client.create_interaction(model=model, prompt=prompt)
@@ -313,6 +313,41 @@ def generate_image(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
     except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def generate_embeddings(req: https_fn.Request) -> https_fn.Response:
+    """Secure Proxy for Gemini Embeddings."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        model = data.get("model", "text-embedding-004")
+        instances = data.get("instances", [])
+        
+        # Flatten instances to just content strings if passed as maps
+        contents = [inst.get("content", str(inst)) if isinstance(inst, dict) else str(inst) for inst in instances]
+        
+        client = GeminiClient()
+        response = client.embed_content(model=model, contents=contents)
+        
+        # Format response to match Vertex AI expectaions in the client
+        # Response has 'embeddings' which is a list of objects with 'values'
+        result = {
+            "predictions": [
+                {"embeddings": {"values": emb.values}} for emb in response.embeddings
+            ]
+        }
+        
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in generate_embeddings: {str(e)}")
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))

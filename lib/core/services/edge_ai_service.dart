@@ -243,36 +243,40 @@ class EdgeAIService {
          );
          
          String text = "No proxy content.";
-         final candidates = proxyRes['candidates'] as List?;
-         if (candidates != null && candidates.isNotEmpty) {
-           final candidate = candidates.first;
-           final content = candidate['content'];
-           final parts = content?['parts'] as List?;
-            if (parts != null && parts.isNotEmpty) {
-               final buffer = StringBuffer();
-               for (var part in parts) {
-                 if (part is Map) {
-                   if (part.containsKey('thought')) {
-                      buffer.writeln("> *Thinking: ${part['thought']}* \n");
-                   }
-                   if (part.containsKey('text')) {
-                      buffer.write(part['text']);
-                   }
-                   // If it's a direct tool call from the parts list, preserve it for AssistantService
-                   if (part.containsKey('executable_adunit')) {
-                      buffer.write(jsonEncode(part));
-                   }
-                 }
+         final dynamic rawCandidates = proxyRes['candidates'];
+         if (rawCandidates is List && rawCandidates.isNotEmpty) {
+           final dynamic candidate = rawCandidates.first;
+           if (candidate is Map) {
+             final dynamic content = candidate['content'];
+             if (content is Map) {
+               final dynamic rawParts = content['parts'];
+               if (rawParts is List && rawParts.isNotEmpty) {
+                  final buffer = StringBuffer();
+                  for (var part in rawParts) {
+                    if (part is Map) {
+                      if (part.containsKey('thought')) {
+                         buffer.writeln("> *Thinking: ${part['thought']}* \n");
+                      }
+                      if (part.containsKey('text')) {
+                         buffer.write(part['text'].toString());
+                      }
+                      // If it's a direct tool call from the parts list, preserve it for AssistantService
+                      if (part.containsKey('executable_adunit')) {
+                         buffer.write(jsonEncode(part));
+                      }
+                    }
+                  }
+                  text = buffer.toString();
+                  if (text.isEmpty && rawParts.isNotEmpty) {
+                     text = jsonEncode(rawParts.first);
+                  }
+               } else {
+                 _logger.w('EdgeAI: Proxy response has candidates but NO parts or invalid parts type.');
                }
-               text = buffer.toString();
-               if (text.isEmpty && parts.isNotEmpty) {
-                  text = jsonEncode(parts.first);
-               }
-            } else {
-              _logger.w('EdgeAI: Proxy response has candidates but NO parts.');
-            }
+             }
+           }
          } else {
-           _logger.w('EdgeAI: Proxy response has NO candidates. Fallback text used.');
+           _logger.w('EdgeAI: Proxy response has NO candidates or invalid candidates type. Fallback text used.');
            if (proxyRes['error'] != null) {
              text = "Proxy Error: ${proxyRes['error']}";
            }
@@ -392,6 +396,9 @@ class EdgeAIService {
        nativeTools.clear(); 
     } else {
        if (config.useGoogleSearch) {
+         // Google Search cannot be mixed with other tools on current models.
+         // Prioritize Search if explicitly requested.
+         nativeTools.clear();
          nativeTools.add(Tool.googleSearch());
        }
        // Code Execution enables dangerous Python sandbox, use carefully
