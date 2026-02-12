@@ -1,13 +1,13 @@
+/// AI Provider identifiers.
+///
+/// Pruned to only providers that are functionally wired up.
+/// Dead providers (openai, claude, grok, mistral, runway, midjourney)
+/// removed in gemini-gemma-vertex-overhaul-staging-2026.
 enum AIProvider {
-  gemini,
-  vertex, // Added for Vertex AI Proxy
-  openai,
-  claude,
-  grok,
-  mistral,
-  runway, // For video
-  midjourney, // Proxy/Mock
-  litert // On-Device
+  gemini,  // Google Gemini via Firebase AI SDK
+  vertex,  // Vertex AI managed endpoints
+  gemma,   // Gemma open models (via Model Garden / Python proxy)
+  litert,  // On-Device (LiteRT)
 }
 
 class AIModelConfig {
@@ -51,48 +51,56 @@ class AIModelConfig {
 
   String get displayName {
     switch (provider) {
-      case AIProvider.gemini: return 'Google Gemini 2.5 (${modelId})';
-      case AIProvider.vertex: return 'Google Vertex AI 2.5 (${modelId})';
-      case AIProvider.openai: return 'Google Gemini 2.5 (Compatible Mode)';
-      case AIProvider.claude: return 'Google Gemini 2.5 (Compatible Mode)';
-      case AIProvider.grok: return 'Google Gemini 2.5 (Compatible Mode)';
-      case AIProvider.mistral: return 'Google Gemini 2.5 (Compatible Mode)';
-      case AIProvider.runway: return 'Runway Gen-2';
-      case AIProvider.midjourney: return 'Midjourney v6';
-      case AIProvider.litert: return 'LiteRT On-Device (${modelId})';
+      case AIProvider.gemini:
+        return 'Gemini (${modelId})';
+      case AIProvider.vertex:
+        return 'Vertex AI (${modelId})';
+      case AIProvider.gemma:
+        return 'Gemma (${modelId})';
+      case AIProvider.litert:
+        return 'LiteRT On-Device (${modelId})';
     }
   }
 
-  // Factory for known heavy hitters
-  static AIModelConfig get geminiPro => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
-  static AIModelConfig get geminiFlash => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
-  static AIModelConfig get geminiFlashLite => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
-  
-  // Image Models
-  static AIModelConfig get geminiFlashImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3', temperature: 1.0);
-  static AIModelConfig get geminiProImage => const AIModelConfig(provider: AIProvider.gemini, modelId: 'imagen-3', temperature: 1.0);
+  // ── Gemini 2.5 — GA Stable ────────────────────────────────
+  static AIModelConfig get geminiPro => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+  static AIModelConfig get geminiFlash => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
+  static AIModelConfig get geminiFlashLite => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
 
-  // Re-mapped Legacy Presets (All route to Gemini 3.0)
-  static AIModelConfig get geminiResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', useGoogleSearch: true, temperature: 1.0);
-  static AIModelConfig get geminiDeepResearch => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', useGoogleSearch: true, temperature: 1.0);
-  
-  static AIModelConfig get gpt4o => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
-  static AIModelConfig get gpt4Turbo => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
-  static AIModelConfig get gpt35 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash');
+  // ── Research (Gemini + Google Search grounding) ───────────
+  static AIModelConfig get geminiResearch => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash',
+    useGoogleSearch: true, temperature: 1.0);
+  static AIModelConfig get geminiDeepResearch => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro',
+    useGoogleSearch: true, temperature: 1.0);
 
-  static AIModelConfig get claude3Opus => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
-  static AIModelConfig get claude3Sonnet => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
-  
-  static AIModelConfig get grok1 => const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+  // ── Media Models ──────────────────────────────────────────
+  static AIModelConfig get imagen4 => const AIModelConfig(
+    provider: AIProvider.vertex, modelId: 'imagen-4.0-generate-001', temperature: 1.0);
+  static AIModelConfig get veo31 => const AIModelConfig(
+    provider: AIProvider.vertex, modelId: 'veo-3.1-generate-001');
 
-  // LiteRT Models
-  static AIModelConfig get gemma2n => const AIModelConfig(provider: AIProvider.litert, modelId: 'gemma-2b-it-gpu');
-  static AIModelConfig get veoFastPreview => const AIModelConfig(provider: AIProvider.gemini, modelId: 'veo-2.0-preview-001'); // Fixed ID
+  // ── Gemma Open Models (via Python proxy / Model Garden) ───
+  static AIModelConfig get gemma3Fast => const AIModelConfig(
+    provider: AIProvider.gemma, modelId: 'gemma-3-4b-it', temperature: 0.3);
+  static AIModelConfig get gemma3Quality => const AIModelConfig(
+    provider: AIProvider.gemma, modelId: 'gemma-3-27b-it', temperature: 0.7);
+  static AIModelConfig get functionGemma => const AIModelConfig(
+    provider: AIProvider.gemma, modelId: 'functiongemma-270m', temperature: 0.1);
+  static AIModelConfig get translateGemma => const AIModelConfig(
+    provider: AIProvider.gemma, modelId: 'translategemma-4b', temperature: 0.3);
 
-  
-  // Serialization helpers if needed for persistence
+  // ── LiteRT On-Device ──────────────────────────────────────
+  static AIModelConfig get gemma2n => const AIModelConfig(
+    provider: AIProvider.litert, modelId: 'gemma-2b-it-gpu');
+
+  // ── Serialization ─────────────────────────────────────────
   Map<String, dynamic> toJson() => {
-    'provider': provider.index,
+    'provider': provider.name, // Use name instead of index for safer deserialization
     'modelId': modelId,
     'temperature': temperature,
     'maxTokens': maxTokens,
@@ -102,8 +110,28 @@ class AIModelConfig {
   };
 
   factory AIModelConfig.fromJson(Map<String, dynamic> json) {
+    // Handle both legacy index-based and new name-based provider field
+    AIProvider provider;
+    final providerVal = json['provider'];
+    if (providerVal is int) {
+      // Legacy: map old indices → new providers (old enum had 9 entries)
+      // 0=gemini, 1=vertex, 2-7=dead, 8=litert → now 0=gemini,1=vertex,2=gemma,3=litert
+      if (providerVal <= 1) {
+        provider = AIProvider.values[providerVal];
+      } else if (providerVal == 8) {
+        provider = AIProvider.litert;
+      } else {
+        provider = AIProvider.gemini; // Remap all dead providers to gemini
+      }
+    } else {
+      provider = AIProvider.values.firstWhere(
+        (e) => e.name == providerVal,
+        orElse: () => AIProvider.gemini,
+      );
+    }
+
     return AIModelConfig(
-      provider: AIProvider.values[json['provider'] as int],
+      provider: provider,
       modelId: json['modelId'] as String,
       temperature: (json['temperature'] as num?)?.toDouble() ?? 0.7,
       maxTokens: json['maxTokens'] as int?,

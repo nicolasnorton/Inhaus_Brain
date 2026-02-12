@@ -176,6 +176,10 @@ class WorkflowEvent {
 class BlackboardNotifier extends StateNotifier<BlackboardState> {
   BlackboardNotifier() : super(BlackboardState());
 
+  /// Maximum number of events to keep in memory.
+  /// Prevents unbounded growth in long-running sessions.
+  static const int maxEvents = 200;
+
   void postFact(String key, dynamic value) {
     state = state.copyWith(
       facts: {...state.facts, key: value},
@@ -190,7 +194,12 @@ class BlackboardNotifier extends StateNotifier<BlackboardState> {
       data: data,
       timestamp: DateTime.now(),
     );
-    state = state.copyWith(events: [...state.events, event]);
+    var events = [...state.events, event];
+    // Cap events to prevent unbounded growth
+    if (events.length > maxEvents) {
+      events = events.sublist(events.length - maxEvents);
+    }
+    state = state.copyWith(events: events);
   }
 
   void restoreState(BlackboardState newState) {

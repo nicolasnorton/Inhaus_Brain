@@ -46,6 +46,62 @@ class SystemPromptsService {
   static const String _sreOrchestratorPromptKey = 'sre_orchestrator_prompt';
   static const String _postmortemPromptKey = 'postmortem_prompt';
 
+  // ══════════════════════════════════════════════════════════════
+  // Data-driven prompt registry: (storageKey, assetPath, default)
+  // New callers should use getPromptForAgent(agentName) instead of
+  // individual get*Prompt() methods.
+  // ══════════════════════════════════════════════════════════════
+  static final Map<String, (String key, String asset, String Function() fallback)> _promptRegistry = {
+    'research':           (_researchPromptKey,           'assets/prompts/research.md',           () => originalResearchPrompt),
+    'creative':           (_creativePromptKey,           'assets/prompts/creative.md',           () => originalCreativePrompt),
+    'copywriter':         (_copywriterPromptKey,         'assets/prompts/copywriter.md',         () => originalCopywriterPrompt),
+    'developer':          (_developerPromptKey,          'assets/prompts/developer.md',          () => originalDeveloperPrompt),
+    'orchestrator':       (_orchestratorPromptKey,       'assets/prompts/orchestrator.md',       () => originalOrchestratorPrompt),
+    'trend_scout':        (_trendScoutPromptKey,         'assets/prompts/trend_scout.md',        () => originalTrendScoutPrompt),
+    'account_director':   (_accountDirectorPromptKey,    'assets/prompts/account_director.md',   () => originalAccountDirectorPrompt),
+    'strategist':         (_strategistPromptKey,         'assets/prompts/strategist.md',         () => originalStrategistPrompt),
+    'editorial_manager':  (_editorialManagerPromptKey,   'assets/prompts/editorial_manager.md',  () => originalEditorialManagerPrompt),
+    'storytelling':       (_storytellingPromptKey,       'assets/prompts/storytelling.md',       () => originalStorytellingPrompt),
+    'media_buyer':        (_mediaBuyerPromptKey,         'assets/prompts/media_buyer.md',        () => originalMediaBuyerPrompt),
+    'performance_analyst':(_performanceAnalystPromptKey, 'assets/prompts/performance_analyst.md',() => originalPerformanceAnalystPrompt),
+    'seo':                (_seoPromptKey,                'assets/prompts/seo_agent.md',          () => originalSEOPrompt),
+    'aeo':                (_aeoPromptKey,                'assets/prompts/aeo_agent.md',          () => originalAEOPrompt),
+    'security':           (_securityPromptKey,           'assets/prompts/security.md',           () => originalSecurityPrompt),
+    'data_engineer':      (_dataEngPromptKey,            'assets/prompts/data_engineer.md',      () => originalDataEngPrompt),
+    'router':             (_routerPromptKey,             'assets/prompts/router.md',             () => originalRouterPrompt),
+    'brian':              (_brianPromptKey,              'assets/prompts/brian.md',               () => originalBrianPrompt),
+    'design':             (_designPromptKey,             'assets/prompts/design.md',             () => originalDesignPrompt),
+    'video':              (_videoPromptKey,              'assets/prompts/video.md',              () => originalVideoPrompt),
+    'service':            (_servicePromptKey,            'assets/prompts/service.md',            () => originalServicePrompt),
+    'crm':                (_crmPromptKey,                'assets/prompts/crm.md',                () => originalCRMPrompt),
+    'csuite':             (_csuitePromptKey,             'assets/prompts/csuite.md',             () => originalCSuitePrompt),
+    'proposal_specialist':(_proposalSpecialistPromptKey, 'assets/prompts/proposal_specialist.md',() => originalProposalSpecialistPrompt),
+    'proposal_chat':      (_proposalChatPromptKey,       'assets/prompts/proposal_chat.md',      () => originalProposalChatPrompt),
+    'data_analyst':       (_dataAnalystPromptKey,        'assets/prompts/data_analyst.md',       () => originalDataAnalystPrompt),
+    'intent_classifier':  (_intentClassifierPromptKey,   'assets/prompts/intent_classifier.md',  () => originalIntentClassifierPrompt),
+    'assistant_main':     (_assistantMainPromptKey,      'assets/prompts/assistant_main.md',     () => originalAssistantMainPrompt),
+    'sre_orchestrator':   (_sreOrchestratorPromptKey,    'assets/prompts/sre_orchestrator.md',   () => originalSreOrchestratorPrompt),
+    'postmortem':         (_postmortemPromptKey,         'assets/prompts/postmortem.md',         () => originalPostmortemPrompt),
+  };
+
+  /// Get prompt for any agent by name (data-driven).
+  /// Preferred over individual get*Prompt() methods.
+  Future<String> getPromptForAgent(String agentName) async {
+    final entry = _promptRegistry[agentName];
+    if (entry == null) return '';
+    return _getPrompt(entry.$1, entry.$2, entry.$3());
+  }
+
+  /// Save prompt for any agent by name (data-driven).
+  Future<void> savePromptForAgent(String agentName, String prompt) async {
+    final entry = _promptRegistry[agentName];
+    if (entry == null) return;
+    await _storage.write(key: entry.$1, value: prompt);
+  }
+
+  /// List all registered agent names.
+  static List<String> get registeredAgents => _promptRegistry.keys.toList();
+
   // --- Original (Default) Master Prompts ---
   static const String originalResearchPrompt = """
 You are the Inhaus Brain Research Agent. 

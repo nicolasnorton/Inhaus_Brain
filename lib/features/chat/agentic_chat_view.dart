@@ -16,6 +16,7 @@ import '../campaigns/models/campaign.dart';
 import '../knowledge/widgets/knowledge_library_widget.dart';
 import '../settings/profile_settings_screen.dart';
 import '../../core/auth/auth_service.dart';
+import '../../core/config/app_environment.dart';
 import '../../core/tokens/llm_provider.dart';
 import '../../core/services/voice_command_processor.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -740,9 +741,10 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
       itemBuilder: (context) => [
         _buildModelMenuItem(AIModelConfig.geminiFlash, FontAwesomeIcons.bolt),
         _buildModelMenuItem(AIModelConfig.geminiPro, FontAwesomeIcons.google),
-        _buildModelMenuItem(AIModelConfig.gpt4o, FontAwesomeIcons.microchip),
-        _buildModelMenuItem(AIModelConfig.claude3Sonnet, FontAwesomeIcons.brain),
-        _buildModelMenuItem(AIModelConfig.grok1, FontAwesomeIcons.xTwitter),
+        _buildModelMenuItem(AIModelConfig.geminiFlashLite, FontAwesomeIcons.gaugeHigh),
+        _buildModelMenuItem(AIModelConfig.geminiResearch, FontAwesomeIcons.magnifyingGlass),
+        if (AppConfig.isStaging)
+          _buildModelMenuItem(AIModelConfig.gemma3Fast, FontAwesomeIcons.gem),
       ],
       onSelected: (config) {
         setState(() => _selectedModelConfig = config);
@@ -772,10 +774,9 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   IconData _getModelIcon(AIModelConfig config) {
     switch (config.provider) {
       case AIProvider.gemini: return FontAwesomeIcons.google;
-      case AIProvider.openai: return FontAwesomeIcons.microchip;
-      case AIProvider.claude: return FontAwesomeIcons.brain;
-      case AIProvider.grok: return FontAwesomeIcons.xTwitter;
-      default: return FontAwesomeIcons.robot;
+      case AIProvider.vertex: return FontAwesomeIcons.cloud;
+      case AIProvider.gemma: return FontAwesomeIcons.gem;
+      case AIProvider.litert: return FontAwesomeIcons.mobileScreen;
     }
   }
 
