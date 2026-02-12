@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const { VertexAI } = require("@google-cloud/vertexai");
 // Import the Copilot handler
 const { copilotHandler } = require('./copilot');
+const { proxyStitch } = require('./stitch-proxy');
 
 admin.initializeApp();
 
@@ -597,6 +598,9 @@ exports.copilotRuntime = functions.https.onRequest(copilotHandler);
 // Expose Vertex AI Chat (Direct LangChain - Recommended)
 const { vertexChatHandler } = require('./vertex-chat');
 exports.vertexChat = functions.https.onRequest(vertexChatHandler);
+
+// Expose Stitch Proxy
+exports.proxyStitch = proxyStitch;
 
 /**
  * GHL WEBHOOK RECEIVER
