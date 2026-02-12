@@ -47,7 +47,7 @@ class SystemPromptsService {
   static const String _postmortemPromptKey = 'postmortem_prompt';
 
   // --- Default Fallback ---
-  static const String _defaultFallback = "You are a helpful AI assistant. Please fulfill the user's request accurately.";
+  static const String _defaultFallback = "You are Brian, the Lead Agency Orchestrator. Help the user achieve their creative and strategic goals.";
 
   Future<void> saveResearchPrompt(String prompt) async => await _storage.write(key: _researchPromptKey, value: prompt);
   Future<String> getResearchPrompt() async => await _getPrompt(_researchPromptKey, 'assets/prompts/research.md', _defaultFallback);

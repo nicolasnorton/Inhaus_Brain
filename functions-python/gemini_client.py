@@ -18,11 +18,16 @@ class GeminiClient:
         
         # Initialize the new Client
         if self.api_key:
-            print(f"GeminiClient: Initializing with API key (Length: {len(self.api_key)})")
+            print(f"GeminiClient: Initializing with Google AI API key (Length: {len(self.api_key)})")
             self.client = genai.Client(api_key=self.api_key)
         else:
-            print("GeminiClient: No API key found. Attempting ADC...")
-            self.client = genai.Client()
+            print("GeminiClient: No API key found. Initializing for Vertex AI (ADC)...")
+            # Explicitly set vertexai=True for production service account usage
+            self.client = genai.Client(
+                vertexai=True, 
+                project=os.environ.get("GOOGLE_CLOUD_PROJECT"),
+                location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+            )
 
     def _normalize_model_name(self, model_name: str) -> str:
         """Normalize model names that might be legacy or aliased."""
