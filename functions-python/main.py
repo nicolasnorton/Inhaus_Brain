@@ -255,7 +255,12 @@ def generate_image(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         client = GeminiClient()
-        images = client.generate_image(model=data.get("model", "imagen-3.0-fast-generate-001"), prompt=data.get("prompt"))
+        config = data.get("config") or data.get("generationParams")
+        images = client.generate_image(
+            model=data.get("model", "imagen-3.0-fast-generate-001"), 
+            prompt=data.get("prompt"),
+            **config if config else {}
+        )
         return _cors_response(req, client._serialize_images(images))
     except Exception as e: return _cors_response(req, {"error": str(e)}, status=500)
 
