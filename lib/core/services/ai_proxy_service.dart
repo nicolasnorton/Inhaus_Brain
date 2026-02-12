@@ -38,6 +38,13 @@ class AIProxyService {
   static String get _pollOperationUrl => 'https://poll-operation-btdf7nijqa-uc.a.run.app';
   static String get _extractStructuredUrl => 'https://extract-structured-btdf7nijqa-uc.a.run.app';
 
+  /// Resets all AI-related circuit breakers (V3.3 Production Fix)
+  static void resetCircuits() {
+    _contentCircuit.reset();
+    _imageCircuit.reset();
+    debugPrint('AIProxyService: All circuits reset.');
+  }
+
   /// Fetch a short-lived access token for the Multimodal Live API.
   static Future<Map<String, dynamic>> getLiveToken() async {
     final user = FirebaseAuth.instance.currentUser;

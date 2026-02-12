@@ -45,7 +45,7 @@ class VideoGenerationTool extends AgentTool {
         isFinal: isFinal,
         veoKey: veoKey, 
         vertexKey: vertexKey, 
-        ref: this.ref, // Use the tool's ref
+        ref: ref ?? this.ref, // Use passed ref or fallback to internal ref
         onStatusMessage: (msg) {
           // Agent 3: Update UI with "Generating real video..." status
           try {

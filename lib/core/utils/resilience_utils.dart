@@ -68,4 +68,20 @@ class CircuitBreaker {
       _state = CircuitState.open;
     }
   }
+
+  /// Manually reset the circuit breaker (V3.3 Production Fix)
+  void reset() {
+    debugPrint('CircuitBreaker [$name]: Manual Reset Triggered');
+    _state = CircuitState.closed;
+    _failureCount = 0;
+    _lastFailureTime = null;
+  }
+
+  /// Update failure count (used for specialized recovery)
+  void setFailureCount(int count) {
+    _failureCount = count;
+    if (_failureCount < failureThreshold && _state == CircuitState.open) {
+      _state = CircuitState.closed;
+    }
+  }
 }

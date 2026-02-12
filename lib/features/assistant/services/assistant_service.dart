@@ -816,7 +816,7 @@ class AssistantService {
     final tool = tools.firstWhere((t) => t.name == name, orElse: () => throw Exception('Tool not found: $name'));
     try {
       debugPrint('Assistant: 🚀 Executing tool [$name] with payload: ${jsonEncode(args)}');
-      final result = await tool.execute(args);
+      final result = await tool.execute(args, ref: _ref);
       debugPrint('Assistant: 🏁 Tool [$name] execution result: ${result.isSuccess ? "Success" : "Failed (${result.errorMessage})"}');
       if (result.isSuccess) {
         if (name == 'image_generation') {

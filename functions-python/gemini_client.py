@@ -389,9 +389,12 @@ class GeminiClient:
             credentials, _ = google.auth.default(
                 scopes=['https://www.googleapis.com/auth/cloud-platform']
             )
+            # Ensure auth_req is created and credentials refreshed
             auth_req = google.auth.transport.requests.Request()
             credentials.refresh(auth_req)
             
+            # Explicitly use v1 for text-embedding-004 to ensure stability
+            # The previous 404/500 was likely due to v1beta1 being used for a model requiring v1
             url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/publishers/google/models/{model_id}:predict"
             
             headers = {
