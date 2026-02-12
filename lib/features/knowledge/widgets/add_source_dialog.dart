@@ -12,6 +12,7 @@ import '../../connectors/models/connected_account_model.dart';
 import '../../../../core/services/sources_service.dart';
 import '../../agency/models/agency_service_model.dart';
 import '../../agency/services/service_catalog_repository.dart';
+import '../../clients/providers/client_provider.dart';
 
 class AddSourceDialog extends ConsumerStatefulWidget {
   final Function(KnowledgeSource) onSourceAdded;
@@ -426,10 +427,11 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
      setState(() => _isLoadingDrive = true); // Reuse loading state
      try {
         final integrationService = ref.read(integrationServiceProvider);
-        final account = await integrationService.initiateConnection(platform, 'client_1'); // TODO: Pass clientID
+        final activeClientId = ref.read(clientProvider).selectedClientId ?? 'unassigned';
+        final account = await integrationService.initiateConnection(platform, activeClientId);
         
         if (account != null) {
-           final source = await SourcesService.fetchAndAddConnectedSource('dynamic', account, integrationService);
+           final source = await SourcesService.fetchAndAddConnectedSource(activeClientId, account, integrationService);
            
            final newSource = KnowledgeSource(
               id: const Uuid().v4(),

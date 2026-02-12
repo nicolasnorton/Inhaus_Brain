@@ -318,15 +318,24 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
        if (await _rejectIfLowQuality('video', 0.90, userPrompt)) return;
     }
     
-    final videoUrl = result.isSuccess ? result.data['url'] : "assets/videos/mock_render.mp4";
-    
-    final finalMsg = ChatMessage(
-      id: const Uuid().v4(),
-      content: 'Video generated successfully.',
-      sender: MessageSender.creativeAgent,
-      createdAt: DateTime.now(),
-      attachments: [Attachment(id: const Uuid().v4(), type: AttachmentType.video, url: videoUrl, name: 'veo_gen.mp4', createdAt: DateTime.now())],
-    );
+    final ChatMessage finalMsg;
+    if (result.isSuccess) {
+      final videoUrl = result.data['url'];
+      finalMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: 'Video generated successfully.',
+        sender: MessageSender.creativeAgent,
+        createdAt: DateTime.now(),
+        attachments: [Attachment(id: const Uuid().v4(), type: AttachmentType.video, url: videoUrl, name: 'veo_gen.mp4', createdAt: DateTime.now())],
+      );
+    } else {
+      finalMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: 'Video generation failed: ${result.errorMessage ?? "Unknown error"}. Please try again or check your Veo API key.',
+        sender: MessageSender.creativeAgent,
+        createdAt: DateTime.now(),
+      );
+    }
 
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
@@ -348,16 +357,24 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final audioTool = AudioGenerationTool(lyriaKey: lyriaKey);
     final result = await audioTool.execute({'prompt': userPrompt});
     
-    final audioUrl = result.isSuccess ? result.data['url'] : "assets/audio/mock_soundtrack.mp3";
-    
-    final finalMsg = ChatMessage(
-      id: const Uuid().v4(),
-      content: 'Audio track composed.',
-      sender: MessageSender.creativeAgent,
-      createdAt: DateTime.now(),
-      // Assuming AttachmentType.audio exits or using file/other
-      attachments: [Attachment(id: const Uuid().v4(), type: AttachmentType.file, url: audioUrl, name: 'lyria_track.mp3', createdAt: DateTime.now())],
-    );
+    final ChatMessage finalMsg;
+    if (result.isSuccess) {
+      final audioUrl = result.data['url'];
+      finalMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: 'Audio track composed.',
+        sender: MessageSender.creativeAgent,
+        createdAt: DateTime.now(),
+        attachments: [Attachment(id: const Uuid().v4(), type: AttachmentType.file, url: audioUrl, name: 'lyria_track.mp3', createdAt: DateTime.now())],
+      );
+    } else {
+      finalMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: 'Audio generation failed: ${result.errorMessage ?? "Unknown error"}. Please try again or check your Lyria API key.',
+        sender: MessageSender.creativeAgent,
+        createdAt: DateTime.now(),
+      );
+    }
 
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
@@ -631,17 +648,26 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
          if (await _rejectIfLowQuality('image', 0.95, userPrompt)) return;
       }
       
-      final imageUrl = result.isSuccess ? result.data['url'] : "assets/images/mock_concept.png";
-      
-      final finalMsg = ChatMessage(
-        id: const Uuid().v4(),
-        content: 'Here is the visual concept generated based on your brief.',
-        sender: MessageSender.creativeAgent,
-        createdAt: DateTime.now(),
-        attachments: [
-          Attachment(id: const Uuid().v4(), type: AttachmentType.image, url: imageUrl, name: 'concept_art.png', createdAt: DateTime.now())
-        ],
-      );
+      final ChatMessage finalMsg;
+      if (result.isSuccess) {
+        final imageUrl = result.data['url'];
+        finalMsg = ChatMessage(
+          id: const Uuid().v4(),
+          content: 'Here is the visual concept generated based on your brief.',
+          sender: MessageSender.creativeAgent,
+          createdAt: DateTime.now(),
+          attachments: [
+            Attachment(id: const Uuid().v4(), type: AttachmentType.image, url: imageUrl, name: 'concept_art.png', createdAt: DateTime.now())
+          ],
+        );
+      } else {
+        finalMsg = ChatMessage(
+          id: const Uuid().v4(),
+          content: 'Image generation failed: ${result.errorMessage ?? "Unknown error"}. Please try again or check your Imagen API key.',
+          sender: MessageSender.creativeAgent,
+          createdAt: DateTime.now(),
+        );
+      }
 
       state = state!.copyWith(
         messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],

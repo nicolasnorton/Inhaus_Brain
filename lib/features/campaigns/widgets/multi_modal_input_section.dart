@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/campaign.dart';
 import '../../../core/utils/sanitization_utils.dart';
+import '../../../core/services/google_drive_service.dart';
+import '../../knowledge/providers/knowledge_service_providers.dart';
+import '../screens/camera_capture_screen.dart';
 
-class MultiModalInputSection extends StatefulWidget {
+class MultiModalInputSection extends ConsumerStatefulWidget {
   final Function(List<Attachment>) onAttachmentsChanged;
 
   const MultiModalInputSection({super.key, required this.onAttachmentsChanged});
 
   @override
-  State<MultiModalInputSection> createState() => _MultiModalInputSectionState();
+  ConsumerState<MultiModalInputSection> createState() => _MultiModalInputSectionState();
 }
 
-class _MultiModalInputSectionState extends State<MultiModalInputSection> {
+class _MultiModalInputSectionState extends ConsumerState<MultiModalInputSection> {
   final List<Attachment> _attachments = [];
   final _audioRecorder = AudioRecorder();
   bool _isRecording = false;
@@ -70,25 +74,53 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
   }
 
   Future<void> _pickFromDrive() async {
-    // Phase 21: Mock Drive Integration
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (!mounted) return;
-    
-    setState(() {
-      _attachments.add(Attachment(
-        id: const Uuid().v4(),
-        url: 'https://docs.google.com/document/d/mock_doc_id',
-        name: 'Market_Analysis_2026.gdoc',
-        type: AttachmentType.file,
-        createdAt: DateTime.now(),
-      ));
-    });
-    widget.onAttachmentsChanged(_attachments);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Linked file from Google Drive')),
-    );
+    try {
+      final drive = ref.read(googleDriveServiceProvider);
+      final files = await drive.listRecentFiles();
+
+      if (!mounted) return;
+
+      if (files.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No files found in Google Drive')),
+        );
+        return;
+      }
+
+      final selected = await showDialog<GoogleDriveFile>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Select from Google Drive', style: TextStyle(color: Colors.white)),
+          backgroundColor: const Color(0xFF1E2128),
+          children: files.map((f) => SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, f),
+            child: Text(f.name, style: const TextStyle(color: Colors.white70)),
+          )).toList(),
+        ),
+      );
+
+      if (selected != null && mounted) {
+        setState(() {
+          _attachments.add(Attachment(
+            id: const Uuid().v4(),
+            url: 'gdrive://${selected.id}',
+            name: selected.name,
+            type: AttachmentType.file,
+            createdAt: DateTime.now(),
+          ));
+        });
+        widget.onAttachmentsChanged(_attachments);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Linked "${selected.name}" from Google Drive')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google Drive error: $e. Use file upload instead.')),
+        );
+      }
+    }
   }
 
   Future<void> _toggleRecording() async {
@@ -157,8 +189,28 @@ class _MultiModalInputSectionState extends State<MultiModalInputSection> {
               icon: FontAwesomeIcons.camera,
               label: 'Camera',
               color: Colors.white10,
-              onTap: () {
-                // TODO: Implement Camera Screen
+              onTap: () async {
+                if (kIsWeb) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Camera is not available on web. Use file upload instead.')),
+                  );
+                  return;
+                }
+                final path = await Navigator.of(context).push<String>(
+                  MaterialPageRoute(builder: (_) => const CameraCaptureScreen()),
+                );
+                if (path != null && mounted) {
+                  setState(() {
+                    _attachments.add(Attachment(
+                      id: const Uuid().v4(),
+                      url: path,
+                      name: 'Camera Photo ${DateTime.now().toIso8601String()}',
+                      type: AttachmentType.image,
+                      createdAt: DateTime.now(),
+                    ));
+                  });
+                  widget.onAttachmentsChanged(_attachments);
+                }
               },
             ),
             _buildActionButton(
