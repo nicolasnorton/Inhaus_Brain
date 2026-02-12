@@ -65,7 +65,7 @@ def extract_structured(req: https_fn.Request) -> https_fn.Response:
         document_text = data.get("document")
         schema = data.get("schema")
         examples = data.get("examples", [])
-        model_name = data.get("model", "gemini-1.5-flash")
+        model_name = data.get("model", "gemini-3-flash-preview")
 
         if not document_text or not schema:
             return _cors_response(req, "Missing document or schema", status=400)
@@ -104,7 +104,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         if not data:
             return _cors_response(req, "Missing JSON body", status=400)
 
-        model_name = data.get("model", "gemini-1.5-flash")
+        model_name = data.get("model", "gemini-3-flash-preview")
         prompt = data.get("prompt")
         config = data.get("config", {})
         system_instruction = data.get("systemInstruction")

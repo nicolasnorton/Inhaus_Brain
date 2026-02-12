@@ -278,7 +278,7 @@ class AIProxyService {
   /// Counts tokens using the Python Gemini SDK.
   static Future<int> countTokens({
     required String prompt,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-3-flash-preview',
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -369,7 +369,7 @@ class AIProxyService {
     required String document,
     required Map<String, dynamic> schema,
     List<Map<String, dynamic>>? examples,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-3-flash-preview',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');

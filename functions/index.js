@@ -126,7 +126,7 @@ exports.generateFinalAssets = functions.https.onCall(async (data, context) => {
 
     try {
         const generativeModel = vertexAI.getGenerativeModel({
-            model: 'gemini-1.5-pro',
+            model: 'gemini-3-pro-preview',
         });
 
         // 1. Generate High-Tier Copy
@@ -399,7 +399,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
                 throw { status: 400, message: 'Bad Request: Missing "prompt" or "instances" in body.' };
             }
 
-            const modelId = model || 'gemini-1.5-flash';
+            const modelId = model || 'gemini-3-flash-preview';
 
             // --- PATH B: EMBEDDINGS (New) ---
             if (modelId.toLowerCase().includes('embedding') || req.body.instances) {
@@ -529,11 +529,11 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             // We also add fallbacks to handle regional availability and model retirements
             let modelVariations = [modelId];
 
-            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.5-flash') || modelId.includes('gemini-2.0-flash')) {
-                // Try stable 1.5 Flash variants
-                modelVariations = ['gemini-1.5-flash', 'gemini-1.5-pro'];
-            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.5-pro') || modelId.includes('gemini-2.0-pro')) {
-                modelVariations = ['gemini-1.5-pro', 'gemini-1.5-flash'];
+            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.5-flash') || modelId.includes('gemini-2.0-flash') || modelId.includes('gemini-3-flash')) {
+                // Try stable 3.0 Flash variants
+                modelVariations = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
+            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.5-pro') || modelId.includes('gemini-2.0-pro') || modelId.includes('gemini-3-pro')) {
+                modelVariations = ['gemini-3-pro-preview', 'gemini-3-flash-preview'];
             }
 
             console.log(`[PROXY] 🛡️ Model strategy: ${JSON.stringify(modelVariations)}`);

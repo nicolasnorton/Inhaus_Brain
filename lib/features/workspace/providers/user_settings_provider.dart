@@ -9,11 +9,12 @@ final userSettingsProvider = StateNotifierProvider<UserSettingsNotifier, UserSet
 /// State notifier for user settings
 class UserSettingsNotifier extends StateNotifier<UserSettings> {
   UserSettingsNotifier() : super(_getInitialSettings()) {
-    // Migration Force Check on Boot: Upgrade everyone to Gemini 1.5 Flash
-    if (state.preferredModelId.contains('gemini-2.5') || 
-        state.preferredModelId.contains('gemini-2.0') || 
-        state.preferredModelId.contains('gemini-3')) {
-      state = state.copyWith(preferredModelId: 'gemini-1.5-flash');
+    // Migration Force Check on Boot: Upgrade everyone to Gemini 3 Flash
+    if (state.preferredModelId.contains('gemini-2.1') || 
+        state.preferredModelId.contains('gemini-1.5') || 
+        state.preferredModelId.contains('gemini-2.5') ||
+        state.preferredModelId.contains('gemini-2.0')) {
+      state = state.copyWith(preferredModelId: 'gemini-3-flash-preview');
     }
   }
 

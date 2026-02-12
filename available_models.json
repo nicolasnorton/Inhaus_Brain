@@ -1,9 +1,9 @@
 {
   "models": [
     {
-      "name": "models/gemini-1.5-pro",
-      "version": "1.5",
-      "displayName": "Gemini 1.5 Pro",
+      "name": "models/gemini-3-pro-preview",
+      "version": "3.0",
+      "displayName": "Gemini 3 Pro",
       "description": "Our most powerful state-of-the-art multimodal model. Supports 1M+ context, Vision, Audio, Code Execution, and JSON mode.",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,
@@ -18,9 +18,9 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-1.5-flash",
-      "version": "1.5",
-      "displayName": "Gemini 1.5 Flash",
+      "name": "models/gemini-3-flash-preview",
+      "version": "3.0",
+      "displayName": "Gemini 3 Flash",
       "description": "Fast and versatile multimodal model for scaling. Supports Vision, Audio, 1M+ context, and JSON mode.",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536,

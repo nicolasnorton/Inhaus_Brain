@@ -111,7 +111,8 @@ class DialogueManager:
             try:
                 # Using the generate_content method from existing client
                 resp = self.gemini_client.generate_content(
-                    model_name="gemini-1.5-flash", # Defaulting
+                    model_name = config.get("model", "gemini-3-flash-preview")
+, # Defaulting
                     prompt=prompt,
                     system_instruction=system_prompt
                 )
