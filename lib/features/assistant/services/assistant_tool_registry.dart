@@ -17,6 +17,8 @@ import 'package:inhaus_brain/core/tools/gen_ui_tools.dart';
 import 'package:inhaus_brain/core/tools/data_tools.dart';
 import 'package:inhaus_brain/core/tools/research_tools.dart';
 import 'package:inhaus_brain/core/tools/director_tools.dart';
+import 'package:inhaus_brain/core/mcp/tools/stitch_tools.dart';
+import 'package:inhaus_brain/core/config/feature_flags.dart';
 import 'package:inhaus_brain/core/auth/secret_vault_service.dart';
 
 import 'package:inhaus_brain/features/marketing/tools/seo_aeo_tools.dart';
@@ -41,8 +43,19 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
   final generationTools = [
     ImageGenerationTool(ref, imagenKey: aiKeys?.imagen, vertexKey: aiKeys?.vertex),
     VideoGenerationTool(ref, veoKey: aiKeys?.veo, vertexKey: aiKeys?.vertex),
+    VideoGenerationTool(ref, veoKey: aiKeys?.veo, vertexKey: aiKeys?.vertex),
     AudioGenerationTool(lyriaKey: aiKeys?.lyria),
   ];
+
+  // Stitch Tools
+  final stitchTools = FeatureFlags.enableStitch ? [
+    StitchCreateProjectTool(ref),
+    StitchListProjectsTool(ref),
+    StitchGenerateScreenTool(ref),
+    StitchGetScreenCodeTool(ref),
+    StitchExtractDesignContextTool(ref),
+    StitchBuildSiteTool(ref),
+  ] : <AgentTool>[];
   
   // UCP Tools
   final ucpService = ref.watch(ucpServiceProvider);
@@ -65,6 +78,7 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...dataTools,
     ...marketingTools,
     ...generationTools,
+    ...stitchTools,
     ...researchTools,
     ...ucpTools,
     DirectorTool(),
