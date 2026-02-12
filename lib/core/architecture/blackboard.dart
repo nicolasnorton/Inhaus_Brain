@@ -180,13 +180,39 @@ class BlackboardNotifier extends StateNotifier<BlackboardState> {
   /// Prevents unbounded growth in long-running sessions.
   static const int maxEvents = 200;
 
+  /// Stale session timeout (30 minutes of inactivity).
+  static const Duration staleTimeout = Duration(minutes: 30);
+
+  /// Last activity timestamp for stale detection.
+  DateTime _lastActivity = DateTime.now();
+
+  /// Check if session is stale and auto-clear if needed.
+  /// Returns true if session was reset.
+  bool _checkStale() {
+    if (state.phase != BlackboardPhase.idle &&
+        DateTime.now().difference(_lastActivity) > staleTimeout) {
+      // Session was abandoned — clear to prevent stale data
+      state = BlackboardState();
+      _lastActivity = DateTime.now();
+      return true;
+    }
+    return false;
+  }
+
+  /// Touch activity timestamp.
+  void _touch() => _lastActivity = DateTime.now();
+
   void postFact(String key, dynamic value) {
+    _checkStale();
+    _touch();
     state = state.copyWith(
       facts: {...state.facts, key: value},
     );
   }
 
   void addEvent(WorkflowEventType type, String message, {Map<String, dynamic> data = const {}}) {
+    _checkStale();
+    _touch();
     final event = WorkflowEvent(
       id: const Uuid().v4(),
       type: type,

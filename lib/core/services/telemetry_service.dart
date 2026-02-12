@@ -128,6 +128,55 @@ class TelemetryService {
     } catch (_) {}
   }
 
+  /// Log AI generation with model-tier tracking.
+  ///
+  /// Tracks which strategy (vertex_ai, gemma, litert, proxy, cache)
+  /// was used, the model tier, and latency for cost optimization.
+  Future<void> logAiGeneration({
+    required String modelId,
+    required String strategy,
+    required double latencyMs,
+    required bool success,
+    String? modelTier,    // 'pro', 'flash', 'flash-lite', 'gemma-fast', 'litert'
+    bool isCacheHit = false,
+    bool isFallback = false,
+    int? inputTokenEstimate,
+    int? outputTokenEstimate,
+    String? errorReason,
+  }) async {
+    try {
+      await _analytics.logEvent(
+        name: 'ai_generation',
+        parameters: {
+          'model_id': modelId,
+          'strategy': strategy,
+          'model_tier': modelTier ?? _inferTier(modelId),
+          'latency_ms': latencyMs,
+          'success': success ? 1 : 0,
+          'cache_hit': isCacheHit ? 1 : 0,
+          'is_fallback': isFallback ? 1 : 0,
+          'input_tokens': inputTokenEstimate ?? 0,
+          'output_tokens': outputTokenEstimate ?? 0,
+          'error': errorReason ?? 'none',
+        },
+      );
+      _logger.d('[Telemetry] AI Gen: $strategy/$modelId (${modelTier ?? _inferTier(modelId)}) ${latencyMs}ms ${success ? "✓" : "✗"} ${isCacheHit ? "[CACHE]" : ""}');
+    } catch (_) {}
+  }
+
+  /// Infer model tier from model ID for analytics grouping.
+  String _inferTier(String modelId) {
+    if (modelId.contains('pro')) return 'pro';
+    if (modelId.contains('flash-lite') || modelId.contains('flashlite')) return 'flash-lite';
+    if (modelId.contains('flash')) return 'flash';
+    if (modelId.contains('gemma-3-27b')) return 'gemma-quality';
+    if (modelId.contains('gemma-3-4b')) return 'gemma-fast';
+    if (modelId.contains('functiongemma')) return 'functiongemma';
+    if (modelId.contains('translategemma')) return 'translategemma';
+    if (modelId.contains('gemma-2b') || modelId.contains('litert')) return 'litert';
+    return 'unknown';
+  }
+
   
   // Log Role Actions (RBAC)
   Future<void> logRoleAction({

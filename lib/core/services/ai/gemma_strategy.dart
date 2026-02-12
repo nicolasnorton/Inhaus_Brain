@@ -34,7 +34,7 @@ class GemmaStrategy extends AIStrategy {
 
     try {
       final response = await http.post(
-        Uri.parse('$_functionsBase/python-extract/gemma'),
+        Uri.parse('$_functionsBase/gemma_generate'),
         headers: {
           'Content-Type': 'application/json',
           'X-Environment': AppConfig.current.name,

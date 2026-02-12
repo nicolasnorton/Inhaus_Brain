@@ -8,12 +8,14 @@ from typing import Optional, List, Union, Dict, Any
 class GeminiClient:
     """Wrapper for Google GenAI SDK (Modern v1) - Flawless Upgrade v1.5"""
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, force_vertex_ai: bool = False):
         """
         Initialize Gemini Client.
+        If force_vertex_ai is True, ignores API key and uses Vertex AI ADC.
         """
-        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
-        if not self.api_key:
+        self.api_key = None if force_vertex_ai else (api_key or os.environ.get("GOOGLE_API_KEY"))
+        
+        if not self.api_key and not force_vertex_ai:
             print("Warning: GOOGLE_API_KEY not found in environment.")
         
         # Initialize the new Client
@@ -21,8 +23,10 @@ class GeminiClient:
             print(f"GeminiClient: Initializing with API key (Length: {len(self.api_key)})")
             self.client = genai.Client(api_key=self.api_key)
         else:
-            print("GeminiClient: No API key found. Attempting ADC...")
-            self.client = genai.Client()
+            print("GeminiClient: Using Vertex AI ADC...")
+            project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+            location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+            self.client = genai.Client(vertexai=True, project=project, location=location)
 
     def _normalize_model_name(self, model_name: str) -> str:
         """Normalize model names that might be legacy or aliased."""

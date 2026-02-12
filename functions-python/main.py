@@ -485,3 +485,98 @@ def enqueue_agent_task(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         print(f"Error in enqueue_agent_task: {str(e)}")
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def gemma_generate(req: https_fn.Request) -> https_fn.Response:
+    """
+    Gemma model proxy endpoint.
+    Routes to Gemma 3 family models via the GenAI SDK (Vertex AI Model Garden).
+    Supports: gemma-3-4b-it, gemma-3-27b-it, functiongemma-270m, translategemma-4b.
+    """
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
+
+    uid, auth_error = _verify_auth(req)
+    if auth_error:
+        return https_fn.Response(auth_error, status=401)
+
+    # Environment gate (staging only for now)
+    env = req.headers.get("X-Environment", "production")
+    if env == "production":
+        return https_fn.Response(
+            json.dumps({"error": "Gemma models are staging-only"}),
+            status=403,
+            headers={"Content-Type": "application/json"}
+        )
+
+    try:
+        data = req.get_json()
+        if not data:
+            return https_fn.Response("Missing JSON body", status=400)
+
+        model = data.get("model", "gemma-3-4b-it")
+        prompt = data.get("prompt")
+        temperature = data.get("temperature", 0.3)
+        max_tokens = data.get("max_tokens", 1024)
+        system_instruction = data.get("system_instruction")
+        response_mime_type = data.get("response_mime_type")
+
+        # Validate model is a Gemma variant
+        valid_models = {"gemma-3-4b-it", "gemma-3-27b-it", "functiongemma-270m", "translategemma-4b"}
+        if model not in valid_models:
+            return https_fn.Response(
+                json.dumps({"error": f"Invalid Gemma model: {model}. Valid: {list(valid_models)}"}),
+                status=400,
+                headers={"Content-Type": "application/json"}
+            )
+
+        if not prompt:
+            return https_fn.Response("Missing prompt", status=400)
+
+        print(f"Gemma Proxy: Calling {model} (UID: {uid}, env: {env})")
+
+        # Gemma models on Vertex AI Model Garden require Vertex AI credentials (ADC),
+        # not the AI Studio API key. Force Vertex AI mode.
+        client = GeminiClient(force_vertex_ai=True)
+
+        config = {"temperature": temperature, "max_output_tokens": max_tokens}
+        if response_mime_type:
+            config["response_mime_type"] = response_mime_type
+
+        response = client.generate_content(
+            model_name=model,
+            prompt=prompt,
+            generation_config=config,
+            system_instruction=system_instruction,
+        )
+
+        result = client._serialize_response(response)
+
+        # Extract text for simpler client consumption
+        text = ""
+        if "candidates" in result and result["candidates"]:
+            parts = result["candidates"][0].get("content", {}).get("parts", [])
+            for part in parts:
+                if isinstance(part, dict) and "text" in part:
+                    text += part["text"]
+
+        return https_fn.Response(
+            json.dumps({
+                "text": text,
+                "model_used": model,
+                "response": text,  # Alias for backward compat
+                "full_response": result,
+            }),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        print(f"Error in gemma_generate: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
