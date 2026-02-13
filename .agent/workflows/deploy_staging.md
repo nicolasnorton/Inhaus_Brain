@@ -27,9 +27,9 @@ echo "✅ Branch: $BRANCH"
 cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && flutter build web --release --dart-define=ENVIRONMENT=staging
 ```
 
-3. Deploy to the Firebase Hosting beta target:
+3. Deploy to the Firebase Hosting beta target & Cloud Functions (Full Stack):
 ```bash
-cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && firebase deploy --only hosting:inhaus-brain
+cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && firebase deploy --only hosting:inhaus-brain,functions
 ```
 
 4. Verify the deployment is live:
