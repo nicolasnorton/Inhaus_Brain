@@ -9,6 +9,7 @@ import '../architecture/blackboard.dart';
 import 'semantic_cache_service.dart';
 import 'telemetry_service.dart';
 import '../models/stitch_models.dart';
+import '../utils/resilience_utils.dart';
 
 class StitchService {
   final Ref _ref;
@@ -17,6 +18,9 @@ class StitchService {
   late final BlackboardNotifier _blackboard;
   late final SemanticCacheService _cache;
   late final TelemetryService _telemetry;
+
+  // Circuit Breaker
+  static final _stitchCircuit = CircuitBreaker(name: 'StitchAPI', failureThreshold: 5);
 
   StitchService(this._ref) {
     _blackboard = _ref.read(blackboardProvider.notifier);
@@ -50,7 +54,7 @@ class StitchService {
     String? error;
 
     try {
-      final response = await http.post(
+      final response = await _stitchCircuit.execute(() => http.post(
         Uri.parse(_proxyUrl),
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +64,7 @@ class StitchService {
           'action': action,
           'payload': payload,
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 30)));
 
       if (response.statusCode == 200) {
         success = true;
