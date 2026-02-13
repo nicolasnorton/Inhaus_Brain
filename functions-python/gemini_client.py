@@ -341,11 +341,12 @@ class GeminiClient:
         
         # Handle LRO/Operation responses
         if hasattr(response, 'name') and (hasattr(response, 'done') or hasattr(response, 'metadata')):
+            res_name = getattr(response, 'name', "unknown_op")
             return {
-                "operationName": response.name,
+                "operationName": res_name,
                 "done": getattr(response, 'done', False),
                 "metadata": response.metadata if hasattr(response, 'metadata') else None,
-                "custom_type": "veo_lro" if "veo" in response.name.lower() else "lro_op",
+                "custom_type": "veo_lro" if "veo" in res_name.lower() else "lro_op",
                 "result": self._serialize_response(response.result) if getattr(response, 'done', False) and hasattr(response, 'result') else None
             }
 
@@ -354,6 +355,15 @@ class GeminiClient:
             if hasattr(response, 'generated_images'):
                 return self._serialize_images(response)
             
+            # Check for direct video result (Veo)
+            if hasattr(response, 'generated_videos'):
+                 video_uris = []
+                 for v in getattr(response, 'generated_videos', []):
+                     if hasattr(v, 'video') and hasattr(v.video, 'uri'):
+                         video_uris.append(v.video.uri)
+                 if video_uris:
+                     return {"videoUri": video_uris[0], "custom_type": "veo_result", "all_videos": video_uris}
+
             # Check for direct video result (if LRO already finished in-line, rare but possible)
             if hasattr(response, 'video'):
                  return {"videoUri": response.video.uri, "custom_type": "veo_result"}
@@ -413,12 +423,21 @@ class GeminiClient:
                              }
                          })
             
+            # Handle finishReason safely (might be Enum or string)
+            finish_reason = getattr(cand, 'finish_reason', None)
+            finish_reason_name = None
+            if finish_reason:
+                if hasattr(finish_reason, 'name'):
+                    finish_reason_name = finish_reason.name
+                else:
+                    finish_reason_name = str(finish_reason)
+
             candidates_data.append({
                 "content": {
                     "parts": parts_data,
                     "role": cand.content.role if cand.content else "model"
                 },
-                "finishReason": cand.finish_reason.name if cand.finish_reason else None,
+                "finishReason": finish_reason_name,
                 "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
             })
 

@@ -242,8 +242,10 @@ def poll_operation(req: https_fn.Request) -> https_fn.Response:
         name = data.get("operationName")
         if not name: return https_fn.Response("Missing operationName", status=400)
         
+        print(f"DEBUG: Poll Operation - name: {name}")
         client = GeminiClient()
         op = client.get_operation(name)
+        print(f"DEBUG: Operation object captured: {op}")
         
         result = client._serialize_response(op)
         return https_fn.Response(
@@ -252,6 +254,9 @@ def poll_operation(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
     except Exception as e:
+        print(f"Error in poll_operation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))

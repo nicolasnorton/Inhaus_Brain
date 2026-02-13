@@ -658,7 +658,8 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     );
                   },
                 ),
-                const SizedBox(width: 8),
+                _buildVoiceButton(),
+                const SizedBox(width: 4),
                 _buildModelPicker(),
                 const SizedBox(width: 8),
                 Expanded(
@@ -676,7 +677,6 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      suffixIcon: _buildVoiceButton(),
                     ),
                   ),
                 ),
