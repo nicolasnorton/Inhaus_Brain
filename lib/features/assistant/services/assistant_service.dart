@@ -22,6 +22,7 @@ import '../../../core/services/system_prompts_service.dart';
 import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
 import '../../../core/services/json_parser_service.dart';
+import '../../../core/services/blackboard_persistence_service.dart';
 
 import '../domain/agent_outputs.dart';
 import '../providers/assistant_provider.dart';
@@ -147,7 +148,7 @@ class AssistantService {
 
   List<AssistantMessage> get history => List.unmodifiable(_history);
 
-  Future<AssistantMessage> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment}) async {
+  Future<AssistantMessage> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment, ToolMode toolMode = ToolMode.chat}) async {
     // 1. Add user message
     final userMsg = AssistantMessage(
       id: DateTime.now().toString(),
@@ -181,10 +182,12 @@ class AssistantService {
     final blackboard = _ref.read(blackboardProvider.notifier);
     final String currentSessionId = 'assistant_global'; // Default global assistant session
     
-    // Initialize session if not already set or mismatched
+    // Load session from persistence if not already the active one
     if (blackboard.state.sessionId != currentSessionId) {
-      blackboard.initialize(currentSessionId);
+      debugPrint('Assistant: Loading persistent session $currentSessionId...');
+      await _ref.read(blackboardPersistenceServiceProvider).loadSession(currentSessionId);
     }
+
     blackboard.addEvent(
       WorkflowEventType.userRequested, 
       "New User Request: $text",
@@ -200,7 +203,7 @@ class AssistantService {
       // 3. Orchestration Loop (Tiered Orchestration)
       // Phase A: Intent & Routing
       final tools = _ref.read(assistantToolRegistryProvider);
-      final executionResult = await _matchIntentAndExecute(text, tools, attachment: attachment, audioAttachment: audioAttachment);
+      final executionResult = await _matchIntentAndExecute(text, tools, attachment: attachment, audioAttachment: audioAttachment, toolMode: toolMode);
       
       stopwatch.stop();
 
@@ -265,9 +268,27 @@ class AssistantService {
     }
   }
 
-  Future<ToolExecutionSummary> _matchIntentAndExecute(String text, List<AgentTool> tools, {List<int>? attachment, List<int>? audioAttachment}) async {
+  Future<ToolExecutionSummary> _matchIntentAndExecute(String text, List<AgentTool> tools, {List<int>? attachment, List<int>? audioAttachment, ToolMode toolMode = ToolMode.chat}) async {
     final lower = text.toLowerCase();
     
+    // 0. Explicit Tool Mode Override
+    if (toolMode == ToolMode.image) {
+       _ref.read(assistantStatusProvider.notifier).state = "Generating image...";
+       return await _executeTool(tools, 'image_generation', {'prompt': text});
+    }
+    if (toolMode == ToolMode.video) {
+       _ref.read(assistantStatusProvider.notifier).state = "Generating video...";
+       return await _executeTool(tools, 'video_generation', {'prompt': text});
+    }
+    if (toolMode == ToolMode.code) {
+       // Code mode: Force developer context
+       final systemPrompts = _ref.read(systemPromptsProvider);
+       final devPrompt = "You are a Developer Agent. Generate production-ready code. \nUser Request: $text";
+       _ref.read(assistantStatusProvider.notifier).state = "Writing code...";
+       final res = await EdgeAIService.generateText(devPrompt, modelConfig: AIModelConfig.geminiFlash, ref: _ref);
+       return ToolExecutionSummary(text: res.text, modelName: 'Gemini 2.5 Flash (Code Mode)');
+    }
+
     // 1. Agentic Automation Orchestration
     final memoryService = _ref.read(memoryServiceProvider);
     final toolRetrieval = _ref.read(toolRetrievalServiceProvider);
@@ -325,16 +346,29 @@ class AssistantService {
     final allTools = _ref.read(assistantToolRegistryProvider);
     final specificTools = allTools.where((t) => suggestedTools.contains(t.name)).toList();
     
-    // Combine and deduplicate
-    final Set<AgentTool> combinedTools = {...intentTools, ...specificTools};
+    // Combine and deduplicate by name
+    final Map<String, AgentTool> combinedToolsMap = {};
+    for (final t in intentTools) combinedToolsMap[t.name] = t;
+    for (final t in specificTools) combinedToolsMap[t.name] = t;
     
+    // Naming Mismatch Fix: If "Stitch" is suggested by Router, add all stitch_* tools
+    if (suggestedTools.any((s) => s.toLowerCase() == 'stitch')) {
+      for (final t in allTools.where((t) => t.name.startsWith('stitch_'))) {
+        combinedToolsMap[t.name] = t;
+      }
+    }
+
     // Always ensure generation and navigation tools are available
-    combinedTools.addAll(allTools.where((t) => 
+    for (final t in allTools.where((t) => 
       t.name == 'image_generation' || 
       t.name == 'video_generation' || 
       t.name == 'navigate_to' || 
       t.name == 'gen_ui_component'
-    ));
+    )) {
+      combinedToolsMap[t.name] = t;
+    }
+
+    final combinedTools = combinedToolsMap.values.toList();
 
     final toolDefinitions = combinedTools.map((t) {
       final schema = t.toFunctionSchema();
@@ -500,6 +534,7 @@ class AssistantService {
         modelConfig: mainConfig,
         ref: _ref,
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
+        tools: combinedTools.map((t) => t.toFunctionSchema()).toList(),
       );
 
       sources = edgeResult.sourceCitations;
@@ -609,6 +644,42 @@ class AssistantService {
                          }
                        } else if (args is Map) {
                          toolArgs = Map<String, dynamic>.from(args);
+                       }
+                    }
+                 }
+              }
+            } else if (parsed.containsKey('candidates')) {
+              // GEMINI PROXY RESPONSE (Start)
+              final candidates = parsed['candidates'];
+              if (candidates is List && candidates.isNotEmpty) {
+                 final candidate = candidates[0];
+                 if (candidate is Map && candidate.containsKey('content')) {
+                    final content = candidate['content'];
+                    if (content is Map && content.containsKey('parts')) {
+                       final parts = content['parts'];
+                       if (parts is List && parts.isNotEmpty) {
+                          for (final part in parts) {
+                             if (part is Map) {
+                                if (part.containsKey('call')) {
+                                   final call = part['call'];
+                                   if (call is Map) {
+                                      String rawName = call['function_name'] ?? call['function'] ?? call['name'] ?? '';
+                                      if (rawName.contains(':')) rawName = rawName.split(':').last;
+                                      toolName = rawName;
+                                      final args = call['args'] ?? call['arguments'] ?? call['parameters'] ?? {};
+                                      toolArgs = args is Map<String, dynamic> ? args : Map<String, dynamic>.from(args as Map);
+                                      break;
+                                   }
+                                } else if (part.containsKey('functionCall')) {
+                                   final call = part['functionCall'];
+                                   if (call is Map) {
+                                      toolName = call['name'];
+                                      toolArgs = Map<String, dynamic>.from(call['args'] ?? {});
+                                      break;
+                                   }
+                                }
+                             }
+                          }
                        }
                     }
                  }
@@ -781,7 +852,7 @@ class AssistantService {
   Future<ToolExecutionSummary> _executeTool(List<AgentTool> tools, String name, Map<String, dynamic> args) async {
     final tool = tools.firstWhere((t) => t.name == name, orElse: () => throw Exception('Tool not found: $name'));
     try {
-      final result = await tool.execute(args);
+      final result = await tool.execute(args, ref: _ref);
       if (result.isSuccess) {
         if (name == 'image_generation') {
           return ToolExecutionSummary(

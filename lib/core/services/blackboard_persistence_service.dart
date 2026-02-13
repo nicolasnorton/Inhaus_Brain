@@ -47,13 +47,13 @@ class BlackboardPersistenceService {
           .collection('users')
           .doc(user.uid)
           .collection('sessions')
-          .doc(state.sessionId ?? 'active');
+          .doc(state.sessionId ?? 'assistant_global');
 
       await sessionRef.set({
         ...state.toJson(),
         'lastUpdated': FieldValue.serverTimestamp(),
       });
-      debugPrint('Persistence: Session saved successfully.');
+      debugPrint('Persistence: Session ${state.sessionId ?? 'assistant_global'} saved successfully.');
     } catch (e) {
       debugPrint('Persistence: Error saving session: $e');
     } finally {
@@ -63,7 +63,7 @@ class BlackboardPersistenceService {
 
   Future<void> restoreSession() async {
     final state = _ref.read(blackboardProvider);
-    final sessionId = state.sessionId ?? 'active';
+    final sessionId = state.sessionId ?? 'assistant_global';
     await loadSession(sessionId);
   }
 
@@ -89,7 +89,8 @@ class BlackboardPersistenceService {
         debugPrint('Persistence: Restoring session state for $sessionId...');
         _ref.read(blackboardProvider.notifier).restoreState(restoredState);
       } else {
-        debugPrint('Persistence: No session found to restore for $sessionId.');
+        debugPrint('Persistence: No session found to restore for $sessionId. Initializing new...');
+        _ref.read(blackboardProvider.notifier).initialize(sessionId);
       }
     } catch (e) {
       debugPrint('Persistence: Error loading session $sessionId: $e');
@@ -101,7 +102,7 @@ class BlackboardPersistenceService {
     if (user == null) return;
 
     final state = _ref.read(blackboardProvider);
-    final sessionId = state.sessionId ?? 'active';
+    final sessionId = state.sessionId ?? 'assistant_global';
 
     try {
       await _firestore
@@ -111,8 +112,7 @@ class BlackboardPersistenceService {
           .doc(sessionId)
           .delete();
       debugPrint('Persistence: Session $sessionId cleared from Firestore.');
-      // Also clear local blackboard?
-      // _ref.read(blackboardProvider.notifier).clear(); 
+      _ref.read(blackboardProvider.notifier).clear(sessionId: sessionId); 
     } catch (e) {
       debugPrint('Persistence: Error clearing session: $e');
     }

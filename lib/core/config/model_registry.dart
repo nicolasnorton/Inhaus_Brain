@@ -60,16 +60,16 @@ class ModelRegistry {
 
   // ── Gemma Open Models (via Model Garden / Python proxy) ─────
   static const _gemma = {
-    ModelTier.gemmaFast: 'gemma-3-4b-it',
-    SpecializedModel.summarize: 'gemma-3-27b-it',
-    SpecializedModel.functionCall: 'functiongemma-270m',
+    ModelTier.gemmaFast: 'gemma-2-9b-it',
+    SpecializedModel.summarize: 'gemma-2-27b-it',
+    SpecializedModel.functionCall: 'functiongemma-7b',
     SpecializedModel.translate: 'translategemma-4b',
   };
 
   // ── Media & Utility Models ──────────────────────────────────
   static const _media = {
-    SpecializedModel.image: 'imagen-4.0-generate-001',
-    SpecializedModel.video: 'veo-3.1-generate-001',
+    SpecializedModel.image: 'imagen-3.0-generate-001',
+    SpecializedModel.video: 'veo-1.0-generate-001',
     SpecializedModel.embed: 'text-embedding-004',
   };
 

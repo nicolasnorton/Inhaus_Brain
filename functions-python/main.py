@@ -136,6 +136,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         print(f"Gemini Proxy: Calling {model_name} with thinking={thinking}, search={use_google_search}")
         
         # Call Generation
+        print(f"Gemini Proxy: Attempting to call generation on {model_name}...")
         response = client.generate_content(
             model_name=model_name,
             prompt=prompt,
@@ -189,7 +190,7 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-2.0-flash-thinking-exp-01-21") 
+        model = data.get("model", "gemini-2.0-flash-thinking-exp") 
         
         client = GeminiClient()
         interaction = client.create_interaction(model=model, prompt=prompt)

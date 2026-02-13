@@ -6,6 +6,7 @@ library;
 
 import 'dart:convert';
 import 'package:logger/logger.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_strategy.dart';
 import 'ai_generation_request.dart';
 import '../ai_proxy_service.dart';
@@ -18,7 +19,7 @@ class ProxyStrategy extends AIStrategy {
   String get name => 'proxy';
 
   @override
-  Future<AIGenerationResult> generate(AIGenerationRequest request) async {
+  Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref}) async {
     final stopwatch = Stopwatch()..start();
     final config = request.config;
     final prompt = request.effectivePrompt;
@@ -68,10 +69,11 @@ class ProxyStrategy extends AIStrategy {
       prompt: proxyPrompt,
       config: config,
       systemInstruction: request.systemInstruction,
-      tools: [],
+      tools: request.tools,
       thinking: config.modelId.contains('thinking') ||
           prompt.toLowerCase().contains('deep research'),
       audio: config.modelId.contains('lyra'),
+      ref: ref is Ref ? ref : null,
     );
 
     stopwatch.stop();

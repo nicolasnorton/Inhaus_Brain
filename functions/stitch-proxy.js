@@ -44,9 +44,23 @@ async function checkRateLimit(userId) {
  * Helper: Call Stitch API with ADC
  */
 async function callStitchApi(endpoint, method, body = null) {
-    const client = await auth.getClient();
-    const tokenResponse = await client.getAccessToken();
-    const accessToken = tokenResponse.token;
+    // Priority: User-provided key (v2.0 Upgrade)
+    const stitchApiKey = process.env.STITCH_API_KEY || "AQ.Ab8RN6KS-HoUsjuh06F9INNNmo7LMRLFjhZ6Dfq5tOVrEfqnPw";
+    let authHeaders = {};
+
+    if (stitchApiKey) {
+        console.log('[Stitch Proxy] 🔑 Using STITCH_API_KEY.');
+        authHeaders = {
+            'X-Goog-Api-Key': stitchApiKey
+        };
+    } else {
+        const client = await auth.getClient();
+        const tokenResponse = await client.getAccessToken();
+        const accessToken = tokenResponse.token;
+        authHeaders = {
+            'Authorization': `Bearer ${accessToken}`
+        };
+    }
 
     const url = `${STITCH_API_BASE}${endpoint}`;
     console.log(`[Stitch Proxy] 🌐 Calling ${method} ${url}`);
@@ -54,7 +68,7 @@ async function callStitchApi(endpoint, method, body = null) {
     const options = {
         method: method,
         headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            ...authHeaders,
             'Content-Type': 'application/json'
         }
     };
@@ -217,8 +231,8 @@ exports.proxyStitch = functions.https.onRequest((req, res) => {
         } catch (error) {
             console.error('[Stitch Proxy] ❌ Error:', error);
             const status = error.status || 500;
-            const message = error.message || 'Internal Server Error';
-            res.status(status).json({ error: message });
+            const message = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+            res.status(status).json({ error: message, details: error.stack || null });
         }
     });
 });

@@ -43,7 +43,6 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
   final generationTools = [
     ImageGenerationTool(ref, imagenKey: aiKeys?.imagen, vertexKey: aiKeys?.vertex),
     VideoGenerationTool(ref, veoKey: aiKeys?.veo, vertexKey: aiKeys?.vertex),
-    VideoGenerationTool(ref, veoKey: aiKeys?.veo, vertexKey: aiKeys?.vertex),
     AudioGenerationTool(lyriaKey: aiKeys?.lyria),
   ];
 

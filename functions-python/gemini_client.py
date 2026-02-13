@@ -13,20 +13,41 @@ class GeminiClient:
         Initialize Gemini Client.
         If force_vertex_ai is True, ignores API key and uses Vertex AI ADC.
         """
-        self.api_key = None if force_vertex_ai else (api_key or os.environ.get("GOOGLE_API_KEY"))
-        
-        if not self.api_key and not force_vertex_ai:
+        self._api_key = api_key or os.environ.get("GOOGLE_API_KEY")
+        self._force_vertex_ai = force_vertex_ai
+        self._google_client = None
+        self._vertex_client = None
+
+        if not self._api_key and not force_vertex_ai:
             print("Warning: GOOGLE_API_KEY not found in environment.")
-        
-        # Initialize the new Client
-        if self.api_key:
-            print(f"GeminiClient: Initializing with API key (Length: {len(self.api_key)})")
-            self.client = genai.Client(api_key=self.api_key)
-        else:
-            print("GeminiClient: Using Vertex AI ADC...")
+
+    @property
+    def client(self) -> genai.Client:
+        """Get the primary client (depends on initialization mode)."""
+        if self._force_vertex_ai:
+            return self.vertex_client
+        return self.google_client
+
+    @property
+    def google_client(self) -> genai.Client:
+        """Lazy-init Google AI Studio (API Key) client."""
+        if not self._google_client:
+            if not self._api_key:
+                # Fallback to vertex if no API key
+                return self.vertex_client
+            print(f"GeminiClient: Initializing Google AI Client (API Key present)")
+            self._google_client = genai.Client(api_key=self._api_key)
+        return self._google_client
+
+    @property
+    def vertex_client(self) -> genai.Client:
+        """Lazy-init Vertex AI (ADC) client."""
+        if not self._vertex_client:
             project = os.environ.get("GOOGLE_CLOUD_PROJECT")
             location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-            self.client = genai.Client(vertexai=True, project=project, location=location)
+            print(f"GeminiClient: Initializing Vertex AI Client (Project: {project})")
+            self._vertex_client = genai.Client(vertexai=True, project=project, location=location)
+        return self._vertex_client
 
     def _normalize_model_name(self, model_name: str) -> str:
         """Normalize model names that might be legacy or aliased."""
@@ -54,20 +75,32 @@ class GeminiClient:
                 return "gemini-3-pro-image-preview"
             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
             
-        # Map Gemini 2.5 (Legacy High Performance)
+        # Map Gemini 2.5 (Staging Aliases -> Stable GA)
         if "gemini-2.5" in name_lower:
             if "lite" in name_lower:
-                return "gemini-2.5-flash-lite"
-            return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
+                return "gemini-1.5-flash-lite-001"
+            return "gemini-1.5-pro" if "pro" in name_lower else "gemini-1.5-flash"
+        
+        # Map Gemini 2.0 (GA Stable)
+        if "gemini-2.0" in name_lower:
+            if "lite" in name_lower:
+                return "gemini-2.0-flash-lite-preview-02-05"
+            if "pro" in name_lower:
+                 # experimental pro
+                 return "gemini-2.0-pro-exp-02-05"
+            return "gemini-2.0-flash-001"
+
+        # Default fallback for Gemini
+        if "gemini" in name_lower:
+            return "gemini-1.5-flash"
 
         # Map Thinking requests
         if "thinking" in name_lower:
-            # Upgrade thinking to Gemini 3 reasoning if available, else fallback
-            return "gemini-2.0-flash-thinking-exp-01-21"
+            return "gemini-2.0-flash-thinking-exp"
 
-        # Standardize simple/legacy names to latest 3.0 versioned names for Flawless v1.5
+        # Standardize simple/legacy names to latest 1.5 Stable (2.5 alias)
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
-             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
+             return "gemini-1.5-pro" if "pro" in name_lower else "gemini-1.5-flash"
             
         return model_name
 
@@ -125,6 +158,12 @@ class GeminiClient:
         # Handle thinking mode
         thinking_config = None
         if thinking:
+            # Thinking requires specific models. If not one, force to 2.0 Thinking Exp.
+            THINKING_CAPABLE = ["thinking", "gemini-2.0-flash-001", "gemini-2.0-pro"]
+            if not any(tc in model.lower() for tc in THINKING_CAPABLE):
+                model = "gemini-2.0-flash-thinking-exp"
+                print(f"GeminiClient: Thinking mode requested. Re-routing to {model}")
+            
             thinking_config = types.ThinkingConfig(include_thoughts=True)
             config_params.pop("thinking_config", None)
 
@@ -132,19 +171,26 @@ class GeminiClient:
         if use_google_search:
             processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
 
-        if tools:
+        if tools and not thinking:
+            function_declarations = []
             for tool in tools:
                 if isinstance(tool, dict):
-                    if "google_search" in tool or "web_search" in tool:
+                    # Check if it's already a wrapped tool format
+                    if "google_search" in tool or "googleSearch" in tool:
                         processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
                     elif "google_maps" in tool or "googleMaps" in tool:
                         processed_tools.append(types.Tool(google_maps=types.GoogleMaps()))
-                    elif "code_execution" in tool:
+                    elif "code_execution" in tool or "codeExecution" in tool:
                         processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
-                    elif "function_declarations" in tool:
-                        decls = [types.FunctionDeclaration(**d) for d in (tool["function_declarations"] or [])]
-                        processed_tools.append(types.Tool(function_declarations=decls))
+                    elif "function_declarations" in tool or "functionDeclarations" in tool:
+                        # Re-wrap properly if it's a dict with declarations
+                        decls = tool.get("function_declarations") or tool.get("functionDeclarations") or []
+                        function_declarations.extend(decls)
+                    elif "name" in tool and ("parameters" in tool or "description" in tool):
+                        # This is an individual function declaration (e.g. from Flutter)
+                        function_declarations.append(tool)
                     else:
+                        # Unknown dict format, try to append as is (risky)
                         processed_tools.append(tool)
                 elif isinstance(tool, str):
                     if tool in ["google_search", "web_search"]:
@@ -152,9 +198,21 @@ class GeminiClient:
                     elif tool == "code_execution":
                         processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
                     else:
+                        # Treat as name of a custom tool to be retrieved? 
+                        # This is handled in main.py usually, but for safety:
                         processed_tools.append(tool)
+            
+            # Unified Tool object for better compatibility
+            if function_declarations:
+                if use_google_search:
+                     processed_tools = [types.Tool(
+                         function_declarations=function_declarations,
+                         google_search=types.GoogleSearch()
+                     )]
                 else:
-                    processed_tools.append(tool)
+                     processed_tools = [types.Tool(function_declarations=function_declarations)]
+            elif use_google_search:
+                processed_tools = [types.Tool(google_search=types.GoogleSearch())]
 
         if audio:
             config_params["response_modalities"] = ["AUDIO"]
@@ -180,15 +238,51 @@ class GeminiClient:
                 else:
                     processed_contents.append(item)
 
-        if stream:
-            return self.client.models.generate_content_stream(model=model, contents=processed_contents, config=config)
-        else:
-            return self.client.models.generate_content(model=model, contents=processed_contents, config=config)
+        # Resilient Fallback Chain
+        # Stage 1: Primary Model
+        # Stage 2: Gemini 1.5 Flash (Stable)
+        # Stage 3: Gemini 2.0 Flash (Secondary)
+        # Stage 4: Gemma 3 (Tertiary/Resilient - Requires Vertex)
+        
+        fallback_models = [model, "gemini-1.5-flash", "gemini-2.0-flash", "gemma-3-4b-it"]
+        # Remove duplicates while preserving order
+        fallback_models = list(dict.fromkeys(fallback_models))
+        
+        last_error = None
+        for attempt_model in fallback_models:
+            try:
+                # Determine which client to use
+                active_client = self.google_client
+                if any(v in attempt_model.lower() for v in ["gemma", "veo", "imagen", "lyra"]):
+                    active_client = self.vertex_client
+                
+                print(f"GeminiClient: Attempting generation with {attempt_model}...")
+                
+                if stream:
+                    return active_client.models.generate_content_stream(model=attempt_model, contents=processed_contents, config=config)
+                else:
+                    return active_client.models.generate_content(model=attempt_model, contents=processed_contents, config=config)
+            
+            except Exception as e:
+                last_error = e
+                error_msg = str(e).lower()
+                print(f"GeminiClient: Failed with {attempt_model}: {e}")
+                
+                # If it's a 429 (Resource Exhausted) or 503, definitely fallback
+                # If it's 404 (Not Found), also fallback
+                if any(x in error_msg for x in ["404", "429", "503", "500", "not found", "limit"]):
+                    print(f"GeminiClient: Triggering fallback from {attempt_model}...")
+                    continue
+                else:
+                    # Critical error (e.g. invalid prompt), don't bother retrying
+                    break
+        
+        raise last_error or Exception("All model fallbacks failed.")
 
     def generate_video(self, prompt: str, model: str = "veo-3.1-generate-001", config: Optional[Dict[str, Any]] = None) -> Any:
-        """Generate a video using Veo 3.1."""
-        if not self.client:
-            raise Exception("GeminiClient not initialized.")
+        """Generate a video using Veo 3.1 via Vertex AI."""
+        # Force Vertex AI for Veo
+        client = self.vertex_client
         
         cv = {
             "duration_seconds": 5,
@@ -197,10 +291,11 @@ class GeminiClient:
         if config:
             if 'durationSeconds' in config: cv['duration_seconds'] = config['durationSeconds']
             if 'aspectRatio' in config: cv['aspect_ratio'] = config['aspectRatio']
-            if 'resolution' in config: cv['resolution'] = config['resolution']
+            # 'resolution' is not supported in GenerateVideosConfig, so we explicitly ignore it.
             cv.update({k: v for k, v in config.items() if k not in ['durationSeconds', 'aspectRatio', 'resolution']})
 
-        return self.client.models.generate_videos(
+        print(f"GeminiClient: Generating video with {model} via Vertex...")
+        return client.models.generate_videos(
             model=model,
             prompt=prompt,
             config=types.GenerateVideosConfig(**cv)
@@ -233,10 +328,13 @@ class GeminiClient:
         return {"status": "batch_queued", "job_id": "mock_batch_id_123"}
 
     def get_operation(self, name: str) -> Any:
-        """Get status of an LRO."""
-        if not self.client:
-            raise Exception("GeminiClient not initialized.")
-        return self.client.operations.get(name=name)
+        """Get status of an LRO (attempts Vertex first for Veo)."""
+        # The google-genai SDK's operations.get() takes the operation name
+        # as a positional argument (or `operation=`), NOT `name=`.
+        if "projects/" in name or "locations/" in name:
+            return self.vertex_client.operations.get(operation=name)
+        
+        return self.client.operations.get(operation=name)
 
     def _serialize_response(self, response: Any) -> Dict[str, Any]:
         """Helper to serialize a GenAI response object (Content OR Operation) to a dict."""
@@ -274,14 +372,39 @@ class GeminiClient:
                     elif hasattr(part, 'thought') and part.thought:
                         parts_data.append({"thought": part.thought})
                     elif hasattr(part, 'function_call') and part.function_call:
+                        # Unified call format for Flutter client robustness
+                        safe_args = {}
+                        try:
+                            # Ensure args is a dict (handle protobuf Map/Struct)
+                            raw_args = part.function_call.args
+                            if isinstance(raw_args, dict):
+                                safe_args = raw_args
+                            elif raw_args:
+                                safe_args = dict(raw_args)
+                        except Exception as e:
+                            print(f"GeminiClient: Error converting args: {e}")
+                            safe_args = {}
+
                         parts_data.append({
-                            "executable_adunit": {
-                                "call": {
-                                    "function_name": part.function_call.name,
-                                    "args": part.function_call.args
-                                }
+                            "call": {
+                                "function_name": part.function_call.name,
+                                "args": safe_args
                             }
                         })
+                    elif hasattr(part, 'executable_code') and part.executable_code:
+                         parts_data.append({
+                             "executable_code": {
+                                 "language": part.executable_code.language,
+                                 "code": part.executable_code.code
+                             }
+                         })
+                    elif hasattr(part, 'code_execution_result') and part.code_execution_result:
+                         parts_data.append({
+                             "code_execution_result": {
+                                 "outcome": part.code_execution_result.outcome,
+                                 "output": part.code_execution_result.output
+                             }
+                         })
                     elif hasattr(part, 'inline_data') and part.inline_data:
                          parts_data.append({
                              "inlineData": {
@@ -336,14 +459,24 @@ class GeminiClient:
         }
 
     def generate_image(self, prompt: str, model: str = "imagen-3.0-nano-banana-001", **kwargs) -> Any:
-        """Generate image using Nano Banana models."""
-        if not self.client:
-             raise Exception("GeminiClient not initialized.")
-        return self.client.models.generate_images(
-            model=self._normalize_model_name(model),
-            prompt=prompt,
-            config=types.GenerateImagesConfig(**kwargs)
-        )
+        """Generate image using Nano Banana or Imagen models with fallback."""
+        models_to_try = [model, "imagen-3.0-fast-generate-001"]
+        models_to_try = list(dict.fromkeys(models_to_try))
+
+        last_error = None
+        for attempt_model in models_to_try:
+            try:
+                print(f"GeminiClient: Attempting image generation with {attempt_model}...")
+                return self.vertex_client.models.generate_images(
+                    model=self._normalize_model_name(attempt_model),
+                    prompt=prompt,
+                    config=types.GenerateImagesConfig(**kwargs)
+                )
+            except Exception as e:
+                last_error = e
+                print(f"GeminiClient: Image generation failed with {attempt_model}: {e}. Falling back...")
+        
+        raise last_error or Exception("Image generation failed for all models.")
 
     def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.5-flash") -> int:
         if not self.client:
@@ -357,7 +490,7 @@ class GeminiClient:
     def create_interaction(self, model: str, prompt: str, **kwargs) -> Any:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
-        return self.client.interactions.create(model=self._normalize_model_name(model), contents=prompt, **kwargs)
+        return self.client.interactions.create(model=self._normalize_model_name(model), input=prompt, **kwargs)
 
     def get_interaction(self, id: str) -> Any:
         if not self.client:

@@ -77,6 +77,7 @@ class EdgeAIService {
     String? apiKey,
     String? gemmaKey,
     String? vertexKey,
+    List<Map<String, dynamic>>? tools,
     dynamic ref,
   }) async {
     final effectiveMemory = memoryContext ?? systemInstruction;
@@ -101,6 +102,7 @@ class EdgeAIService {
       videoMimeType: videoMimeType,
       pdfBytes: pdfBytes,
       pdfMimeType: pdfMimeType,
+      tools: tools,
       apiKey: apiKey,
       vertexKey: vertexKey,
     );
@@ -263,9 +265,9 @@ class EdgeAIService {
   static Future<String> generateVideo(String prompt, {String? modelId, bool isFinal = false, bool includeSubtitles = false, String? veoKey, String? vertexKey, dynamic ref, Function(double)? onProgress, Function(String)? onStatusMessage}) async {
     final telemetry = ref?.read(telemetryServiceProvider);
     if (isFinal) {
-      return await VideoGenerationService.generateFinal(prompt, modelId: modelId, confirmedByUser: true, onProgress: onProgress, onStatusMessage: onStatusMessage, telemetry: telemetry);
+      return await VideoGenerationService.generateFinal(prompt, modelId: modelId, confirmedByUser: true, onProgress: onProgress, onStatusMessage: onStatusMessage, telemetry: telemetry, includeSubtitles: includeSubtitles);
     } else {
-      return await VideoGenerationService.generatePreview(prompt, modelId: modelId, onProgress: onProgress, telemetry: telemetry);
+      return await VideoGenerationService.generatePreview(prompt, modelId: modelId, onProgress: onProgress, onStatusMessage: onStatusMessage, telemetry: telemetry, includeSubtitles: includeSubtitles);
     }
   }
 

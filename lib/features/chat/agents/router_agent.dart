@@ -18,6 +18,7 @@ enum RouterIntent {
   creative,       // Visual concepts, design, moodboards
   creativeImage,  // Specific image generation
   creativeVideo,  // Specific video generation
+  creativeDesign, // Stitch UI/Web design
   genUiReport,    // Strategy, plans, interactive reports
   copywriting,    // Writing, editing, tone
   development,    // Code, technical architecture

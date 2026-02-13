@@ -97,6 +97,7 @@ class CreateTaskTool extends AgentTool {
             'tags': {
               'type': 'array',
               'description': 'List of tags.',
+              'items': {'type': 'string'},
             },
           },
         );
@@ -217,8 +218,6 @@ final clientToolsProvider = Provider<List<AgentTool>>((ref) {
   
   return [
     CreateClientTool(clientNotifier),
-    UpdateClientTool(clientNotifier, clients),
-    DeleteClientTool(clientNotifier),
     UpdateClientTool(clientNotifier, clients),
     DeleteClientTool(clientNotifier),
     ListClientsTool(clients),

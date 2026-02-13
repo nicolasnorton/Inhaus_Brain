@@ -53,13 +53,14 @@ For "dialogue_scene":
           'component_type': {
             'type': 'string',
             'enum': [
-              'strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report',
-              'dynamic_form', 'mind_map', 'carousel', 'interactive_table', 'radial_gauge', 'accordion', 'stepper', 'word_cloud', 'calendar',
+              'strategy_board', 'budget_chart', 'kanban_board', 'timeline', 'trend_report', 'recipe_card', 'analysis_report', 'deep_analysis',
+              'dynamic_form', 'mind_map', 'carousel', 'media_carousel', 'interactive_table', 'radial_gauge', 'accordion', 'stepper', 'word_cloud', 'calendar',
               'dialogue_scene', 'avatar_conversation',
               'code_viewer', 'video_player', 'knowledge_dashboard',
-              'stitch_design_preview', 'stitch_design_carousel', 'stitch_code_export'
+              'stitch_design_preview', 'stitch_design_carousel', 'stitch_code_export',
+              'gen_ui_layout'
             ],
-            'description': 'The type of UI component to render. NEW EXAMPLES: Use "dialogue_scene" for 3D/immersive scenes. "avatar_conversation" for character interactions. "code_viewer" for code snippets. "video_player" for video content. "knowledge_dashboard" for knowledge base overviews.'
+            'description': 'The type of UI component to render. Use "gen_ui_layout" to compose MULTIPLE components into a dashboard layout (grid, stacked, tabs, split). For gen_ui_layout, the data must include: "layout" (grid|stacked|tabs|split), "title", and "components" (array of full component objects each with their own "type" and data). Example: {"layout": "grid", "columns": 2, "title": "My Dashboard", "components": [{"type":"budget_chart", ...}, {"type":"kanban_board", ...}]}'
           },
           'data': {
             'type': 'object',

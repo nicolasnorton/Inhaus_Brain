@@ -62,13 +62,13 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini 2.5 — GA Stable ────────────────────────────────
+  // ── Gemini 1.5 — GA Stable ────────────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-lite', temperature: 1.0);
 
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(

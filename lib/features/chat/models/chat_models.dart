@@ -64,6 +64,13 @@ enum ArtifactType {
   plan // For task.md or implementation plans
 }
 
+enum ToolMode {
+  chat,   // Normal routing (default)
+  image,  // Force image_generation_tool
+  video,  // Force video_generation_tool
+  code,   // Force developer agent
+}
+
 class Artifact {
   final String id;
   final String title;

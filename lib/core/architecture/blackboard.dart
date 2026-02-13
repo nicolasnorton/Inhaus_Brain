@@ -33,6 +33,7 @@ class BlackboardState {
   final Map<String, AgentStatus> activeAgents;
   final String? sessionId;
   final int retryCount; // For The Gavel protocol
+  final DateTime lastUpdated;
 
   BlackboardState({
     this.facts = const {},
@@ -42,7 +43,8 @@ class BlackboardState {
     this.activeAgents = const {},
     this.sessionId = 'assistant_global',
     this.retryCount = 0,
-  });
+    DateTime? lastUpdated,
+  }) : lastUpdated = lastUpdated ?? DateTime.now();
 
   BlackboardState copyWith({
     Map<String, dynamic>? facts,
@@ -52,6 +54,7 @@ class BlackboardState {
     Map<String, AgentStatus>? activeAgents,
     String? sessionId,
     int? retryCount,
+    DateTime? lastUpdated,
   }) {
     return BlackboardState(
       facts: facts ?? this.facts,
@@ -61,6 +64,7 @@ class BlackboardState {
       activeAgents: activeAgents ?? this.activeAgents,
       sessionId: sessionId ?? this.sessionId,
       retryCount: retryCount ?? this.retryCount,
+      lastUpdated: lastUpdated ?? DateTime.now(),
     );
   }
 
@@ -73,10 +77,26 @@ class BlackboardState {
       'activeAgents': activeAgents.map((key, value) => MapEntry(key, value.name)),
       'sessionId': sessionId,
       'retryCount': retryCount,
+      'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
 
   factory BlackboardState.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(dynamic d) {
+      if (d == null) return null;
+      if (d is String) return DateTime.parse(d);
+      if (d.runtimeType.toString().contains('Timestamp')) {
+        // Handle Firestore Timestamp without a direct dependency if possible
+        // or just rely on dynamic access if we know it's there.
+        try {
+          return (d as dynamic).toDate();
+        } catch (_) {
+          return null;
+        }
+      }
+      return null;
+    }
+
     return BlackboardState(
       facts: json['facts'] ?? {},
       tasks: (json['tasks'] as List?)?.map((t) => WorkflowTask.fromJson(t)).toList() ?? [],
@@ -86,6 +106,7 @@ class BlackboardState {
           MapEntry(key as String, AgentStatus.values.firstWhere((e) => e.name == value, orElse: () => AgentStatus.idle))) ?? {},
       sessionId: json['sessionId'],
       retryCount: json['retryCount'] ?? 0,
+      lastUpdated: parseDate(json['lastUpdated']),
     );
   }
 }

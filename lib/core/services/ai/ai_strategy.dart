@@ -13,13 +13,13 @@ abstract class AIStrategy {
   String get name;
 
   /// Generate text content using this strategy's provider.
-  Future<AIGenerationResult> generate(AIGenerationRequest request);
+  Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref});
 
   /// Whether this strategy supports streaming.
   bool get supportsStreaming => false;
 
   /// Stream text content (optional — default throws).
-  Stream<AIGenerationResult> generateStream(AIGenerationRequest request) {
+  Stream<AIGenerationResult> generateStream(AIGenerationRequest request, {dynamic ref}) {
     throw UnimplementedError('$name does not support streaming');
   }
 }

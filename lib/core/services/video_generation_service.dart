@@ -144,12 +144,13 @@ class VideoGenerationService {
     
     // Tier 1: Cloud Final (Priority)
     try {
-      final result = await _generateVideoInternal(
-        prompt: effectivePrompt,
-        modelId: modelId ?? _finalModel, // Veo 3.1
-        isPreview: false,
-        onProgress: onProgress,
-      );
+        final result = await _generateVideoInternal(
+          prompt: effectivePrompt,
+          modelId: modelId ?? _finalModel, // Veo 3.1
+          isPreview: false,
+          onProgress: onProgress,
+          onStatusMessage: onStatusMessage,
+        );
       
       if (!result.startsWith('IMAGE:')) {
         stopwatch.stop();
@@ -197,12 +198,10 @@ class VideoGenerationService {
         final Map<String, dynamic> params = isPreview ? {
            'durationSeconds': _previewDurationParams,
            'aspectRatio': _previewAspectRatio,
-           'resolution': _previewResolution,
-           'sampleCount': 1,
+           // resolution removed because it is not supported in GenerateVideosConfig
         } : {
            'durationSeconds': 8,
            'aspectRatio': '16:9',
-           'sampleCount': 1
         };
 
         final config = AIModelConfig(

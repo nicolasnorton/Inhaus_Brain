@@ -58,10 +58,6 @@ Ask the maintainers of flutter_facebook_auth to either avoid referencing a defau
 
 Analyzing 3 items...                                            
 
-  error • 'activeAgents' isn't a field in the enclosing class • lib/core/architecture/blackboard.dart:42:5 • initializing_formal_for_non_existent_field
-  error • The getter 'activeAgents' isn't defined for the type 'BlackboardState' • lib/core/architecture/blackboard.dart:63:42 • undefined_getter
-  error • Undefined name 'activeAgents' • lib/core/architecture/blackboard.dart:76:23 • undefined_identifier
-  error • The getter 'activeAgents' isn't defined for the type 'BlackboardState' • lib/core/architecture/blackboard.dart:269:63 • undefined_getter
 warning • Unused import: '../../copilot/data/copilot_repository.dart' • lib/features/assistant/services/assistant_service.dart:17:8 • unused_import
 warning • Unused import: '../../copilot/presentation/copilot_view.dart' • lib/features/assistant/services/assistant_service.dart:18:8 • unused_import
 warning • Unused import: '../../../core/architecture/memory.dart' • lib/features/assistant/services/assistant_service.dart:22:8 • unused_import
@@ -91,4 +87,4 @@ warning • The value of the local variable 'groundingSources' isn't used • li
    info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:842:9 • avoid_print
    info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:847:14 • avoid_print
 
-32 issues found. (ran in 2.9s)
+28 issues found. (ran in 2.9s)

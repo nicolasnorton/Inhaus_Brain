@@ -28,6 +28,7 @@ import 'core/widgets/hotkey_cheat_sheet.dart';
 import 'package:flutter/services.dart';
 import 'core/globals.dart';
 import 'core/services/orchestration_service.dart';
+import 'core/services/ai_proxy_service.dart';
 import 'core/services/blackboard_persistence_service.dart';
 import 'core/utils/global_error_handler.dart';
 
@@ -116,7 +117,8 @@ class InhausBrainApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Initialize Orchestration Service
+    // Initialize Core AI Services
+    ref.read(aiProxyServiceProvider);
     ref.read(orchestrationServiceProvider).init();
     
     // Initialize Persistence Service & Restore Session

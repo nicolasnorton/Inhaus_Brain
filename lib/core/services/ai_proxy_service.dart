@@ -9,7 +9,7 @@ import '../utils/resilience_utils.dart';
 import 'audit_log_service.dart';
 
 class AIProxyService {
-  static late Ref globalRef;
+  static Ref? globalRef;
   final Ref _ref;
   
   // Circuit Breakers for production resilience
@@ -69,7 +69,10 @@ class AIProxyService {
     bool thinking = false,
     bool audio = false,
     bool usePython = true,
+    Ref? ref,
   }) async {
+    final effectiveRef = ref ?? globalRef;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       throw Exception('User must be logged in to use AI Proxy.');
@@ -114,16 +117,18 @@ class AIProxyService {
              throw Exception('Python API Error: ${data['error']}');
           }
           
-          globalRef.read(auditLogServiceProvider).log(
-            action: 'ai/generate_content',
-            resourceType: 'model',
-            resourceId: config.modelId,
-            metadata: {
-              'promptLength': prompt.toString().length,
-              'thinking': thinking,
-              'audio': audio,
-            }
-          );
+          if (effectiveRef != null) {
+            effectiveRef.read(auditLogServiceProvider).log(
+              action: 'ai/generate_content',
+              resourceType: 'model',
+              resourceId: config.modelId,
+              metadata: {
+                'promptLength': prompt.toString().length,
+                'thinking': thinking,
+                'audio': audio,
+              }
+            );
+          }
 
           return data;
         } else {
@@ -166,7 +171,10 @@ class AIProxyService {
     required String prompt,
     String model = 'imagen-3',
     Map<String, dynamic>? config,
+    Ref? ref,
   }) async {
+    final effectiveRef = ref ?? globalRef;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
@@ -185,12 +193,14 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 60)));
 
     if (response.statusCode == 200) {
-      globalRef.read(auditLogServiceProvider).log(
-        action: 'ai/generate_image',
-        resourceType: 'model',
-        resourceId: model,
-        metadata: {'prompt': prompt}
-      );
+      if (effectiveRef != null) {
+        effectiveRef.read(auditLogServiceProvider).log(
+          action: 'ai/generate_image',
+          resourceType: 'model',
+          resourceId: model,
+          metadata: {'prompt': prompt}
+        );
+      }
       return jsonDecode(response.body);
     } else {
       throw Exception('Image Generation Failed (${response.statusCode}): ${response.body}');
@@ -200,8 +210,11 @@ class AIProxyService {
   /// Starts a Deep Research task.
   static Future<Map<String, dynamic>> startResearch({
     required String prompt,
-    String model = 'gemini-2.5-flash',
+    String model = 'gemini-2.0-flash-thinking-exp',
+    Ref? ref,
   }) async {
+    final effectiveRef = ref ?? globalRef;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
@@ -219,10 +232,12 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
-      globalRef.read(auditLogServiceProvider).log(
-        action: 'ai/research_start',
-        metadata: {'prompt': prompt}
-      );
+      if (effectiveRef != null) {
+        effectiveRef.read(auditLogServiceProvider).log(
+          action: 'ai/research_start',
+          metadata: {'prompt': prompt}
+        );
+      }
       return jsonDecode(response.body);
     } else {
       throw Exception('Start Research Failed (${response.statusCode}): ${response.body}');
@@ -256,7 +271,7 @@ class AIProxyService {
   /// Counts tokens using the Python Gemini SDK.
   static Future<int> countTokens({
     required String prompt,
-    String model = 'gemini-2.5-flash',
+    String model = 'gemini-1.5-flash',
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -336,7 +351,7 @@ class AIProxyService {
     required String document,
     required Map<String, dynamic> schema,
     List<Map<String, dynamic>>? examples,
-    String model = 'gemini-2.5-flash',
+    String model = 'gemini-1.5-flash',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');
