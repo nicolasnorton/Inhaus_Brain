@@ -27,7 +27,11 @@ class ImageGenerationTool extends AgentTool {
       return ToolResult.failure('Missing required parameter: prompt');
     }
 
-    final url = await EdgeAIService.generateImage(prompt, imagenKey: imagenKey, vertexKey: vertexKey, ref: ref);
-    return ToolResult.success({'url': url});
+    try {
+      final url = await EdgeAIService.generateImage(prompt, imagenKey: imagenKey, vertexKey: vertexKey, ref: ref);
+      return ToolResult.success({'url': url});
+    } catch (e) {
+      return ToolResult.failure('Image generation failed: $e');
+    }
   }
 }

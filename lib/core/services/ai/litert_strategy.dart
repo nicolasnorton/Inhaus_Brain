@@ -1,8 +1,8 @@
 /// LiteRT strategy — on-device AI generation.
 ///
 /// Falls back to local Gemma models via LiteRT/TFLite when cloud
-/// strategies are unavailable. Simulated for now until LiteRT
-/// SDK stabilizes in Flutter.
+/// strategies are unavailable. On web, this strategy is not available
+/// and will throw so the error propagates to the user.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -39,16 +39,23 @@ class LiteRTStrategy extends AIStrategy {
     if (!_initialized) await init();
 
     final config = request.config;
+
+    // On web, LiteRT is not available — throw so the router shows a real error.
+    if (kIsWeb) {
+      _logger.w('LiteRT: Not available on web. Propagating error.');
+      throw Exception('On-device AI (LiteRT) is not available on web. Cloud AI service is temporarily unavailable.');
+    }
+
     _logger.d('LiteRT: Generating with ${config.modelId} (Accelerated: $_hasHwAccelerator)');
 
-    // Simulate on-device latency (fast!)
+    // TODO: Replace simulation with real LiteRT/TFLite inference when SDK stabilizes.
     await Future.delayed(const Duration(milliseconds: 150));
 
     return AIGenerationResult(
-      text: 'LiteRT (${config.modelId}): Analyzed request locally. [Fast On-Device Preview]',
-      modelUsed: config.modelId,
+      text: 'On-device preview (Gemma-2B): Analyzed request locally. Full response requires cloud AI.',
+      modelUsed: 'gemma-2b-litert',
       strategyUsed: name,
-      confidence: 0.85,
+      confidence: 0.3,
       latency: const Duration(milliseconds: 150),
     );
   }

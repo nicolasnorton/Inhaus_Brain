@@ -9,15 +9,29 @@ import '../utils/resilience_utils.dart';
 import 'audit_log_service.dart';
 
 class AIProxyService {
-  static late Ref globalRef;
+  static Ref? _globalRef;
   final Ref _ref;
-  
+
   // Circuit Breakers for production resilience
   static final _contentCircuit = CircuitBreaker(name: 'GeminiContent', failureThreshold: 5);
   static final _imageCircuit = CircuitBreaker(name: 'ImagenImage', failureThreshold: 3);
 
   AIProxyService(this._ref) {
-    globalRef = _ref;
+    _globalRef = _ref;
+  }
+
+  /// Safe audit log helper — skips logging if ref hasn't been initialized yet.
+  static void _auditLog({required String action, String? resourceType, String? resourceId, Map<String, dynamic>? metadata}) {
+    try {
+      _globalRef?.read(auditLogServiceProvider).log(
+        action: action,
+        resourceType: resourceType,
+        resourceId: resourceId,
+        metadata: metadata,
+      );
+    } catch (e) {
+      debugPrint('AIProxyService: Audit log skipped ($action): $e');
+    }
   }
 
   static String get _functionUrl {
@@ -114,7 +128,7 @@ class AIProxyService {
              throw Exception('Python API Error: ${data['error']}');
           }
           
-          globalRef.read(auditLogServiceProvider).log(
+          _auditLog(
             action: 'ai/generate_content',
             resourceType: 'model',
             resourceId: config.modelId,
@@ -122,7 +136,7 @@ class AIProxyService {
               'promptLength': prompt.toString().length,
               'thinking': thinking,
               'audio': audio,
-            }
+            },
           );
 
           return data;
@@ -185,11 +199,11 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 60)));
 
     if (response.statusCode == 200) {
-      globalRef.read(auditLogServiceProvider).log(
+      _auditLog(
         action: 'ai/generate_image',
         resourceType: 'model',
         resourceId: model,
-        metadata: {'prompt': prompt}
+        metadata: {'prompt': prompt},
       );
       return jsonDecode(response.body);
     } else {
@@ -219,9 +233,9 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
-      globalRef.read(auditLogServiceProvider).log(
+      _auditLog(
         action: 'ai/research_start',
-        metadata: {'prompt': prompt}
+        metadata: {'prompt': prompt},
       );
       return jsonDecode(response.body);
     } else {

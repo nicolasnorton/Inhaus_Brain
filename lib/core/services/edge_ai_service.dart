@@ -174,9 +174,14 @@ class EdgeAIService {
       return edgeResult;
     } catch (e) {
       _logger.e('EdgeAI: Error: $e');
-      final mock = EdgeAIResult('Edge Mock: Analyzed request locally. (Simulated Response)', AIProximity.simulated);
-      if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(mock.proximity);
-      return mock;
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      final errorResult = EdgeAIResult(
+        'AI service temporarily unavailable. Please try again.\n\nDetails: $errorMsg',
+        AIProximity.simulated,
+        confidence: 0.0,
+      );
+      if (ref != null) ref.read(aiProximityProvider.notifier).setProximity(errorResult.proximity);
+      return errorResult;
     }
   }
 
@@ -232,31 +237,31 @@ class EdgeAIService {
     }
   }
 
-  /// Generate image via proxy (web) or fallback.
+  /// Generate image via proxy (web) or throw on failure.
   static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref, Map<String, dynamic>? generationParams, String? modelId}) async {
+    final effectiveModel = modelId ?? 'imagen-3.0-generate-001';
+
     if (kIsWeb) {
-      try {
-        final effectiveModel = modelId ?? 'imagen-3.0-generate-001';
-        debugPrint('EdgeAI: [WEB] Image Generation via Proxy ($effectiveModel)...');
-        if (ref == null) throw Exception('Ref required for Image Proxy');
-        final proxyResponse = await AIProxyService.generateImage(
-          prompt: prompt,
-          model: effectiveModel,
-          config: generationParams,
-        );
-        final images = proxyResponse['images'] as List?;
-        if (images != null && images.isNotEmpty) {
-          final firstImg = images[0];
-          final base64Image = firstImg['data'];
-          if (base64Image != null) {
-            return "data:${firstImg['mimeType'] ?? 'image/png'};base64,$base64Image";
-          }
+      debugPrint('EdgeAI: [WEB] Image Generation via Proxy ($effectiveModel)...');
+      if (ref == null) throw Exception('Ref required for Image Proxy');
+      final proxyResponse = await AIProxyService.generateImage(
+        prompt: prompt,
+        model: effectiveModel,
+        config: generationParams,
+      );
+      final images = proxyResponse['images'] as List?;
+      if (images != null && images.isNotEmpty) {
+        final firstImg = images[0];
+        final base64Image = firstImg['data'];
+        if (base64Image != null) {
+          return "data:${firstImg['mimeType'] ?? 'image/png'};base64,$base64Image";
         }
-      } catch (e) {
-        debugPrint('EdgeAI: Proxy Image Gen Failed: $e');
       }
+      throw Exception('Image generation returned no images. The Imagen service may be temporarily unavailable.');
     }
-    return "https://images.unsplash.com/photo-1535591273668-578e31182c4f?q=80&w=2070&auto=format&fit=crop";
+
+    // Non-web: Imagen not yet wired for native platforms
+    throw Exception('Image generation is currently only available on the web platform.');
   }
 
   /// Generate video via VideoGenerationService.

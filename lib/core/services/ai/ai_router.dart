@@ -99,21 +99,22 @@ class AIRouter {
       }
     }
 
-    // If VertexAI failed, try LiteRT
-    if (failedStrategy == 'vertex_ai' || failedStrategy == 'proxy') {
+    // If VertexAI/proxy both failed and NOT on web, try LiteRT as last resort
+    if (!kIsWeb && (failedStrategy == 'vertex_ai' || failedStrategy == 'proxy')) {
       try {
-        _logger.i('AIRouter: Trying LiteRT fallback');
+        _logger.i('AIRouter: Trying LiteRT fallback (native platform)');
         return await _liteRT.generate(request);
       } catch (e) {
         _logger.w('AIRouter: LiteRT also failed: $e');
       }
     }
 
-    // Ultimate fallback: mock response
+    // Return error result with the original error visible to the user
+    final errorMsg = error.toString().replaceFirst('Exception: ', '');
     return AIGenerationResult(
-      text: 'AI generation unavailable. Error: $error',
+      text: 'AI generation temporarily unavailable. Please try again in a moment.\n\nDetails: $errorMsg',
       modelUsed: request.config.modelId,
-      strategyUsed: 'mock_fallback',
+      strategyUsed: 'error_fallback',
       confidence: 0.0,
     );
   }
