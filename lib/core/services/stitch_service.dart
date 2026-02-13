@@ -86,14 +86,14 @@ class StitchService {
     } finally {
       // Log telemetry
       try {
-        _telemetry.logEvent(
+        _telemetry.logCustomEvent(
           name: 'stitch_api_call',
           parameters: {
             'action': action,
             'duration_ms': DateTime.now().difference(startTime).inMilliseconds,
             'success': success,
             'error': error ?? '',
-          },
+          }.cast<String, Object>(),
         );
       } catch (_) {
         // Suppress telemetry errors
@@ -140,12 +140,12 @@ class StitchService {
   }) async {
     // Semantic Cache Check
     final cacheKey = 'stitch_gen_${projectId}_$prompt';
-    final cached = await _cache.lookup(cacheKey);
+    final cached = await _cache.lookup(cacheKey, 'stitch_screen');
     if (cached != null) {
       debugPrint('StitchService: Cache hit for screen generation.');
-      // We stored the JSON result in cache
-      // The cached value should be the full StitchScreen JSON
-      final screen = StitchScreen.fromJson(cached);
+      // We stored the JSON result in cache as a string
+      final Map<String, dynamic> result = jsonDecode(cached as String);
+      final screen = StitchScreen.fromJson(result);
       _blackboard.postFact('stitch_last_screen', screen.id);
       return screen;
     }
@@ -159,7 +159,7 @@ class StitchService {
     final screen = StitchScreen.fromJson(result);
     
     // Cache result
-    await _cache.store(cacheKey, result);
+    await _cache.store(cacheKey, 'stitch_screen', jsonEncode(result));
     
     // Update Blackboard
     _blackboard.postFact('stitch_last_screen', screen.id);

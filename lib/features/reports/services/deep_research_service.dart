@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/services/ai_proxy_service.dart';
+import '../../../core/services/ai_proxy_service.dart';
 
 // Deep Research Service: Handles multi-turn research interactions with Gemini 3 Deep Research
 class DeepResearchService {

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/stitch_service.dart';
 import '../agent_tool.dart';
-import '../../../config/feature_flags.dart';
+import '../../config/feature_flags.dart';
 
 // ─── Base Stitch Tool ────────────────────────────────────────────────────────
 
@@ -25,7 +25,7 @@ abstract class StitchTool extends AgentTool {
   }
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     try {
       _checkFeature();
       return await executeStitch(parameters);

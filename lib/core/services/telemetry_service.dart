@@ -43,6 +43,18 @@ class TelemetryService {
     // Ideally, we'd fire a structured log entry here.
   }
 
+  // Log Custom Event
+  Future<void> logCustomEvent({
+    required String name,
+    required Map<String, Object> parameters,
+  }) async {
+    try {
+      await _analytics.logEvent(name: name, parameters: parameters);
+    } catch (e) {
+      _logger.w('Failed to log custom event $name: $e');
+    }
+  }
+
   // Log Detailed Interaction (Audit Trail)
   Future<void> logInteraction({
     required String agentName,

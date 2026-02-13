@@ -174,7 +174,7 @@ class _ClientTaskDetailPaneState extends ConsumerState<ClientTaskDetailPane> {
   }
 
   Widget _buildHeader() {
-    final userId = AuthService.currentUserId;
+    final userId = ref.watch(authServiceProvider).currentUser?.uid ?? '';
     final isLiked = widget.task.likedBy.contains(userId);
 
     return Container(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/mcp/tools/stitch_tools.dart';
 import '../../../../../core/services/stitch_service.dart';
-import '../gen_ui_message_bubble.dart';
+
 
 class StitchDesignPreviewWidget extends ConsumerWidget {
   final Map<String, dynamic> data;
