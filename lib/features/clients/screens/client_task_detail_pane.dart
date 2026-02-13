@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/features/clients/models/task_model.dart';
 import 'package:inhaus_brain/features/clients/providers/task_provider.dart';
+import 'package:inhaus_brain/features/clients/providers/project_provider.dart';
 import 'package:inhaus_brain/core/auth/auth_service.dart';
 
 class ClientTaskDetailPane extends ConsumerStatefulWidget {
@@ -296,8 +297,9 @@ class _ClientTaskDetailPaneState extends ConsumerState<ClientTaskDetailPane> {
   }
 
   String _getProjectListText() {
-     // TODO: Resolve project names from IDs. For now, just show main project ID
-     return 'Main Project';
+     final projects = ref.read(projectProvider);
+     final project = projects.where((p) => p.id == widget.task.projectId).firstOrNull;
+     return project?.name ?? 'Main Project';
   }
 
   void _showProjectSelector() {

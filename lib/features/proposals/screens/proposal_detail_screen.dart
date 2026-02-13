@@ -475,11 +475,11 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                         title: Text(output.title, style: const TextStyle(color: Colors.white, fontSize: 14)),
                         subtitle: Text(_formatDate(output.createdAt), style: const TextStyle(color: Colors.white38, fontSize: 12)),
                         onTap: () {
-                          if (output.uri != null) {
+                          if (output.uri != null && output.uri!.isNotEmpty) {
                              launchUrl(Uri.parse(output.uri!));
                           } else {
                              ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(content: Text("File not found (Url is empty)"), backgroundColor: Colors.red),
+                               const SnackBar(content: Text("This output is still being generated. Please try again shortly."), backgroundColor: Colors.orange),
                              );
                           }
                         },

@@ -281,7 +281,7 @@ class AssistantService {
     List<String> suggestedTools = [];
     
     try {
-       print('DEBUG: Assistant - Setting status: Analyzing intent...');
+       debugPrint('Assistant: Analyzing intent...');
        _ref.read(assistantStatusProvider.notifier).state = "Analyzing intent...";
        // Use RouterAgent via EdgeAIService directly for speed, or properly instantiate Agent
        final routerRes = await EdgeAIService.generateText(
@@ -499,7 +499,7 @@ class AssistantService {
 
       sources = edgeResult.sourceCitations;
       
-      print('DEBUG: Assistant - Received AI Response: ${edgeResult.text.substring(0, edgeResult.text.length > 50 ? 50 : edgeResult.text.length)}...');
+      debugPrint('Assistant: AI Response: ${edgeResult.text.substring(0, edgeResult.text.length > 50 ? 50 : edgeResult.text.length)}...');
       
       responseText = edgeResult.text;
       
@@ -531,19 +531,19 @@ class AssistantService {
              toolArgs = Map<String, dynamic>.from(parsed['args'] ?? parsed['parameters'] ?? {});
            } else if (parsed.containsKey('call')) {
              // NEW: Support for {"call": {"function_name": "...", "args": ...}} (Gemini 2.5/3 Proxy Format)
-             print('DEBUG: Found "call" key in parsed JSON.');
+             debugPrint('Assistant: Found "call" key in parsed JSON.');
              final call = parsed['call'];
-             print('DEBUG: "call" value: $call');
-             print('DEBUG: "call" type: ${call.runtimeType}');
+             debugPrint('Assistant: "call" value: $call');
+             debugPrint('Assistant: "call" type: ${call.runtimeType}');
              
              if (call is Map) {
                 // Ensure it's a Map<String, dynamic>
                 final callMap = Map<String, dynamic>.from(call);
-                print('DEBUG: callMap keys: ${callMap.keys}');
+                debugPrint('Assistant: callMap keys: ${callMap.keys}');
                 
                 // Handle "google:image_generation" -> "image_generation"
                 String rawName = callMap['function_name'] ?? callMap['function'] ?? callMap['name'] ?? '';
-                print('DEBUG: extracted rawName: "$rawName"');
+                debugPrint('Assistant: extracted rawName: "$rawName"');
                 
                 if (rawName.contains(':')) {
                    rawName = rawName.split(':').last;
@@ -551,15 +551,15 @@ class AssistantService {
                 toolName = rawName;
                 
                 final args = callMap['args'] ?? callMap['arguments'] ?? callMap['parameters'] ?? {};
-                print('DEBUG: extracted args: $args');
+                debugPrint('Assistant: extracted args: $args');
                 if (args is Map) {
                    toolArgs = Map<String, dynamic>.from(args);
                 } else {
-                   print('DEBUG: Args is not a map! Type: ${args.runtimeType}');
+                   debugPrint('Assistant: Args is not a map! Type: ${args.runtimeType}');
                    toolArgs = {};
                 }
              } else {
-                print('DEBUG: "call" is NOT a Map.');
+                debugPrint('Assistant: "call" is NOT a Map.');
              }
            } else if (parsed.containsKey('functionCall')) {
              // NATIVE GEMINI FORMAT (passed through proxy)
@@ -630,7 +630,7 @@ class AssistantService {
            // FINAL FALLBACK: Deep Search / Wrapper Unwrap
            // e.g. { "executable_adunit": { "call": { "function_name": "...", ... } } }
            if (toolName == null) {
-              print('Assistant: 🕵️ Standard parsing failed. Attempting deep search for tool call...');
+              debugPrint('Assistant: Standard parsing failed. Attempting deep search for tool call...');
               
               void searchMap(Map<dynamic, dynamic> map) {
                   if (toolName != null) return; // Found it
@@ -645,7 +645,7 @@ class AssistantService {
                              if (rawName.contains(':')) rawName = rawName.split(':').last;
                              toolName = rawName;
                              toolArgs = Map<String, dynamic>.from(call['args'] ?? call['arguments'] ?? call['parameters'] ?? {});
-                             print('Assistant: 🎯 Deep search found nested "call" object. Tool: $toolName');
+                             debugPrint('Assistant: Deep search found nested "call" object. Tool: $toolName');
                              return;
                           }
                       }
@@ -660,7 +660,7 @@ class AssistantService {
                           if (rawName.contains(':')) rawName = rawName.split(':').last;
                           toolName = rawName;
                           toolArgs = Map<String, dynamic>.from(map['args'] ?? map['arguments'] ?? map['parameters'] ?? {});
-                          print('Assistant: 🎯 Deep search found direct function object. Tool: $toolName');
+                          debugPrint('Assistant: Deep search found direct function object. Tool: $toolName');
                           return;
                       }
                   }
@@ -824,13 +824,13 @@ class AssistantService {
                },
              );
         }
-        print('DEBUG: Assistant - _executeTool result success for tool: $name');
-        print('DEBUG: Assistant - result.data: ${jsonEncode(result.data)}');
+        debugPrint('Assistant: Tool success for: $name');
+        debugPrint('Assistant: result.data: ${jsonEncode(result.data)}');
         
         // Normalize tool name check
         final normalizedName = name.toLowerCase().trim();
         if (normalizedName == 'web_search' || normalizedName == 'search_web' || normalizedName == 'search') {
-             print('DEBUG: Assistant - Matched web_search tool output block');
+             debugPrint('Assistant: Matched web_search tool output block');
              final results = result.data['results'] as List?;
              final List<String> sources = [];
              String summary = "I've researched market trends for your request.\n\n";

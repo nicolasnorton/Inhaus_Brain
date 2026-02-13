@@ -43,22 +43,23 @@ class _CampaignWizardScreenState extends ConsumerState<CampaignWizardScreen> {
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       
-      // Easter Egg / Demo Trigger
-      final descriptionLower = _descriptionController.text.toLowerCase();
-      if (descriptionLower.contains('bajaj')) {
-         ref.read(demoModeProvider.notifier).state = true;
-         ref.read(knowledgeProvider.notifier).initDemoData();
-         _clientController.text = "Bajaj Auto";
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('🚀 Bajaj Demo Mode Activated!'), backgroundColor: Colors.blueAccent),
-         );
-      } else if (descriptionLower.contains('banco del austro')) {
-         ref.read(demoModeProvider.notifier).state = true;
-         ref.read(knowledgeProvider.notifier).initDemoData();
-         _clientController.text = "Banco del Austro";
-         ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('🏦 Banco del Austro Demo Mode Activated!'), backgroundColor: Colors.orange),
-         );
+      // Demo trigger — only activates if demo mode is already enabled
+      final isDemoMode = ref.read(demoModeProvider);
+      if (isDemoMode) {
+        final descriptionLower = _descriptionController.text.toLowerCase();
+        if (descriptionLower.contains('bajaj')) {
+           ref.read(knowledgeProvider.notifier).initDemoData();
+           _clientController.text = "Bajaj Auto";
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Bajaj Demo Data Loaded'), backgroundColor: Colors.blueAccent),
+           );
+        } else if (descriptionLower.contains('banco del austro')) {
+           ref.read(knowledgeProvider.notifier).initDemoData();
+           _clientController.text = "Banco del Austro";
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Banco del Austro Demo Data Loaded'), backgroundColor: Colors.orange),
+           );
+        }
       }
 
       setState(() {

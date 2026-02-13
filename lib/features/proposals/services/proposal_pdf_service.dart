@@ -22,8 +22,8 @@ class ProposalPdfService {
       fontBold = await PdfGoogleFonts.montserratBold();
     } catch (e) {
       debugPrint('Warning: Failed to load Google Fonts, falling back to standard fonts.');
-      fontRegular = pw.Font.courier(); // Fallback if network fails
-      fontBold = pw.Font.courierBold();
+      fontRegular = pw.Font.helvetica();
+      fontBold = pw.Font.helveticaBold();
     }
 
     // Load assets

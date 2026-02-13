@@ -4,6 +4,7 @@ import '../../clients/models/client_model.dart';
 import '../../clients/models/client_contact_model.dart';
 import '../../clients/services/client_repository.dart';
 import '../../../features/knowledge/providers/knowledge_service_providers.dart';
+import '../../../core/providers/demo_provider.dart';
 
 // State class to hold list of clients and the currently selected one
 class ClientState {
@@ -57,25 +58,28 @@ class ClientNotifier extends StateNotifier<ClientState> {
     // Listen to real-time stream of clients
     _repository.streamClients().listen((clients) {
       final List<Client> allClients = [...clients];
-      
-      // Inject Demo Clients if they don't exist
-      if (allClients.indexWhere((c) => c.id == 'client-bajaj') == -1) {
-        allClients.add(Client(
-          id: 'client-bajaj', 
-          name: 'Bajaj Ecuador', 
-          clientType: ClientType.corporate, 
-          industry: 'Automotive',
-          campaignIds: ['demo-bajaj'],
-        ));
-      }
-      if (allClients.indexWhere((c) => c.id == 'client-banco') == -1) {
-        allClients.add(Client(
-          id: 'client-banco', 
-          name: 'Banco del Austro', 
-          clientType: ClientType.corporate, 
-          industry: 'Banking',
-          campaignIds: ['demo-banco'],
-        ));
+
+      // Inject demo clients only when demo mode is active
+      final isDemoMode = _ref.read(demoModeProvider);
+      if (isDemoMode) {
+        if (allClients.indexWhere((c) => c.id == 'client-bajaj') == -1) {
+          allClients.add(Client(
+            id: 'client-bajaj',
+            name: 'Bajaj Ecuador',
+            clientType: ClientType.corporate,
+            industry: 'Automotive',
+            campaignIds: ['demo-bajaj'],
+          ));
+        }
+        if (allClients.indexWhere((c) => c.id == 'client-banco') == -1) {
+          allClients.add(Client(
+            id: 'client-banco',
+            name: 'Banco del Austro',
+            clientType: ClientType.corporate,
+            industry: 'Banking',
+            campaignIds: ['demo-banco'],
+          ));
+        }
       }
 
       state = state.copyWith(clients: allClients, isLoading: false);
