@@ -12,6 +12,7 @@ import '../../connectors/models/connected_account_model.dart';
 import '../../../../core/services/sources_service.dart';
 import '../../agency/models/agency_service_model.dart';
 import '../../agency/services/service_catalog_repository.dart';
+import '../../clients/providers/client_provider.dart';
 
 class AddSourceDialog extends ConsumerStatefulWidget {
   final Function(KnowledgeSource) onSourceAdded;
@@ -425,8 +426,17 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
   Future<void> _handlePlatformConnect(String name, AdPlatform platform) async {
      setState(() => _isLoadingDrive = true); // Reuse loading state
      try {
+        final activeClientId = ref.read(clientProvider).selectedClientId;
+        if (activeClientId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please select a client first.')),
+            );
+          }
+          return;
+        }
         final integrationService = ref.read(integrationServiceProvider);
-        final account = await integrationService.initiateConnection(platform, 'client_1'); // TODO: Pass clientID
+        final account = await integrationService.initiateConnection(platform, activeClientId);
         
         if (account != null) {
            final source = await SourcesService.fetchAndAddConnectedSource('dynamic', account, integrationService);

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/features/clients/models/task_model.dart';
 import 'package:inhaus_brain/features/clients/providers/task_provider.dart';
+import 'package:inhaus_brain/core/auth/auth_service.dart';
 
 class ClientTaskDetailPane extends ConsumerStatefulWidget {
   final ProjectTask task;
@@ -173,7 +174,8 @@ class _ClientTaskDetailPaneState extends ConsumerState<ClientTaskDetailPane> {
   }
 
   Widget _buildHeader() {
-    final isLiked = widget.task.likedBy.contains('current_user_id'); // TODO: Use actual user ID
+    final currentUserId = ref.read(appUserProvider).value?.id ?? '';
+    final isLiked = widget.task.likedBy.contains(currentUserId);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -209,9 +211,9 @@ class _ClientTaskDetailPaneState extends ConsumerState<ClientTaskDetailPane> {
                 onPressed: () {
                    List<String> newLikes = List.from(widget.task.likedBy);
                    if (isLiked) {
-                     newLikes.remove('current_user_id');
+                     newLikes.remove(currentUserId);
                    } else {
-                     newLikes.add('current_user_id');
+                     newLikes.add(currentUserId);
                    }
                    ref.read(taskProvider.notifier).updateTask(widget.task.copyWith(likedBy: newLikes));
                 },

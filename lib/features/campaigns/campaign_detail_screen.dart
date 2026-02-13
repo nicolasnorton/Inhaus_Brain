@@ -24,10 +24,33 @@ class CampaignDetailScreen extends ConsumerWidget {
       return Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(AppLocalizations.of(context)?.loading ?? 'Loading...'),
+          title: const Text('Campaign Not Found'),
           backgroundColor: Colors.transparent,
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.search_off, size: 64, color: Colors.white24),
+              const SizedBox(height: 16),
+              const Text(
+                'Campaign not found',
+                style: TextStyle(color: Colors.white54, fontSize: 20),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'ID: $campaignId',
+                style: const TextStyle(color: Colors.white24, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => context.pop(),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Go Back'),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

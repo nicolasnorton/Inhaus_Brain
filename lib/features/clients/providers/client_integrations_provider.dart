@@ -140,10 +140,9 @@ class ClientIntegrationsNotifier extends StateNotifier<Map<String, ClientIntegra
       _ => current,
     };
 
-    state = {
-      ...state,
-      clientId: updated,
-    };
+    final newState = Map<String, ClientIntegrationState>.from(state);
+    newState[clientId] = updated;
+    state = newState;
   }
 
   ClientIntegrationState getIntegrationsForClient(String clientId) {

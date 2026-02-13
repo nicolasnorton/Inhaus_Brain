@@ -293,6 +293,9 @@ class _ProposalsMainScreenState extends ConsumerState<ProposalsMainScreen> {
       );
     }
 
+    final proposalsAsync = ref.watch(allProposalsProvider);
+    final allProposals = proposalsAsync.valueOrNull ?? [];
+
     return GridView.builder(
       padding: const EdgeInsets.all(24),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -304,12 +307,18 @@ class _ProposalsMainScreenState extends ConsumerState<ProposalsMainScreen> {
       itemCount: filteredClients.length,
       itemBuilder: (context, index) {
         final client = filteredClients[index];
-        return _buildClientCard(client, client.id == selectedClient?.id);
+        final clientProposals = allProposals.where((p) => p.clientId == client.id).toList();
+        DateTime? lastProposalDate;
+        if (clientProposals.isNotEmpty) {
+          clientProposals.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+          lastProposalDate = clientProposals.first.updatedAt;
+        }
+        return _buildClientCard(client, client.id == selectedClient?.id, lastProposalDate);
       },
     );
   }
 
-  Widget _buildClientCard(Client client, bool isSelected) {
+  Widget _buildClientCard(Client client, bool isSelected, DateTime? lastProposalDate) {
     return Card(
       color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : AppTheme.surface,
       shape: RoundedRectangleBorder(
@@ -368,9 +377,9 @@ class _ProposalsMainScreenState extends ConsumerState<ProposalsMainScreen> {
                         "Last Proposal",
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
                       ),
-                      const Text(
-                        "Today", // Mock for now, will connect to real data later
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      Text(
+                        lastProposalDate != null ? _formatDate(lastProposalDate) : "None",
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                     ],
                   ),

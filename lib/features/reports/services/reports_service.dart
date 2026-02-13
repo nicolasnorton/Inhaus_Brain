@@ -1,5 +1,6 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 import '../models/report_model.dart';
 import '../../../core/services/ai_proxy_service.dart';
 import '../../../core/tokens/llm_provider.dart';
@@ -127,7 +128,7 @@ class ReportsService {
     
     // 3. Create Report Object
     final now = DateTime.now();
-    final reportId = DateTime.now().millisecondsSinceEpoch.toString();
+    final reportId = const Uuid().v4();
     
     final newReport = Report(
       id: reportId,

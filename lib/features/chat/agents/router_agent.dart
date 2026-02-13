@@ -112,7 +112,13 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
     
     try {
       final text = aiRes.text.trim();
-      final jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      final openBrace = text.indexOf('{');
+      final closeBrace = text.lastIndexOf('}');
+      if (openBrace < 0 || closeBrace < 0 || closeBrace <= openBrace) {
+        debugPrint('Router: No valid JSON braces found in response: $text');
+        return aiRes.text;
+      }
+      final jsonStr = text.substring(openBrace, closeBrace + 1);
       final Map<String, dynamic> data = jsonDecode(jsonStr);
       
       final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';

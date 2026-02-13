@@ -27,6 +27,7 @@ import '../domain/agent_outputs.dart';
 import '../providers/assistant_provider.dart';
 import '../../reports/providers/reports_provider.dart';
 import '../../knowledge/services/knowledge_retriever_service.dart';
+import '../../clients/providers/client_provider.dart';
 
 enum AssistantMode { fast, planning }
 
@@ -366,10 +367,13 @@ class AssistantService {
       _ref.read(assistantStatusProvider.notifier).state = "Searching knowledge base...";
       try {
         final retriever = _ref.read(knowledgeRetrieverProvider);
-        final results = await retriever.retrieve(
-          query: text, 
-          clientId: 'client_1', // TODO: Get active client from provider
-        );
+        final activeClientId = _ref.read(clientProvider).selectedClientId;
+        if (activeClientId == null) {
+          debugPrint('Assistant: No client selected — skipping knowledge grounding.');
+        }
+        final results = activeClientId != null
+            ? await retriever.retrieve(query: text, clientId: activeClientId)
+            : <KnowledgeChunkResult>[];
         
         if (results.isNotEmpty) {
            retrievedGroundingContext = retriever.formatForGrounding(results);
@@ -430,11 +434,12 @@ class AssistantService {
           _ref.read(blackboardProvider.notifier).updateAgentStatus('TrendScout', AgentStatus.working);
           
           final reportsService = _ref.read(reportsServiceProvider);
+          final reportClientId = _ref.read(clientProvider).selectedClientId ?? 'unassigned';
           final report = await reportsService.generateReport(
-              title: "Research: ${text.length > 30 ? text.substring(0, 30) + '...' : text}", 
-              prompt: text, 
-              userId: "user_current", // Placeholder or fetch from provider
-              clientId: "client_1",
+              title: "Research: ${text.length > 30 ? text.substring(0, 30) + '...' : text}",
+              prompt: text,
+              userId: "user_current",
+              clientId: reportClientId,
               useDeepResearch: intentEnum == RouterIntent.research // Use Deep Research for 'research' intent
           );
           
