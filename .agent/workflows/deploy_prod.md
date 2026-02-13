@@ -41,3 +41,9 @@ This workflow handles the full clean, build, and deployment process for the Inha
     ```bash
     git push origin feature/reports-oauth-litert-enhancements
     ```
+
+## 5. Clean up local build artifacts
+8.  Clean the Flutter project to remove old artifacts.
+    ```bash
+    flutter clean
+    ```

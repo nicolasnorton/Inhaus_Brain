@@ -37,6 +37,11 @@ cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && firebase d
 echo "✅ Deployed! Verify at: https://inhausbrain-beta.web.app"
 ```
 
+5. Clean up local build artifacts:
+```bash
+flutter clean
+```
+
 ## Notes
 - The `inhaus-brain` hosting target maps to `inhausbrain-beta.web.app`
 - The `ENVIRONMENT=staging` dart-define activates staging feature flags via `AppConfig`

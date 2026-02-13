@@ -204,13 +204,14 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
       
       case CanvasContentType.code:
         return Center(
-          child: SizedBox(
-            width: 800, // Constrain width for better readability on large screens
-            child: CodeViewerWidget(data: {
+          child: GenUIRenderer(
+            payload: {
+              'type': 'code_viewer',
               'code': state.content,
               'language': state.metadata?['language'] ?? 'text',
               'title': state.title ?? 'Code Snippet',
-            }),
+            },
+            isCanvas: true,
           ),
         );
       
@@ -234,13 +235,14 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
 
       case CanvasContentType.video:
         return Center(
-          child: SizedBox(
-            width: 800,
-            child: VideoPlayerWidget(data: {
+          child: GenUIRenderer(
+            payload: {
+              'type': 'video_player',
               'url': state.content,
               'autoplay': false,
               'title': state.title ?? 'Video',
-            }),
+            },
+            isCanvas: true,
           ),
         );
 

@@ -48,12 +48,12 @@ class KanbanBoardWidget extends StatelessWidget {
                   final color = _getColumnColor(colTitle);
 
                   return Container(
-                    width: 260,
-                    margin: const EdgeInsets.only(right: 12),
+                    width: 280, // Slightly wider for better readability
+                    margin: const EdgeInsets.only(right: 16),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.04),
-                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.white.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.white.withOpacity(0.05)),
                     ),
                     child: Column(
@@ -61,40 +61,46 @@ class KanbanBoardWidget extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Column Header
-                        Row(
-                          children: [
-                            Container(
-                              width: 10, height: 10,
-                              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(
-                              colTitle, 
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13, letterSpacing: 0.3),
-                            )),
-                            if (cards.isNotEmpty)
-                               Container(
-                                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                 decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                                 child: Text('${cards.length}', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
-                               )
-                          ],
+                        Container(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8, height: 8,
+                                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(
+                                colTitle.toUpperCase(), 
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white70, fontSize: 12, letterSpacing: 1.0),
+                              )),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+                                child: Text('${cards.length}', style: const TextStyle(fontSize: 10, color: Colors.white54, fontWeight: FontWeight.bold)),
+                              )
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 12),
-                        // Cards — use simple Column with mainAxisSize.min instead of Expanded + ListView
-                        ...cards.map((cardData) {
-                          return _buildCard(cardData, color);
-                        }),
+                        // Cards
+                        if (cards.isNotEmpty)
+                          ...cards.map((cardData) => _buildCard(cardData, color)),
                         if (cards.isEmpty)
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.02),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.white.withOpacity(0.03), style: BorderStyle.solid),
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            alignment: Alignment.center,
+                            child: Column(
+                              children: [
+                                Icon(Icons.check_circle_outline, size: 24, color: Colors.white.withOpacity(0.1)),
+                                const SizedBox(height: 8),
+                                const Text('No items', style: TextStyle(color: Colors.white24, fontSize: 12)),
+                              ],
                             ),
-                            child: const Text('No items', style: TextStyle(color: Colors.white24, fontSize: 12, fontStyle: FontStyle.italic)),
                           ),
                       ],
                     ),
@@ -116,46 +122,48 @@ class KanbanBoardWidget extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF2D333B),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))
         ],
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500, height: 1.4)),
+          Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, height: 1.4)),
           if (description != null && description.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(description, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11, height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            Text(description, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12, height: 1.3), maxLines: 3, overflow: TextOverflow.ellipsis),
           ],
           if (tag != null || priority != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Wrap(
-              spacing: 6,
+              spacing: 8,
               runSpacing: 4,
               children: [
                 if (tag != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: columnColor.withOpacity(0.15),
+                      color: columnColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: columnColor.withOpacity(0.3)),
                     ),
                     child: Text(tag, style: TextStyle(fontSize: 10, color: columnColor, fontWeight: FontWeight.w600)),
                   ),
                 if (priority != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getPriorityColor(priority).withOpacity(0.15),
+                      color: _getPriorityColor(priority).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: _getPriorityColor(priority).withOpacity(0.3)),
                     ),
                     child: Text(priority, style: TextStyle(fontSize: 10, color: _getPriorityColor(priority), fontWeight: FontWeight.w600)),
                   ),

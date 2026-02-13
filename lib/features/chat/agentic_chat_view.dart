@@ -612,8 +612,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
 
             Row(
               children: [
-                _buildModelPicker(),
-                const SizedBox(width: 8),
+
                 IconButton(
                   icon: const Icon(FontAwesomeIcons.bookOpen, size: 16, color: Colors.white54),
                   tooltip: 'Context Board',
@@ -659,6 +658,9 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     );
                   },
                 ),
+                const SizedBox(width: 8),
+                _buildModelPicker(),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _textController,

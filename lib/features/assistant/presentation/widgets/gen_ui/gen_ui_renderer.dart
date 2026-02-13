@@ -200,7 +200,7 @@ class GenUiLayoutWidget extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(isCanvas ? 24 : 16), // More padding on Canvas
+      padding: EdgeInsets.all(isCanvas ? 24 : 16), // More padding on Canvas
       decoration: BoxDecoration(
         color: const Color(0xFF0F1116),
         borderRadius: BorderRadius.circular(16),

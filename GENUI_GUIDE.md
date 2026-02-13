@@ -148,6 +148,34 @@ Use for dense data display.
 }
 ```
 
+### Kanban Board (`kanban_board`)
+Use for task tracking and workflow visualization.
+```json
+{
+  "title": "Agency Backlog",
+  "columns": [
+    {
+      "title": "To Do",
+      "cards": [
+        {"title": "Draft Proposal", "description": "Review client brief", "tag": "Sales", "priority": "High"},
+        {"title": "Research Competitors", "priority": "Medium"}
+      ]
+    },
+    {
+      "title": "In Progress",
+      "cards": [
+        {"title": "Design Mockups", "description": "3 variants needed", "tag": "Design"},
+        "Quick sync with team" // Simple string cards also supported
+      ]
+    },
+    {
+      "title": "Done",
+      "cards": []
+    }
+  ]
+}
+```
+
 ### Radial Gauge (`radial_gauge`)
 Use for single-metric KPIs.
 ```json
