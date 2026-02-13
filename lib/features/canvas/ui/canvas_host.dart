@@ -3,26 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../providers/canvas_provider.dart';
-import '../../assistant/presentation/widgets/gen_ui/strategy_board_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/budget_chart_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/kanban_board_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/trend_report_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/recipe_card_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/dynamic_form_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/mind_map_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/media_carousel_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/interactive_table_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/radial_gauge_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/accordion_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/stepper_wizard_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/word_cloud_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/calendar_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/dialogue_scene_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/avatar_conversation_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/code_viewer_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/video_player_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/deep_analysis_report_widget.dart';
-import '../../assistant/presentation/widgets/gen_ui/knowledge_dashboard_widget.dart';
+import '../../assistant/presentation/widgets/gen_ui/gen_ui_renderer.dart';
 
 class CanvasHost extends ConsumerStatefulWidget {
   const CanvasHost({super.key});
@@ -265,56 +246,12 @@ class _CanvasHostState extends ConsumerState<CanvasHost> {
 
 
       case CanvasContentType.custom:
-        final type = state.metadata?['type'] as String?;
-        final data = state.metadata ?? {};
-        
-        switch (type) {
-          case 'strategy_board': return Center(child: StrategyBoardWidget(data: data));
-          case 'budget_chart': return Center(child: BudgetChartWidget(data: data));
-          case 'kanban_board': return Center(child: KanbanBoardWidget(data: data));
-          case 'trend_report':
-          case 'analysis_report':
-          case 'timeline':
-            return Center(child: TrendReportWidget(data: data));
-          case 'recipe_card': return Center(child: RecipeCardWidget(data: data));
-          case 'dynamic_form': return Center(child: DynamicFormWidget(data: data));
-          case 'mind_map': return Center(child: MindMapWidget(data: data));
-          case 'media_carousel':
-          case 'carousel':
-            return Center(child: MediaCarouselWidget(data: data));
-          case 'interactive_table': return Center(child: InteractiveTableWidget(data: data));
-          case 'radial_gauge': return Center(child: RadialGaugeWidget(data: data));
-          case 'accordion': return Center(child: AccordionWidget(data: data));
-          case 'stepper_wizard':
-          case 'stepper':
-            return Center(child: StepperWizardWidget(data: data));
-          case 'word_cloud': return Center(child: WordCloudWidget(data: data));
-          case 'calendar': return Center(child: CalendarWidget(data: data));
-          case 'deep_analysis': return Center(child: DeepAnalysisReportWidget(data: data));
-          case 'knowledge_dashboard': return Center(child: KnowledgeDashboardWidget(data: data));
-          case 'dialogue_scene': 
-            return Center(child: DialogueSceneWidget(
-              initialUrl: data['initialUrl'] ?? data['url'],
-              htmlContent: data['htmlContent'] ?? data['content'],
-            ));
-          case 'avatar_conversation': 
-            return Center(child: AvatarConversationWidget(
-              speakerName: data['speakerName'] ?? 'Assistant',
-              text: data['text'] ?? '',
-              avatarUrl: data['avatarUrl'],
-              isRightAligned: data['isRightAligned'] ?? false,
-            ));
-          case 'code_viewer':
-            return Center(child: SizedBox(width: 800, child: CodeViewerWidget(data: data)));
-          case 'video_player':
-            return Center(child: SizedBox(width: 800, child: VideoPlayerWidget(data: data)));
-          default:
-            // Fallback for generic reports
-            if (data.containsKey('sections') || data.containsKey('trends')) {
-              return Center(child: TrendReportWidget(data: data));
-            }
-            return Center(child: Text("Unknown component: $type", style: const TextStyle(color: Colors.white54)));
-        }
+        return Center(
+          child: GenUIRenderer(
+            payload: state.metadata ?? {}, 
+            isCanvas: true
+          )
+        );
 
       case CanvasContentType.empty:
 
