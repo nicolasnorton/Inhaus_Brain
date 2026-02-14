@@ -62,20 +62,20 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini 1.5 — GA Stable ────────────────────────────────
+  // ── Gemini (Multi-Tier) ──────────────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-lite', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-lite', temperature: 1.0);
 
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash',
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash',
     useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro',
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro',
     useGoogleSearch: true, temperature: 1.0);
 
   // ── Media Models ──────────────────────────────────────────

@@ -50,9 +50,9 @@ class GeminiClient:
         return self._vertex_client
 
     def _normalize_model_name(self, model_name: str) -> str:
-        """Normalize model names that might be legacy or aliased."""
+        """Normalize model names with awareness of Gemini 2.5 GA."""
         if not model_name:
-            return "gemini-2.5-flash"
+            return "gemini-2.0-flash"
 
         name_lower = model_name.lower()
 
@@ -68,39 +68,26 @@ class GeminiClient:
                      return "imagen-3.0-nano-banana-pro-001"
                  return "imagen-3.0-nano-banana-001"
             return model_name
-            
-        # Map Gemini 3 (Frontier)
-        if "gemini-3" in name_lower:
-            if "image" in name_lower:
-                return "gemini-3-pro-image-preview"
-            return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
-            
-        # Map Gemini 2.5 (Staging Aliases -> Stable GA)
+
+        # Gemini 2.5 is GA - pass through directly
         if "gemini-2.5" in name_lower:
             if "lite" in name_lower:
-                return "gemini-1.5-flash-lite-001"
-            return "gemini-1.5-pro" if "pro" in name_lower else "gemini-1.5-flash"
-        
+                return "gemini-2.5-flash-lite"
+            return model_name
+            
         # Map Gemini 2.0 (GA Stable)
         if "gemini-2.0" in name_lower:
             if "lite" in name_lower:
                 return "gemini-2.0-flash-lite-preview-02-05"
             if "pro" in name_lower:
-                 # experimental pro
-                 return "gemini-2.0-pro-exp-02-05"
+                return "gemini-2.0-pro-exp-02-05"
+            if "thinking" in name_lower:
+                return "gemini-2.0-flash-thinking-exp"
             return "gemini-2.0-flash-001"
 
-        # Default fallback for Gemini
-        if "gemini" in name_lower:
-            return "gemini-1.5-flash"
-
-        # Map Thinking requests
-        if "thinking" in name_lower:
-            return "gemini-2.0-flash-thinking-exp"
-
-        # Standardize simple/legacy names to latest 1.5 Stable (2.5 alias)
+        # Standardize simple/legacy names to latest 2.5 Stable
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
-             return "gemini-1.5-pro" if "pro" in name_lower else "gemini-1.5-flash"
+             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
             
         return model_name
 
@@ -121,9 +108,9 @@ class GeminiClient:
              estimated_tokens = sum(len(str(p)) for p in prompt) / 4
 
         if task_complexity == "high" or estimated_tokens > 10000:
-             return "gemini-2.5-pro"
+             return "gemini-1.5-pro"
         
-        return "gemini-2.5-flash"
+        return "gemini-2.0-flash"
 
     def generate_content(
         self, 
@@ -240,11 +227,11 @@ class GeminiClient:
 
         # Resilient Fallback Chain
         # Stage 1: Primary Model
-        # Stage 2: Gemini 1.5 Flash (Stable)
-        # Stage 3: Gemini 2.0 Flash (Secondary)
-        # Stage 4: Gemma 3 (Tertiary/Resilient - Requires Vertex)
+        # Stage 2: Gemini 2.5 Flash (GA)
+        # Stage 3: Gemini 2.0 Flash (Stable)
+        # Stage 4: Gemini 1.5 Flash (Legacy)
         
-        fallback_models = [model, "gemini-1.5-flash", "gemini-2.0-flash", "gemma-3-4b-it"]
+        fallback_models = [model, "gemini-2.5-flash", "gemini-2.0-flash-001", "gemini-1.5-flash"]
         # Remove duplicates while preserving order
         fallback_models = list(dict.fromkeys(fallback_models))
         
@@ -252,7 +239,14 @@ class GeminiClient:
         for attempt_model in fallback_models:
             try:
                 # Determine which client to use
-                active_client = self.google_client
+                # Default to Vertex AI in production environments (IAM auth)
+                active_client = self.vertex_client
+                
+                # Fallback to Google AI Studio if no project configured (Local Development)
+                if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+                    active_client = self.google_client
+                    
+                # Force Vertex for specific model families
                 if any(v in attempt_model.lower() for v in ["gemma", "veo", "imagen", "lyra"]):
                     active_client = self.vertex_client
                 
@@ -267,6 +261,8 @@ class GeminiClient:
                 last_error = e
                 error_msg = str(e).lower()
                 print(f"GeminiClient: Failed with {attempt_model}: {e}")
+                import traceback
+                print(f"GeminiClient: Full traceback for {attempt_model} failure:\n{traceback.format_exc()}")
                 
                 # If it's a 429 (Resource Exhausted) or 503, definitely fallback
                 # If it's 404 (Not Found), also fallback
@@ -328,94 +324,211 @@ class GeminiClient:
         return {"status": "batch_queued", "job_id": "mock_batch_id_123"}
 
     def get_operation(self, name: str) -> Any:
-        """Get status of an LRO (attempts Vertex first for Veo)."""
-        # The google-genai SDK's operations.get() takes the operation name
-        # as a positional argument (or `operation=`), NOT `name=`.
+        """Retrieves an LRO by name."""
+        # The google-genai SDK's operations.get(operation=...) expects an object
+        # with a .name attribute, not a raw string. Wrap in SimpleNamespace.
+        from types import SimpleNamespace
+        print(f"GeminiClient: Getting operation {name}")
+        op_ref = SimpleNamespace(name=name)
         if "projects/" in name or "locations/" in name:
-            return self.vertex_client.operations.get(operation=name)
+            return self.vertex_client.operations.get(operation=op_ref)
         
-        return self.client.operations.get(operation=name)
+        return self.client.operations.get(operation=op_ref)
 
-    def _serialize_response(self, response: Any) -> Dict[str, Any]:
-        """Helper to serialize a GenAI response object (Content OR Operation) to a dict."""
-        
-        # Handle LRO/Operation responses
-        if hasattr(response, 'name') and (hasattr(response, 'done') or hasattr(response, 'metadata')):
-            res_name = getattr(response, 'name', "unknown_op")
+    def _serialize_response(self, response: Any, depth: int = 0) -> Dict[str, Any]:
+        """Serializes GenAI response for Flutter client with extreme resilience."""
+        if depth > 10:
+            print(f"GeminiClient: Serialization depth exceeded at depth {depth}")
+            return {"error": "Serialization depth exceeded"}
+            
+        if response is None:
+            print("GeminiClient: _serialize_response received None response.")
+            return {"candidates": [], "error": "Response is None"}
+            
+        # If response is already a string, don't try to access attributes
+        if isinstance(response, str):
+            print(f"GeminiClient: _serialize_response received string: {response[:50]}...")
+            return {"text": response, "custom_type": "string_result"}
+
+        # Defensive name extraction
+        res_name = "unknown"
+        try:
+            if hasattr(response, 'name'):
+                name_val = getattr(response, 'name', "unknown")
+                res_name = str(name_val) if name_val is not None else "unknown"
+            print(f"GeminiClient: Serializing response with name: {res_name}")
+        except Exception as e:
+            print(f"GeminiClient: Error extracting response name: {e}")
+            pass
+
+        # 1. Handle Operations (LRO)
+        # Check for Operation-like structure defensively
+        is_op = False
+        try:
+            is_op = hasattr(response, 'name') and (hasattr(response, 'done') or hasattr(response, 'metadata'))
+            if is_op:
+                print(f"GeminiClient: Detected LRO for {res_name}")
+        except Exception as e:
+            print(f"GeminiClient: Error checking for LRO attributes: {e}")
+            pass
+
+        if is_op:
+            done = False
+            try:
+                done = getattr(response, 'done', False)
+                print(f"GeminiClient: LRO {res_name} done status: {done}")
+            except Exception as e:
+                print(f"GeminiClient: Error accessing LRO 'done' attribute: {e}")
+                pass
+
+            metadata = {}
+            try:
+                metadata = getattr(response, 'metadata', {})
+            except Exception as e:
+                print(f"GeminiClient: Error accessing LRO 'metadata' attribute: {e}")
+                pass
+
+            result_data = None
+            if done:
+                print(f"GeminiClient: LRO {res_name} is done, attempting to retrieve result.")
+                try:
+                    # Some Operation objects might have a result attribute or result() method
+                    res_obj = None
+                    if hasattr(response, 'result'):
+                        attr = getattr(response, 'result')
+                        if callable(attr):
+                            print(f"GeminiClient: LRO {res_name} result is callable.")
+                            res_obj = attr() # It's a method
+                        else:
+                            print(f"GeminiClient: LRO {res_name} result is an attribute.")
+                            res_obj = attr # It's an attribute
+                    
+                    if res_obj:
+                        print(f"GeminiClient: Recursively serializing LRO {res_name} result (type: {type(res_obj)}).")
+                        result_data = self._serialize_response(res_obj, depth + 1)
+                    else:
+                        print(f"GeminiClient: LRO {res_name} result object is None or not found.")
+                except Exception as e:
+                    print(f"GeminiClient: Error accessing operation result for {res_name}: {e}")
+                    result_data = {"error": f"Failed to retrieve result: {str(e)}"}
+
             return {
                 "operationName": res_name,
-                "done": getattr(response, 'done', False),
-                "metadata": response.metadata if hasattr(response, 'metadata') else None,
+                "done": done,
+                "metadata": str(metadata),
                 "custom_type": "veo_lro" if "veo" in res_name.lower() else "lro_op",
-                "result": self._serialize_response(response.result) if getattr(response, 'done', False) and hasattr(response, 'result') else None
+                "result": result_data
             }
 
-        candidates_data = []
-        if not hasattr(response, 'candidates') or not response.candidates:
-            if hasattr(response, 'generated_images'):
-                return self._serialize_images(response)
-            
-            # Check for direct video result (Veo)
+        # 2. Handle standard GenerateContentResponse / GenerateVideosResponse
+        # Check for Veo videos
+        try:
             if hasattr(response, 'generated_videos'):
+                 print(f"GeminiClient: Detected 'generated_videos' in response.")
                  video_uris = []
                  for v in getattr(response, 'generated_videos', []):
-                     if hasattr(v, 'video') and hasattr(v.video, 'uri'):
-                         video_uris.append(v.video.uri)
+                     v_obj = getattr(v, 'video', None)
+                     if v_obj and hasattr(v_obj, 'uri'):
+                         video_uris.append(v_obj.uri)
+                     elif v_obj and isinstance(v_obj, str):
+                         video_uris.append(v_obj)
                  if video_uris:
+                     print(f"GeminiClient: Returning Veo result with {len(video_uris)} videos.")
                      return {"videoUri": video_uris[0], "custom_type": "veo_result", "all_videos": video_uris}
+        except Exception as e:
+            print(f"GeminiClient: Error processing 'generated_videos': {e}")
+            pass
 
-            # Check for direct video result (if LRO already finished in-line, rare but possible)
+        # Check for single video result
+        try:
             if hasattr(response, 'video'):
-                 return {"videoUri": response.video.uri, "custom_type": "veo_result"}
+                 print(f"GeminiClient: Detected single 'video' in response.")
+                 v = getattr(response, 'video')
+                 uri = getattr(v, 'uri', str(v)) if v else None
+                 if uri:
+                    print(f"GeminiClient: Returning single video result: {uri}")
+                    return {"videoUri": uri, "custom_type": "veo_result"}
+        except Exception as e:
+            print(f"GeminiClient: Error processing single 'video' attribute: {e}")
+            pass
 
-            return {
-                "candidates": [],
-                "usageMetadata": self._serialize_usage(response)
-            }
+        # Check for generated images
+        if hasattr(response, 'generated_images'):
+            print(f"GeminiClient: Detected 'generated_images' in response.")
+            try:
+                return self._serialize_images(response)
+            except Exception as e:
+                print(f"GeminiClient: Error serializing images: {e}")
+                pass
 
-        for cand in response.candidates:
-            parts_data = []
-            if cand.content and cand.content.parts:
-                for part in cand.content.parts:
+        # Check for candidates (standard LLM)
+        candidates_data = []
+        if hasattr(response, 'candidates') and response.candidates:
+            print(f"GeminiClient: Detected {len(response.candidates)} candidates.")
+            for cand_idx, cand in enumerate(response.candidates):
+                parts_data = []
+                content = getattr(cand, 'content', None)
+                parts = getattr(content, 'parts', []) if content else []
+                
+                for part_idx, part in enumerate(parts):
                     if hasattr(part, 'text') and part.text:
                         parts_data.append({"text": part.text})
                     elif hasattr(part, 'thought') and part.thought:
                         parts_data.append({"thought": part.thought})
                     elif hasattr(part, 'function_call') and part.function_call:
-                        # Unified call format for Flutter client robustness
+                        print(f"GeminiClient: Candidate {cand_idx}, Part {part_idx}: Detected function_call.")
+                        fc = part.function_call
+                        fc_name = "unknown"
+                        try:
+                            fc_name = getattr(fc, 'name', "unknown")
+                        except Exception as e:
+                            print(f"GeminiClient: Error accessing function_call name: {e}")
+                            pass
+                        
+                        fc_args = {}
+                        try:
+                            fc_args = getattr(fc, 'args', {})
+                        except Exception as e:
+                            print(f"GeminiClient: Error accessing function_call args: {e}")
+                            pass
+                        
+                        # Convert FC args to serializable dict if not already
                         safe_args = {}
                         try:
-                            # Ensure args is a dict (handle protobuf Map/Struct)
-                            raw_args = part.function_call.args
-                            if isinstance(raw_args, dict):
-                                safe_args = raw_args
-                            elif raw_args:
-                                safe_args = dict(raw_args)
+                            if hasattr(fc_args, 'items'): # Check if it's a dict-like object
+                                for k, v in fc_args.items():
+                                    # Convert non-primitive types to string for serialization
+                                    safe_args[k] = str(v) if not isinstance(v, (str, int, float, bool, list, dict)) else v
+                            else: # Fallback for non-dict-like args
+                                safe_args = str(fc_args)
                         except Exception as e:
-                            print(f"GeminiClient: Error converting args: {e}")
-                            safe_args = {}
+                            print(f"GeminiClient: Error converting function_call args: {e}")
+                            safe_args = {"raw": str(fc_args)}
 
                         parts_data.append({
                             "call": {
-                                "function_name": part.function_call.name,
+                                "function_name": fc_name,
                                 "args": safe_args
                             }
                         })
                     elif hasattr(part, 'executable_code') and part.executable_code:
+                         print(f"GeminiClient: Candidate {cand_idx}, Part {part_idx}: Detected executable_code.")
                          parts_data.append({
                              "executable_code": {
-                                 "language": part.executable_code.language,
-                                 "code": part.executable_code.code
+                                 "language": getattr(part.executable_code, 'language', 'unknown'),
+                                 "code": getattr(part.executable_code, 'code', '')
                              }
                          })
                     elif hasattr(part, 'code_execution_result') and part.code_execution_result:
+                         print(f"GeminiClient: Candidate {cand_idx}, Part {part_idx}: Detected code_execution_result.")
                          parts_data.append({
                              "code_execution_result": {
-                                 "outcome": part.code_execution_result.outcome,
-                                 "output": part.code_execution_result.output
+                                 "outcome": getattr(part.code_execution_result, 'outcome', 'UNKNOWN'),
+                                 "output": getattr(part.code_execution_result, 'output', '')
                              }
                          })
                     elif hasattr(part, 'inline_data') and part.inline_data:
+                         print(f"GeminiClient: Candidate {cand_idx}, Part {part_idx}: Detected inline_data.")
                          parts_data.append({
                              "inlineData": {
                                  "mimeType": part.inline_data.mime_type,
@@ -423,23 +536,26 @@ class GeminiClient:
                              }
                          })
             
-            # Handle finishReason safely (might be Enum or string)
-            finish_reason = getattr(cand, 'finish_reason', None)
-            finish_reason_name = None
-            if finish_reason:
-                if hasattr(finish_reason, 'name'):
-                    finish_reason_name = finish_reason.name
-                else:
-                    finish_reason_name = str(finish_reason)
+                finish_reason_name = "UNKNOWN"
+                try:
+                    fr = getattr(cand, 'finish_reason', None)
+                    if fr:
+                        finish_reason_name = getattr(fr, 'name', str(fr))
+                    print(f"GeminiClient: Candidate {cand_idx} finish reason: {finish_reason_name}")
+                except Exception as e:
+                    print(f"GeminiClient: Error accessing finish_reason for candidate {cand_idx}: {e}")
+                    pass
 
-            candidates_data.append({
-                "content": {
-                    "parts": parts_data,
-                    "role": cand.content.role if cand.content else "model"
-                },
-                "finishReason": finish_reason_name,
-                "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
-            })
+                candidates_data.append({
+                    "content": {
+                        "parts": parts_data,
+                        "role": getattr(cand.content, 'role', "model") if hasattr(cand, 'content') else "model"
+                    },
+                    "finishReason": finish_reason_name,
+                    "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
+                })
+        else:
+            print("GeminiClient: No candidates found in response.")
 
         return {
             "candidates": candidates_data,
@@ -497,7 +613,7 @@ class GeminiClient:
         
         raise last_error or Exception("Image generation failed for all models.")
 
-    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.5-flash") -> int:
+    def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.0-flash") -> int:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
         response = self.client.models.count_tokens(
@@ -509,7 +625,16 @@ class GeminiClient:
     def create_interaction(self, model: str, prompt: str, **kwargs) -> Any:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
-        return self.client.interactions.create(model=self._normalize_model_name(model), input=prompt, **kwargs)
+            
+        normalized_model = self._normalize_model_name(model)
+        
+        # interactions.create currently only supports Thinking models.
+        # If the model isn't a thinking model, we fallback to a known supported one.
+        if "thinking" not in normalized_model:
+            print(f"GeminiClient: Model {normalized_model} may not support Research Interactions. Falling back to thinking-exp.")
+            normalized_model = "gemini-2.0-flash-thinking-exp"
+            
+        return self.client.interactions.create(model=normalized_model, input=prompt, **kwargs)
 
     def get_interaction(self, id: str) -> Any:
         if not self.client:
