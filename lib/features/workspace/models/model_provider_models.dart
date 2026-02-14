@@ -8,7 +8,8 @@ enum ModelProviderType {
   rerank,
   tts,
   stt,
-  image;
+  image,
+  video;
 
   String get displayName {
     switch (this) {
@@ -24,6 +25,8 @@ enum ModelProviderType {
         return 'Speech-to-Text';
       case ModelProviderType.image:
         return 'Image Generation';
+      case ModelProviderType.video:
+        return 'Video Generation';
     }
   }
 }

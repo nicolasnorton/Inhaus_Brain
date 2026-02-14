@@ -1,31 +1,28 @@
-# InhausBrain
-## Video Generation and Model Picker Fixes
+# InhausBrain - Deployment Walkthrough
 
-### 1. Backend: Resolved Polling Attribute Error
-- **Problem:** The `poll-operation` endpoint was returning a `500` error with the message `"'str' object has no attribute 'name'"`. This occurred because `GenerateVideosResponse` does not have standard `candidates` or `video` attributes, but instead uses `generated_videos`.
-- **Solution:** 
-    - Hardened `functions-python/gemini_client.py` with robust attribute access.
-    - Added specific handling for `generated_videos` in `_serialize_response` to correctly extract the video URI from Veo models.
-    - Added traceback logging to `main.py`'s `poll_operation` for better debugging.
-- **Verification:** Redeployed backend functions to Staging. Extensive logging added to capture operation details.
+## Latest Updates (Phase: Production Audit & Remediation)
 
-### 2. Frontend: Fixed Model Picker Visibility and Layout
-- **Problem:** The Model Picker was reportedly missing, likely due to browser caching of an older layout where the Voice Button was a sibling instead of a suffix icon.
-- **Solution:** 
-    - Updated `lib/features/chat/agentic_chat_view.dart` to move the Voice Button back to the left (matching the user's screenshot) and placed the Model Picker next to it.
-    - Simplified the input decoration to avoid rendering conflicts.
-- **Redeployment:** Successfully redeployed the Flutter web app to staging (`inhausbrain-beta.web.app`) using a clean build.
+- **Backend (Python):**
+    - **Model Normalization Fix:** Updated `_normalize_model_name` in `gemini_client.py` to correctly handle **Gemini 2.5 GA** models. Removed silent downgrades from 2.5 to 1.5.
+    - **Fallback Optimization:** Reordered `fallback_models` to prioritize newer generations (2.5 -> 2.0 -> 1.5).
+    - **Vertex AI Defaulting:** Configured `active_client` to default to **Vertex AI** (IAM auth) for production traffic, maintaining Google AI Studio (API Key) as a local fallback.
+    - **Operation Polling Fix:** Corrected positional argument handling in `get_operation` calls.
+- **Frontend (Flutter):**
+    - **Video Response Mapping:** Updated `VideoGenerationService` to parse `videoUri` directly from backend responses (fixing `predictions` array mismatch).
+    - **Polling Resilience:** Added `videoUri` to recursive key search during operation status checks.
+    - **Standardized Flash-Lite:** Upgraded `geminiFlashLite` from 1.5 to **2.0-flash-lite** in `llm_provider.dart` and `model_registry.dart`.
+    - **Context-Aware Model Picker:** Filtered models dynamically based on `ToolMode` (Chat, Image, Video).
 
-### 3. Workflow Improvements
-- **Clean Builds:** Added `flutter clean` as the final step in both Staging and Production deployment workflows to prevent stale build artifacts.
+- **Redeployment:** Successful deployment to staging (`inhausbrain-beta.web.app`) with updated Cloud Functions.
 
-## Verification Results
-- [x] Python Backend redeployed with attribute fixes.
-- [x] Flutter Web App redeployed to staging with layout updates.
-- [x] Deployment workflows updated with cleanup step.
+## Verification Checklist
+- [x] Python Backend: `poll_operation` fixed and 2.5 models passing through.
+- [x] Video Generation: Veo 3.1 results correctly parsed in Flutter (tested with `videoUri` key).
+- [x] Model Picker: Shows correct 2.0/2.5 series models.
+- [x] Vertex AI: Verified as default production client.
 
-> [!TIP]
-> If the Model Picker is still not visible, please perform a hard refresh (Cmd+Shift+R) in your browser to clear any cached assets.
+> [!IMPORTANT]
+> Always perform a **Hard Refresh (Cmd+Shift+R)** in your browser after deployment to ensure new logic and model configurations are active.
 
 GenUI Architecture Walkthrough
 

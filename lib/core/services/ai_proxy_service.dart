@@ -68,6 +68,7 @@ class AIProxyService {
     List<Map<String, dynamic>>? tools,
     bool thinking = false,
     bool audio = false,
+    String? previousInteractionId,
     bool usePython = true,
     Ref? ref,
   }) async {
@@ -97,6 +98,9 @@ class AIProxyService {
       if (tools != null) "tools": tools,
       "thinking": thinking,
       "audio": audio,
+      if (previousInteractionId != null) "previousInteractionId": previousInteractionId,
+      if (config.thinkingLevel != null) "thinkingLevel": config.thinkingLevel,
+      if (config.thinkingSummaries != null) "thinkingSummaries": config.thinkingSummaries,
     };
 
     if (usePython) {
@@ -210,7 +214,7 @@ class AIProxyService {
   /// Starts a Deep Research task.
   static Future<Map<String, dynamic>> startResearch({
     required String prompt,
-    String model = 'gemini-2.0-flash-thinking-exp',
+    String model = 'deep-research-pro-preview-12-2025',
     Ref? ref,
   }) async {
     final effectiveRef = ref ?? globalRef;
@@ -271,7 +275,7 @@ class AIProxyService {
   /// Counts tokens using the Python Gemini SDK.
   static Future<int> countTokens({
     required String prompt,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-2.5-flash',
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -351,7 +355,7 @@ class AIProxyService {
     required String document,
     required Map<String, dynamic> schema,
     List<Map<String, dynamic>>? examples,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-2.5-flash',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');

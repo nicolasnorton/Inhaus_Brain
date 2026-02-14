@@ -52,12 +52,12 @@ class GeminiClient:
     def _normalize_model_name(self, model_name: str) -> str:
         """Normalize model names with awareness of Gemini 2.5 GA."""
         if not model_name:
-            return "gemini-2.0-flash"
+            return "gemini-2.5-flash"
 
         name_lower = model_name.lower()
 
         # Explicitly preserve specialized models
-        SPECIALIZED_MODELS = ["veo", "imagen", "lyra", "nano"]
+        SPECIALIZED_MODELS = ["veo", "imagen", "lyra", "nano", "deep-research"]
         if any(sm in name_lower for sm in SPECIALIZED_MODELS):
             # Veo 3.1 mapping
             if "veo" in name_lower and "3.1" in name_lower:
@@ -70,24 +70,23 @@ class GeminiClient:
             return model_name
 
         # Gemini 2.5 is GA - pass through directly
-        if "gemini-2.5" in name_lower:
+        # Map Gemini 2.0/2.5 to 2.5 Baseline
+        if "gemini-2.0" in name_lower or "gemini-2.5" in name_lower:
             if "lite" in name_lower:
                 return "gemini-2.5-flash-lite"
-            return model_name
-            
-        # Map Gemini 2.0 (GA Stable)
-        if "gemini-2.0" in name_lower:
-            if "lite" in name_lower:
-                return "gemini-2.0-flash-lite-preview-02-05"
             if "pro" in name_lower:
-                return "gemini-2.0-pro-exp-02-05"
-            if "thinking" in name_lower:
-                return "gemini-2.0-flash-thinking-exp"
-            return "gemini-2.0-flash-001"
+                return "gemini-2.5-pro"
+            return "gemini-2.5-flash"
 
-        # Standardize simple/legacy names to latest 2.5 Stable
+        # Map Gemini 3 (Frontier)
+        if "gemini-3" in name_lower:
+            if "pro" in name_lower:
+                return "gemini-3-pro-preview"
+            return "gemini-3-flash-preview"
+
+        # Standardize simple/legacy names to latest 2.5/3.0
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
-             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
+             return "gemini-3-pro-preview" if "pro" in name_lower else "gemini-2.5-flash"
             
         return model_name
 
@@ -108,9 +107,9 @@ class GeminiClient:
              estimated_tokens = sum(len(str(p)) for p in prompt) / 4
 
         if task_complexity == "high" or estimated_tokens > 10000:
-             return "gemini-1.5-pro"
+             return "gemini-2.5-pro"
         
-        return "gemini-2.0-flash"
+        return "gemini-2.5-flash"
 
     def generate_content(
         self, 
@@ -142,15 +141,18 @@ class GeminiClient:
 
         config_params = (generation_config or {}).copy()
         
-        # Handle thinking mode
+        # Handle thinking mode (Jan 2026 standard)
         thinking_config = None
         if thinking:
-            # Thinking requires specific models. If not one, force to 2.0 Thinking Exp.
-            THINKING_CAPABLE = ["thinking", "gemini-2.0-flash-001", "gemini-2.0-pro"]
-            if not any(tc in model.lower() for tc in THINKING_CAPABLE):
-                model = "gemini-2.0-flash-thinking-exp"
-                print(f"GeminiClient: Thinking mode requested. Re-routing to {model}")
+            # Newer models support thinking_level in generation_config
+            # but for GenerateContentConfig we still use thinking_config for now
+            # if thinking_level is not provided in generation_config.
+            if "thinking_level" not in config_params:
+                config_params["thinking_level"] = "medium"
+            if "thinking_summaries" not in config_params:
+                config_params["thinking_summaries"] = "auto"
             
+            # Legacy thinking_config part for backward compatibility with SDK's GenerateContent
             thinking_config = types.ThinkingConfig(include_thoughts=True)
             config_params.pop("thinking_config", None)
 
@@ -231,7 +233,7 @@ class GeminiClient:
         # Stage 3: Gemini 2.0 Flash (Stable)
         # Stage 4: Gemini 1.5 Flash (Legacy)
         
-        fallback_models = [model, "gemini-2.5-flash", "gemini-2.0-flash-001", "gemini-1.5-flash"]
+        fallback_models = [model, "gemini-3-pro-preview", "gemini-2.5-flash"]
         # Remove duplicates while preserving order
         fallback_models = list(dict.fromkeys(fallback_models))
         
@@ -324,16 +326,25 @@ class GeminiClient:
         return {"status": "batch_queued", "job_id": "mock_batch_id_123"}
 
     def get_operation(self, name: str) -> Any:
-        """Retrieves an LRO by name."""
-        # The google-genai SDK's operations.get(operation=...) expects an object
-        # with a .name attribute, not a raw string. Wrap in SimpleNamespace.
-        from types import SimpleNamespace
-        print(f"GeminiClient: Getting operation {name}")
-        op_ref = SimpleNamespace(name=name)
-        if "projects/" in name or "locations/" in name:
-            return self.vertex_client.operations.get(operation=op_ref)
+        """Retrieves an LRO by name.
         
-        return self.client.operations.get(operation=op_ref)
+        Uses the SDK's internal methods that accept string operation names
+        and return raw dicts, instead of operations.get() which requires
+        a typed Operation object with from_api_response().
+        """
+        print(f"GeminiClient: Getting operation {name}")
+        if "projects/" in name or "locations/" in name:
+            # Vertex AI path: use _fetch_predict_videos_operation (POST)
+            resource_name = name.rpartition("/operations/")[0]
+            return self.vertex_client.operations._fetch_predict_videos_operation(
+                operation_name=name,
+                resource_name=resource_name,
+            )
+        
+        # ML Dev path: use _get_videos_operation (GET)
+        return self.client.operations._get_videos_operation(
+            operation_name=name,
+        )
 
     def _serialize_response(self, response: Any, depth: int = 0) -> Dict[str, Any]:
         """Serializes GenAI response for Flutter client with extreme resilience."""
@@ -555,11 +566,42 @@ class GeminiClient:
                     "groundingMetadata": self._serialize_grounding(cand.grounding_metadata) if hasattr(cand, 'grounding_metadata') and cand.grounding_metadata else None
                 })
         else:
-            print("GeminiClient: No candidates found in response.")
+            # Check if it's an Interaction response (has outputs instead of candidates)
+            if hasattr(response, 'outputs'):
+                return self._serialize_interaction(response)
+            print("GeminiClient: No candidates or outputs found in response.")
 
         return {
             "candidates": candidates_data,
             "usageMetadata": self._serialize_usage(response)
+        }
+
+    def _serialize_interaction(self, interaction: Any) -> Dict[str, Any]:
+        """Serialize an Interaction object from the Interactions API."""
+        outputs_data = []
+        raw_outputs = getattr(interaction, 'outputs', None) or []
+        for output in raw_outputs:
+            out_type = getattr(output, 'type', 'unknown')
+            item = {"type": out_type}
+            
+            if out_type == "text":
+                item["text"] = getattr(output, 'text', "")
+            elif out_type == "thought":
+                item["thought"] = getattr(output, 'thought', "")
+                item["summary"] = getattr(output, 'summary', "")
+            elif out_type == "function_call":
+                item["call"] = {
+                    "function_name": getattr(output, 'name', "unknown"),
+                    "args": getattr(output, 'arguments', {}),
+                    "call_id": getattr(output, 'id', None)
+                }
+            outputs_data.append(item)
+            
+        return {
+            "id": getattr(interaction, 'id', None),
+            "status": getattr(interaction, 'state', getattr(interaction, 'status', 'unknown')),
+            "outputs": outputs_data,
+            "custom_type": "interaction_result"
         }
 
     def _serialize_images(self, response: Any) -> Dict[str, Any]:
@@ -622,19 +664,51 @@ class GeminiClient:
         )
         return response.total_tokens
 
-    def create_interaction(self, model: str, prompt: str, **kwargs) -> Any:
+    def create_interaction(
+        self, 
+        model: str, 
+        prompt: Union[str, List[Any]], 
+        system_instruction: Optional[str] = None,
+        tools: Optional[List[Any]] = None,
+        generation_config: Optional[Dict[str, Any]] = None,
+        previous_interaction_id: Optional[str] = None,
+        background: bool = False,
+        **kwargs
+    ) -> Any:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
             
         normalized_model = self._normalize_model_name(model)
         
-        # interactions.create currently only supports Thinking models.
-        # If the model isn't a thinking model, we fallback to a known supported one.
-        if "thinking" not in normalized_model:
-            print(f"GeminiClient: Model {normalized_model} may not support Research Interactions. Falling back to thinking-exp.")
-            normalized_model = "gemini-2.0-flash-thinking-exp"
-            
-        return self.client.interactions.create(model=normalized_model, input=prompt, **kwargs)
+        # Frontier Deep Research Agent (Jan 2026 standard)
+        if "research" in normalized_model.lower() or (isinstance(prompt, str) and "research" in prompt.lower()[:50]):
+             print(f"GeminiClient: Triggering Deep Research Agent (Frontier).")
+             # Research Agent uses the 'agent' parameter and requires background=True
+             return self.client.interactions.create(
+                 agent="deep-research-pro-preview-12-2025", 
+                 input=prompt,
+                 background=True,
+                 **kwargs
+             )
+
+        # Standard interaction for 2.5/3.0 models
+        print(f"GeminiClient: Creating standard interaction with {normalized_model}")
+        
+        # Prepare params for interactions.create
+        params = {
+            "model": normalized_model,
+            "input": prompt,
+            "system_instruction": system_instruction,
+            "tools": tools,
+            "generation_config": generation_config,
+            "previous_interaction_id": previous_interaction_id,
+            "background": background,
+            **kwargs
+        }
+        # Remove None values to avoid SDK errors
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        return self.client.interactions.create(**params)
 
     def get_interaction(self, id: str) -> Any:
         if not self.client:

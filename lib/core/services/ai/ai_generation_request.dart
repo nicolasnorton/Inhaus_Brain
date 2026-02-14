@@ -26,6 +26,7 @@ class AIGenerationRequest {
   final String? videoMimeType;
   final Uint8List? pdfBytes;
   final String? pdfMimeType;
+  final String? previousInteractionId;
 
   // Optional overrides
   final String? apiKey;
@@ -45,6 +46,7 @@ class AIGenerationRequest {
     this.videoMimeType,
     this.pdfBytes,
     this.pdfMimeType,
+    this.previousInteractionId,
     this.tools,
     this.apiKey,
     this.vertexKey,

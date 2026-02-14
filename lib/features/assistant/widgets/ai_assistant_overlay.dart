@@ -28,6 +28,9 @@ import '../../canvas/ui/canvas_host.dart';
 import '../../canvas/providers/canvas_provider.dart';
 import '../../../core/ui/split_pane_layout.dart';
 import '../../chat/models/chat_models.dart';
+import '../../../core/config/app_environment.dart';
+import '../../../core/tokens/llm_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
   const AiAssistantOverlay({super.key});
@@ -245,14 +248,125 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
 
       await ref.read(assistantChatProvider.notifier).sendMessage(
         text, 
-        attachment: imageToSend?.toList(),
+        attachment: imageToSend,
         audioAttachment: audioBytes,
         toolMode: _toolMode,
       );
       // Wait a frame for the list to update
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (e) {
+      debugPrint('Error sending assistant message: $e');
     } finally {
       if (mounted) setState(() => _isTyping = false);
+    }
+  }
+
+  Widget _buildModelPicker(WidgetRef ref) {
+    final selectedModelConfig = ref.watch(selectedAIModelProvider);
+    
+    // Context-aware model filtering based on ToolMode
+    List<PopupMenuEntry<AIModelConfig>> menuItems = [];
+
+    switch (_toolMode) {
+      case ToolMode.chat:
+      case ToolMode.code: // Code uses text models primarily
+        menuItems = [
+          _buildGroupHeader('TEXT MODELS'),
+          _buildModelMenuItem(ref, AIModelConfig.geminiFlash, FontAwesomeIcons.bolt),
+          _buildModelMenuItem(ref, AIModelConfig.geminiPro, FontAwesomeIcons.google),
+          _buildModelMenuItem(ref, AIModelConfig.geminiFlashLite, FontAwesomeIcons.gaugeHigh),
+          const PopupMenuDivider(),
+          _buildGroupHeader('RESEARCH'),
+          _buildModelMenuItem(ref, AIModelConfig.geminiResearch, FontAwesomeIcons.magnifyingGlass),
+          _buildModelMenuItem(ref, AIModelConfig.geminiDeepResearch, FontAwesomeIcons.microscope),
+           if (AppConfig.isStaging) ...[
+            const PopupMenuDivider(),
+            _buildGroupHeader('EDGE / EXPERIMENTAL'),
+            _buildModelMenuItem(ref, AIModelConfig.gemma3Fast, FontAwesomeIcons.gem),
+            _buildModelMenuItem(ref, AIModelConfig.gemma3Quality, FontAwesomeIcons.gem),
+          ],
+        ];
+        break;
+      case ToolMode.image:
+        menuItems = [
+          _buildGroupHeader('IMAGE MODELS'),
+          _buildModelMenuItem(ref, AIModelConfig.imagen4, FontAwesomeIcons.image),
+          // Fallbacks or specialized image models can be added here
+        ];
+        break;
+      case ToolMode.video:
+        menuItems = [
+           _buildGroupHeader('VIDEO MODELS'),
+           _buildModelMenuItem(ref, AIModelConfig.veo31, FontAwesomeIcons.video),
+        ];
+        break;
+    }
+
+    return PopupMenuButton<AIModelConfig>(
+      tooltip: 'Select AI Model',
+      color: const Color(0xFF1E1E1E),
+      offset: const Offset(0, -350),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_getModelIcon(selectedModelConfig), size: 12, color: Colors.blueAccent),
+            const SizedBox(width: 4),
+            Text(
+              selectedModelConfig.displayName.split(' ').first.replaceAll('(', ''), // Short name
+              style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+      itemBuilder: (context) => menuItems,
+      onSelected: (config) {
+        ref.read(selectedAIModelProvider.notifier).state = config;
+      },
+    );
+  }
+
+  PopupMenuItem<AIModelConfig> _buildGroupHeader(String title) {
+    return PopupMenuItem<AIModelConfig>(
+      enabled: false,
+      height: 24,
+      child: Text(
+        title, 
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 1.2)
+      ),
+    );
+  }
+
+  PopupMenuItem<AIModelConfig> _buildModelMenuItem(WidgetRef ref, AIModelConfig config, IconData icon) {
+    final selectedModelConfig = ref.read(selectedAIModelProvider);
+    return PopupMenuItem<AIModelConfig>(
+      value: config,
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: selectedModelConfig == config ? Colors.blueAccent : Colors.white54),
+          const SizedBox(width: 12),
+          Text(
+            config.displayName,
+            style: TextStyle(color: selectedModelConfig == config ? Colors.blueAccent : Colors.white70, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  IconData _getModelIcon(AIModelConfig config) {
+    switch (config.provider) {
+      case AIProvider.gemini: return FontAwesomeIcons.google;
+      case AIProvider.vertex: return FontAwesomeIcons.cloud;
+      case AIProvider.gemma: return FontAwesomeIcons.gem;
+      case AIProvider.litert: return FontAwesomeIcons.mobileScreen;
     }
   }
 
@@ -262,15 +376,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     final messages = ref.watch(assistantChatProvider);
     
     // Listen to external send trigger (from FAB)
-    ref.listen(assistantSendTriggerProvider, (previous, next) {
+    ref.listen<int>(assistantSendTriggerProvider, (previous, next) {
       if (next > 0) {
         _sendMessage();
       }
     });
 
     // Listen for new messages to trigger TTS
-    ref.listen(assistantChatProvider, (prev, next) {
-      if (next.isNotEmpty && (prev?.length ?? 0) < next.length) {
+    ref.listen<List<AssistantMessage>>(assistantChatProvider, (prev, next) {
+      if (next.isNotEmpty && (prev == null || prev.length < next.length)) {
         final lastMessage = next.last;
         if (!lastMessage.isUser && isOpen) {
           // It's a new AI response (and overlay is open)
@@ -503,7 +617,38 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: ToolSelectorBar(
                     selectedMode: _toolMode,
-                    onModeChanged: (mode) => setState(() => _toolMode = mode),
+                    onModeChanged: (mode) {
+                      setState(() => _toolMode = mode);
+                      
+                      // Auto-switch model based on mode for better UX
+                      final currentModel = ref.read(selectedAIModelProvider);
+                      AIModelConfig? newModel;
+                      
+                      switch (mode) {
+                        case ToolMode.image:
+                          if (currentModel != AIModelConfig.imagen4) {
+                             newModel = AIModelConfig.imagen4;
+                          }
+                          break;
+                        case ToolMode.video:
+                          if (currentModel != AIModelConfig.veo31) {
+                             newModel = AIModelConfig.veo31;
+                          }
+                          break;
+                        case ToolMode.chat:
+                        case ToolMode.code:
+                          // If coming from media mode, switch back to default text model
+                          if (currentModel == AIModelConfig.imagen4 || 
+                              currentModel == AIModelConfig.veo31) {
+                             newModel = AIModelConfig.geminiFlash;
+                          }
+                          break;
+                      }
+                      
+                      if (newModel != null) {
+                         ref.read(selectedAIModelProvider.notifier).state = newModel;
+                      }
+                    },
                   ),
                 ),
 
@@ -574,6 +719,8 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 4),
+                          _buildModelPicker(ref),
                           const SizedBox(width: 4),
                           Expanded(
                             child: TextField(
@@ -794,32 +941,32 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                                 ...message.clarificationQuestions!.map((q) => Padding(
                                   padding: const EdgeInsets.only(bottom: 8.0),
                                   child: InkWell(
-                                    onTap: () {
-                                      _controller.text = q;
-                                      _keyboardFocusNode.requestFocus();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blueAccent.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.help_outline, size: 14, color: Colors.blueAccent),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              q,
-                                              style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.w500),
-                                            ),
+                                  onTap: () {
+                                    _controller.text = q;
+                                    _keyboardFocusNode.requestFocus();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.help_outline, size: 14, color: Colors.blueAccent),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            q,
+                                            style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.w500),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                )),
+                                ),
+                              )).toList(),
                               ],
                             ),
                           ),

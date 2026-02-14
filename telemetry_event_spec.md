@@ -10,7 +10,7 @@ Triggered when a user clicks Thumbs Up / Thumbs Down.
 |-----------|------|-------------|
 | `message_id` | String | UUID of the message being rated. |
 | `rating` | String | 'positive' or 'negative'. |
-| `model_name` | String | Model used (e.g., 'gemini-1.5-flash', 'gpt-4o'). |
+| `model_name` | String | Model used (e.g., 'gemini-2.5-flash'). |
 | `content_length` | Int | Length of the output text. |
 | `confidence` | Double | (Optional) Confidence score 0.0-1.0 from the LLM. |
 

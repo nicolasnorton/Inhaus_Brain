@@ -129,7 +129,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
             nodeType: WorkflowNodeType.llm,
             instruction: 'LLM',
             uiPosition: {'x': 400, 'y': 200},
-            config: {'model': 'gemini-pro'},
+            config: {'model': 'gemini-3-pro-preview'},
           ),
           PipelineStep(
             id: 'answer-node',

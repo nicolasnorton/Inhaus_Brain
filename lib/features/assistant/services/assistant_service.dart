@@ -278,7 +278,19 @@ class AssistantService {
     }
     if (toolMode == ToolMode.video) {
        _ref.read(assistantStatusProvider.notifier).state = "Generating video...";
-       return await _executeTool(tools, 'video_generation', {'prompt': text});
+       
+       // Inject selected model if it's a video model
+       final selectedModel = _ref.read(selectedAIModelProvider);
+       String? modelId;
+       // Check if selected model is a Veo model (or generally a video model)
+       if (selectedModel.modelId.toLowerCase().contains('veo')) {
+           modelId = selectedModel.modelId;
+       }
+       
+       return await _executeTool(tools, 'video_generation', {
+         'prompt': text,
+         if (modelId != null) 'model_id': modelId
+       });
     }
     if (toolMode == ToolMode.code) {
        // Code mode: Force developer context
@@ -507,8 +519,10 @@ class AssistantService {
           );
       }
 
-      // Use Pro for complex intents to ensure Gen UI compliance, Flash for simple tasks
+      // 1. Determine base config based on user selection or intent safety
+      final userSelectedModel = _ref.read(selectedAIModelProvider);
       AIModelConfig mainConfig;
+      
       final textLower = text.toLowerCase();
       final isComplexIntent = intentEnum == RouterIntent.management || 
                             intentEnum == RouterIntent.copywriting ||
@@ -522,8 +536,14 @@ class AssistantService {
                        textLower.contains('create a video') ||
                        textLower.contains('checklist');
 
-      if (isComplexIntent || forcesPro) {
-        // useGoogleSearch is enabled by default for research, but we force it here for Pro users
+      // Priority: 
+      // 1. User selected a non-default model -> Use it
+      // 2. Intent forces Pro -> Use Pro
+      // 3. Otherwise -> Use Flash (Default)
+      
+      if (userSelectedModel != AIModelConfig.geminiFlash) {
+        mainConfig = userSelectedModel;
+      } else if (isComplexIntent || forcesPro) {
         mainConfig = AIModelConfig.geminiPro.copyWith(useGoogleSearch: true);
       } else {
         mainConfig = AIModelConfig.geminiFlash;

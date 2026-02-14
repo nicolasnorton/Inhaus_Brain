@@ -71,8 +71,10 @@ class ProxyStrategy extends AIStrategy {
       systemInstruction: request.systemInstruction,
       tools: request.tools,
       thinking: config.modelId.contains('thinking') ||
+          config.thinkingLevel != null ||
           prompt.toLowerCase().contains('deep research'),
       audio: config.modelId.contains('lyra'),
+      previousInteractionId: request.previousInteractionId,
       ref: ref is Ref ? ref : null,
     );
 
@@ -103,6 +105,27 @@ class ProxyStrategy extends AIStrategy {
         if (text.isEmpty && parts.isNotEmpty) {
           text = jsonEncode(parts.first);
         }
+      }
+    } else if (proxyRes['custom_type'] == 'interaction_result') {
+      final outputs = proxyRes['outputs'] as List?;
+      if (outputs != null && outputs.isNotEmpty) {
+        final buffer = StringBuffer();
+        for (var output in outputs) {
+          if (output is Map) {
+            if (output['type'] == 'thought') {
+              final thought = output['thought'] ?? '';
+              final summary = output['summary'] ?? '';
+              if (thought.isNotEmpty || summary.isNotEmpty) {
+                 buffer.writeln('> *Thinking: ${summary.isNotEmpty ? summary : thought}* \n');
+              }
+            } else if (output['type'] == 'text') {
+              buffer.write(output['text'] ?? '');
+            } else if (output['type'] == 'function_call') {
+              buffer.writeln('\n`[Tool Call: ${output['call']?['function_name']}]`');
+            }
+          }
+        }
+        text = buffer.toString();
       }
     } else if (proxyRes['error'] != null) {
       text = 'Proxy Error: ${proxyRes['error']}';

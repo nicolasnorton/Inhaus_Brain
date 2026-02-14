@@ -48,7 +48,7 @@ def extract_structured(req: https_fn.Request) -> https_fn.Response:
         document_text = data.get("document")
         schema = data.get("schema")
         examples = data.get("examples", [])
-        model_name = data.get("model", "gemini-2.5-flash")
+        model_name = data.get("model", "gemini-2.0-flash")
 
         if not document_text or not schema:
             return https_fn.Response("Missing document or schema", status=400)
@@ -108,7 +108,10 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         thinking = data.get("thinking", False)
         audio = data.get("audio", False)
         use_google_search = data.get("useGoogleSearch", False)
-        cached_content_name = data.get("cachedContentName") # Optional: Use a pre-cached context
+        cached_content_name = data.get("cachedContentName")
+        previous_interaction_id = data.get("previousInteractionId")
+        thinking_level = data.get("thinkingLevel")
+        thinking_summaries = data.get("thinkingSummaries")
 
         
         # Inject custom tool definitions if requested by string
@@ -124,6 +127,10 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
                 else:
                     new_tools.append(t)
             tools = new_tools
+
+        # Finalize config with thinking parameters if present
+        if thinking_level: config["thinking_level"] = thinking_level
+        if thinking_summaries: config["thinking_summaries"] = thinking_summaries
 
         # Initialize Client
         client = GeminiClient()
@@ -190,13 +197,24 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-2.0-flash-thinking-exp") 
+        model = data.get("model", "deep-research-pro-preview-12-2025") 
         
         client = GeminiClient()
-        interaction = client.create_interaction(model=model, prompt=prompt)
+        # Pass all relevant Interaction params
+        interaction = client.create_interaction(
+            model=model, 
+            prompt=prompt,
+            previous_interaction_id=data.get("previousInteractionId"),
+            system_instruction=data.get("systemInstruction"),
+            generation_config=data.get("config"),
+            tools=data.get("tools")
+        )
         
         return https_fn.Response(
-            json.dumps({"interactionId": interaction.id, "status": interaction.state}),
+            json.dumps({
+                "interactionId": interaction.id, 
+                "status": getattr(interaction, 'state', getattr(interaction, 'status', 'unknown'))
+            }),
             status=200,
             headers={"Content-Type": "application/json"}
         )
@@ -218,17 +236,56 @@ def poll_research(req: https_fn.Request) -> https_fn.Response:
         client = GeminiClient()
         interaction = client.get_interaction(interaction_id)
         
+        # Use our new serializer for Interaction responses
+        result = client._serialize_interaction(interaction)
+        
         return https_fn.Response(
-            json.dumps({
-                "interactionId": interaction.id,
-                "status": interaction.state,
-                "output": interaction.output,
-            }),
+            json.dumps(result),
             status=200,
             headers={"Content-Type": "application/json"}
         )
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+def _normalize_operation_response(op_dict: dict, operation_name: str) -> dict:
+    """Normalizes a raw operation dict from the SDK into a Flutter-friendly format."""
+    if not isinstance(op_dict, dict):
+        return {"operationName": operation_name, "done": False, "error": f"Unexpected type: {type(op_dict)}"}
+    
+    done = op_dict.get("done", False)
+    metadata = op_dict.get("metadata", {})
+    
+    result_data = None
+    if done:
+        # Vertex AI fetchPredictOperation returns result in "response"
+        response_block = op_dict.get("response", {})
+        # ML Dev might return result in "result"
+        if not response_block:
+            response_block = op_dict.get("result", {})
+        
+        # Extract video URIs from generateVideoResponse
+        gen_video_resp = response_block.get("generateVideoResponse", response_block)
+        generated_samples = gen_video_resp.get("generatedSamples", [])
+        
+        video_uris = []
+        for sample in generated_samples:
+            video = sample.get("video", {})
+            uri = video.get("uri") if isinstance(video, dict) else None
+            if uri:
+                video_uris.append(uri)
+        
+        if video_uris:
+            result_data = {"videoUri": video_uris[0], "custom_type": "veo_result", "all_videos": video_uris}
+        elif response_block:
+            result_data = response_block
+    
+    return {
+        "operationName": operation_name,
+        "done": done,
+        "metadata": str(metadata) if metadata else "{}",
+        "custom_type": "veo_lro" if "veo" in operation_name.lower() else "lro_op",
+        "result": result_data
+    }
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
 def poll_operation(req: https_fn.Request) -> https_fn.Response:
@@ -245,19 +302,25 @@ def poll_operation(req: https_fn.Request) -> https_fn.Response:
         print(f"DEBUG: Poll Operation - name: {name}")
         client = GeminiClient()
         op = client.get_operation(name)
-        print(f"DEBUG: Operation object captured: {op}")
+        print(f"DEBUG: Operation raw response: {json.dumps(op, default=str)[:500]}")
         
-        result = client._serialize_response(op)
+        # The SDK internal methods return raw dicts — normalize for Flutter client
+        result = _normalize_operation_response(op, name)
         return https_fn.Response(
-            json.dumps(result),
+            json.dumps(result, default=str),
             status=200,
             headers={"Content-Type": "application/json"}
         )
     except Exception as e:
         print(f"Error in poll_operation: {str(e)}")
         import traceback
-        traceback.print_exc()
-        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+        error_trace = traceback.format_exc()
+        print(error_trace)
+        return https_fn.Response(
+            json.dumps({"error": str(e), "traceback": error_trace}), 
+            status=500, 
+            headers={"Content-Type": "application/json"}
+        )
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
 def generate_image(req: https_fn.Request) -> https_fn.Response:
@@ -292,7 +355,7 @@ def count_tokens(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-2.5-flash")
+        model = data.get("model", "gemini-2.0-flash")
         
         client = GeminiClient()
         total_tokens = client.count_tokens(model_name=model, prompt=prompt)
@@ -314,7 +377,7 @@ def create_cache(req: https_fn.Request) -> https_fn.Response:
 
     try:
         data = req.get_json()
-        model = data.get("model", "gemini-2.5-flash")
+        model = data.get("model", "gemini-2.0-flash")
         contents = data.get("contents", []) # Expects serialized Part/Content list
         ttl = data.get("ttl", 3600)
         

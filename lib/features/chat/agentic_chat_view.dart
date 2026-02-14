@@ -764,8 +764,12 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         ),
       ),
       itemBuilder: (context) => [
+        _buildGroupHeader('FRONTIER'),
+        _buildModelMenuItem(AIModelConfig.geminiFlash3, FontAwesomeIcons.bolt),
+        _buildModelMenuItem(AIModelConfig.geminiPro3, FontAwesomeIcons.microchip),
+        const PopupMenuDivider(),
         _buildGroupHeader('TEXT MODELS'),
-        _buildModelMenuItem(AIModelConfig.geminiFlash, FontAwesomeIcons.bolt),
+        _buildModelMenuItem(AIModelConfig.geminiFlash, FontAwesomeIcons.solidCircleDot),
         _buildModelMenuItem(AIModelConfig.geminiPro, FontAwesomeIcons.google),
         _buildModelMenuItem(AIModelConfig.geminiFlashLite, FontAwesomeIcons.gaugeHigh),
         const PopupMenuDivider(),
@@ -781,7 +785,6 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
           _buildGroupHeader('EDGE / EXPERIMENTAL'),
           _buildModelMenuItem(AIModelConfig.gemma3Fast, FontAwesomeIcons.gem),
           _buildModelMenuItem(AIModelConfig.gemma3Quality, FontAwesomeIcons.gem),
-          _buildModelMenuItem(AIModelConfig.gemma2n, FontAwesomeIcons.microchip),
         ],
       ],
       onSelected: (config) {

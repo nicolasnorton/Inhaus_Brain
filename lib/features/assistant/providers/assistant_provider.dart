@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../chat/models/chat_models.dart';
 import '../services/assistant_service.dart';
+import '../../chat/models/chat_models.dart';
+import '../../../core/tokens/llm_provider.dart';
 
 // State for the open/close status of the assistant overlay
 final isAssistantOpenProvider = StateProvider<bool>((ref) => false);
 
 // Current status of the assistant (e.g. "Searching...", "Thinking...")
 final assistantStatusProvider = StateProvider<String?>((ref) => null);
+
+// Selected AI Model Provider
+final selectedAIModelProvider = StateProvider<AIModelConfig>((ref) => AIModelConfig.geminiPro);
 
 // Trigger for sending message from FAB
 final assistantSendTriggerProvider = StateProvider<int>((ref) => 0);

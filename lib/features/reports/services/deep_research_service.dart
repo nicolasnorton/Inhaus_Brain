@@ -11,7 +11,7 @@ class DeepResearchService {
   Future<String> startDeepResearch(String prompt) async {
     final result = await AIProxyService.startResearch(
       prompt: prompt,
-      model: 'gemini-2.0-flash-thinking-exp-01-21', // Best available thinking model for research
+      model: 'deep-research-pro-preview-12-2025', // Specialized Frontier Research Agent
     );
     return result['interactionId'];
   }

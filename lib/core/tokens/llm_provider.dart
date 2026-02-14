@@ -18,6 +18,8 @@ class AIModelConfig {
   final String? overrideBaseUrl;
   final String? responseMimeType;
   final bool useGoogleSearch;
+  final String? thinkingLevel; // minimal, low, medium, high
+  final String? thinkingSummaries; // auto, none
 
   const AIModelConfig({
     required this.provider,
@@ -27,6 +29,8 @@ class AIModelConfig {
     this.overrideBaseUrl,
     this.responseMimeType,
     this.useGoogleSearch = false,
+    this.thinkingLevel,
+    this.thinkingSummaries,
   });
 
   AIModelConfig copyWith({
@@ -37,6 +41,8 @@ class AIModelConfig {
     String? overrideBaseUrl,
     String? responseMimeType,
     bool? useGoogleSearch,
+    String? thinkingLevel,
+    String? thinkingSummaries,
   }) {
     return AIModelConfig(
       provider: provider ?? this.provider,
@@ -46,6 +52,8 @@ class AIModelConfig {
       overrideBaseUrl: overrideBaseUrl ?? this.overrideBaseUrl,
       responseMimeType: responseMimeType ?? this.responseMimeType,
       useGoogleSearch: useGoogleSearch ?? this.useGoogleSearch,
+      thinkingLevel: thinkingLevel ?? this.thinkingLevel,
+      thinkingSummaries: thinkingSummaries ?? this.thinkingSummaries,
     );
   }
 
@@ -62,20 +70,26 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini (Multi-Tier) ──────────────────────────────────
+  // ── Gemini 2.5 (Standard) ───────────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-lite', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
+
+  // ── Gemini 3.0 (Frontier) ────────────────────────────────
+  static AIModelConfig get geminiFlash3 => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
+  static AIModelConfig get geminiPro3 => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-pro-preview', temperature: 1.0);
 
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash',
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview',
     useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro',
+    provider: AIProvider.gemini, modelId: 'deep-research-pro-preview-12-2025',
     useGoogleSearch: true, temperature: 1.0);
 
   // ── Media Models ──────────────────────────────────────────
@@ -107,6 +121,8 @@ class AIModelConfig {
     'overrideBaseUrl': overrideBaseUrl,
     'responseMimeType': responseMimeType,
     'useGoogleSearch': useGoogleSearch,
+    if (thinkingLevel != null) 'thinkingLevel': thinkingLevel,
+    if (thinkingSummaries != null) 'thinkingSummaries': thinkingSummaries,
   };
 
   factory AIModelConfig.fromJson(Map<String, dynamic> json) {
@@ -138,6 +154,8 @@ class AIModelConfig {
       overrideBaseUrl: json['overrideBaseUrl'] as String?,
       responseMimeType: json['responseMimeType'] as String?,
       useGoogleSearch: json['useGoogleSearch'] as bool? ?? false,
+      thinkingLevel: json['thinkingLevel'] as String?,
+      thinkingSummaries: json['thinkingSummaries'] as String?,
     );
   }
 }
