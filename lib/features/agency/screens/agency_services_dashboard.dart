@@ -193,7 +193,6 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
               if (service == null) {
                 final newService = AgencyService.create(
                   name: data['name'],
-                  nameEs: data['nameEs'],
                   description: data['description'],
                   type: ServiceType.values.byName(data['type']),
                   price: data['price'],
@@ -212,7 +211,6 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
               } else {
                 final updated = service.copyWith(
                   name: data['name'],
-                  nameEs: data['nameEs'],
                   description: data['description'],
                   type: ServiceType.values.byName(data['type']),
                   price: data['price'],

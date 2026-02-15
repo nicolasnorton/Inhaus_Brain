@@ -2,20 +2,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/report_model.dart';
 import '../services/reports_service.dart';
+import '../../clients/providers/client_provider.dart';
 
 // Service Provider
 final reportsServiceProvider = Provider<ReportsService>((ref) {
   return ReportsService();
 });
 
-// Stream of Reports (Main Dashboard)
-// Note: In a real app, 'clientId' might come from an Auth/User provider. 
-// For now, we hardcode to 'client_1' or fetch from a hypothetical user state.
+// Stream of Reports for the SELECTED client (was hardcoded to 'client_1')
 final reportsStreamProvider = StreamProvider.autoDispose<List<Report>>((ref) {
+  final selectedClient = ref.watch(selectedClientProvider);
+  if (selectedClient == null) return Stream.value(<Report>[]);
   final service = ref.watch(reportsServiceProvider);
-  return service.getReports('client_1');
+  return service.getReports(selectedClient.id);
 });
 
+// Stream of Reports for a specific client (used by client detail screens)
 final clientReportsProvider = StreamProvider.family.autoDispose<List<Report>, String>((ref, clientId) {
   final service = ref.watch(reportsServiceProvider);
   return service.getReports(clientId);

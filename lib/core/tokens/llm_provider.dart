@@ -17,6 +17,7 @@ class AIModelConfig {
   final int? maxTokens;
   final String? overrideBaseUrl;
   final String? responseMimeType;
+  final Map<String, dynamic>? responseJsonSchema;
   final bool useGoogleSearch;
   final String? thinkingLevel; // minimal, low, medium, high
   final String? thinkingSummaries; // auto, none
@@ -28,6 +29,7 @@ class AIModelConfig {
     this.maxTokens,
     this.overrideBaseUrl,
     this.responseMimeType,
+    this.responseJsonSchema,
     this.useGoogleSearch = false,
     this.thinkingLevel,
     this.thinkingSummaries,
@@ -40,6 +42,7 @@ class AIModelConfig {
     int? maxTokens,
     String? overrideBaseUrl,
     String? responseMimeType,
+    Map<String, dynamic>? responseJsonSchema,
     bool? useGoogleSearch,
     String? thinkingLevel,
     String? thinkingSummaries,
@@ -51,6 +54,7 @@ class AIModelConfig {
       maxTokens: maxTokens ?? this.maxTokens,
       overrideBaseUrl: overrideBaseUrl ?? this.overrideBaseUrl,
       responseMimeType: responseMimeType ?? this.responseMimeType,
+      responseJsonSchema: responseJsonSchema ?? this.responseJsonSchema,
       useGoogleSearch: useGoogleSearch ?? this.useGoogleSearch,
       thinkingLevel: thinkingLevel ?? this.thinkingLevel,
       thinkingSummaries: thinkingSummaries ?? this.thinkingSummaries,
@@ -97,6 +101,12 @@ class AIModelConfig {
     provider: AIProvider.vertex, modelId: 'imagen-4.0-generate-001', temperature: 1.0);
   static AIModelConfig get veo31 => const AIModelConfig(
     provider: AIProvider.vertex, modelId: 'veo-3.1-generate-001');
+  
+  // ── Nano Banana (Native Image Gen) ────────────────────────
+  static AIModelConfig get nanoBanana => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-image');
+  static AIModelConfig get nanoBananaPro => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-pro-image-preview');
 
   // ── Gemma Open Models (via Python proxy / Model Garden) ───
   static AIModelConfig get gemma3Fast => const AIModelConfig(
@@ -120,6 +130,7 @@ class AIModelConfig {
     'maxTokens': maxTokens,
     'overrideBaseUrl': overrideBaseUrl,
     'responseMimeType': responseMimeType,
+    if (responseJsonSchema != null) 'responseJsonSchema': responseJsonSchema,
     'useGoogleSearch': useGoogleSearch,
     if (thinkingLevel != null) 'thinkingLevel': thinkingLevel,
     if (thinkingSummaries != null) 'thinkingSummaries': thinkingSummaries,
@@ -153,6 +164,7 @@ class AIModelConfig {
       maxTokens: json['maxTokens'] as int?,
       overrideBaseUrl: json['overrideBaseUrl'] as String?,
       responseMimeType: json['responseMimeType'] as String?,
+      responseJsonSchema: json['responseJsonSchema'] as Map<String, dynamic>?,
       useGoogleSearch: json['useGoogleSearch'] as bool? ?? false,
       thinkingLevel: json['thinkingLevel'] as String?,
       thinkingSummaries: json['thinkingSummaries'] as String?,

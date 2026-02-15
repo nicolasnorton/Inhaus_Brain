@@ -57,16 +57,20 @@ class GeminiClient:
         name_lower = model_name.lower()
 
         # Explicitly preserve specialized models
-        SPECIALIZED_MODELS = ["veo", "imagen", "lyra", "nano", "deep-research"]
+        SPECIALIZED_MODELS = ["veo", "imagen", "lyra", "nano", "deep-research", "flash-image", "pro-image"]
         if any(sm in name_lower for sm in SPECIALIZED_MODELS):
             # Veo 3.1 mapping
             if "veo" in name_lower and "3.1" in name_lower:
                 return "veo-3.1-generate-001"
-            # Nano Banana mapping
-            if "nano" in name_lower or "banana" in name_lower:
-                 if "pro" in name_lower:
-                     return "imagen-3.0-nano-banana-pro-001"
-                 return "imagen-3.0-nano-banana-001"
+            # Nano Banana / Native Image Generation mapping
+            if "nano-banana" in name_lower or "nano_banana" in name_lower:
+                if "pro" in name_lower:
+                    return "gemini-3-pro-image-preview"
+                return "gemini-2.5-flash-image"
+            if "flash-image" in name_lower or "flash_image" in name_lower:
+                return "gemini-2.5-flash-image"
+            if "pro-image" in name_lower or "pro_image" in name_lower:
+                return "gemini-3-pro-image-preview"
             return model_name
 
         # Gemini 2.5 is GA - pass through directly
@@ -123,7 +127,8 @@ class GeminiClient:
         audio: bool = False,
         use_google_search: bool = False,
         generation_params: Optional[Dict[str, Any]] = None,
-        cached_content_name: Optional[str] = None
+        cached_content_name: Optional[str] = None,
+        response_json_schema: Optional[Dict[str, Any]] = None
     ) -> Any:
         """
         Generate content using the specified model with intelligent routing.
@@ -217,6 +222,11 @@ class GeminiClient:
 
         if audio:
             config_params["response_modalities"] = ["AUDIO"]
+
+        # Structured Output: pass response_json_schema if provided
+        if response_json_schema:
+            config_params["response_mime_type"] = config_params.get("response_mime_type", "application/json")
+            config_params["response_json_schema"] = response_json_schema
 
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
@@ -656,8 +666,8 @@ class GeminiClient:
             ]
         }
 
-    def generate_image(self, prompt: str, model: str = "imagen-3.0-nano-banana-001", **kwargs) -> Any:
-        """Generate image using Nano Banana or Imagen models with fallback."""
+    def generate_image(self, prompt: str, model: str = "imagen-3.0-fast-generate-001", **kwargs) -> Any:
+        """Generate image using legacy Imagen models with fallback."""
         models_to_try = [model, "imagen-3.0-fast-generate-001"]
         models_to_try = list(dict.fromkeys(models_to_try))
 
@@ -675,6 +685,173 @@ class GeminiClient:
                 print(f"GeminiClient: Image generation failed with {attempt_model}: {e}. Falling back...")
         
         raise last_error or Exception("Image generation failed for all models.")
+
+    def generate_nano_banana(
+        self,
+        prompt: Union[str, List[Any]],
+        model: str = "gemini-2.5-flash-image",
+        response_modalities: Optional[List[str]] = None,
+        aspect_ratio: Optional[str] = None,
+        image_size: Optional[str] = None,
+        reference_images: Optional[List[Dict[str, Any]]] = None,
+    ) -> Any:
+        """Generate images using Nano Banana (gemini-2.5-flash-image) or
+        Nano Banana Pro (gemini-3-pro-image-preview) via generate_content.
+        
+        This is the modern native image generation approach that uses
+        generate_content with response_modalities=['Image'] instead of
+        the legacy generate_images API.
+        """
+        normalized_model = self._normalize_model_name(model)
+        
+        # Build config
+        config_params = {}
+        
+        # Default to returning both text and image
+        config_params["response_modalities"] = response_modalities or ["Text", "Image"]
+        
+        # Image config (aspect ratio, size)
+        image_config_params = {}
+        if aspect_ratio:
+            image_config_params["aspect_ratio"] = aspect_ratio
+        if image_size and "pro-image" in normalized_model:
+            # image_size only supported on gemini-3-pro-image-preview
+            image_config_params["image_size"] = image_size
+        if image_config_params:
+            config_params["image_config"] = types.ImageConfig(**image_config_params)
+        
+        config = types.GenerateContentConfig(**config_params)
+        
+        # Build contents with optional reference images
+        contents = []
+        if isinstance(prompt, list):
+            # Already multipart
+            for item in prompt:
+                if isinstance(item, dict) and "inline_data" in item:
+                    data = item["inline_data"]
+                    raw_data = base64.b64decode(data["data"]) if isinstance(data["data"], str) else data["data"]
+                    contents.append(types.Part.from_bytes(data=raw_data, mime_type=data["mime_type"]))
+                else:
+                    contents.append(item)
+        else:
+            contents.append(prompt)
+        
+        # Add reference images for editing
+        if reference_images:
+            for ref_img in reference_images:
+                raw_data = base64.b64decode(ref_img["data"]) if isinstance(ref_img["data"], str) else ref_img["data"]
+                contents.append(
+                    types.Part.from_bytes(
+                        data=raw_data,
+                        mime_type=ref_img.get("mime_type", "image/png")
+                    )
+                )
+        
+        print(f"GeminiClient: Generating Nano Banana image with {normalized_model}...")
+        
+        # Fallback chain for image models
+        fallback_models = [normalized_model, "gemini-2.5-flash-image"]
+        fallback_models = list(dict.fromkeys(fallback_models))
+        
+        last_error = None
+        for attempt_model in fallback_models:
+            try:
+                active_client = self.client
+                print(f"GeminiClient: Attempting Nano Banana with {attempt_model}...")
+                return active_client.models.generate_content(
+                    model=attempt_model,
+                    contents=contents,
+                    config=config
+                )
+            except Exception as e:
+                last_error = e
+                print(f"GeminiClient: Nano Banana failed with {attempt_model}: {e}")
+                if any(x in str(e).lower() for x in ["404", "429", "503", "500", "not found"]):
+                    continue
+                break
+        
+        raise last_error or Exception("Nano Banana image generation failed.")
+
+    def upload_file(self, file_bytes: bytes, mime_type: str, display_name: Optional[str] = None) -> Any:
+        """Upload a file via the Files API for use in generate_content.
+        
+        Best for large documents (PDFs, videos, etc.) that you want to
+        reference across multiple requests without re-uploading.
+        """
+        print(f"GeminiClient: Uploading file ({mime_type}, {len(file_bytes)} bytes)...")
+        
+        # The SDK's files.upload expects file-like objects or paths.
+        # We use io.BytesIO to wrap raw bytes.
+        import io
+        file_obj = io.BytesIO(file_bytes)
+        
+        upload_config = types.UploadFileConfig(mime_type=mime_type)
+        if display_name:
+            upload_config = types.UploadFileConfig(
+                mime_type=mime_type,
+                display_name=display_name
+            )
+        
+        uploaded = self.client.files.upload(
+            file=file_obj,
+            config=upload_config
+        )
+        
+        
+        print(f"GeminiClient: File uploaded: {uploaded.name} ({uploaded.uri})")
+        return uploaded
+
+    def embed_content(
+        self,
+        model: str,
+        content: Union[str, List[str]],
+        task_type: str = "retrieval_document",
+        title: Optional[str] = None,
+        output_dimensionality: Optional[int] = None
+    ) -> List[List[float]]:
+        """Generate embeddings for content."""
+        model = self._normalize_model_name(model)
+        
+        # Use Vertex AI for embeddings usually, or Google AI
+        client = self.client 
+        
+        # Determine config
+        config_params = {}
+        if output_dimensionality:
+             config_params["output_dimensionality"] = output_dimensionality
+
+        # Configure task type properly for SDK
+        # valid task_types: RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION, CLUSTERING
+        
+        print(f"GeminiClient: Embedding content with {model} (Task: {task_type})...")
+        
+        try:
+            result = client.models.embed_content(
+                model=model,
+                contents=content,
+                config=types.EmbedContentConfig(
+                    task_type=task_type,
+                    title=title, 
+                    **config_params
+                )
+            )
+            
+            # Extract embeddings
+            embeddings = []
+            if hasattr(result, 'embeddings'):
+                 for e in result.embeddings:
+                     embeddings.append(e.values)
+            return embeddings
+
+        except Exception as e:
+            print(f"GeminiClient: Embedding failed: {e}")
+            raise e
+
+
+
+    def get_file(self, file_name: str) -> Any:
+        """Get file metadata from the Files API."""
+        return self.client.files.get(name=file_name)
 
     def count_tokens(self, prompt: Union[str, List[Union[str, Any]]], model_name: str = "gemini-2.0-flash") -> int:
         if not self.client:

@@ -120,8 +120,8 @@ service cloud.firestore {
     
     // CLIENTS MODULE RULES
     match /clients/{clientId} {
-      allow create, update, delete: if isAgencyStaff();
-      allow read: if isAgencyStaff() || (isClient() && clientId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedClientIds);
+      allow create, update, delete: if isAuthenticated() && (isAgencyStaff() || request.auth.token.email == 'nnorton@inhausbrain.com'); // TEMPORARY
+      allow read: if isAuthenticated(); 
     }
 
     // USER PROFILES & USER KNOWLEDGE

@@ -114,7 +114,7 @@ $sources
         selectedServicesContext = "\n--- SERVICIOS SELECCIONADOS (ADHERENCIA ESTRICTA REQUERIDA) ---\n";
         for (var s in selectedServices) {
           selectedServicesContext += """
-SERVICIO: ${s.nameEs.isNotEmpty ? s.nameEs : s.name} (${s.name})
+SERVICIO: ${s.name}
 - Ejecución: ${s.execution}
 - Equipo: ${s.team.join(', ')}
 - Entregables: ${s.deliverables.join(', ')}
@@ -278,7 +278,7 @@ CRITICAL: Return only the factual summary. Do not use placeholders. If info is m
         selectedServicesContext = "\n--- SERVICIOS SELECCIONADOS (ADHERENCIA ESTRICTA REQUERIDA) ---\n";
         for (var s in selectedServices) {
           selectedServicesContext += """
-SERVICIO: ${s.nameEs.isNotEmpty ? s.nameEs : s.name} (${s.name})
+SERVICIO: ${s.name}
 - Ejecución: ${s.execution}
 - Equipo: ${s.team.join(', ')}
 - Entregables: ${s.deliverables.join(', ')}

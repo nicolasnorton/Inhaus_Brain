@@ -16,7 +16,6 @@ enum BillingCycle {
 class AgencyService {
   final String id;
   final String name;
-  final String nameEs; // Spanish name
   final String description;
   final ServiceType type;
   final List<String> details; // Highlights or Deliverables
@@ -41,7 +40,6 @@ class AgencyService {
   AgencyService({
     required this.id,
     required this.name,
-    this.nameEs = '',
     required this.description,
     this.type = ServiceType.individual,
     this.details = const [],
@@ -66,7 +64,6 @@ class AgencyService {
 
   factory AgencyService.create({
     required String name,
-    String nameEs = '',
     required String description,
     ServiceType type = ServiceType.individual,
     List<String>? details,
@@ -89,7 +86,6 @@ class AgencyService {
     return AgencyService(
       id: const Uuid().v4(),
       name: name,
-      nameEs: nameEs,
       description: description,
       type: type,
       details: details ?? [],
@@ -117,7 +113,6 @@ class AgencyService {
     return {
       'id': id,
       'name': name,
-      'nameEs': nameEs,
       'description': description,
       'type': type.name,
       'details': details,
@@ -144,8 +139,7 @@ class AgencyService {
   factory AgencyService.fromJson(Map<String, dynamic> json) {
     return AgencyService(
       id: json['id'] ?? const Uuid().v4(),
-      name: json['name'] ?? '',
-      nameEs: json['nameEs'] ?? '',
+      name: json['name'] ?? json['nameEs'] ?? '',
       description: json['description'] ?? '',
       type: json['type'] != null 
           ? ServiceType.values.byName(json['type']) 
@@ -182,7 +176,6 @@ class AgencyService {
   AgencyService copyWith({
     String? id,
     String? name,
-    String? nameEs,
     String? description,
     ServiceType? type,
     List<String>? details,
@@ -207,7 +200,6 @@ class AgencyService {
     return AgencyService(
       id: id ?? this.id,
       name: name ?? this.name,
-      nameEs: nameEs ?? this.nameEs,
       description: description ?? this.description,
       type: type ?? this.type,
       details: details ?? this.details,

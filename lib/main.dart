@@ -55,6 +55,7 @@ void main() async {
     try {
       final String host = Uri.base.host;
       // Only use emulators if we are actually local. Prevents hanging on hosted debug builds.
+      // Only use emulators if we are actually local. Prevents hanging on hosted debug builds.
       if (host.contains('localhost') || host.contains('127.0.0.1')) {
         final String emulatorHost = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : '127.0.0.1';
         FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8080);

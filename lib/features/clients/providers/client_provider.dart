@@ -54,31 +54,9 @@ class ClientNotifier extends StateNotifier<ClientState> {
   }
 
   void _init() {
-    // Listen to real-time stream of clients
+    // Listen to real-time stream of clients from Firestore
     _repository.streamClients().listen((clients) {
-      final List<Client> allClients = [...clients];
-      
-      // Inject Demo Clients if they don't exist
-      if (allClients.indexWhere((c) => c.id == 'client-bajaj') == -1) {
-        allClients.add(Client(
-          id: 'client-bajaj', 
-          name: 'Bajaj Ecuador', 
-          clientType: ClientType.corporate, 
-          industry: 'Automotive',
-          campaignIds: ['demo-bajaj'],
-        ));
-      }
-      if (allClients.indexWhere((c) => c.id == 'client-banco') == -1) {
-        allClients.add(Client(
-          id: 'client-banco', 
-          name: 'Banco del Austro', 
-          clientType: ClientType.corporate, 
-          industry: 'Banking',
-          campaignIds: ['demo-banco'],
-        ));
-      }
-
-      state = state.copyWith(clients: allClients, isLoading: false);
+      state = state.copyWith(clients: clients, isLoading: false);
     }, onError: (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
     });

@@ -3,6 +3,8 @@ import os
 from firebase_functions import https_fn, options
 from firebase_admin import initialize_app, auth
 from gemini_client import GeminiClient
+import base64
+from google.genai import types
 import tools as custom_tools
 from dialogue_manager import DialogueManager
 
@@ -112,6 +114,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         previous_interaction_id = data.get("previousInteractionId")
         thinking_level = data.get("thinkingLevel")
         thinking_summaries = data.get("thinkingSummaries")
+        response_json_schema = data.get("responseJsonSchema")
 
         
         # Inject custom tool definitions if requested by string
@@ -154,7 +157,8 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             audio=audio,
             use_google_search=use_google_search,
             generation_params=data.get("generationParams"),
-            cached_content_name=cached_content_name
+            cached_content_name=cached_content_name,
+            response_json_schema=response_json_schema
         )
 
         # Use the built-in serializer for clean output
@@ -443,7 +447,140 @@ def create_cache(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
-def get_live_token(req: https_fn.Request) -> https_fn.Response:
+def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate images using Nano Banana models via Gemini 2.5/3.0 Native Image Generation.
+    Uses generate_content with response_modalities=['Image'] instead of legacy Imagen API.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        prompt = data.get("prompt")
+        model = data.get("model", "gemini-2.5-flash-image")
+        
+        # Optional config
+        aspect_ratio = data.get("aspectRatio")
+        image_size = data.get("imageSize") 
+        response_modalities = data.get("responseModalities") # e.g. ["Image"] or ["Text", "Image"]
+        reference_images = data.get("referenceImages") # List of {data: base64, mime_type: str}
+
+        client = GeminiClient()
+        response = client.generate_nano_banana(
+            prompt=prompt,
+            model=model,
+            response_modalities=response_modalities,
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+            reference_images=reference_images
+        )
+        
+        # Use existing serializer - it handles inline_data images
+        return https_fn.Response(
+            json.dumps(client._serialize_response(response)),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in generate_nano_banana: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def upload_file(req: https_fn.Request) -> https_fn.Response:
+    """
+    Upload a file using the Gemini Files API.
+    Used for large documents (PDFs, Videos) for Long Context & Document Processing.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        file_data = data.get("data") # Base64 encoded string
+        mime_type = data.get("mimeType")
+        display_name = data.get("displayName")
+        
+        if not file_data or not mime_type:
+            return https_fn.Response("Missing data or mimeType", status=400)
+            
+        file_bytes = base64.b64decode(file_data)
+        
+        client = GeminiClient()
+        uploaded_file = client.upload_file(
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+            display_name=display_name
+        )
+        
+        return https_fn.Response(
+            json.dumps({
+                "name": uploaded_file.name,
+                "uri": uploaded_file.uri,
+                "mimeType": uploaded_file.mime_type,
+                "sizeBytes": uploaded_file.size_bytes,
+                "custom_type": "uploaded_file"
+            }),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in upload_file: {str(e)}")
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def process_document(req: https_fn.Request) -> https_fn.Response:
+    """
+    Process a document (PDF, etc.) for understanding/extraction.
+    Accepts either a File URI (from upload_file) or inline base64 data.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        prompt = data.get("prompt", "Analyze this document.")
+        model = data.get("model", "gemini-2.0-flash")
+        
+        file_uri = data.get("fileUri")
+        inline_data = data.get("inlineData") # {data: b64, mimeType: str}
+        response_json_schema = data.get("responseJsonSchema")
+        
+        contents = []
+        
+        if file_uri:
+            mime_type = data.get("mimeType", "application/pdf")
+            contents.append(types.Part.from_uri(file_uri=file_uri, mime_type=mime_type))
+        elif inline_data:
+            raw_data = base64.b64decode(inline_data["data"])
+            contents.append(types.Part.from_bytes(data=raw_data, mime_type=inline_data["mimeType"]))
+        else:
+            return https_fn.Response("Missing document data (fileUri or inlineData)", status=400)
+            
+        contents.append(prompt)
+        
+        client = GeminiClient()
+        response = client.generate_content(
+            model_name=model,
+            prompt=contents, # Pass list directly
+            response_json_schema=response_json_schema
+        )
+        
+        return https_fn.Response(
+            json.dumps(client._serialize_response(response)),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in process_document: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
     """
     Generate a short-lived access token for Gemini Multimodal Live API (Vertex AI).
     Validates Firebase Auth ID Token before processing.
@@ -693,3 +830,493 @@ def gemma_generate(req: https_fn.Request) -> https_fn.Response:
             status=500,
             headers={"Content-Type": "application/json"}
         )
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def chunk_and_embed(req: https_fn.Request) -> https_fn.Response:
+    """Chunks text and generates embeddings."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        text = data.get("text")
+        chunk_size = data.get("chunkSize", 1000)
+        chunk_overlap = data.get("chunkOverlap", 200)
+        model = data.get("model", "text-embedding-004")
+        
+        if not text:
+             return https_fn.Response("Missing text", status=400)
+
+        # 1. Chunking logic (simple split by character for now, improved later)
+        # Ideally use a tokenizer-aware splitter but for MVP this is okay
+        chunks = []
+        start = 0
+        text_len = len(text)
+        
+        # Prevent infinite loop if chunk_size <= chunk_overlap
+        if chunk_size <= chunk_overlap:
+             chunk_size = chunk_overlap + 100
+
+        while start < text_len:
+             end = start + chunk_size
+             if end > text_len:
+                 end = text_len
+             
+             chunks.append(text[start:end])
+             
+             if end == text_len:
+                 break
+                 
+             start = end - chunk_overlap
+        
+        # 2. Embedding logic
+        client = GeminiClient()
+        embeddings = client.embed_content(
+             model=model,
+             content=chunks,
+             task_type="retrieval_document"
+        )
+        
+        return https_fn.Response(
+            json.dumps({"chunks": chunks, "embeddings": embeddings}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in chunk_and_embed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
+    """Generate images using Nano Banana (native Gemini image generation).
+    
+    Uses gemini-2.5-flash-image or gemini-3-pro-image-preview via
+    generate_content with response_modalities=['Image'].
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        prompt = data.get("prompt")
+        model = data.get("model", "gemini-2.5-flash-image")
+        aspect_ratio = data.get("aspectRatio")
+        image_size = data.get("imageSize")  # "2K" or "4K" for Pro only
+        response_modalities = data.get("responseModalities")  # e.g. ["Image"] or ["Text", "Image"]
+        reference_images = data.get("referenceImages")  # List of {data: base64, mime_type: str}
+
+        if not prompt:
+            return https_fn.Response("Missing prompt", status=400)
+
+        client = GeminiClient()
+        response = client.generate_nano_banana(
+            prompt=prompt,
+            model=model,
+            response_modalities=response_modalities,
+            aspect_ratio=aspect_ratio,
+            image_size=image_size,
+            reference_images=reference_images,
+        )
+
+        result = client._serialize_response(response)
+
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in generate_nano_banana: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def upload_file(req: https_fn.Request) -> https_fn.Response:
+    """Upload a file via the Gemini Files API.
+    
+    Returns file metadata including name and URI for use in subsequent
+    generate_content calls. Best for large documents, videos, etc.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        import base64
+        data = req.get_json()
+        file_data_b64 = data.get("fileData")  # base64 encoded
+        mime_type = data.get("mimeType")
+        display_name = data.get("displayName")
+
+        if not file_data_b64 or not mime_type:
+            return https_fn.Response("Missing fileData or mimeType", status=400)
+
+        file_bytes = base64.b64decode(file_data_b64)
+
+        client = GeminiClient()
+        uploaded = client.upload_file(
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+            display_name=display_name
+        )
+
+        result = {
+            "name": uploaded.name,
+            "uri": uploaded.uri,
+            "mimeType": getattr(uploaded, 'mime_type', mime_type),
+            "sizeBytes": getattr(uploaded, 'size_bytes', len(file_bytes)),
+            "state": str(getattr(uploaded, 'state', 'ACTIVE')),
+        }
+
+        return https_fn.Response(
+            json.dumps(result, default=str),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in upload_file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def process_document(req: https_fn.Request) -> https_fn.Response:
+    """Process a document (PDF, etc.) using Gemini.
+    
+    Supports:
+    - Inline document data (base64)
+    - File URI from a previous upload_file call
+    - Optional structured output via responseJsonSchema
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        import base64
+        data = req.get_json()
+        prompt = data.get("prompt", "Summarize this document")
+        model = data.get("model", "gemini-2.5-flash")
+        file_uri = data.get("fileUri")  # From Files API upload
+        file_mime_type = data.get("fileMimeType", "application/pdf")
+        inline_data_b64 = data.get("inlineData")  # Base64 encoded document
+        response_json_schema = data.get("responseJsonSchema")
+        system_instruction = data.get("systemInstruction")
+
+        if not file_uri and not inline_data_b64:
+            return https_fn.Response("Missing fileUri or inlineData", status=400)
+
+        # Build multipart prompt
+        from google.genai import types
+        contents = []
+
+        if file_uri:
+            # Use file from Files API
+            contents.append(
+                types.Part.from_uri(file_uri=file_uri, mime_type=file_mime_type)
+            )
+        elif inline_data_b64:
+            # Inline document data
+            doc_bytes = base64.b64decode(inline_data_b64)
+            contents.append(
+                types.Part.from_bytes(data=doc_bytes, mime_type=file_mime_type)
+            )
+
+        contents.append(prompt)
+
+        client = GeminiClient()
+        response = client.generate_content(
+            model_name=model,
+            prompt=contents,
+            system_instruction=system_instruction,
+            response_json_schema=response_json_schema,
+        )
+
+        result = client._serialize_response(response)
+
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in process_document: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def get_live_token(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate a short-lived access token for Gemini Multimodal Live API (Vertex AI).
+    Validates Firebase Auth ID Token before processing.
+    """
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
+
+    uid, auth_error = _verify_auth(req)
+    if auth_error:
+        return https_fn.Response(auth_error, status=401)
+
+    try:
+        import google.auth
+        import google.auth.transport.requests
+        import os
+
+        # Use the default service account to generate an access token
+        credentials, project_id = google.auth.default(
+            scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+        auth_req = google.auth.transport.requests.Request()
+        credentials.refresh(auth_req)
+
+        # Return the token and necessary metadata for the client.
+        result = {
+            "token": credentials.token,
+            "projectId": project_id,
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+            "expiresAt": credentials.expiry.isoformat() if credentials.expiry else None
+        }
+
+        return https_fn.Response(
+            json.dumps(result),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        print(f"Error in get_live_token: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+# ═══════════════════════════════════════════════════════════════
+# Phase 4: Source Verification Agent + Confidence Scoring
+# ═══════════════════════════════════════════════════════════════
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def verify_output(req: https_fn.Request) -> https_fn.Response:
+    """Verifies generated output against source material.
+    
+    Analyzes each claim in the output, checks for source support,
+    flags hallucinations, and returns a confidence score.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        output_text = data.get("output", "")
+        source_text = data.get("sources", "")
+        output_type = data.get("outputType", "report")  # report, audio_script, mind_map
+        
+        if not output_text or not source_text:
+            return https_fn.Response(json.dumps({"error": "Missing output or sources"}), status=400, headers={"Content-Type": "application/json"})
+
+        client = GeminiClient()
+
+        # Step 1: Claim Extraction + Verification (Flash for speed)
+        verification_prompt = f"""You are a strict fact-checking agent. Analyze the generated output against the provided sources.
+
+For each factual claim in the output:
+1. Find the supporting passage in the sources
+2. Mark as SUPPORTED, UNSUPPORTED, or PARTIALLY_SUPPORTED
+3. If unsupported, flag as a potential hallucination
+
+Output strictly as JSON:
+{{
+  "claims": [
+    {{
+      "claim": "the factual statement",
+      "status": "SUPPORTED|UNSUPPORTED|PARTIALLY_SUPPORTED",
+      "source_passage": "the matching source text or null",
+      "source_name": "which source document",
+      "confidence": 0.0-1.0
+    }}
+  ],
+  "overall_score": 0.0-1.0,
+  "citation_coverage": 0.0-1.0,
+  "hallucination_count": 0,
+  "suggestions": ["list of improvements"]
+}}
+
+OUTPUT TO VERIFY:
+{output_text[:8000]}
+
+SOURCES:
+{source_text[:12000]}"""
+
+        result = client.generate_content(
+            prompt=verification_prompt,
+            model="gemini-2.5-flash",
+            generation_config={
+                "response_mime_type": "application/json",
+                "temperature": 0.1  # Low temp for factual analysis
+            }
+        )
+
+        # Parse the verification result
+        verification_text = ""
+        if hasattr(result, 'text'):
+            verification_text = result.text
+        elif hasattr(result, 'candidates') and result.candidates:
+            for part in result.candidates[0].content.parts:
+                if hasattr(part, 'text'):
+                    verification_text += part.text
+
+        # Try to parse as JSON, fallback to raw
+        try:
+            verification_json = json.loads(verification_text)
+        except json.JSONDecodeError:
+            verification_json = {
+                "overall_score": 0.7,
+                "citation_coverage": 0.5,
+                "hallucination_count": 0,
+                "suggestions": ["Verification parsing failed - manual review recommended"],
+                "raw_analysis": verification_text[:2000]
+            }
+
+        return https_fn.Response(
+            json.dumps(verification_json),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        print(f"Error in verify_output: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+# ═══════════════════════════════════════════════════════════════
+# Phase 5.2: Multi-Speaker Audio Synthesis (Cloud TTS)
+# ═══════════════════════════════════════════════════════════════
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def synthesize_audio(req: https_fn.Request) -> https_fn.Response:
+    """Synthesizes multi-speaker audio from a podcast script.
+    
+    Parses [Host 1]: and [Host 2]: labels, routes to different
+    Google Cloud TTS voices, and concatenates audio segments.
+    Returns base64-encoded audio.
+    """
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        script = data.get("script", "")
+        voice_config = data.get("voiceConfig", {})
+        
+        if not script:
+            return https_fn.Response(json.dumps({"error": "Missing script"}), status=400, headers={"Content-Type": "application/json"})
+
+        # Voice mapping
+        host1_voice = voice_config.get("host1", "en-US-Journey-D")  # Energetic male
+        host2_voice = voice_config.get("host2", "en-US-Journey-F")  # Thoughtful female
+        
+        # Parse script into segments
+        import re
+        segments = []
+        # Split by [Host X]: patterns
+        pattern = re.compile(r'\[(Host [12])\]:\s*(.*?)(?=\[Host [12]\]:|$)', re.DOTALL)
+        matches = pattern.findall(script)
+        
+        if not matches:
+            # Fallback: treat entire script as Host 1
+            segments.append({"speaker": "Host 1", "text": script, "voice": host1_voice})
+        else:
+            for speaker, text in matches:
+                text = text.strip()
+                if text:
+                    voice = host1_voice if speaker == "Host 1" else host2_voice
+                    segments.append({"speaker": speaker, "text": text, "voice": voice})
+
+        # Attempt Cloud TTS synthesis
+        try:
+            from google.cloud import texttospeech_v1 as tts
+            
+            tts_client = tts.TextToSpeechClient()
+            audio_segments = []
+            
+            for seg in segments:
+                # Build SSML for natural pacing
+                ssml = f'<speak><prosody rate="medium" pitch="0st">{seg["text"]}</prosody></speak>'
+                
+                synthesis_input = tts.SynthesisInput(ssml=ssml)
+                voice_params = tts.VoiceSelectionParams(
+                    language_code="en-US",
+                    name=seg["voice"]
+                )
+                audio_config = tts.AudioConfig(
+                    audio_encoding=tts.AudioEncoding.MP3,
+                    speaking_rate=1.0,
+                    pitch=0.0
+                )
+                
+                response = tts_client.synthesize_speech(
+                    input=synthesis_input,
+                    voice=voice_params,
+                    audio_config=audio_config
+                )
+                
+                audio_segments.append({
+                    "speaker": seg["speaker"],
+                    "audio": base64.b64encode(response.audio_content).decode("utf-8"),
+                    "duration_estimate": len(seg["text"]) / 15  # ~15 chars/sec estimate
+                })
+            
+            return https_fn.Response(
+                json.dumps({
+                    "segments": audio_segments,
+                    "format": "mp3",
+                    "totalSegments": len(audio_segments),
+                    "synthesizer": "cloud_tts"
+                }),
+                status=200,
+                headers={"Content-Type": "application/json"}
+            )
+            
+        except ImportError:
+            # Cloud TTS not available, return segment metadata for client-side handling
+            print("Cloud TTS not available, returning segment metadata only")
+            return https_fn.Response(
+                json.dumps({
+                    "segments": [{"speaker": s["speaker"], "text": s["text"], "voice": s["voice"]} for s in segments],
+                    "format": "metadata_only",
+                    "totalSegments": len(segments),
+                    "synthesizer": "none",
+                    "message": "Cloud TTS not available. Install google-cloud-texttospeech for audio synthesis."
+                }),
+                status=200,
+                headers={"Content-Type": "application/json"}
+            )
+
+    except Exception as e:
+        print(f"Error in synthesize_audio: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+

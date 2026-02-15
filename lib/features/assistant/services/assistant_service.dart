@@ -505,7 +505,7 @@ class AssistantService {
               }
           }
           
-          return ToolExecutionSummary(
+          final summary = ToolExecutionSummary(
               text: "I've completed the research and generated a detailed report for you.",
               modelName: 'Gemini 3.0 Pro (Deep Research)',
               uiPayload: {
@@ -517,6 +517,11 @@ class AssistantService {
                   ...reportData
               }
           );
+          
+          // Clear status after reports flow
+          _ref.read(assistantStatusProvider.notifier).state = null;
+          
+          return summary;
       }
 
       // 1. Determine base config based on user selection or intent safety

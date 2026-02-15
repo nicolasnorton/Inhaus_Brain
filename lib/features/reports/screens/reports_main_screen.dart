@@ -73,6 +73,33 @@ class _ReportsMainScreenState extends ConsumerState<ReportsMainScreen> with Sing
   }
 
 
+  Future<void> _createTestClient() async {
+    try {
+      await ref.read(clientProvider.notifier).addClient(
+        name: "Test Client",
+        clientType: ClientType.corporate,
+        industry: "Technology",
+        description: "Auto-generated test client for reports testing.",
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Test Client Created & Selected!"), backgroundColor: Colors.green),
+        );
+        // Auto-select the new client
+        final clients = ref.read(clientProvider).clients;
+        if (clients.isNotEmpty) {
+           ref.read(clientProvider.notifier).selectClient(clients.last.id);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to create test client: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientState = ref.watch(clientProvider);
@@ -91,12 +118,23 @@ class _ReportsMainScreenState extends ConsumerState<ReportsMainScreen> with Sing
                 const SizedBox(width: 24),
                 // Client Selector Logic
                 if (clientState.clients.isNotEmpty)
-                  _buildClientSelector(selectedClient, clientState),
+                  _buildClientSelector(selectedClient, clientState)
+                else
+                  TextButton.icon(
+                    onPressed: _createTestClient,
+                    icon: const Icon(Icons.add_circle_outline, color: AppTheme.primary, size: 16),
+                    label: const Text("Seed Test Client", style: TextStyle(color: AppTheme.primary)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      backgroundColor: AppTheme.primary.withOpacity(0.1),
+                    ),
+                  ),
               ],
             ),
         backgroundColor: AppTheme.surface,
         centerTitle: false,
         actions: [
+            // ... (rest of actions)
            if (!isMobile)
              IconButton(
                icon: const Icon(Icons.help_outline, color: Colors.white70),

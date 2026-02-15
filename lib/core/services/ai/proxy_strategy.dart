@@ -99,11 +99,24 @@ class ProxyStrategy extends AIStrategy {
             if (part.containsKey('executable_adunit')) {
               buffer.write(jsonEncode(part));
             }
+            if (part.containsKey('inlineData')) {
+              // Handle Nano Banana inline images
+              final mime = part['inlineData']['mimeType'];
+              final data = part['inlineData']['data'];
+              buffer.writeln('\n![Generated Image](data:$mime;base64,$data)\n');
+            }
           }
         }
         text = buffer.toString();
         if (text.isEmpty && parts.isNotEmpty) {
-          text = jsonEncode(parts.first);
+           // Fallback if parts didn't match known keys but content exists
+           if (parts.first is Map && parts.first.containsKey('inlineData')) {
+              final mime = parts.first['inlineData']['mimeType'];
+              final data = parts.first['inlineData']['data'];
+              text = '![Generated Image](data:$mime;base64,$data)';
+           } else {
+              text = jsonEncode(parts.first);
+           }
         }
       }
     } else if (proxyRes['custom_type'] == 'interaction_result') {

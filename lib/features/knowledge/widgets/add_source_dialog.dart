@@ -518,7 +518,7 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
                 }
               });
             },
-            title: Text(service.nameEs, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            title: Text(service.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
             subtitle: Text('\$${service.basePrice}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
             activeColor: AppTheme.primary,
             checkColor: Colors.white,
@@ -534,10 +534,10 @@ class _AddSourceDialogState extends ConsumerState<AddSourceDialog> {
     final selectedServices = _availableServices!.where((s) => _selectedServiceIds.contains(s.id)).toList();
     
     // Create a single knowledge source with all selected services
-    final serviceNames = selectedServices.map((s) => s.nameEs).join(', ');
+    final serviceNames = selectedServices.map((s) => s.name).join(', ');
     final serviceDetails = selectedServices.map((s) {
       return '''
-${s.nameEs} (${s.name})
+${s.name}
 - Ejecución: ${s.execution}
 - Equipo: ${s.team.join(', ')}
 - Entregables: ${s.deliverables.join(', ')}
