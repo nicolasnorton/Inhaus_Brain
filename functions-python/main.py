@@ -199,6 +199,40 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
         prompt = data.get("prompt")
         model = data.get("model", "deep-research-pro-preview-12-2025") 
         
+        raw_tools = data.get("tools")
+        processed_tools = None
+        
+        if raw_tools:
+            processed_tools = []
+            # Interactions API expects a list of Tool objects or tool dictionaries
+            # We need to map frontend simplified names to SDK Tool objects
+            # similar to how generate_content handles it inside GeminiClient, 
+            # but create_interaction expects 'tools' argument to be ready.
+            
+            # Since we updated create_interaction to accept 'tools', 
+            # we should let GeminiClient handle the heavy lifting if possible,
+            # BUT create_interaction currently just passes 'tools' through to SDK.
+            # So we must construct SDK Tool objects here OR update create_interaction again.
+            
+            # DECISION: It's cleaner to have the tool construction logic inside GeminiClient
+            # so both generate_content and create_interaction use it.
+            # However, for now, let's just do a quick pass here to ensure obvious ones work.
+            
+            for t in raw_tools:
+                if isinstance(t, str):
+                   if t == "google_search_retrieval":
+                       processed_tools.append(types.Tool(google_search_retrieval=types.GoogleSearchRetrieval(
+                           dynamic_retrieval_config=types.DynamicRetrievalConfig(mode=types.DynamicRetrievalConfig.Mode.DYNAMIC)
+                       )))
+                   elif t in ["google_search", "web_search"]:
+                       processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
+                   elif t == "code_execution":
+                       processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
+                elif isinstance(t, dict):
+                   # Pass dicts through, assuming they are valid Tool dicts or FunctionDeclarations
+                   # The SDK is quite flexible with dicts for FunctionDeclarations
+                   processed_tools.append(t)
+
         client = GeminiClient()
         # Pass all relevant Interaction params
         interaction = client.create_interaction(
@@ -207,7 +241,7 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
             previous_interaction_id=data.get("previousInteractionId"),
             system_instruction=data.get("systemInstruction"),
             generation_config=data.get("config"),
-            tools=data.get("tools")
+            tools=processed_tools
         )
         
         resp_data = {

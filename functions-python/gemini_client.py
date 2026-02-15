@@ -157,51 +157,63 @@ class GeminiClient:
             config_params.pop("thinking_config", None)
 
         processed_tools = []
+        
+        # 1. Google Search / Grounding (Jan 2026 Standard)
+        # Use GoogleSearchRetrieval for broader dynamic grounding
         if use_google_search:
-            processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
+            # Check if dynamic_retrieval_config is passed in generation_params
+            dynamic_threshold = (generation_params or {}).get("dynamic_threshold", 0.3)
+            processed_tools.append(
+                types.Tool(
+                    google_search_retrieval=types.GoogleSearchRetrieval(
+                        dynamic_retrieval_config=types.DynamicRetrievalConfig(
+                            mode=types.DynamicRetrievalConfig.Mode.DYNAMIC,
+                            dynamic_threshold=dynamic_threshold,
+                        )
+                    )
+                )
+            )
 
+        # 2. Function Declarations (Tools)
         if tools and not thinking:
             function_declarations = []
             for tool in tools:
                 if isinstance(tool, dict):
-                    # Check if it's already a wrapped tool format
-                    if "google_search" in tool or "googleSearch" in tool:
-                        processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
+                    # Check for existing tool wrappers
+                    if "google_search_retrieval" in tool or "googleSearchRetrieval" in tool:
+                         processed_tools.append(types.Tool(google_search_retrieval=types.GoogleSearchRetrieval()))
+                    elif "google_search" in tool or "googleSearch" in tool:
+                         # Legacy fallback to standard search if explicitly requested
+                         processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
                     elif "google_maps" in tool or "googleMaps" in tool:
                         processed_tools.append(types.Tool(google_maps=types.GoogleMaps()))
                     elif "code_execution" in tool or "codeExecution" in tool:
                         processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
                     elif "function_declarations" in tool or "functionDeclarations" in tool:
-                        # Re-wrap properly if it's a dict with declarations
                         decls = tool.get("function_declarations") or tool.get("functionDeclarations") or []
                         function_declarations.extend(decls)
-                    elif "name" in tool and ("parameters" in tool or "description" in tool):
-                        # This is an individual function declaration (e.g. from Flutter)
+                    elif "name" in tool:
+                        # Individual function declaration (e.g. from Flutter)
                         function_declarations.append(tool)
-                    else:
-                        # Unknown dict format, try to append as is (risky)
-                        processed_tools.append(tool)
                 elif isinstance(tool, str):
-                    if tool in ["google_search", "web_search"]:
+                    if tool == "google_search_retrieval":
+                        processed_tools.append(types.Tool(
+                            google_search_retrieval=types.GoogleSearchRetrieval(
+                                dynamic_retrieval_config=types.DynamicRetrievalConfig(mode=types.DynamicRetrievalConfig.Mode.DYNAMIC)
+                            )
+                        ))
+                    elif tool in ["google_search", "web_search"]:
                         processed_tools.append(types.Tool(google_search=types.GoogleSearch()))
                     elif tool == "code_execution":
                         processed_tools.append(types.Tool(code_execution=types.CodeExecution()))
                     else:
                         # Treat as name of a custom tool to be retrieved? 
-                        # This is handled in main.py usually, but for safety:
                         processed_tools.append(tool)
             
             # Unified Tool object for better compatibility
+            # Jan 2026 Best Practice: Separate Tool objects in the list for different capabilities
             if function_declarations:
-                if use_google_search:
-                     processed_tools = [types.Tool(
-                         function_declarations=function_declarations,
-                         google_search=types.GoogleSearch()
-                     )]
-                else:
-                     processed_tools = [types.Tool(function_declarations=function_declarations)]
-            elif use_google_search:
-                processed_tools = [types.Tool(google_search=types.GoogleSearch())]
+                processed_tools.append(types.Tool(function_declarations=function_declarations))
 
         if audio:
             config_params["response_modalities"] = ["AUDIO"]
@@ -703,6 +715,21 @@ class GeminiClient:
         # Standard interaction for 2.5/3.0 models
         print(f"GeminiClient: Creating standard interaction with {normalized_model}")
         
+        # Handle Thinking Logic for Interactions (Jan 2026)
+        thinking_params = None
+        if generation_config:
+            thinking_level = generation_config.get("thinking_level")
+            thinking_summaries = generation_config.get("thinking_summaries")
+            
+            if thinking_level or thinking_summaries:
+                thinking_params = {
+                    "level": thinking_level or "medium",
+                    "summaries": thinking_summaries or "auto"
+                }
+                # Clean up generation_config for SDK compatibility
+                if "thinking_level" in generation_config: del generation_config["thinking_level"]
+                if "thinking_summaries" in generation_config: del generation_config["thinking_summaries"]
+
         # Prepare params for interactions.create
         params = {
             "model": normalized_model,
@@ -712,6 +739,7 @@ class GeminiClient:
             "generation_config": generation_config,
             "previous_interaction_id": previous_interaction_id,
             "background": background,
+            "thinking": thinking_params,
             **kwargs
         }
         # Remove None values to avoid SDK errors
