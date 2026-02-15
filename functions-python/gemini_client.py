@@ -597,9 +597,18 @@ class GeminiClient:
                 }
             outputs_data.append(item)
             
+        # Safely extract status - SDK's Interaction __getattr__ can raise
+        # AttributeError even with getattr defaults
+        try:
+            interaction_status = getattr(interaction, 'state', None)
+            if not interaction_status:
+                interaction_status = getattr(interaction, 'status', 'unknown')
+        except Exception:
+            interaction_status = 'unknown'
+            
         return {
             "id": getattr(interaction, 'id', None),
-            "status": getattr(interaction, 'state', getattr(interaction, 'status', 'unknown')),
+            "status": interaction_status,
             "outputs": outputs_data,
             "custom_type": "interaction_result"
         }

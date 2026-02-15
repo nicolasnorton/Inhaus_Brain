@@ -210,11 +210,21 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
             tools=data.get("tools")
         )
         
+        resp_data = {
+            "interactionId": getattr(interaction, 'id', 'unknown')
+        }
+        
+        try:
+            # Safely extract status/state, handling property access errors
+            status = getattr(interaction, 'state', None)
+            if not status:
+                status = getattr(interaction, 'status', 'unknown')
+            resp_data["status"] = status
+        except Exception:
+            resp_data["status"] = "unknown"
+
         return https_fn.Response(
-            json.dumps({
-                "interactionId": interaction.id, 
-                "status": getattr(interaction, 'state', getattr(interaction, 'status', 'unknown'))
-            }),
+            json.dumps(resp_data),
             status=200,
             headers={"Content-Type": "application/json"}
         )

@@ -40,7 +40,7 @@ service cloud.firestore {
 
     // REPORTS MODULE RULES
     match /reports/{reportId} {
-      allow create: if isAgencyStaff();
+      allow create: if isAuthenticated();
       allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
       allow update, delete: if isAgencyStaff();
     }
