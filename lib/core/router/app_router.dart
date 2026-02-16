@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/agency/screens/agency_screen.dart';
 import '../../features/agency/screens/sales_screen.dart';
+import '../../features/agency/screens/agency_services_dashboard.dart'; // Added
 import '../../features/finance/screens/finance_dashboard_screen.dart'; // Updated
 import '../../features/hr/screens/hr_dashboard_screen.dart'; // Updated
 
@@ -298,6 +299,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'hr',
                 builder: (context, state) => const HRDashboardScreen(),
+              ),
+              GoRoute(
+                path: 'services',
+                builder: (context, state) => const AgencyServicesDashboard(),
               ),
             ],
           ),

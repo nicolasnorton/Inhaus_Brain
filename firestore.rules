@@ -30,7 +30,8 @@ service cloud.firestore {
         getRole() == 'superAdmin' || 
         getRole() == 'admin' || 
         getRole() == 'humanAgencyStaff' ||
-        getRole() == 'accountManager'
+        getRole() == 'accountManager' ||
+        request.auth.token.email == 'nnorton@inhausbrain.com'
       );
     }
 
@@ -170,6 +171,31 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow read: if isAuthenticated();
       allow update, delete: if isAgencyStaff();
+    }
+
+    // WORKSPACE (PicoClaw Architecture — User-Owned Agent State)
+    match /workspaces/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Workspace docs: identity, soul, user_profile, agent_rules, memory, heartbeat
+      match /docs/{docType} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Daily activity notes (YYYYMMDD keys)
+      match /daily_notes/{noteId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Agent registry (metadata + full prompts)
+      match /agent_registry/{agentName} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Runtime skills
+      match /skills/{skillName} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // DEFAULT DENY

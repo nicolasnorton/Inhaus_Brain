@@ -7,6 +7,9 @@ import base64
 from google.genai import types
 import tools as custom_tools
 from dialogue_manager import DialogueManager
+from workspace_context_builder import WorkspaceContextBuilder
+from dynamic_router import build_router_prompt_from_firestore
+from session_summarizer import maybe_summarize
 
 # Initialize global managers (note: these might reset on cold starts, strict statelessness preferred usually)
 # but for simple caching, we can keep them.
@@ -115,6 +118,31 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         thinking_level = data.get("thinkingLevel")
         thinking_summaries = data.get("thinkingSummaries")
         response_json_schema = data.get("responseJsonSchema")
+
+        # PicoClaw: Session summarization for long conversations
+        session_messages = data.get("sessionMessages")
+        if session_messages:
+            summary, trimmed_messages = maybe_summarize(session_messages)
+            if summary:
+                # Prepend summary to system instruction
+                if system_instruction:
+                    system_instruction = f"{summary}\n\n---\n\n{system_instruction}"
+                else:
+                    system_instruction = summary
+                # Replace prompt with only recent messages context
+                print(f"Session summarized: {len(session_messages)} msgs -> {len(trimmed_messages)} msgs")
+
+        # PicoClaw: Optionally enrich system_instruction from workspace
+        use_workspace = data.get("useWorkspace", False)
+        if use_workspace and uid:
+            try:
+                ctx_builder = WorkspaceContextBuilder()
+                workspace_prompt = ctx_builder.build_system_prompt(uid)
+                if workspace_prompt:
+                    system_instruction = f"{workspace_prompt}\n\n---\n\n{system_instruction}" if system_instruction else workspace_prompt
+                    print(f"Workspace context injected for {uid} ({len(workspace_prompt)} chars)")
+            except Exception as ws_err:
+                print(f"Workspace context failed (non-fatal): {ws_err}")
 
         
         # Inject custom tool definitions if requested by string
@@ -1320,3 +1348,265 @@ def synthesize_audio(req: https_fn.Request) -> https_fn.Response:
         traceback.print_exc()
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
+
+# ═══════════════════════════════════════════════════════════════
+# PicoClaw Architecture: Workspace, Memory, Skills, Heartbeat
+# ═══════════════════════════════════════════════════════════════
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def build_system_prompt(req: https_fn.Request) -> https_fn.Response:
+    """Build system prompt from Firestore workspace documents."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json() or {}
+        include_memory = data.get("includeMemory", True)
+
+        ctx_builder = WorkspaceContextBuilder()
+        prompt = ctx_builder.build_system_prompt(uid, include_memory=include_memory)
+
+        return https_fn.Response(
+            json.dumps({"systemPrompt": prompt, "charCount": len(prompt)}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        print(f"Error in build_system_prompt: {str(e)}")
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def update_memory(req: https_fn.Request) -> https_fn.Response:
+    """Update the user's long-term memory document."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        from firebase_admin import firestore as fs
+        db = fs.client()
+        data = req.get_json()
+
+        section = data.get("section", "General")
+        content = data.get("content", "")
+        mode = data.get("mode", "append")
+
+        ref = db.collection('workspaces').document(uid).collection('docs').document('memory')
+        snap = ref.get()
+        current = snap.to_dict().get('content', '') if snap.exists and snap.to_dict() else "# Brian's Memory\n"
+
+        from datetime import datetime
+        timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+
+        if mode == "replace":
+            import re
+            pattern = re.compile(r'## ' + re.escape(section) + r'[^\n]*\n[\s\S]*?(?=\n## |\Z)')
+            if pattern.search(current):
+                updated = pattern.sub(f'## {section}\n{content}', current)
+            else:
+                updated = f"{current}\n\n## {section}\n{content}"
+        else:
+            updated = f"{current}\n\n## {section} ({timestamp})\n{content}"
+
+        ref.set({'content': updated, 'updatedAt': fs.SERVER_TIMESTAMP}, merge=True)
+
+        return https_fn.Response(
+            json.dumps({"status": "ok", "mode": mode, "section": section}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def log_activity(req: https_fn.Request) -> https_fn.Response:
+    """Append to today's daily note."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        from firebase_admin import firestore as fs
+        from datetime import datetime
+        db = fs.client()
+        data = req.get_json()
+
+        entry = data.get("entry", "")
+        if not entry:
+            return https_fn.Response("Missing entry", status=400)
+
+        today = datetime.utcnow().strftime('%Y%m%d')
+        timestamp = datetime.utcnow().strftime('%H:%M')
+        formatted = f"- {timestamp} {entry}"
+
+        ref = db.collection('workspaces').document(uid).collection('daily_notes').document(today)
+        snap = ref.get()
+
+        if snap.exists and snap.to_dict():
+            current = snap.to_dict().get('content', '')
+            entries = list(snap.to_dict().get('entries', []))
+            entries.append(formatted)
+            ref.update({
+                'content': f"{current}\n{formatted}",
+                'entries': entries,
+                'updatedAt': fs.SERVER_TIMESTAMP,
+            })
+        else:
+            date_str = datetime.utcnow().strftime('%B %d, %Y')
+            ref.set({
+                'content': f"# {date_str}\n\n{formatted}",
+                'entries': [formatted],
+                'updatedAt': fs.SERVER_TIMESTAMP,
+            })
+
+        return https_fn.Response(
+            json.dumps({"status": "ok", "date": today}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def read_memory(req: https_fn.Request) -> https_fn.Response:
+    """Read memory + recent daily notes for system prompt building."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json() or {}
+        days = data.get("days", 3)
+
+        ctx_builder = WorkspaceContextBuilder()
+        memory = ctx_builder._get_doc_content(uid, 'memory')
+        daily_notes = ctx_builder._get_recent_daily_notes(uid, days=days)
+
+        return https_fn.Response(
+            json.dumps({"memory": memory, "dailyNotes": daily_notes}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def read_skill(req: https_fn.Request) -> https_fn.Response:
+    """Load full skill content by name (lazy loading)."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        from firebase_admin import firestore as fs
+        db = fs.client()
+        data = req.get_json()
+
+        skill_name = data.get("skillName")
+        if not skill_name:
+            return https_fn.Response("Missing skillName", status=400)
+
+        ref = db.collection('workspaces').document(uid).collection('skills').document(skill_name)
+        snap = ref.get()
+
+        if not snap.exists:
+            return https_fn.Response(
+                json.dumps({"error": f"Skill '{skill_name}' not found"}),
+                status=404, headers={"Content-Type": "application/json"}
+            )
+
+        skill_data = snap.to_dict()
+        return https_fn.Response(
+            json.dumps({
+                "name": skill_data.get('name', skill_name),
+                "description": skill_data.get('description', ''),
+                "content": skill_data.get('content', ''),
+                "references": skill_data.get('references', {}),
+            }),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def create_skill(req: https_fn.Request) -> https_fn.Response:
+    """Create a new skill from agent conversation."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        from firebase_admin import firestore as fs
+        db = fs.client()
+        data = req.get_json()
+
+        name = data.get("name")
+        description = data.get("description", "")
+        content = data.get("content", "")
+        references = data.get("references", {})
+
+        if not name:
+            return https_fn.Response("Missing skill name", status=400)
+
+        ref = db.collection('workspaces').document(uid).collection('skills').document(name)
+        ref.set({
+            'name': name,
+            'description': description,
+            'content': content,
+            'references': references,
+            'createdAt': fs.SERVER_TIMESTAMP,
+            'updatedAt': fs.SERVER_TIMESTAMP,
+        })
+
+        return https_fn.Response(
+            json.dumps({"status": "created", "skillName": name}),
+            status=201,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def run_heartbeat_endpoint(req: https_fn.Request) -> https_fn.Response:
+    """Manually trigger heartbeat for a user (also callable by Cloud Scheduler)."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        from heartbeat_runner import run_heartbeat
+        result = run_heartbeat(uid)
+
+        return https_fn.Response(
+            json.dumps(result, default=str),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+def build_dynamic_router(req: https_fn.Request) -> https_fn.Response:
+    """Build router prompt dynamically from agent registry."""
+    if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
+    uid, auth_error = _verify_auth(req)
+    if auth_error: return https_fn.Response(auth_error, status=401)
+
+    try:
+        prompt = build_router_prompt_from_firestore(uid)
+        return https_fn.Response(
+            json.dumps({"routerPrompt": prompt, "charCount": len(prompt)}),
+            status=200,
+            headers={"Content-Type": "application/json"}
+        )
+    except Exception as e:
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
