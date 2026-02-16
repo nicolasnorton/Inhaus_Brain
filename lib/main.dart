@@ -31,6 +31,7 @@ import 'core/services/orchestration_service.dart';
 import 'core/services/ai_proxy_service.dart';
 import 'core/services/blackboard_persistence_service.dart';
 import 'core/utils/global_error_handler.dart';
+import 'features/workspace/workspace_init_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -121,6 +122,9 @@ class InhausBrainApp extends ConsumerWidget {
     // Initialize Core AI Services
     ref.read(aiProxyServiceProvider);
     ref.read(orchestrationServiceProvider).init();
+    
+    // Initialize PicoClaw Workspace (seeds Firestore on first launch)
+    ref.watch(workspaceInitProvider);
     
     // Initialize Persistence Service & Restore Session
     final persistence = ref.read(blackboardPersistenceServiceProvider);
