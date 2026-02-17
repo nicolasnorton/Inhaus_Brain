@@ -123,7 +123,7 @@ class InhausBrainApp extends ConsumerWidget {
     ref.read(aiProxyServiceProvider);
     ref.read(orchestrationServiceProvider).init();
     
-    // Initialize PicoClaw Workspace (seeds Firestore on first launch)
+    // Initialize Inhaus Brain Workspace (seeds Firestore on first launch)
     ref.watch(workspaceInitProvider);
     
     // Initialize Persistence Service & Restore Session

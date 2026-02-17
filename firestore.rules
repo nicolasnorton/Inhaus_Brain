@@ -173,7 +173,7 @@ service cloud.firestore {
       allow update, delete: if isAgencyStaff();
     }
 
-    // WORKSPACE (PicoClaw Architecture — User-Owned Agent State)
+    // WORKSPACE (Agentic Architecture — User-Owned Agent State)
     match /workspaces/{userId} {
       allow read, write: if isOwner(userId);
 

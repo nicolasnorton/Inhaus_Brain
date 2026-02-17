@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/proposal_model.dart';
@@ -9,10 +8,12 @@ import '../providers/proposals_provider.dart';
 import '../services/proposals_lm_service.dart';
 import '../services/proposal_pdf_service.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
-
+import '../../agency/providers/service_catalog_riverpod_provider.dart';
+import '../../agency/models/agency_service_model.dart';
+import '../../clients/providers/client_provider.dart';
+import '../../clients/models/client_model.dart';
 
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/architecture/blackboard.dart';
 import '../../knowledge/models/knowledge_source.dart' as ks;
 
 class ProposalDetailScreen extends ConsumerStatefulWidget {
@@ -66,9 +67,34 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     }
   }
 
+  /// Fetch the selected AgencyService objects for this proposal
+  Future<List<AgencyService>> _fetchSelectedServices(Proposal proposal) async {
+    if (proposal.serviceIds.isEmpty) return [];
+    try {
+      final repo = ref.read(serviceCatalogRepositoryProvider);
+      return await repo.getServicesByIds(proposal.serviceIds);
+    } catch (e) {
+      debugPrint('ProposalDetail: Failed to fetch services: $e');
+      return [];
+    }
+  }
+
+  /// Fetch the Client object for this proposal
+  Client? _getClient(Proposal proposal) {
+    final clientState = ref.read(clientProvider);
+    try {
+      return clientState.clients.firstWhere((c) => c.id == proposal.clientId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _handleChatSubmit() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
+
+    final proposal = ref.read(proposalProvider(widget.proposalId)).value;
+    if (proposal == null) return;
 
     if (mounted) {
       setState(() {
@@ -77,16 +103,32 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       });
     }
 
-    // DISPATCH TO BLACKBOARD via OrchestrationService
-    ref.read(blackboardProvider.notifier).addEvent(
-      WorkflowEventType.userRequested, 
-      "User Chat Message",
-      data: {
-        'action': 'proposal_chat',
-        'message': text,
-        'proposalId': widget.proposalId,
+    // Direct call to ProposalsLMService with service/client context
+    try {
+      final services = await _fetchSelectedServices(proposal);
+      final client = _getClient(proposal);
+      
+      final buffer = StringBuffer();
+      await for (final chunk in ProposalsLMService.chatWithProposal(
+        proposal, text, ref,
+        selectedServices: services,
+        client: client,
+      )) {
+        buffer.write(chunk);
       }
-    );
+      
+      if (mounted) {
+        setState(() {
+          _chatMessages.add({'role': 'assistant', 'content': buffer.toString()});
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _chatMessages.add({'role': 'assistant', 'content': 'Error: $e'});
+        });
+      }
+    }
   }
 
   Future<void> _addSource() async {
@@ -136,76 +178,122 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
 
   Future<void> _generateDetailedProposal(Proposal proposal) async {
     _startLoading('detailed');
-    // DISPATCH TO BLACKBOARD via OrchestrationService
-    ref.read(blackboardProvider.notifier).addEvent(
-      WorkflowEventType.userRequested, 
-      "Generate Detailed Proposal",
-      data: {
-        'action': 'create_proposal',
-        'proposalId': proposal.id,
-        'type': 'detailed',
-        // Pass the full proposal object if available to avoid null lookups in OrchestrationService
-        'proposal': proposal,
+    
+    try {
+      // Fetch service catalog data and client details
+      final services = await _fetchSelectedServices(proposal);
+      final client = _getClient(proposal);
+      
+      // Call ProposalsLMService directly with all context
+      final result = await ProposalsLMService.generateDetailedProposal(
+        proposal,
+        ref,
+        selectedServices: services,
+        client: client,
+      );
+      
+      if (result.pdfBytes != null) {
+        // Save the output to the proposal
+        final output = ProposalOutput(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: ProposalOutputType.detailedPdf,
+          title: 'Detailed Proposal - ${proposal.clientName}',
+          createdAt: DateTime.now(),
+        );
+        
+        final updatedProposal = proposal.copyWith(
+          outputs: [...proposal.outputs, output],
+          status: ProposalStatus.generated,
+          updatedAt: DateTime.now(),
+        );
+        await ref.read(proposalsServiceProvider).updateProposal(updatedProposal);
+        
+        // Share/open the PDF
+        await ProposalPdfService.saveAndOpenPdf(result.pdfBytes!, 'proposal_${proposal.id}_detailed.pdf');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Detailed Proposal Generated!"), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Generation completed but no PDF: ${result.content.substring(0, 100)}..."), backgroundColor: Colors.orange),
+          );
+        }
       }
-    );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      _stopLoading();
+    }
   }
 
   Future<void> _generateOnePageQuote(Proposal proposal) async {
     _startLoading('one_page');
-    // DISPATCH TO BLACKBOARD via OrchestrationService
-    ref.read(blackboardProvider.notifier).addEvent(
-      WorkflowEventType.userRequested, 
-      "Generate One-Page Quote",
-      data: {
-        'action': 'create_proposal',
-        'proposalId': proposal.id,
-        'type': 'one_page',
-        // Pass the full proposal object if available to avoid null lookups in OrchestrationService
-        'proposal': proposal,
+    
+    try {
+      // Fetch service catalog data and client details
+      final services = await _fetchSelectedServices(proposal);
+      final client = _getClient(proposal);
+      
+      // Call ProposalsLMService directly with all context
+      final result = await ProposalsLMService.generateOnePageQuote(
+        proposal,
+        ref,
+        selectedServices: services,
+        client: client,
+      );
+      
+      if (result.pdfBytes != null) {
+        // Save the output to the proposal
+        final output = ProposalOutput(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: ProposalOutputType.onePagePdf,
+          title: 'One-Page Quote - ${proposal.clientName}',
+          createdAt: DateTime.now(),
+        );
+        
+        final updatedProposal = proposal.copyWith(
+          outputs: [...proposal.outputs, output],
+          status: ProposalStatus.generated,
+          updatedAt: DateTime.now(),
+        );
+        await ref.read(proposalsServiceProvider).updateProposal(updatedProposal);
+        
+        // Share/open the PDF
+        await ProposalPdfService.saveAndOpenPdf(result.pdfBytes!, 'proposal_${proposal.id}_quote.pdf');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("One-Page Quote Generated!"), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Generation completed but no PDF: ${result.content.substring(0, 100)}..."), backgroundColor: Colors.orange),
+          );
+        }
       }
-    );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      _stopLoading();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Listen for Proposal Updates to handle completion of async generation
-    ref.listen<AsyncValue<Proposal?>>(proposalProvider(widget.proposalId), (previous, next) {
-      if (next.hasValue && next.value != null && previous?.hasValue == true && previous?.value != null) {
-        final prevProps = previous!.value!;
-        final nextProps = next.value!;
-        
-        // Check if a new output was added
-        if (nextProps.outputs.length > prevProps.outputs.length) {
-          _stopLoading();
-          ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text("Proposal Generated Successfully!"), backgroundColor: Colors.green),
-          );
-        }
-        
-        // Check if status changed to generated
-        if (prevProps.status != ProposalStatus.generated && nextProps.status == ProposalStatus.generated) {
-           _stopLoading();
-        }
-      }
-    });
-
-    // Listen for Agent Responses (Chat)
-    ref.listen<BlackboardState>(blackboardProvider, (previous, next) {
-      if (next.events.length > (previous?.events.length ?? 0)) {
-        final newEvent = next.events.last;
-        if (newEvent.type == WorkflowEventType.agentFinished && 
-            newEvent.data['agent'] == 'Proposal Chat Agent') {
-          
-          final output = newEvent.data['output'];
-          if (output != null && mounted) {
-            setState(() {
-              _chatMessages.add({'role': 'assistant', 'content': output.toString()});
-            });
-          }
-        }
-      }
-    });
-
     final proposalAsync = ref.watch(proposalProvider(widget.proposalId));
     final isMobile = MediaQuery.of(context).size.width < 900;
 
@@ -349,21 +437,78 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   }
 
   Widget _buildTargetServicesSection(Proposal proposal) {
+    if (proposal.serviceIds.isEmpty) {
+      return const Text("No services selected", style: TextStyle(color: Colors.white38, fontSize: 12));
+    }
+
+    // Fetch and display actual service data with prices
+    final servicesAsync = ref.watch(servicesListProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("Target Services", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: proposal.serviceIds
-              .map((s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.5))),
-                    child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                  ))
-              .toList(),
+        servicesAsync.when(
+          data: (allServices) {
+            final selectedServices = allServices.where((s) => proposal.serviceIds.contains(s.id)).toList();
+            if (selectedServices.isEmpty) {
+              // Fallback: show raw IDs if no matching services found
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: proposal.serviceIds
+                    .map((s) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.5))),
+                          child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ))
+                    .toList(),
+              );
+            }
+            
+            return Column(
+              children: selectedServices.map((service) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(service.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text(service.frequency, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      'USD ${service.basePrice.toStringAsFixed(0)}',
+                      style: const TextStyle(color: AppTheme.primary, fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              )).toList(),
+            );
+          },
+          loading: () => const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+          error: (_, __) => Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: proposal.serviceIds
+                .map((s) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.5))),
+                      child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    ))
+                .toList(),
+          ),
         ),
       ],
     );

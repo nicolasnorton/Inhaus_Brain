@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-/// PicoClaw-inspired memory service backed by Firestore.
+/// Memory service backed by Firestore.
 /// Replaces SharedPreferences-based memory with persistent, cross-session storage.
 ///
 /// Schema:

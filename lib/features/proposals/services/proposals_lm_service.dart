@@ -2,7 +2,11 @@ import '../models/proposal_model.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
-import 'proposal_pdf_service.dart';
+import '../../agency/models/agency_service_model.dart';
+import '../../agency/models/inhaus_proposal_models.dart';
+import '../../agency/services/inhaus_proposal_pdf_generator.dart';
+import '../../clients/models/client_model.dart';
+import 'dart:convert';
 import 'dart:typed_data';
 
 class GenerationResult {
@@ -27,36 +31,34 @@ You are the Bilingual Client Proposal Specialist for INHAUS ESTUDIO CREATIVO.
 Your goal is to generate professional, stunning, and conversion-focused business proposals in the authentic INHAUS style (v2.0).
 
 STRICT RULES:
-1. Ground everything in the provided sources; no external knowledge.
-2. Output MUST be valid JSON matching the v2.0 schema.
+1. Ground everything in the provided sources and SERVICE CATALOG data. Do NOT invent prices — use the EXACT prices from the SERVICE CATALOG.
+2. Output MUST be valid JSON matching the v2.0 schema below.
 3. Use Spanish (ES) for all content.
-4. Apply INHAUS VISUAL IDENTITY:
-   - Backgrounds: Dark/Black (#05050B)
-   - Accent Elements: Dark Purple Bars (#1A1423)
-   - Typography: Montserrat. White (#FFFFFF) for titles, Light Gray (#A0A0A0) for body.
-   - Pricing: High-contrast white text in dedicated boxes.
+4. Create one section per selected service from the catalog.
+5. Each section MUST include the service's real price from the catalog.
 
-REQUIRED JSON STRUCTURE:
+REQUIRED JSON STRUCTURE (InhausDetailedProposal):
 {
   "type": "detailed",
   "format": "pdf",
   "header": {
     "agency_title": "INHAUS ESTUDIO CREATIVO",
     "client_name": "...",
-    "date": "..."
+    "client_logo_url": null,
+    "date": "Febrero 17, 2026"
   },
   "sections": [
     {
       "title": "NOMBRE DEL SERVICIO",
-      "layout_type": "standard",
-      "content": {
-        "header_info": ["Breve descripción del alcance..."],
-        "items": ["Entregable 1", "Entregable 2", "Beneficio clave"]
-      },
-      "pricing": {
+      "intro_paragraph": "Descripción profesional del servicio...",
+      "ejecucion": "Detalle del proceso de ejecución y timeline...",
+      "incluye": ["Entregable 1", "Entregable 2"],
+      "no_incluye": ["Exclusión 1", "Exclusión 2"],
+      "equipo": ["Director Creativo", "Diseñador"],
+      "entregables": ["Archivo final en PDF", "Manual de marca"],
+      "price": {
         "label": "INVERSIÓN:",
-        "amount": "USD X,XXX",
-        "terms": "Pago único / Mensual"
+        "amount": "USD 1,500.00"
       }
     }
   ],
@@ -70,38 +72,108 @@ Sources: $sources
 You are the Bilingual Client Proposal Specialist for INHAUS ESTUDIO CREATIVO creating a high-impact summary quote.
 
 STRICT RULES:
-1. Ground everything in the provided sources.
-2. Output MUST be valid JSON matching the one_page schema.
+1. Ground everything in the provided sources and SERVICE CATALOG data. Use EXACT prices from the catalog.
+2. Output MUST be valid JSON matching the one_page schema below.
 3. Use Spanish (ES).
-4. Style: INHAUS Dark Theme (v2.0).
+4. Calculate the total price by summing ALL selected services from the catalog.
 
-REQUIRED JSON STRUCTURE:
+REQUIRED JSON STRUCTURE (InhausOnePageQuote):
 {
   "type": "one_page",
   "format": "pdf",
   "header": {
     "agency_title": "INHAUS ESTUDIO CREATIVO",
     "client_name": "...",
-    "date": "..."
+    "client_logo_url": null,
+    "date": "Febrero 17, 2026"
   },
   "summary": {
-    "intro": "Resumen ejecutivo de la propuesta...",
-    "key_services": ["Servicio 1: Beneficio principal", "Servicio 2: Valor agregado"],
-    "total_price": {"label": "TOTAL INVERSIÓN:", "amount": "USD X,XXX"},
+    "intro_paragraph": "Resumen ejecutivo de la propuesta para el cliente...",
+    "ejecucion": "Timeline y proceso general...",
+    "incluye": ["Servicio 1: Beneficio principal", "Servicio 2: Valor agregado"],
+    "no_incluye": ["Exclusión 1"],
+    "equipo": ["Director Creativo", "Community Manager"],
+    "entregables": ["Informe mensual", "Contenido digital"],
+    "precio": {"label": "TOTAL INVERSIÓN:", "amount": "USD X,XXX.00"},
     "cta": "Próximos pasos y contacto."
-  }
+  },
+  "footer": "inhauscorp.com"
 }
 
 Sources: $sources
 """;
+
+  /// Build service catalog context string from selected services
+  static String _buildServiceCatalogContext(List<AgencyService> services) {
+    if (services.isEmpty) return '';
+    
+    final buffer = StringBuffer();
+    buffer.writeln('\n--- SERVICE CATALOG (Selected Services) ---');
+    for (var service in services) {
+      buffer.writeln('\nSERVICIO: ${service.name}');
+      buffer.writeln('  Descripción: ${service.description}');
+      buffer.writeln('  Precio: USD ${service.basePrice.toStringAsFixed(2)}');
+      buffer.writeln('  Frecuencia: ${service.frequency}');
+      if (service.details.isNotEmpty) {
+        buffer.writeln('  Detalles: ${service.details.join(', ')}');
+      }
+      if (service.includes.isNotEmpty) {
+        buffer.writeln('  Incluye: ${service.includes.join(', ')}');
+      }
+      if (service.excludes.isNotEmpty) {
+        buffer.writeln('  No Incluye: ${service.excludes.join(', ')}');
+      }
+      if (service.timeEstimate != null) {
+        buffer.writeln('  Tiempo estimado: ${service.timeEstimate}');
+      }
+      if (service.minAdSpend != null) {
+        buffer.writeln('  Pauta mínima: USD ${service.minAdSpend}');
+      }
+    }
+    return buffer.toString();
+  }
+
+  /// Build client context string
+  static String _buildClientContext(Client? client) {
+    if (client == null) return '';
+    
+    final buffer = StringBuffer();
+    buffer.writeln('\n--- CLIENT DETAILS ---');
+    buffer.writeln('Nombre: ${client.name}');
+    buffer.writeln('Tipo: ${client.clientType == ClientType.corporate ? 'Corporativo' : 'Independiente'}');
+    buffer.writeln('Industria: ${client.industry}');
+    if (client.description != null && client.description!.isNotEmpty) {
+      buffer.writeln('Descripción: ${client.description}');
+    }
+    if (client.website != null && client.website!.isNotEmpty) {
+      buffer.writeln('Website: ${client.website}');
+    }
+    if (client.size != null && client.size!.isNotEmpty) {
+      buffer.writeln('Tamaño: ${client.size}');
+    }
+    if (client.primaryContactEmail != null && client.primaryContactEmail!.isNotEmpty) {
+      buffer.writeln('Email: ${client.primaryContactEmail}');
+    }
+    if (client.contacts.isNotEmpty) {
+      buffer.writeln('Contactos:');
+      for (var contact in client.contacts) {
+        buffer.writeln('  - ${contact.firstName} ${contact.lastName} (${contact.role})');
+      }
+    }
+    return buffer.toString();
+  }
 
   /// Generates a Detailed Proposal PDF
   static Future<GenerationResult> generateDetailedProposal(
     Proposal proposal,
     dynamic ref, {
     bool isPreview = false,
+    List<AgencyService> selectedServices = const [],
+    Client? client,
   }) async {
-    final sources = _buildContextFromSources(proposal);
+    final sources = _buildContextFromSources(proposal) +
+        _buildServiceCatalogContext(selectedServices) +
+        _buildClientContext(client);
 
     if (isPreview) {
       final res = await EdgeAIService.generateText(
@@ -136,10 +208,26 @@ Sources: $sources
       ref: ref,
     );
 
-    // 4. PDF Generation
+    // 4. PDF Generation using INHAUS PDF Generator
     try {
-      final proposalData = ProposalData.fromRawJson(proposalJson.text);
-      final pdfBytes = await ProposalPdfService.generateProposalPdf(proposalData);
+      final jsonStr = _extractJson(proposalJson.text);
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      final inhausProposal = InhausDetailedProposal.fromJson(data);
+      
+      // Try to load agency logo
+      Uint8List? agencyLogo;
+      try {
+        final logoBytes = await InhausProposalPdfGenerator.fetchImage(
+          client?.logoUrl ?? '',
+        );
+        agencyLogo = logoBytes;
+      } catch (_) {}
+      
+      final pdfBytes = await InhausProposalPdfGenerator.generateDetailedProposal(
+        inhausProposal,
+        agencyLogo: null, // Will use text fallback from header
+        clientLogo: agencyLogo,
+      );
 
       return GenerationResult(
         content: proposalJson.text,
@@ -157,8 +245,12 @@ Sources: $sources
     Proposal proposal,
     dynamic ref, {
     bool isPreview = false,
+    List<AgencyService> selectedServices = const [],
+    Client? client,
   }) async {
-    final sources = _buildContextFromSources(proposal);
+    final sources = _buildContextFromSources(proposal) +
+        _buildServiceCatalogContext(selectedServices) +
+        _buildClientContext(client);
 
     if (isPreview) {
       final res = await EdgeAIService.generateText(
@@ -183,10 +275,21 @@ Sources: $sources
       ref: ref,
     );
 
-    // PDF Generation
+    // PDF Generation using INHAUS PDF Generator
     try {
-      final proposalData = ProposalData.fromRawJson(proposalJson.text);
-      final pdfBytes = await ProposalPdfService.generateProposalPdf(proposalData);
+      final jsonStr = _extractJson(proposalJson.text);
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      final inhausQuote = InhausOnePageQuote.fromJson(data);
+      
+      Uint8List? clientLogo;
+      if (client?.logoUrl != null && client!.logoUrl!.isNotEmpty) {
+        clientLogo = await InhausProposalPdfGenerator.fetchImage(client.logoUrl!);
+      }
+      
+      final pdfBytes = await InhausProposalPdfGenerator.generateOnePageQuote(
+        inhausQuote,
+        clientLogo: clientLogo,
+      );
 
       return GenerationResult(
         content: proposalJson.text,
@@ -214,9 +317,13 @@ Sources: $sources
   static Stream<String> chatWithProposal(
     Proposal proposal,
     String query,
-    dynamic ref,
-  ) async* {
-    String context = _buildContextFromSources(proposal);
+    dynamic ref, {
+    List<AgencyService> selectedServices = const [],
+    Client? client,
+  }) async* {
+    String context = _buildContextFromSources(proposal) +
+        _buildServiceCatalogContext(selectedServices) +
+        _buildClientContext(client);
 
     // INTEGRATION: If proposal has a linked Knowledge Base, perform RAG
     if (proposal.datasetId != null && ref != null) {
@@ -261,10 +368,28 @@ CRITICAL:
     }
   }
 
+  /// Extract JSON from LLM response (handles markdown code fences)
+  static String _extractJson(String raw) {
+    // Strip markdown code fences if present
+    var cleaned = raw.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.substring(7);
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.substring(3);
+    }
+    if (cleaned.endsWith('```')) {
+      cleaned = cleaned.substring(0, cleaned.length - 3);
+    }
+    return cleaned.trim();
+  }
+
   static String _buildContextFromSources(Proposal proposal) {
     final buffer = StringBuffer();
     buffer.writeln("PROPOSAL CONTEXT: ${proposal.title}");
     buffer.writeln("CLIENT: ${proposal.clientName}");
+    if (proposal.serviceIds.isNotEmpty) {
+      buffer.writeln("SELECTED SERVICE IDS: ${proposal.serviceIds.join(', ')}");
+    }
     for (var source in proposal.sources) {
       buffer.writeln("\n--- SOURCE: ${source.name} (${source.type.displayName}) ---");
       if (source.content != null) {

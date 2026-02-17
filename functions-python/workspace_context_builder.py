@@ -1,5 +1,5 @@
 """
-WorkspaceContextBuilder — PicoClaw-Inspired System Prompt Assembler
+WorkspaceContextBuilder — Dynamic System Prompt Assembler
 
 Reads workspace documents from Firestore and assembles the full system prompt.
 Called by generate_content before LLM invocation.
@@ -100,7 +100,7 @@ class WorkspaceContextBuilder:
         """
         Assemble the full system prompt from workspace documents.
 
-        Layers (PicoClaw order):
+        Layers (Architectural order):
         1. Identity — who Brian is
         2. Soul — personality, values, communication style
         3. User Profile — user preferences
@@ -139,7 +139,22 @@ class WorkspaceContextBuilder:
             if notes:
                 parts.append(notes)
 
-        return '\n\n---\n\n'.join(parts)
+        return '\n\n---\n\n'.join(parts) + '\n\n---\n\n' + self._get_meta_skill_instruction() if parts else ''
+
+    def _get_meta_skill_instruction(self) -> str:
+        """Return the meta-skill instruction block for system prompt."""
+        return """## Skill Creation
+
+When a user teaches you a reusable process, checklist, SOP, or workflow:
+1. Recognize it as a potential **skill** worth saving.
+2. Ask the user: "Would you like me to save this as a skill for future use?"
+3. If they confirm, use the `create_skill_from_conversation` tool with:
+   - `skill_name`: a short, lowercase, underscore-separated identifier
+   - `description`: a one-line summary
+   - `content`: the full instructions in markdown format
+
+Once saved, the skill will appear in your Available Skills list and you can
+reference it in future conversations without the user having to re-explain."""
 
     def get_agent_prompt(self, user_id: str, agent_name: str) -> str:
         """

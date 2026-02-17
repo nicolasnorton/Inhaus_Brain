@@ -90,3 +90,155 @@ def get_meetings_schema():
             )
         ]
     )
+
+def get_skill_creator_schema():
+    """Returns the tool definition for creating skills from conversation."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="create_skill_from_conversation",
+                description="Save a reusable skill or SOP learned from the user. Use this when the user teaches you a repeatable process, checklist, or workflow that should be remembered for future use.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "skill_name": types.Schema(
+                            type="STRING",
+                            description="Short, lowercase identifier for the skill (e.g. 'seo_audit_checklist')"
+                        ),
+                        "description": types.Schema(
+                            type="STRING",
+                            description="One-line summary of what the skill does"
+                        ),
+                        "content": types.Schema(
+                            type="STRING",
+                            description="Full markdown instructions for the skill, including steps, rules, and examples"
+                        )
+                    },
+                    required=["skill_name", "description", "content"]
+                )
+            )
+        ]
+    )
+
+def get_proposal_generator_schema():
+    """Returns the tool definition for generating proposals."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="generate_proposal",
+                description="Generate a structured client proposal with scope, deliverables, timeline, and pricing. Returns a formatted proposal document.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "client_name": types.Schema(
+                            type="STRING",
+                            description="Name of the client or company"
+                        ),
+                        "project_scope": types.Schema(
+                            type="STRING",
+                            description="Description of the project scope and objectives"
+                        ),
+                        "budget_range": types.Schema(
+                            type="STRING",
+                            description="Budget range or pricing tier (e.g. '$5,000-$10,000')"
+                        ),
+                        "deliverables": types.Schema(
+                            type="ARRAY",
+                            items=types.Schema(type="STRING"),
+                            description="List of deliverables included in the proposal"
+                        ),
+                        "timeline_weeks": types.Schema(
+                            type="NUMBER",
+                            description="Estimated timeline in weeks"
+                        )
+                    },
+                    required=["client_name", "project_scope", "deliverables"]
+                )
+            )
+        ]
+    )
+
+def get_video_generation_schema():
+    """Returns the tool definition for generating videos."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="video_generation",
+                description="Generate a video based on a prompt. Use this when the user asks to create, generate, or make a video.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "prompt": types.Schema(
+                            type="STRING",
+                            description="The text prompt describing the video content"
+                        ),
+                        "duration_seconds": types.Schema(
+                            type="INTEGER",
+                            description="Duration in seconds (default 5)"
+                        ),
+                        "aspect_ratio": types.Schema(
+                            type="STRING",
+                            enum=["16:9", "9:16", "1:1"],
+                            description="Aspect ratio of the video"
+                        )
+                    },
+                    required=["prompt"]
+                )
+            )
+        ]
+    )
+
+def get_deep_research_schema():
+    """Returns the tool definition for deep research."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="deep_research",
+                description="Start a deep, multi-step research interaction for complex topics that require extensive scanning. Use this when a standard web search is insufficient.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "prompt": types.Schema(
+                            type="STRING",
+                            description="The high-level research objective or question"
+                        ),
+                        "aspects": types.Schema(
+                            type="ARRAY",
+                            items=types.Schema(type="STRING"),
+                            description="Specific aspects or sub-topics to investigate"
+                        )
+                    },
+                    required=["prompt"]
+                )
+            )
+        ]
+    )
+
+def get_task_orchestration_schema():
+    """Returns the tool definition for orchestrating agent tasks."""
+    return types.Tool(
+        function_declarations=[
+            types.FunctionDeclaration(
+                name="orchestrate_task",
+                description="Enqueue a task for a specialized agent to process in the background. Use this for parallel workflows or multi-agent campaigns.",
+                parameters=types.Schema(
+                    type="OBJECT",
+                    properties={
+                        "agent_name": types.Schema(
+                            type="STRING",
+                            description="Name of the agent to delegate to (e.g., 'creative', 'copywriter', 'seo')"
+                        ),
+                        "input": types.Schema(
+                            type="STRING",
+                            description="The specific prompt or instructions for the agent"
+                        ),
+                        "metadata": types.Schema(
+                            type="OBJECT",
+                            description="Optional context or parameters for the task"
+                        )
+                    },
+                    required=["agent_name", "input"]
+                )
+            )
+        ]
+    )

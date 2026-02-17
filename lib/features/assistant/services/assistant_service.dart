@@ -917,12 +917,19 @@ class AssistantService {
                 summary = "${summary.substring(0, 247).trim()}...";
              }
 
+             // Harden type detection: check args, then safeData['type'], then safeData['component_type']
+             final String? typeFromArgs = args['component_type']?.toString();
+             final String? typeFromData = (safeData['type'] ?? safeData['component_type'])?.toString();
+             final String? finalType = typeFromArgs ?? typeFromData;
+
+             final Map<String, dynamic> uiPayload = Map<String, dynamic>.from(safeData);
+             if (finalType != null) {
+               uiPayload['type'] = finalType;
+             }
+
              return ToolExecutionSummary(
                text: summary,
-               uiPayload: {
-                 'type': args['component_type'],
-                 ...safeData,
-               },
+               uiPayload: uiPayload,
              );
         }
         print('DEBUG: Assistant - _executeTool result success for tool: $name');

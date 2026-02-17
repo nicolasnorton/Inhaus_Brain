@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../workspace/services/memory_firestore_service.dart';
 
 /// Memory service — bridges legacy MemoryOps interface to the new Firestore-backed service.
-/// Phase 3 of PicoClaw adoption: persistent, cross-session memory.
+/// Phase 3: persistent, cross-session memory.
 class MemoryService {
   final MemoryFirestoreService _firestoreService;
 

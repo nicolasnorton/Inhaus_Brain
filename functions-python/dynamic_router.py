@@ -1,5 +1,5 @@
 """
-Dynamic Router — PicoClaw-Inspired Agent Routing
+Dynamic Router — Agentic Routing Strategy
 
 Generates router prompts dynamically from the Firestore agent registry,
 replacing the static router.md capabilities section.

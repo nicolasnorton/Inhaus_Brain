@@ -119,7 +119,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
         thinking_summaries = data.get("thinkingSummaries")
         response_json_schema = data.get("responseJsonSchema")
 
-        # PicoClaw: Session summarization for long conversations
+        # Agentic: Session summarization for long conversations
         session_messages = data.get("sessionMessages")
         if session_messages:
             summary, trimmed_messages = maybe_summarize(session_messages)
@@ -132,7 +132,7 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
                 # Replace prompt with only recent messages context
                 print(f"Session summarized: {len(session_messages)} msgs -> {len(trimmed_messages)} msgs")
 
-        # PicoClaw: Optionally enrich system_instruction from workspace
+        # Agentic: Optionally enrich system_instruction from workspace
         use_workspace = data.get("useWorkspace", False)
         if use_workspace and uid:
             try:
@@ -155,6 +155,16 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
                     new_tools.append(custom_tools.get_charts_schema())
                 elif t == "meetings":
                     new_tools.append(custom_tools.get_meetings_schema())
+                elif t == "skill_creator":
+                    new_tools.append(custom_tools.get_skill_creator_schema())
+                elif t == "proposal":
+                    new_tools.append(custom_tools.get_proposal_generator_schema())
+                elif t == "video_generation":
+                    new_tools.append(custom_tools.get_video_generation_schema())
+                elif t == "deep_research":
+                    new_tools.append(custom_tools.get_deep_research_schema())
+                elif t == "orchestrate_task":
+                    new_tools.append(custom_tools.get_task_orchestration_schema())
                 else:
                     new_tools.append(t)
             tools = new_tools
@@ -1350,7 +1360,7 @@ def synthesize_audio(req: https_fn.Request) -> https_fn.Response:
 
 
 # ═══════════════════════════════════════════════════════════════
-# PicoClaw Architecture: Workspace, Memory, Skills, Heartbeat
+# Agentic Architecture: Workspace, Memory, Skills, Heartbeat
 # ═══════════════════════════════════════════════════════════════
 
 @https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))

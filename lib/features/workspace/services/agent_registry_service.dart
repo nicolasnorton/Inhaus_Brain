@@ -136,21 +136,24 @@ Return **ONLY** a valid JSON object:
 
   // ─── Seeding from Assets ──────────────────────────────────
 
-  /// One-time migration: seed registry from assets/prompts/*.md files.
+  /// Incremental seed: adds missing agents without overwriting existing ones.
   Future<void> seedRegistryFromAssets() async {
     final uid = _userId;
     if (uid == null) return;
 
-    // Check if already seeded
-    final existing = await _registryRef(uid).limit(1).get();
-    if (existing.docs.isNotEmpty) {
-      debugPrint('AgentRegistryService: Registry already seeded.');
+    // Get existing agent IDs to avoid overwriting user edits
+    final existing = await _registryRef(uid).get();
+    final existingIds = existing.docs.map((d) => d.id).toSet();
+
+    final missing = _defaultAgentEntries.where((e) => !existingIds.contains(e.name)).toList();
+    if (missing.isEmpty) {
+      debugPrint('AgentRegistryService: All ${_defaultAgentEntries.length} agents present.');
       return;
     }
 
-    debugPrint('AgentRegistryService: Seeding registry from assets...');
+    debugPrint('AgentRegistryService: Adding ${missing.length} new agents...');
 
-    for (final entry in _defaultAgentEntries) {
+    for (final entry in missing) {
       // Try to load the full prompt from assets
       String? promptContent;
       try {
@@ -170,7 +173,7 @@ Return **ONLY** a valid JSON object:
       await _registryRef(uid).doc(entry.name).set(enrichedEntry.toFirestore());
     }
 
-    debugPrint('AgentRegistryService: Seeded ${_defaultAgentEntries.length} agents.');
+    debugPrint('AgentRegistryService: Seeded ${missing.length} new agents (total: ${_defaultAgentEntries.length}).');
   }
 
   /// Default agent entries (extracted from router.md capabilities registry).
@@ -179,7 +182,7 @@ Return **ONLY** a valid JSON object:
       name: 'research',
       description: 'Fact-finding, market analysis, competitor research. Trigger: "find info about", "what is", "analyze market".',
       modelTier: 'flash',
-      tools: ['web_search', 'file_search'],
+      tools: ['web_search', 'file_search', 'deep_research'],
     ),
     AgentRegistryEntry(
       name: 'creative',
@@ -194,16 +197,16 @@ Return **ONLY** a valid JSON object:
       tools: ['web_search'],
     ),
     AgentRegistryEntry(
-      name: 'development',
+      name: 'developer',
       description: 'Coding tasks, technical explanations. Trigger: "write a function", "debug this".',
       modelTier: 'pro',
-      tools: ['web_search'],
+      tools: ['web_search', 'code_execution'],
     ),
     AgentRegistryEntry(
       name: 'pipeline',
       description: 'Complex multi-step requests, full campaigns. Spawns parallel tasks via Blackboard.',
       modelTier: 'pro',
-      tools: ['web_search'],
+      tools: ['web_search', 'orchestrate_task'],
     ),
     AgentRegistryEntry(
       name: 'strategist',
@@ -251,7 +254,7 @@ Return **ONLY** a valid JSON object:
       name: 'proposal_specialist',
       description: 'Generating SOWs, quotes, visual proposals in INHAUS style.',
       modelTier: 'pro',
-      tools: ['web_search'],
+      tools: ['web_search', 'proposal'],
     ),
     AgentRegistryEntry(
       name: 'editorial_manager',
@@ -280,6 +283,97 @@ Return **ONLY** a valid JSON object:
     AgentRegistryEntry(
       name: 'directChat',
       description: 'Simple greetings, questions about the system itself, small talk.',
+      modelTier: 'flash',
+      tools: [],
+    ),
+    // ─── Additional agents from assets/prompts ────────────────
+    AgentRegistryEntry(
+      name: 'brian',
+      description: 'Core Brian personality — main conversational agent with full identity.',
+      modelTier: 'pro',
+      tools: ['web_search', 'skill_creator'],
+    ),
+    AgentRegistryEntry(
+      name: 'assistant_main',
+      description: 'General-purpose assistant for broad queries and task coordination.',
+      modelTier: 'flash',
+      tools: ['web_search'],
+    ),
+    AgentRegistryEntry(
+      name: 'copywriter',
+      description: 'Dedicated copywriting agent — long-form content, blogs, emails.',
+      modelTier: 'flash',
+      tools: ['web_search'],
+    ),
+    AgentRegistryEntry(
+      name: 'intent_classifier',
+      description: 'Classifies user intent for internal routing. Not user-facing.',
+      modelTier: 'flash',
+      tools: [],
+    ),
+    AgentRegistryEntry(
+      name: 'router',
+      description: 'Legacy static router prompt. Superseded by DynamicRouter.',
+      modelTier: 'flash',
+      tools: [],
+    ),
+    AgentRegistryEntry(
+      name: 'orchestrator',
+      description: 'Multi-step workflow orchestration — parallel task spawning.',
+      modelTier: 'pro',
+      tools: ['web_search', 'orchestrate_task'],
+    ),
+    AgentRegistryEntry(
+      name: 'design',
+      description: 'UI/UX design guidance, wireframes, design system consultation.',
+      modelTier: 'pro',
+      tools: ['image_generation'],
+    ),
+    AgentRegistryEntry(
+      name: 'data_engineer',
+      description: 'ETL pipelines, data modeling, BigQuery schema design.',
+      modelTier: 'flash',
+      tools: ['charts'],
+    ),
+    AgentRegistryEntry(
+      name: 'developer',
+      description: 'Full-stack development — Flutter, Python, Firebase, infrastructure.',
+      modelTier: 'pro',
+      tools: ['web_search'],
+    ),
+    AgentRegistryEntry(
+      name: 'media_buyer',
+      description: 'Paid media planning, ad buying strategy, platform optimization.',
+      modelTier: 'flash',
+      tools: ['web_search', 'charts'],
+    ),
+    AgentRegistryEntry(
+      name: 'service',
+      description: 'Customer service templates, FAQ generation, support workflows.',
+      modelTier: 'flash',
+      tools: [],
+    ),
+    AgentRegistryEntry(
+      name: 'storytelling',
+      description: 'Brand storytelling, narrative arcs, campaign narratives.',
+      modelTier: 'pro',
+      tools: ['web_search'],
+    ),
+    AgentRegistryEntry(
+      name: 'video',
+      description: 'Video scripting, shot lists, storyboarding.',
+      modelTier: 'pro',
+      tools: ['video_generation'],
+    ),
+    AgentRegistryEntry(
+      name: 'csuite',
+      description: 'Executive-level strategic advisory — board decks, investor comms.',
+      modelTier: 'pro',
+      tools: ['web_search'],
+    ),
+    AgentRegistryEntry(
+      name: 'multimodal_best_practices',
+      description: 'Guidelines for multimodal AI usage — image/video/audio prompting.',
       modelTier: 'flash',
       tools: [],
     ),

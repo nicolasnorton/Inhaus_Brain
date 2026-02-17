@@ -1,5 +1,5 @@
 """
-Heartbeat Runner — PicoClaw-Inspired Proactive Agent
+Heartbeat Runner — Agentic Proactive Tasks
 
 Cloud Scheduler-triggered function that reads heartbeat config from Firestore
 and executes periodic tasks. Transforms Brian from reactive chatbot to proactive assistant.

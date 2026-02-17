@@ -53,6 +53,7 @@ import '../../features/admin/screens/audit_logs_screen.dart';
 import '../../features/workspace/screens/model_providers_screen.dart';
 import '../../features/workspace/screens/plugins_screen.dart';
 import '../../features/workspace/screens/manage_apps_screen.dart';
+import '../../features/workspace/screens/workspace_admin_screen.dart';
 import '../../features/copilot/presentation/copilot_view.dart';
 import '../../core/auth/auth_service.dart';
 import '../../features/auth/models/user_model.dart';
@@ -361,6 +362,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/workspace/apps',
             builder: (context, state) => const ManageAppsScreen(),
+          ),
+          GoRoute(
+            path: '/workspace/admin',
+            builder: (context, state) => const WorkspaceAdminScreen(),
           ),
           GoRoute(
             path: '/monitor',

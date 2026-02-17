@@ -1,5 +1,5 @@
 """
-Session Summarizer — PicoClaw-Inspired Context Window Management
+Session Summarizer — Context Window Management Agent
 
 When conversation history exceeds 75% of the context window or 20 messages,
 compresses old messages into a summary and keeps only the last 4 messages.
@@ -23,7 +23,7 @@ def maybe_summarize(
     """
     Check if session history needs summarization.
     
-    PicoClaw approach: when history exceeds 75% of context window,
+    Standard approach: when history exceeds 75% of context window,
     compress old messages into a summary and keep only the last N messages.
     
     Args:

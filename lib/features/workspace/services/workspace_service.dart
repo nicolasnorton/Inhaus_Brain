@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// PicoClaw-inspired workspace service.
+/// Inhaus Brain workspace service.
 /// Stores Brian's identity, soul, user profile, and agent rules in Firestore
 /// instead of static Flutter assets. Runtime-editable, no rebuild needed.
 class WorkspaceService {

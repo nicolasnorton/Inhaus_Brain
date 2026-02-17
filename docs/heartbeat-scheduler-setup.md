@@ -1,15 +1,15 @@
-# Cloud Scheduler: PicoClaw Heartbeat Configuration
+# Cloud Scheduler: Inhaus Brain Heartbeat Configuration
 
 ## Setup Instructions
 
-To enable the PicoClaw heartbeat (proactive task execution), create a Cloud Scheduler job
+To enable the Inhaus Brain heartbeat (proactive task execution), create a Cloud Scheduler job
 that calls the `run_heartbeat_endpoint` function periodically.
 
 ### Using gcloud CLI
 
 ```bash
 # Create a daily heartbeat job (runs at 9 AM UTC)
-gcloud scheduler jobs create http picoclaw-heartbeat-daily \
+gcloud scheduler jobs create http brain-heartbeat-daily \
   --schedule="0 9 * * *" \
   --uri="https://us-central1-inhausbrain.cloudfunctions.net/run_heartbeat_endpoint" \
   --http-method=POST \

@@ -96,8 +96,25 @@ class ProxyStrategy extends AIStrategy {
             if (part.containsKey('text')) {
               buffer.write(part['text']);
             }
+            if (part.containsKey('call')) {
+              // Function call from model (Python proxy format)
+              _logger.d('Proxy: Detected function call part: ${part['call']}');
+              buffer.write(jsonEncode({'call': part['call']}));
+            }
+            if (part.containsKey('functionCall')) {
+              // Native Gemini function call format
+              _logger.d('Proxy: Detected native functionCall part: ${part['functionCall']}');
+              buffer.write(jsonEncode({'functionCall': part['functionCall']}));
+            }
             if (part.containsKey('executable_adunit')) {
               buffer.write(jsonEncode(part));
+            }
+            if (part.containsKey('executable_code')) {
+              // Handle code execution results from Gemini
+              final code = part['executable_code'];
+              if (code is Map) {
+                buffer.writeln('\n```${code['language'] ?? ''}\n${code['code'] ?? ''}\n```\n');
+              }
             }
             if (part.containsKey('inlineData')) {
               // Handle Nano Banana inline images
