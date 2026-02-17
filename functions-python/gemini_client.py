@@ -157,6 +157,11 @@ class GeminiClient:
             if "thinking_summaries" not in config_params:
                 config_params["thinking_summaries"] = "auto"
             
+            # CLEANUP: Remove strict fields that cause Pydantic "Extra inputs" errors
+            # The SDK's GenerateContentConfig does not yet support these as direct kwargs
+            _ = config_params.pop("thinking_level", None)
+            _ = config_params.pop("thinking_summaries", None)
+            
             # Legacy thinking_config part for backward compatibility with SDK's GenerateContent
             thinking_config = types.ThinkingConfig(include_thoughts=True)
             config_params.pop("thinking_config", None)
