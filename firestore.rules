@@ -59,14 +59,14 @@ service cloud.firestore {
     }
 
     match /campaigns/{campaignId} {
-      allow create: if isAgencyStaff();
+      allow create: if isAuthenticated();
       allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
       allow update, delete: if isAgencyStaff();
     }
 
     // PROPOSALS MODULE RULES
     match /proposals/{proposalId} {
-      allow create: if isAgencyStaff();
+      allow create: if isAuthenticated();
       allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
       allow update, delete: if isAgencyStaff();
     }
@@ -121,7 +121,8 @@ service cloud.firestore {
     
     // CLIENTS MODULE RULES
     match /clients/{clientId} {
-      allow create, update, delete: if isAuthenticated() && (isAgencyStaff() || request.auth.token.email == 'nnorton@inhausbrain.com'); // TEMPORARY
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (isAgencyStaff() || request.auth.token.email == 'nnorton@inhausbrain.com'); // TEMPORARY
       allow read: if isAuthenticated(); 
     }
 
