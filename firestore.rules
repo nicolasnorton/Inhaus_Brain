@@ -121,9 +121,7 @@ service cloud.firestore {
     
     // CLIENTS MODULE RULES
     match /clients/{clientId} {
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && (isAgencyStaff() || request.auth.token.email == 'nnorton@inhausbrain.com'); // TEMPORARY
-      allow read: if isAuthenticated(); 
+      allow read, write: if isAuthenticated(); 
     }
 
     // USER PROFILES & USER KNOWLEDGE

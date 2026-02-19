@@ -32,6 +32,7 @@ import 'core/services/ai_proxy_service.dart';
 import 'core/services/blackboard_persistence_service.dart';
 import 'core/utils/global_error_handler.dart';
 import 'features/workspace/workspace_init_provider.dart';
+import 'core/services/remote_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -111,7 +112,14 @@ void main() async {
     debugPrint('ℹ️ App Check: Activation skipped (This is expected on non-whitelisted domains): $e');
   }
 
-  runApp(const ProviderScope(child: InhausBrainApp()));
+  // Initialize Remote Config
+  final container = ProviderContainer();
+  await container.read(remoteConfigInitializationProvider.future);
+
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const InhausBrainApp(),
+  ));
 }
 
 class InhausBrainApp extends ConsumerWidget {

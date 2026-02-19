@@ -12,6 +12,10 @@ import '../../agency/providers/service_catalog_riverpod_provider.dart';
 import '../../agency/models/agency_service_model.dart';
 import '../../clients/providers/client_provider.dart';
 import '../../clients/models/client_model.dart';
+import '../providers/proposal_session_provider.dart';
+import '../../agency/providers/service_catalog_riverpod_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:convert';
 
 import 'package:url_launcher/url_launcher.dart';
 import '../../knowledge/models/knowledge_source.dart' as ks;
@@ -29,6 +33,8 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   final TextEditingController _chatController = TextEditingController();
   final List<Map<String, String>> _chatMessages = [];
   int _mobileTabIndex = 1; // Default to Chat on mobile
+  int _leftTabIndex = 0; // 0: Chat, 1: Packages, 2: History
+  String _activeTab = 'chat'; // 'chat' or 'packages'
   
   // Progress tracking for PDF generation
   bool _isGeneratingDetailed = false;
@@ -93,8 +99,8 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
 
-    final proposal = ref.read(proposalProvider(widget.proposalId)).value;
-    if (proposal == null) return;
+    final session = ref.read(proposalSessionProvider);
+    if (session == null) return;
 
     if (mounted) {
       setState(() {
@@ -103,25 +109,17 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
       });
     }
 
-    // Direct call to ProposalsLMService with service/client context
     try {
-      final services = await _fetchSelectedServices(proposal);
-      final client = _getClient(proposal);
-      
       final buffer = StringBuffer();
       await for (final chunk in ProposalsLMService.chatWithProposal(
-        proposal, text, ref,
-        selectedServices: services,
-        client: client,
+        session.proposal, text, ref,
+        selectedServices: session.selectedServices,
+        client: _getClient(session.proposal),
       )) {
         buffer.write(chunk);
       }
       
-      if (mounted) {
-        setState(() {
-          _chatMessages.add({'role': 'assistant', 'content': buffer.toString()});
-        });
-      }
+      _processChatAction(buffer.toString());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -129,6 +127,70 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
         });
       }
     }
+  }
+
+  void _processChatAction(String rawResponse) {
+    try {
+      final jsonStr = _extractJsonLocal(rawResponse);
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      
+      final reply = data['reply'] as String? ?? '';
+      final action = data['action'] as String? ?? 'none';
+      final clientName = data['client'] as String?;
+      final packages = data['packages'] as List?;
+      final removeIds = data['removeIds'] as List?;
+      final discount = (data['discount'] as num?)?.toDouble();
+
+      final notifier = ref.read(proposalSessionProvider.notifier);
+
+      if (action == 'add' && packages != null) {
+        _addPackagesByIds(packages.cast<String>());
+      } else if (action == 'remove' && removeIds != null) {
+        for (final id in removeIds) {
+          notifier.removeService(id.toString());
+        }
+      } else if (action == 'set_client' && clientName != null) {
+        notifier.setClientName(clientName);
+      } else if (action == 'set_discount' && discount != null) {
+        notifier.setDiscount(discount);
+      } else if (action == 'set_iva_on') {
+        notifier.setIva(true);
+      } else if (action == 'set_iva_off') {
+        notifier.setIva(false);
+      } else if (action == 'save') {
+        notifier.saveSession();
+      }
+
+      if (mounted) {
+        setState(() {
+          _chatMessages.add({'role': 'assistant', 'content': reply});
+        });
+      }
+    } catch (e) {
+       // Fallback for non-json or malformed json
+       if (mounted) {
+        setState(() {
+          _chatMessages.add({'role': 'assistant', 'content': rawResponse});
+        });
+      }
+    }
+  }
+
+  Future<void> _addPackagesByIds(List<String> ids) async {
+    final catalog = await ref.read(serviceCatalogProvider.future);
+    if (catalog == null) return;
+    final notifier = ref.read(proposalSessionProvider.notifier);
+    for (final id in ids) {
+      try {
+        final service = catalog.services.firstWhere((s) => s.id == id);
+        notifier.addService(service);
+      } catch (_) {}
+    }
+  }
+
+  String _extractJsonLocal(String raw) {
+    final match = RegExp(r'\{[\s\S]*\}').firstMatch(raw);
+    return match?.group(0) ?? raw;
   }
 
   Future<void> _addSource() async {
@@ -177,19 +239,18 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   }
 
   Future<void> _generateDetailedProposal(Proposal proposal) async {
+    final session = ref.read(proposalSessionProvider);
+    if (session == null) return;
+    
     _startLoading('detailed');
     
     try {
-      // Fetch service catalog data and client details
-      final services = await _fetchSelectedServices(proposal);
-      final client = _getClient(proposal);
-      
-      // Call ProposalsLMService directly with all context
+      // Call ProposalsLMService directly with session context
       final result = await ProposalsLMService.generateDetailedProposal(
-        proposal,
+        session.proposal,
         ref,
-        selectedServices: services,
-        client: client,
+        selectedServices: session.selectedServices,
+        client: _getClient(session.proposal),
       );
       
       if (result.pdfBytes != null) {
@@ -235,19 +296,18 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   }
 
   Future<void> _generateOnePageQuote(Proposal proposal) async {
+    final session = ref.read(proposalSessionProvider);
+    if (session == null) return;
+    
     _startLoading('one_page');
     
     try {
-      // Fetch service catalog data and client details
-      final services = await _fetchSelectedServices(proposal);
-      final client = _getClient(proposal);
-      
-      // Call ProposalsLMService directly with all context
+      // Call ProposalsLMService directly with session context
       final result = await ProposalsLMService.generateOnePageQuote(
-        proposal,
+        session.proposal,
         ref,
-        selectedServices: services,
-        client: client,
+        selectedServices: session.selectedServices,
+        client: _getClient(session.proposal),
       );
       
       if (result.pdfBytes != null) {
@@ -295,45 +355,56 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final proposalAsync = ref.watch(proposalProvider(widget.proposalId));
-    final isMobile = MediaQuery.of(context).size.width < 900;
+    final session = ref.watch(proposalSessionProvider);
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: proposalAsync.when(
-          data: (proposal) => Text(proposal?.title ?? "Proposal", style: const TextStyle(color: Colors.white)),
-          loading: () => const Text("Loading...", style: TextStyle(color: Colors.white)),
-          error: (_, __) => const Text("Error", style: TextStyle(color: Colors.white)),
-        ),
-        backgroundColor: AppTheme.surface,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/agency/sales'),
-        ),
-      ),
-      body: proposalAsync.when(
-        data: (proposal) {
-          if (proposal == null) {
-            return const Center(child: Text("Proposal not found", style: TextStyle(color: Colors.white)));
-          }
+    return proposalAsync.when(
+      data: (proposal) {
+        if (proposal == null) {
+          return const Scaffold(body: Center(child: Text("Proposal not found")));
+        }
 
-          if (isMobile) {
-            return _buildMobileLayout(proposal);
-          } else {
-            return _buildDesktopLayout(proposal);
-          }
-        },
-        loading: () => const Center(
+        // Initialize session if it's null and we have the proposal
+        if (session == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(proposalSessionProvider.notifier).loadProposal(proposal);
+          });
+          return const Scaffold(
+            backgroundColor: AppTheme.background,
+            body: Center(child: CircularProgressIndicator(color: AppTheme.accent)),
+          );
+        }
+
+        final isDesktop = MediaQuery.of(context).size.width > 900;
+
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          appBar: AppBar(
+            title: Text(proposal.title, style: const TextStyle(color: Colors.white)),
+            backgroundColor: AppTheme.surface,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.go('/agency/sales'),
+            ),
+          ),
+          body: isDesktop ? _buildDesktopLayout(proposal) : _buildMobileLayout(proposal),
+        );
+      },
+      loading: () => const Scaffold(
+        backgroundColor: AppTheme.background,
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
+              CircularProgressIndicator(color: AppTheme.accent),
               SizedBox(height: 16),
               Text("Connecting to Data Lake...", style: TextStyle(color: Colors.white24)),
             ],
           ),
         ),
-        error: (error, stack) => Center(
+      ),
+      error: (error, stack) => Scaffold(
+        backgroundColor: AppTheme.background,
+        body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -530,45 +601,118 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: isUser ? AppTheme.primary : AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
+                    color: isUser ? AppTheme.accent.withValues(alpha: 0.1) : const Color(0xFF1E1E1E),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
+                      bottomRight: isUser ? Radius.zero : const Radius.circular(16),
+                    ),
+                    border: Border.all(
+                      color: isUser ? AppTheme.accent.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+                    ),
                   ),
                   constraints: const BoxConstraints(maxWidth: 500),
-                  child: Text(msg['content']!, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  child: Text(
+                    msg['content']!,
+                    style: TextStyle(
+                      color: isUser ? Colors.white : Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
                 ),
               );
             },
           ),
         ),
+        
+        // Active Quote Bar
+        _buildActiveQuoteBar(),
+        
         Container(
-          padding: const EdgeInsets.all(16),
-          color: AppTheme.surface,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          color: const Color(0xFF0D0D0D),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _chatController,
                   onSubmitted: (_) => _handleChatSubmit(),
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: "Ask Brian anything...",
+                    hintText: "Escribe tu comando o consulta...",
                     hintStyle: const TextStyle(color: Colors.white24),
                     filled: true,
-                    fillColor: AppTheme.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    fillColor: const Color(0xFF1A1A1A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              IconButton(
-                icon: const Icon(Icons.send, color: AppTheme.primary),
-                onPressed: _handleChatSubmit,
+              Container(
+                decoration: const BoxDecoration(
+                  color: AppTheme.accent,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                  onPressed: _handleChatSubmit,
+                ),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildActiveQuoteBar() {
+    final session = ref.watch(proposalSessionProvider);
+    if (session == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      decoration: const BoxDecoration(
+        color: Color(0xFF141414),
+        border: Border(top: BorderSide(color: Colors.white10), bottom: BorderSide(color: Colors.white10)),
+      ),
+      child: Row(
+        children: [
+          _buildActiveQuoteStat("CLIENTE", session.proposal.clientName.isEmpty ? "PENDIENTE" : session.proposal.clientName.toUpperCase()),
+          _buildActiveQuoteStat("ITEMS", session.selectedServices.length.toString()),
+          _buildActiveQuoteStat("DSCTO", "${session.proposal.discount.toStringAsFixed(0)}%"),
+          _buildActiveQuoteStat("IVA", session.proposal.applyIva ? "15%" : "0%"),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("INVERSIÓN TOTAL", style: TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
+              Text(
+                "USD ${session.total.toStringAsFixed(2)}",
+                style: GoogleFonts.outfit(color: AppTheme.accent, fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveQuoteStat(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
@@ -608,6 +752,20 @@ class _ProposalDetailScreenState extends ConsumerState<ProposalDetailScreen> {
                   label: "Google Slides",
                   subtitle: "Coming soon",
                   onPressed: null,
+                ),
+                const SizedBox(height: 12),
+                _buildStudioButton(
+                  icon: Icons.save,
+                  label: "Guardar Cambios",
+                  subtitle: "Sincronizar con la nube",
+                  onPressed: () async {
+                    await ref.read(proposalSessionProvider.notifier).saveSession();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Cambios guardados correctamente"), backgroundColor: Colors.green),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 24),
                 const Text("Outputs", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
