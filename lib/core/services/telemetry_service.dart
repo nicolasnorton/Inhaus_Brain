@@ -208,6 +208,104 @@ class TelemetryService {
       _logger.d('[Telemetry] RBAC: $role performed $action on ${resourceId ?? "global"}');
     } catch (_) {}
   }
+
+  // ── Phase 3: Campaign & Workflow Analytics ────────────────────
+
+  /// Common params appended to every workflow event.
+  Map<String, Object> _commonParams({
+    required String client,
+    required String appMode,
+    String? userId,
+    int? phase,
+    double? timeSeconds,
+    bool? success,
+  }) => {
+    'client': client,
+    'app_mode': appMode,  // "v1_demo" or "full"
+    'user_id': userId ?? 'anonymous',
+    if (phase != null) 'phase': phase,
+    if (timeSeconds != null) 'time_seconds': timeSeconds,
+    'success': (success ?? true) ? 1 : 0,
+  };
+
+  Future<void> logCampaignStarted({
+    required String client,
+    required String appMode,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'campaign_started',
+    parameters: _commonParams(client: client, appMode: appMode, userId: userId),
+  );
+
+  Future<void> logPhaseCompleted({
+    required int phase,
+    required String client,
+    required String appMode,
+    double? timeSeconds,
+    bool success = true,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'phase_completed',
+    parameters: _commonParams(
+      client: client, appMode: appMode, phase: phase,
+      timeSeconds: timeSeconds, success: success, userId: userId,
+    ),
+  );
+
+  Future<void> logProposalGenerated({
+    required String client,
+    required String appMode,
+    double? timeSeconds,
+    bool success = true,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'proposal_generated',
+    parameters: _commonParams(
+      client: client, appMode: appMode,
+      timeSeconds: timeSeconds, success: success, userId: userId,
+    ),
+  );
+
+  Future<void> logHumanApproval({
+    required String client,
+    required String appMode,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'human_approval',
+    parameters: _commonParams(client: client, appMode: appMode, userId: userId),
+  );
+
+  Future<void> logMarginUpdated({
+    required String client,
+    required String appMode,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'margin_updated',
+    parameters: _commonParams(client: client, appMode: appMode, userId: userId),
+  );
+
+  Future<void> logCreativeAssetPublish({
+    required String client,
+    required String appMode,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'creative_asset_publish',
+    parameters: _commonParams(client: client, appMode: appMode, userId: userId),
+  );
+
+  Future<void> logFullWorkflowComplete({
+    required String client,
+    required String appMode,
+    double? timeSeconds,
+    bool success = true,
+    String? userId,
+  }) => logCustomEvent(
+    name: 'full_workflow_complete',
+    parameters: _commonParams(
+      client: client, appMode: appMode,
+      timeSeconds: timeSeconds, success: success, userId: userId,
+    ),
+  );
 }
 
 final telemetryServiceProvider = Provider<TelemetryService>((ref) => TelemetryService());

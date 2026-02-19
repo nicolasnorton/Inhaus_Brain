@@ -7,6 +7,8 @@ import '../../core/auth/auth_service.dart';
 import '../../features/auth/models/user_model.dart';
 import '../assistant/widgets/ai_assistant_button.dart';
 import '../assistant/widgets/ai_assistant_overlay.dart';
+import '../../core/providers/demo_provider.dart';
+import '../../features/knowledge/providers/knowledge_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final Widget child;
@@ -334,6 +336,40 @@ class DashboardHome extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
           Text(
+            "Demo Campaigns",
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          _buildGlassmorphicDemoButton(
+            context,
+            ref,
+            title: "Banco del Austro – Full Strategy Campaign",
+            clientKey: "banco del austro",
+            icon: FontAwesomeIcons.buildingColumns,
+            color: Colors.orangeAccent,
+          ),
+          const SizedBox(height: 12),
+          _buildGlassmorphicDemoButton(
+            context,
+            ref,
+            title: "Bajaj Ecuador – Scooter Launch",
+            clientKey: "bajaj",
+            icon: FontAwesomeIcons.motorcycle,
+            color: Colors.blueAccent,
+          ),
+          const SizedBox(height: 12),
+          _buildGlassmorphicDemoButton(
+            context,
+            ref,
+            title: "Nutrileche – Brand Refresh",
+            clientKey: "nutrileche",
+            icon: FontAwesomeIcons.glassWater,
+            color: Colors.greenAccent,
+          ),
+          const SizedBox(height: 32),
+          Text(
             AppLocalizations.of(context)!.quickAccess,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -462,6 +498,75 @@ class DashboardHome extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassmorphicDemoButton(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String clientKey,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 10,
+            spreadRadius: 1,
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            // Activate Demo Mode
+            ref.read(demoModeProvider.notifier).state = true;
+            ref.read(knowledgeProvider.notifier).initDemoData();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('🚀 Demo Mode Activated: $title'), backgroundColor: color),
+            );
+            // We pass the key as an extra so the wizard can prefill it
+            context.go('/campaigns', extra: {'demoClientKey': clientKey});
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 28),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios, color: color.withValues(alpha: 0.7)),
+              ],
+            ),
           ),
         ),
       ),
