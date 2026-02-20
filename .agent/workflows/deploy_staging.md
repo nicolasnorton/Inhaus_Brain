@@ -29,12 +29,12 @@ cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && flutter bu
 
 3. Deploy to the Firebase Hosting beta target & Cloud Functions (Full Stack):
 ```bash
-cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && firebase deploy --only hosting:inhaus-brain,functions
+cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && firebase use staging && firebase deploy --only hosting:inhaus-brain,functions
 ```
 
 4. Verify the deployment is live:
 ```bash
-echo "✅ Deployed! Verify at: https://inhausbrain-beta.web.app"
+echo "✅ Deployed! Verify at: https://inhaus-brain-full-staging.web.app"
 ```
 
 5. Clean up local build artifacts:

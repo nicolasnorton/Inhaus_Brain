@@ -1,6 +1,8 @@
 {
   "projects": {
-    "default": "inhausbrain"
+    "default": "inhausbrain",
+    "staging": "inhaus-brain-full-staging",
+    "prod": "inhaus-brain-full-prod"
   },
   "targets": {
     "inhausbrain": {
@@ -10,6 +12,20 @@
         ],
         "inhaus-brain": [
           "inhausbrain-beta"
+        ]
+      }
+    },
+    "inhaus-brain-full-staging": {
+      "hosting": {
+        "inhaus-brain": [
+          "inhaus-brain-full-staging"
+        ]
+      }
+    },
+    "inhaus-brain-full-prod": {
+      "hosting": {
+        "production": [
+          "inhaus-brain-full-prod"
         ]
       }
     }

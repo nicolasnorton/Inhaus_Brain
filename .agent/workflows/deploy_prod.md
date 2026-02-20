@@ -25,7 +25,7 @@ This workflow handles the full clean, build, and deployment process for the Inha
 ## 3. Deploy to Firebase (gclout)
 4.  Deploy all Firebase services (Hosting, Functions, Firestore, Storage) to production.
     ```bash
-    npx firebase deploy
+    firebase use prod && npx firebase deploy
     ```
 
 ## 4. Push to GitHub
