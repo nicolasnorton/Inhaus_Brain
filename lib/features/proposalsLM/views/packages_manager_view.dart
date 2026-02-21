@@ -16,13 +16,11 @@ import '../../agency/providers/service_catalog_riverpod_provider.dart';
 /// - Soft-delete with master-key confirmation dialog
 /// - Deleted packages view with restore
 class PackagesManagerView extends ConsumerStatefulWidget {
-  final ProposalsRepository service;
   final void Function(Package pkg)? onAddToQuote;
   final void Function(Package pkg)? onEditPackage;
 
   const PackagesManagerView({
     super.key,
-    required this.service,
     this.onAddToQuote,
     this.onEditPackage,
   });

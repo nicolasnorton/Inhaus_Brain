@@ -132,7 +132,6 @@ class _CotizadorPanelState extends State<CotizadorPanel> {
     switch (_active) {
       case _CotizadorSection.productos:
         return PackagesManagerView(
-          service: _repo,
           onAddToQuote: (pkg) {
             // TODO: Add package to the active quote session
             ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +166,6 @@ class _CotizadorPanelState extends State<CotizadorPanel> {
         );
       case _CotizadorSection.editor:
         return QuoteEditorView(
-          service: _repo,
           existingQuote: _editingQuote,
           onClose: _closeEditor,
           onSaved: (saved) {

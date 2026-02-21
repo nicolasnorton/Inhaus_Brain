@@ -14,6 +14,7 @@ import '../../../core/tokens/llm_provider.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/mcp/tools/image_generation_tool.dart';
 import '../../../core/mcp/tools/video_generation_tool.dart';
+import '../../../core/mcp/tools/audio_generation_tool.dart';
 import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
 import '../agents/router_agent.dart';
@@ -342,6 +343,16 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
+  Future<void> _handleAudioGeneration(String userPrompt, {String? lyriaKey}) async {
+    final toolMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: 'Composing custom audio...',
+        sender: MessageSender.creativeAgent,
+        type: MessageType.toolUsage,
+        createdAt: DateTime.now(),
+        metadata: {'tool': 'lyria_audio_gen'},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
     final audioTool = AudioGenerationTool(lyriaKey: lyriaKey);
     final result = await audioTool.execute({'prompt': userPrompt});
@@ -951,6 +962,7 @@ $lastResponse
       return ["Explain this further", "What are the next steps?", "Show me more examples"];
     }
   }
+
   // --- ADK Pipeline Execution ---
   Future<void> _handlePipelineExecution(String pipelineName, String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext}) async {
     // 1. Pipeline Lookup from Provider

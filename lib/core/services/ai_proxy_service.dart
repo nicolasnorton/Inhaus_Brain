@@ -17,13 +17,13 @@ class AIProxyService {
   static final _imageCircuit = CircuitBreaker(name: 'ImagenImage', failureThreshold: 3);
 
   AIProxyService(this._ref) {
-    _globalRef = _ref;
+    globalRef = _ref;
   }
 
   /// Safe audit log helper — skips logging if ref hasn't been initialized yet.
   static void _auditLog({required String action, String? resourceType, String? resourceId, Map<String, dynamic>? metadata}) {
     try {
-      _globalRef?.read(auditLogServiceProvider).log(
+      globalRef?.read(auditLogServiceProvider).log(
         action: action,
         resourceType: resourceType,
         resourceId: resourceId,
