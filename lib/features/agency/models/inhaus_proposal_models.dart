@@ -70,6 +70,37 @@ class InhausPrice {
   }
 }
 
+/// Line item for per-service pricing in one-page quote
+class InhausLineItem {
+  final String serviceName;            // e.g., "PAQUETE STARTER"
+  final String price;                  // e.g., "$1,500.00"
+  final String? paymentType;           // e.g., "Pago mensual", "Precio", "Pago único"
+  final String? description;           // Brief description of deliverables
+
+  InhausLineItem({
+    required this.serviceName,
+    required this.price,
+    this.paymentType,
+    this.description,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'service_name': serviceName,
+    'price': price,
+    'payment_type': paymentType,
+    'description': description,
+  };
+
+  factory InhausLineItem.fromJson(Map<String, dynamic> json) {
+    return InhausLineItem(
+      serviceName: json['service_name'] ?? json['serviceName'] ?? '',
+      price: json['price'] ?? '\$0.00',
+      paymentType: json['payment_type'] ?? json['paymentType'],
+      description: json['description'],
+    );
+  }
+}
+
 /// Section for detailed multi-page proposal
 class InhausProposalSection {
   final String title;                  // e.g., "RRSS / FACEBOOK INSTAGRAM"
@@ -192,6 +223,14 @@ class InhausQuoteSummary {
   final List<String> entregables;      // Deliverables
   final InhausPrice precio;            // Total price
   
+  // Pricing breakdown (cotizador parity)
+  final List<InhausLineItem> lineItems;  // Per-service pricing
+  final String? subtotal;                // e.g. "$3,000.00"
+  final String? descuento;               // e.g. "— $300.00"
+  final double? descuentoPct;            // e.g. 10.0
+  final String? ivaAmount;               // e.g. "$405.00"
+  final bool applyIva;                   // Whether IVA is applied
+  
   // Legacy fields for backwards compatibility
   final String intro;                  // Deprecated: use introParagraph
   final List<String> keyServices;      // Deprecated: use incluye
@@ -206,6 +245,13 @@ class InhausQuoteSummary {
     this.equipo = const [],
     this.entregables = const [],
     required this.precio,
+    // Pricing breakdown
+    this.lineItems = const [],
+    this.subtotal,
+    this.descuento,
+    this.descuentoPct,
+    this.ivaAmount,
+    this.applyIva = false,
     // Legacy fields
     String? intro,
     List<String>? keyServices,
@@ -223,6 +269,12 @@ class InhausQuoteSummary {
     'equipo': equipo,
     'entregables': entregables,
     'precio': precio.toJson(),
+    'line_items': lineItems.map((e) => e.toJson()).toList(),
+    'subtotal': subtotal,
+    'descuento': descuento,
+    'descuento_pct': descuentoPct,
+    'iva_amount': ivaAmount,
+    'apply_iva': applyIva,
     'cta': cta,
     // Legacy fields
     'intro': intro,
@@ -242,6 +294,13 @@ class InhausQuoteSummary {
       equipo: (json['equipo'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       entregables: (json['entregables'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       precio: precio,
+      // Pricing breakdown
+      lineItems: (json['line_items'] as List<dynamic>?)?.map((e) => InhausLineItem.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      subtotal: json['subtotal'],
+      descuento: json['descuento'],
+      descuentoPct: (json['descuento_pct'] as num?)?.toDouble(),
+      ivaAmount: json['iva_amount'],
+      applyIva: json['apply_iva'] ?? false,
       cta: json['cta'] ?? '',
       // Legacy fields
       intro: json['intro'],

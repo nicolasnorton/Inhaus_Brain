@@ -282,7 +282,7 @@ class ProposalOutput {
       id: json['id'],
       title: json['title'],
       type: ProposalOutputType.values.firstWhere(
-        (e) => e.toString().split('.').last == json['type'],
+        (e) => e.toString().split('.').last == json['type']?.toString(),
         orElse: () => ProposalOutputType.detailedPdf,
       ),
       uri: json['uri'],

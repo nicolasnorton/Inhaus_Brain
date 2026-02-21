@@ -114,6 +114,16 @@ class ProposalSessionNotifier extends StateNotifier<ProposalSessionState?> {
     );
   }
 
+  /// Add a generic source (e.g. from research)
+  void addRawSource(ProposalSource source) {
+    if (state == null) return;
+    
+    final newSources = [...state!.proposal.sources, source];
+    state = state!.copyWith(
+      proposal: state!.proposal.copyWith(sources: newSources),
+    );
+  }
+
   /// Set discount percentage
   void setDiscount(double discount) {
     if (state == null) return;

@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/agency/screens/agency_screen.dart';
 import '../../features/agency/screens/sales_screen.dart';
-import '../../features/agency/screens/agency_services_dashboard.dart'; // Added
+import '../../features/agency/screens/agency_services_dashboard.dart';
+import '../../features/agency/screens/styles_management_screen.dart';
+import '../../features/agency/screens/quotation_tuner_screen.dart';
+
 import '../../features/finance/screens/finance_dashboard_screen.dart'; // Updated
 import '../../features/hr/screens/hr_dashboard_screen.dart'; // Updated
 
@@ -63,14 +66,11 @@ import '../../features/legal/constants/legal_text.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider).value;
-  final onboardingCompleted = ref.watch(onboardingProvider);
-
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
       final isLoggedIn = authState != null;
       final isLoggingIn = state.uri.toString() == '/login';
-      final isOnboarding = state.uri.toString() == '/onboarding';
 
       final appUserAsync = ref.read(appUserProvider);
       final appUser = appUserAsync.value;
@@ -305,8 +305,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'services',
                 builder: (context, state) => const AgencyServicesDashboard(),
               ),
+              GoRoute(
+                path: 'styles',
+                builder: (context, state) => const StylesManagementScreen(),
+              ),
+              GoRoute(
+                path: 'tuner',
+                builder: (context, state) => const QuotationTunerScreen(),
+              ),
             ],
           ),
+
           GoRoute(
             path: '/camera-capture',
             builder: (context, state) => const CameraCaptureScreen(),

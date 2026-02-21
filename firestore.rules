@@ -115,8 +115,20 @@ service cloud.firestore {
       
       match /data/{dataDoc} {
         allow read: if isAuthenticated();
+        // Only agency staff can write to the catalog data
         allow write: if isAgencyStaff();
       }
+    }
+    
+    // COTIZADOR (PROPOSALS LM) RULES
+    match /cotizadorQuotes/{quoteId} {
+      allow read, write: if isAgencyStaff();
+    }
+    match /cotizadorPackages/{packageId} {
+      allow read, write: if isAgencyStaff();
+    }
+    match /proformaStyles/{styleId} {
+      allow read, write: if isAgencyStaff();
     }
     
     // CLIENTS MODULE RULES

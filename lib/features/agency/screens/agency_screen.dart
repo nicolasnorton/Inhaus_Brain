@@ -58,7 +58,7 @@ class AgencyScreen extends ConsumerWidget {
   Widget _buildNavigationGrid(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth < 600 ? 1 : 3;
+        final crossAxisCount = constraints.maxWidth < 600 ? 1 : 4;
         return GridView.count(
           crossAxisCount: crossAxisCount,
           shrinkWrap: true,
@@ -90,6 +90,22 @@ class AgencyScreen extends ConsumerWidget {
               icon: FontAwesomeIcons.peopleGroup,
               color: Colors.orange,
               onTap: () => context.go('/agency/hr'),
+            ),
+            _buildNavCard(
+              context,
+              title: 'Brand Styles',
+              subtitle: 'Manage color themes for generated proposals.',
+              icon: FontAwesomeIcons.palette,
+              color: const Color(0xFFFF0055), // INHAUS Pink
+              onTap: () => context.go('/agency/styles'),
+            ),
+            _buildNavCard(
+              context,
+              title: 'Quotation Tuner',
+              subtitle: 'Parse unstructured text into structured quotes.',
+              icon: FontAwesomeIcons.wandMagicSparkles,
+              color: Colors.purple,
+              onTap: () => context.go('/agency/tuner'),
             ),
           ],
         );
