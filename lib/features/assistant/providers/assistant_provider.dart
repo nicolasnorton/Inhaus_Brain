@@ -1,11 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/assistant_service.dart';
+import '../../chat/models/chat_models.dart';
+import '../../../core/tokens/llm_provider.dart';
 
 // State for the open/close status of the assistant overlay
 final isAssistantOpenProvider = StateProvider<bool>((ref) => false);
 
 // Current status of the assistant (e.g. "Searching...", "Thinking...")
 final assistantStatusProvider = StateProvider<String?>((ref) => null);
+
+// Selected AI Model Provider
+final selectedAIModelProvider = StateProvider<AIModelConfig>((ref) => AIModelConfig.geminiPro);
 
 // Trigger for sending message from FAB
 final assistantSendTriggerProvider = StateProvider<int>((ref) => 0);
@@ -19,12 +24,12 @@ class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
 
   AssistantChatState(this._service) : super([]);
 
-  Future<void> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment}) async {
+  Future<void> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment, ToolMode toolMode = ToolMode.chat}) async {
     // Service now uses Riverpod Ref for tools, no context needed
     
     // Optimistic update for user message (controlled by service actually, but triggered here)
     // The service manages the authoritative history list, we just sync the state
-    await _service.sendMessage(text, attachment: attachment, audioAttachment: audioAttachment);
+    await _service.sendMessage(text, attachment: attachment, audioAttachment: audioAttachment, toolMode: toolMode);
     state = [..._service.history];
   }
   

@@ -23,7 +23,7 @@ class LiveApiService {
 
   /// Connect to the Multimodal Live API using a secure token from the backend.
   Future<void> connect({
-    String model = 'gemini-2.0-flash-exp',
+    String model = 'gemini-2.5-flash',
     String? systemInstruction,
   }) async {
     if (_isConnected) return;

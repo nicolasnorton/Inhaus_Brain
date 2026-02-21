@@ -17,7 +17,10 @@ class AIModelConfig {
   final int? maxTokens;
   final String? overrideBaseUrl;
   final String? responseMimeType;
+  final Map<String, dynamic>? responseJsonSchema;
   final bool useGoogleSearch;
+  final String? thinkingLevel; // minimal, low, medium, high
+  final String? thinkingSummaries; // auto, none
 
   const AIModelConfig({
     required this.provider,
@@ -26,7 +29,10 @@ class AIModelConfig {
     this.maxTokens,
     this.overrideBaseUrl,
     this.responseMimeType,
+    this.responseJsonSchema,
     this.useGoogleSearch = false,
+    this.thinkingLevel,
+    this.thinkingSummaries,
   });
 
   AIModelConfig copyWith({
@@ -36,7 +42,10 @@ class AIModelConfig {
     int? maxTokens,
     String? overrideBaseUrl,
     String? responseMimeType,
+    Map<String, dynamic>? responseJsonSchema,
     bool? useGoogleSearch,
+    String? thinkingLevel,
+    String? thinkingSummaries,
   }) {
     return AIModelConfig(
       provider: provider ?? this.provider,
@@ -45,7 +54,10 @@ class AIModelConfig {
       maxTokens: maxTokens ?? this.maxTokens,
       overrideBaseUrl: overrideBaseUrl ?? this.overrideBaseUrl,
       responseMimeType: responseMimeType ?? this.responseMimeType,
+      responseJsonSchema: responseJsonSchema ?? this.responseJsonSchema,
       useGoogleSearch: useGoogleSearch ?? this.useGoogleSearch,
+      thinkingLevel: thinkingLevel ?? this.thinkingLevel,
+      thinkingSummaries: thinkingSummaries ?? this.thinkingSummaries,
     );
   }
 
@@ -62,7 +74,7 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini 2.5 — GA Stable ────────────────────────────────
+  // ── Gemini 2.5 (Standard) ───────────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
@@ -70,12 +82,18 @@ class AIModelConfig {
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
 
+  // ── Gemini 3.0 (Frontier) ────────────────────────────────
+  static AIModelConfig get geminiFlash3 => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
+  static AIModelConfig get geminiPro3 => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-pro-preview', temperature: 1.0);
+
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash',
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview',
     useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro',
+    provider: AIProvider.gemini, modelId: 'deep-research-pro-preview-12-2025',
     useGoogleSearch: true, temperature: 1.0);
 
   // ── Media Models ──────────────────────────────────────────
@@ -83,6 +101,12 @@ class AIModelConfig {
     provider: AIProvider.vertex, modelId: 'imagen-4.0-generate-001', temperature: 1.0);
   static AIModelConfig get veo31 => const AIModelConfig(
     provider: AIProvider.vertex, modelId: 'veo-3.1-generate-001');
+  
+  // ── Nano Banana (Native Image Gen) ────────────────────────
+  static AIModelConfig get nanoBanana => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-image');
+  static AIModelConfig get nanoBananaPro => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-pro-image-preview');
 
   // ── Gemma Open Models (via Python proxy / Model Garden) ───
   static AIModelConfig get gemma3Fast => const AIModelConfig(
@@ -106,7 +130,10 @@ class AIModelConfig {
     'maxTokens': maxTokens,
     'overrideBaseUrl': overrideBaseUrl,
     'responseMimeType': responseMimeType,
+    if (responseJsonSchema != null) 'responseJsonSchema': responseJsonSchema,
     'useGoogleSearch': useGoogleSearch,
+    if (thinkingLevel != null) 'thinkingLevel': thinkingLevel,
+    if (thinkingSummaries != null) 'thinkingSummaries': thinkingSummaries,
   };
 
   factory AIModelConfig.fromJson(Map<String, dynamic> json) {
@@ -137,7 +164,10 @@ class AIModelConfig {
       maxTokens: json['maxTokens'] as int?,
       overrideBaseUrl: json['overrideBaseUrl'] as String?,
       responseMimeType: json['responseMimeType'] as String?,
+      responseJsonSchema: json['responseJsonSchema'] as Map<String, dynamic>?,
       useGoogleSearch: json['useGoogleSearch'] as bool? ?? false,
+      thinkingLevel: json['thinkingLevel'] as String?,
+      thinkingSummaries: json['thinkingSummaries'] as String?,
     );
   }
 }

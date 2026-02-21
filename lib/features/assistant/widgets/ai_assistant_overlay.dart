@@ -19,35 +19,18 @@ import '../../settings/providers/user_provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../chat/widgets/sources_carousel.dart';
 import '../../chat/widgets/thinking_indicator.dart';
+import '../../chat/widgets/tool_selector_bar.dart';
 import 'artifact_renderer.dart';
-import '../presentation/widgets/gen_ui/strategy_board_widget.dart';
-import '../presentation/widgets/gen_ui/budget_chart_widget.dart';
-import '../presentation/widgets/gen_ui/kanban_board_widget.dart';
-import '../presentation/widgets/gen_ui/trend_report_widget.dart';
-import '../presentation/widgets/gen_ui/recipe_card_widget.dart';
-// New GenUI Imports
-import '../presentation/widgets/gen_ui/dynamic_form_widget.dart';
-import '../presentation/widgets/gen_ui/mind_map_widget.dart';
-import '../presentation/widgets/gen_ui/media_carousel_widget.dart';
-import '../presentation/widgets/gen_ui/interactive_table_widget.dart';
-import '../presentation/widgets/gen_ui/radial_gauge_widget.dart';
-import '../presentation/widgets/gen_ui/accordion_widget.dart';
-import '../presentation/widgets/gen_ui/stepper_wizard_widget.dart';
-import '../presentation/widgets/gen_ui/word_cloud_widget.dart';
-import '../presentation/widgets/gen_ui/calendar_widget.dart';
-import '../presentation/widgets/gen_ui/dialogue_scene_widget.dart';
-import '../presentation/widgets/gen_ui/avatar_conversation_widget.dart';
-import '../presentation/widgets/gen_ui/live_session_widget.dart';
-import '../presentation/widgets/gen_ui/code_viewer_widget.dart';
-import '../presentation/widgets/gen_ui/video_player_widget.dart';
-import '../presentation/widgets/gen_ui/deep_analysis_report_widget.dart';
-import '../presentation/widgets/gen_ui/knowledge_dashboard_widget.dart';
+import '../presentation/widgets/gen_ui/gen_ui_renderer.dart';
 import '../../../core/widgets/app_video_player.dart';
 import '../../../core/widgets/video_preview_player.dart';
 import '../../canvas/ui/canvas_host.dart';
 import '../../canvas/providers/canvas_provider.dart';
 import '../../../core/ui/split_pane_layout.dart';
 import '../../chat/models/chat_models.dart';
+import '../../../core/config/app_environment.dart';
+import '../../../core/tokens/llm_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AiAssistantOverlay extends ConsumerStatefulWidget {
   const AiAssistantOverlay({super.key});
@@ -73,6 +56,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   bool _autoRead = false;
   late final FocusNode _keyboardFocusNode;
   DateTime? _statusStartTime;
+  ToolMode _toolMode = ToolMode.chat;
 
   @override
   void initState() {
@@ -264,13 +248,125 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
 
       await ref.read(assistantChatProvider.notifier).sendMessage(
         text, 
-        attachment: imageToSend?.toList(),
+        attachment: imageToSend,
         audioAttachment: audioBytes,
+        toolMode: _toolMode,
       );
       // Wait a frame for the list to update
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } catch (e) {
+      debugPrint('Error sending assistant message: $e');
     } finally {
       if (mounted) setState(() => _isTyping = false);
+    }
+  }
+
+  Widget _buildModelPicker(WidgetRef ref) {
+    final selectedModelConfig = ref.watch(selectedAIModelProvider);
+    
+    // Context-aware model filtering based on ToolMode
+    List<PopupMenuEntry<AIModelConfig>> menuItems = [];
+
+    switch (_toolMode) {
+      case ToolMode.chat:
+      case ToolMode.code: // Code uses text models primarily
+        menuItems = [
+          _buildGroupHeader('TEXT MODELS'),
+          _buildModelMenuItem(ref, AIModelConfig.geminiFlash, FontAwesomeIcons.bolt),
+          _buildModelMenuItem(ref, AIModelConfig.geminiPro, FontAwesomeIcons.google),
+          _buildModelMenuItem(ref, AIModelConfig.geminiFlashLite, FontAwesomeIcons.gaugeHigh),
+          const PopupMenuDivider(),
+          _buildGroupHeader('RESEARCH'),
+          _buildModelMenuItem(ref, AIModelConfig.geminiResearch, FontAwesomeIcons.magnifyingGlass),
+          _buildModelMenuItem(ref, AIModelConfig.geminiDeepResearch, FontAwesomeIcons.microscope),
+           if (AppConfig.isStaging) ...[
+            const PopupMenuDivider(),
+            _buildGroupHeader('EDGE / EXPERIMENTAL'),
+            _buildModelMenuItem(ref, AIModelConfig.gemma3Fast, FontAwesomeIcons.gem),
+            _buildModelMenuItem(ref, AIModelConfig.gemma3Quality, FontAwesomeIcons.gem),
+          ],
+        ];
+        break;
+      case ToolMode.image:
+        menuItems = [
+          _buildGroupHeader('IMAGE MODELS'),
+          _buildModelMenuItem(ref, AIModelConfig.imagen4, FontAwesomeIcons.image),
+          // Fallbacks or specialized image models can be added here
+        ];
+        break;
+      case ToolMode.video:
+        menuItems = [
+           _buildGroupHeader('VIDEO MODELS'),
+           _buildModelMenuItem(ref, AIModelConfig.veo31, FontAwesomeIcons.video),
+        ];
+        break;
+    }
+
+    return PopupMenuButton<AIModelConfig>(
+      tooltip: 'Select AI Model',
+      color: const Color(0xFF1E1E1E),
+      offset: const Offset(0, -350),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_getModelIcon(selectedModelConfig), size: 12, color: Colors.blueAccent),
+            const SizedBox(width: 4),
+            Text(
+              selectedModelConfig.displayName.split(' ').first.replaceAll('(', ''), // Short name
+              style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+      itemBuilder: (context) => menuItems,
+      onSelected: (config) {
+        ref.read(selectedAIModelProvider.notifier).state = config;
+      },
+    );
+  }
+
+  PopupMenuItem<AIModelConfig> _buildGroupHeader(String title) {
+    return PopupMenuItem<AIModelConfig>(
+      enabled: false,
+      height: 24,
+      child: Text(
+        title, 
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 1.2)
+      ),
+    );
+  }
+
+  PopupMenuItem<AIModelConfig> _buildModelMenuItem(WidgetRef ref, AIModelConfig config, IconData icon) {
+    final selectedModelConfig = ref.read(selectedAIModelProvider);
+    return PopupMenuItem<AIModelConfig>(
+      value: config,
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: selectedModelConfig == config ? Colors.blueAccent : Colors.white54),
+          const SizedBox(width: 12),
+          Text(
+            config.displayName,
+            style: TextStyle(color: selectedModelConfig == config ? Colors.blueAccent : Colors.white70, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  IconData _getModelIcon(AIModelConfig config) {
+    switch (config.provider) {
+      case AIProvider.gemini: return FontAwesomeIcons.google;
+      case AIProvider.vertex: return FontAwesomeIcons.cloud;
+      case AIProvider.gemma: return FontAwesomeIcons.gem;
+      case AIProvider.litert: return FontAwesomeIcons.mobileScreen;
     }
   }
 
@@ -280,15 +376,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     final messages = ref.watch(assistantChatProvider);
     
     // Listen to external send trigger (from FAB)
-    ref.listen(assistantSendTriggerProvider, (previous, next) {
+    ref.listen<int>(assistantSendTriggerProvider, (previous, next) {
       if (next > 0) {
         _sendMessage();
       }
     });
 
     // Listen for new messages to trigger TTS
-    ref.listen(assistantChatProvider, (prev, next) {
-      if (next.isNotEmpty && (prev?.length ?? 0) < next.length) {
+    ref.listen<List<AssistantMessage>>(assistantChatProvider, (prev, next) {
+      if (next.isNotEmpty && (prev == null || prev.length < next.length)) {
         final lastMessage = next.last;
         if (!lastMessage.isUser && isOpen) {
           // It's a new AI response (and overlay is open)
@@ -516,6 +612,46 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                   ),
                 ),
 
+                // Tool Selector Bar
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: ToolSelectorBar(
+                    selectedMode: _toolMode,
+                    onModeChanged: (mode) {
+                      setState(() => _toolMode = mode);
+                      
+                      // Auto-switch model based on mode for better UX
+                      final currentModel = ref.read(selectedAIModelProvider);
+                      AIModelConfig? newModel;
+                      
+                      switch (mode) {
+                        case ToolMode.image:
+                          if (currentModel != AIModelConfig.imagen4) {
+                             newModel = AIModelConfig.imagen4;
+                          }
+                          break;
+                        case ToolMode.video:
+                          if (currentModel != AIModelConfig.veo31) {
+                             newModel = AIModelConfig.veo31;
+                          }
+                          break;
+                        case ToolMode.chat:
+                        case ToolMode.code:
+                          // If coming from media mode, switch back to default text model
+                          if (currentModel == AIModelConfig.imagen4 || 
+                              currentModel == AIModelConfig.veo31) {
+                             newModel = AIModelConfig.geminiFlash;
+                          }
+                          break;
+                      }
+                      
+                      if (newModel != null) {
+                         ref.read(selectedAIModelProvider.notifier).state = newModel;
+                      }
+                    },
+                  ),
+                ),
+
                 // Input Area
                 Column(
                   children: [
@@ -584,6 +720,8 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                             ),
                           ),
                           const SizedBox(width: 4),
+                          _buildModelPicker(ref),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: TextField(
                               focusNode: _keyboardFocusNode,
@@ -593,11 +731,11 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                               minLines: 1,
                               maxLines: 5,
                               textInputAction: TextInputAction.newline,
-                              decoration: const InputDecoration(
-                                hintText: 'Type a message...',
-                                hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
+                              decoration: InputDecoration(
+                                hintText: _getHintText(),
+                                hintStyle: const TextStyle(color: Colors.white38, fontSize: 16),
                                 border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                               ),
                             ),
                           ),
@@ -632,6 +770,15 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     ),
   );
 }
+
+  String _getHintText() {
+    switch (_toolMode) {
+      case ToolMode.image: return 'Describe the image you want to generate...';
+      case ToolMode.video: return 'Describe the video you want to generate...';
+      case ToolMode.code: return 'Describe the code you need...';
+      case ToolMode.chat: default: return 'Type a message...';
+    }
+  }
 
   Widget _buildMessageBubble(AssistantMessage message) {
     if (message.isUser) {
@@ -778,7 +925,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                         if (message.uiPayload != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 12.0),
-                            child: _buildGenUI(message.uiPayload!),
+                            child: GenUIRenderer(payload: message.uiPayload!),
                           ),
                         if (message.clarificationQuestions != null && message.clarificationQuestions!.isNotEmpty)
                           Padding(
@@ -794,32 +941,32 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
                                 ...message.clarificationQuestions!.map((q) => Padding(
                                   padding: const EdgeInsets.only(bottom: 8.0),
                                   child: InkWell(
-                                    onTap: () {
-                                      _controller.text = q;
-                                      _keyboardFocusNode.requestFocus();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blueAccent.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.help_outline, size: 14, color: Colors.blueAccent),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              q,
-                                              style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.w500),
-                                            ),
+                                  onTap: () {
+                                    _controller.text = q;
+                                    _keyboardFocusNode.requestFocus();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueAccent.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.help_outline, size: 14, color: Colors.blueAccent),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            q,
+                                            style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.w500),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                )),
+                                ),
+                              )).toList(),
                               ],
                             ),
                           ),
@@ -1186,67 +1333,6 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       return uri.host.replaceFirst('www.', '');
     } catch (_) {
       return 'web';
-    }
-  }
-
-  Widget _buildGenUI(Map<String, dynamic> payload) {
-    final type = payload['type'];
-    switch (type) {
-      case 'strategy_board':
-        return StrategyBoardWidget(data: payload);
-      case 'budget_chart':
-        return BudgetChartWidget(data: payload);
-      case 'kanban_board':
-        return KanbanBoardWidget(data: payload);
-      case 'recipe_card':
-        return RecipeCardWidget(data: payload);
-      // New GenUI Cases
-      case 'dynamic_form':
-        return DynamicFormWidget(data: payload);
-      case 'mind_map':
-        return MindMapWidget(data: payload);
-      case 'carousel':
-        return MediaCarouselWidget(data: payload);
-      case 'interactive_table':
-        return InteractiveTableWidget(data: payload);
-      case 'radial_gauge':
-        return RadialGaugeWidget(data: payload);
-      case 'accordion':
-        return AccordionWidget(data: payload);
-      case 'stepper':
-        return StepperWizardWidget(data: payload);
-      case 'word_cloud':
-        return WordCloudWidget(data: payload);
-      case 'calendar':
-        return CalendarWidget(data: payload);
-      case 'trend_report':
-      case 'analysis_report':
-        return TrendReportWidget(data: payload);
-      case 'dialogue_scene':
-        return DialogueSceneWidget(data: payload);
-      case 'avatar_conversation':
-        return AvatarConversationWidget(
-          speakerName: payload['speaker_name'] ?? 'Speaker',
-          text: payload['text'] ?? '',
-          avatarUrl: payload['avatar_url'],
-          isRightAligned: payload['is_right_aligned'] ?? false,
-        );
-      case 'code_viewer':
-        return CodeViewerWidget(data: payload);
-      case 'video_player':
-        return VideoPlayerWidget(data: payload);
-      case 'deep_analysis':
-        return DeepAnalysisReportWidget(data: payload);
-      case 'knowledge_dashboard':
-        return KnowledgeDashboardWidget(data: payload);
-      case 'live_multimodal_session':
-        return LiveMultimodalSessionWidget(data: payload);
-      default:
-        // Fallback for any other type that might have sections (generic report)
-        if (payload.containsKey('sections') || payload.containsKey('trends')) {
-          return TrendReportWidget(data: payload);
-        }
-        return const SizedBox.shrink();
     }
   }
 }

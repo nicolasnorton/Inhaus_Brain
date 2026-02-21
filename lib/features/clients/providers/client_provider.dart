@@ -55,7 +55,7 @@ class ClientNotifier extends StateNotifier<ClientState> {
   }
 
   void _init() {
-    // Listen to real-time stream of clients
+    // Listen to real-time stream of clients from Firestore
     _repository.streamClients().listen((clients) {
       final List<Client> allClients = [...clients];
 
@@ -96,6 +96,7 @@ class ClientNotifier extends StateNotifier<ClientState> {
     required String name,
     required ClientType clientType,
     required String industry,
+    String? logoUrl,
     String? email,
     String? website,
     String? address,
@@ -115,6 +116,7 @@ class ClientNotifier extends StateNotifier<ClientState> {
       name: name,
       clientType: clientType,
       industry: industry,
+      logoUrl: logoUrl,
       primaryContactEmail: email,
       website: website,
       address: address,

@@ -25,7 +25,7 @@ This workflow handles the full clean, build, and deployment process for the Inha
 ## 3. Deploy to Firebase (gclout)
 4.  Deploy all Firebase services (Hosting, Functions, Firestore, Storage) to production.
     ```bash
-    npx firebase deploy
+    firebase use prod && npx firebase deploy
     ```
 
 ## 4. Push to GitHub
@@ -40,4 +40,10 @@ This workflow handles the full clean, build, and deployment process for the Inha
 7.  Push the current branch to origin.
     ```bash
     git push origin feature/reports-oauth-litert-enhancements
+    ```
+
+## 5. Clean up local build artifacts
+8.  Clean the Flutter project to remove old artifacts.
+    ```bash
+    flutter clean
     ```

@@ -15,7 +15,6 @@ class AgencyServiceForm extends StatefulWidget {
 class _AgencyServiceFormState extends State<AgencyServiceForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _nameEsController;
   late TextEditingController _priceController;
   late TextEditingController _basePriceController;
   late TextEditingController _costController;
@@ -26,6 +25,7 @@ class _AgencyServiceFormState extends State<AgencyServiceForm> {
   late TextEditingController _includesController;
   late TextEditingController _excludesController;
   late TextEditingController _descriptionController;
+  late TextEditingController _categoryController;
   late ServiceType _type;
   late BillingCycle _billingCycle;
 
@@ -33,7 +33,7 @@ class _AgencyServiceFormState extends State<AgencyServiceForm> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.service?.name ?? '');
-    _nameEsController = TextEditingController(text: widget.service?.nameEs ?? '');
+    _categoryController = TextEditingController(text: widget.service?.metadata['category'] as String? ?? 'General');
     _descriptionController = TextEditingController(text: widget.service?.description ?? '');
     _priceController = TextEditingController(text: widget.service?.price ?? '');
     _basePriceController = TextEditingController(text: widget.service?.basePrice.toString() ?? '');
@@ -51,7 +51,7 @@ class _AgencyServiceFormState extends State<AgencyServiceForm> {
   @override
   void dispose() {
     _nameController.dispose();
-    _nameEsController.dispose();
+    _categoryController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
     _basePriceController.dispose();
@@ -74,9 +74,9 @@ class _AgencyServiceFormState extends State<AgencyServiceForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTextField(_nameController, "Service Name (EN)", "e.g., SEO Management"),
+            _buildTextField(_nameController, "Service Name", "e.g., SEO Management / Gestión SEO"),
             const SizedBox(height: 16),
-            _buildTextField(_nameEsController, "Nombre del Servicio (ES)", "ej., Gestión SEO"),
+            _buildTextField(_categoryController, "Brand / Category", "e.g., Inhaus, Nostos, General"),
             const SizedBox(height: 16),
             _buildTextField(_descriptionController, "Description", "Brief overview of the service", maxLines: 2),
             const SizedBox(height: 16),
@@ -188,7 +188,7 @@ class _AgencyServiceFormState extends State<AgencyServiceForm> {
 
       widget.onSave({
         'name': _nameController.text,
-        'nameEs': _nameEsController.text,
+        'category': _categoryController.text,
         'description': _descriptionController.text,
         'type': _type.name,
         'price': _priceController.text,

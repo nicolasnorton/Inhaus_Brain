@@ -6,6 +6,7 @@ library;
 
 import 'dart:convert';
 import 'package:logger/logger.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_strategy.dart';
 import 'ai_generation_request.dart';
 import '../ai_proxy_service.dart';
@@ -18,7 +19,7 @@ class ProxyStrategy extends AIStrategy {
   String get name => 'proxy';
 
   @override
-  Future<AIGenerationResult> generate(AIGenerationRequest request) async {
+  Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref}) async {
     final stopwatch = Stopwatch()..start();
     final config = request.config;
     final prompt = request.effectivePrompt;
@@ -68,10 +69,13 @@ class ProxyStrategy extends AIStrategy {
       prompt: proxyPrompt,
       config: config,
       systemInstruction: request.systemInstruction,
-      tools: [],
+      tools: request.tools,
       thinking: config.modelId.contains('thinking') ||
+          config.thinkingLevel != null ||
           prompt.toLowerCase().contains('deep research'),
       audio: config.modelId.contains('lyra'),
+      previousInteractionId: request.previousInteractionId,
+      ref: ref is Ref ? ref : null,
     );
 
     stopwatch.stop();
@@ -92,15 +96,66 @@ class ProxyStrategy extends AIStrategy {
             if (part.containsKey('text')) {
               buffer.write(part['text']);
             }
+            if (part.containsKey('call')) {
+              // Function call from model (Python proxy format)
+              _logger.d('Proxy: Detected function call part: ${part['call']}');
+              buffer.write(jsonEncode({'call': part['call']}));
+            }
+            if (part.containsKey('functionCall')) {
+              // Native Gemini function call format
+              _logger.d('Proxy: Detected native functionCall part: ${part['functionCall']}');
+              buffer.write(jsonEncode({'functionCall': part['functionCall']}));
+            }
             if (part.containsKey('executable_adunit')) {
               buffer.write(jsonEncode(part));
+            }
+            if (part.containsKey('executable_code')) {
+              // Handle code execution results from Gemini
+              final code = part['executable_code'];
+              if (code is Map) {
+                buffer.writeln('\n```${code['language'] ?? ''}\n${code['code'] ?? ''}\n```\n');
+              }
+            }
+            if (part.containsKey('inlineData')) {
+              // Handle Nano Banana inline images
+              final mime = part['inlineData']['mimeType'];
+              final data = part['inlineData']['data'];
+              buffer.writeln('\n![Generated Image](data:$mime;base64,$data)\n');
             }
           }
         }
         text = buffer.toString();
         if (text.isEmpty && parts.isNotEmpty) {
-          text = jsonEncode(parts.first);
+           // Fallback if parts didn't match known keys but content exists
+           if (parts.first is Map && parts.first.containsKey('inlineData')) {
+              final mime = parts.first['inlineData']['mimeType'];
+              final data = parts.first['inlineData']['data'];
+              text = '![Generated Image](data:$mime;base64,$data)';
+           } else {
+              text = jsonEncode(parts.first);
+           }
         }
+      }
+    } else if (proxyRes['custom_type'] == 'interaction_result') {
+      final outputs = proxyRes['outputs'] as List?;
+      if (outputs != null && outputs.isNotEmpty) {
+        final buffer = StringBuffer();
+        for (var output in outputs) {
+          if (output is Map) {
+            if (output['type'] == 'thought') {
+              final thought = output['thought'] ?? '';
+              final summary = output['summary'] ?? '';
+              if (thought.isNotEmpty || summary.isNotEmpty) {
+                 buffer.writeln('> *Thinking: ${summary.isNotEmpty ? summary : thought}* \n');
+              }
+            } else if (output['type'] == 'text') {
+              buffer.write(output['text'] ?? '');
+            } else if (output['type'] == 'function_call') {
+              buffer.writeln('\n`[Tool Call: ${output['call']?['function_name']}]`');
+            }
+          }
+        }
+        text = buffer.toString();
       }
     } else if (proxyRes['error'] != null) {
       text = 'Proxy Error: ${proxyRes['error']}';

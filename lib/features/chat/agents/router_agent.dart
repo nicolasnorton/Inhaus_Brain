@@ -1,23 +1,23 @@
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'base_agent.dart';
 import '../models/chat_models.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
-import '../../../core/tokens/llm_provider.dart'; // Import for AIModelConfig
+import '../../../core/tokens/llm_provider.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/utils/sanitization_utils.dart';
 import '../services/memory_service.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/architecture/memory.dart';
+import '../../workspace/services/agent_registry_service.dart';
 
 enum RouterIntent {
   research,       // Competitive analysis, trends, facts
   creative,       // Visual concepts, design, moodboards
   creativeImage,  // Specific image generation
   creativeVideo,  // Specific video generation
+  creativeDesign, // Stitch UI/Web design
   genUiReport,    // Strategy, plans, interactive reports
   copywriting,    // Writing, editing, tone
   development,    // Code, technical architecture
@@ -43,7 +43,7 @@ class RouterAgent extends BaseAgent {
   String get name => "Brian";
   
   @override
-  MessageSender get type => MessageSender.system; // Acts on behalf of system
+  MessageSender get type => MessageSender.system;
 
   @override
   String get systemPromptKey => "brian_prompt";
@@ -70,8 +70,19 @@ class RouterAgent extends BaseAgent {
       return '{"intent": "directChat", "confidence": 1.0, "reasoning": "Heuristic: Simple salutation detected."}';
     }
 
-    // 1. Tiered Context: Read Global & Episodic Memory
-    // Note: In a full implementation, we'd fetch this from a dedicated MemoryProvider
+    // 1. Build Dynamic Router Context from Agent Registry
+    String dynamicAgentContext = '';
+    try {
+      final registryService = ref.read(agentRegistryServiceProvider);
+      dynamicAgentContext = await registryService.buildAgentSummaries();
+      if (dynamicAgentContext.isNotEmpty) {
+        debugPrint('Router: Loaded ${dynamicAgentContext.split('\n').length} lines of dynamic agent context');
+      }
+    } catch (e) {
+      debugPrint('Router: Could not load dynamic agent context, using static prompt: $e');
+    }
+
+    // 2. Tiered Context: Read Global & Episodic Memory
     final globalContext = GlobalContext(
       projectName: "Inhaus Brain Default",
       description: "A production-grade agentic orchestration system.",
@@ -87,9 +98,14 @@ class RouterAgent extends BaseAgent {
       workingMemory: WorkingMemory(currentTaskId: 'routing', currentTaskData: 'User initial query'),
     );
 
-    // 2. Intent Classification with Blackboard Integration
+    // 3. Intent Classification with Blackboard Integration
+    // Combine static systemPrompt with dynamic agent registry context
+    final effectiveSystemPrompt = dynamicAgentContext.isNotEmpty
+        ? '${systemPrompt ?? ''}\n\n## Available Agents (Dynamic Registry)\n$dynamicAgentContext'
+        : systemPrompt ?? '';
+
     final classificationPrompt = """
-$systemPrompt
+$effectiveSystemPrompt
 
 ${tieredMemory.toSystemPromptFragment()}
 
@@ -104,7 +120,7 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
       classificationPrompt,
       apiKey: apiKey,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      modelConfig: AIModelConfig.geminiResearch,
     );
     
     // Parse Intent & Post to Blackboard
@@ -137,12 +153,7 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
             data: {'pipeline': pipelineKey}
           );
           
-          // Spawn parallel tasks (Step 2 of Audit)
-          // For a campaign, we need both a Strategy and a Trend Scout report
           blackboard.addEvent(WorkflowEventType.userRequested, "Triggering Strategy & Trend analysis...");
-          
-          // We define tasks in the Blackboard
-          // This allows parallel execution by different workers
       }
 
       onEvent?.call(AdkEvent(type: AdkEventType.agentThinking, source: name, message: "Intent: $intentStr (Conf: $confidence)"));

@@ -1,8 +1,54 @@
-# InhausBrain GenUI Guide (v1.5 - Flawless Export Upgrade)
+# InhausBrain GenUI Guide (v2.0 - Composite Layout Upgrade)
 
 ## Overview
 This document outlines the expanded suite of Generative UI components available in InhausBrain. These components allow the AI Assistant to render rich, interactive interfaces directly in the chat stream, enhancing the user's ability to visualize data, plan workflows, and execute tasks.
 
+## NEW: Composite Layouts (`gen_ui_layout`)
+The AI can now compose **multiple GenUI components** into a single cohesive layout. This enables dashboards, multi-panel reports, and tabbed views.
+
+### Layout Modes
+| Layout | Description |
+| :--- | :--- |
+| `stacked` | Components rendered vertically, one after another (default) |
+| `grid` | Components arranged in a responsive grid (specify `columns`: 2 or 3) |
+| `split` | Two-pane layout — first component on left, rest stacked on right |
+| `tabs` | Tabbed interface — each component gets its own tab |
+
+### Example: Grid Dashboard
+```json
+{
+  "component_type": "gen_ui_layout",
+  "data": {
+    "layout": "grid",
+    "columns": 2,
+    "title": "Q1 Business Dashboard",
+    "components": [
+      {"type": "budget_chart", "title": "Q1 Budget", "total": 50000, "items": [...]},
+      {"type": "radial_gauge", "title": "Health Score", "value": 82, "min": 0, "max": 100, "ranges": [...]},
+      {"type": "kanban_board", "title": "Sprint Board", "columns": [...]},
+      {"type": "word_cloud", "title": "Brand Keywords", "words": [...]}
+    ]
+  }
+}
+```
+
+### Example: Tabbed Report
+```json
+{
+  "component_type": "gen_ui_layout",
+  "data": {
+    "layout": "tabs",
+    "title": "Market Research",
+    "components": [
+      {"type": "trend_report", "title": "Trends", "sections": [...]},
+      {"type": "interactive_table", "title": "Data", "columns": [...], "rows": [...]},
+      {"type": "budget_chart", "title": "Financials", "total": 100000, "items": [...]}
+    ]
+  }
+}
+```
+
+---
 ## Available Component Types
 
 ### 1. High-Value Interactive Components (New in v1.4)
@@ -98,6 +144,34 @@ Use for dense data display.
   "rows": [
     {"service": "SEO Audit", "price": 1500, "status": "Available"},
     {"service": "Content Pack", "price": 800, "status": "Waitlist"}
+  ]
+}
+```
+
+### Kanban Board (`kanban_board`)
+Use for task tracking and workflow visualization.
+```json
+{
+  "title": "Agency Backlog",
+  "columns": [
+    {
+      "title": "To Do",
+      "cards": [
+        {"title": "Draft Proposal", "description": "Review client brief", "tag": "Sales", "priority": "High"},
+        {"title": "Research Competitors", "priority": "Medium"}
+      ]
+    },
+    {
+      "title": "In Progress",
+      "cards": [
+        {"title": "Design Mockups", "description": "3 variants needed", "tag": "Design"},
+        "Quick sync with team" // Simple string cards also supported
+      ]
+    },
+    {
+      "title": "Done",
+      "cards": []
+    }
   ]
 }
 ```

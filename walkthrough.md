@@ -1,4 +1,30 @@
-# InhausBrain GenUI Architecture Walkthrough
+# InhausBrain - Deployment Walkthrough
+
+## Latest Updates (Phase: Production Audit & Remediation)
+
+- **Backend (Python):**
+    - **Model Normalization Fix:** Updated `_normalize_model_name` in `gemini_client.py` to correctly handle **Gemini 2.5 GA** models. Removed silent downgrades from 2.5 to 1.5.
+    - **Fallback Optimization:** Reordered `fallback_models` to prioritize newer generations (2.5 -> 2.0 -> 1.5).
+    - **Vertex AI Defaulting:** Configured `active_client` to default to **Vertex AI** (IAM auth) for production traffic, maintaining Google AI Studio (API Key) as a local fallback.
+    - **Operation Polling Fix:** Corrected positional argument handling in `get_operation` calls.
+- **Frontend (Flutter):**
+    - **Video Response Mapping:** Updated `VideoGenerationService` to parse `videoUri` directly from backend responses (fixing `predictions` array mismatch).
+    - **Polling Resilience:** Added `videoUri` to recursive key search during operation status checks.
+    - **Standardized Flash-Lite:** Upgraded `geminiFlashLite` from 1.5 to **2.0-flash-lite** in `llm_provider.dart` and `model_registry.dart`.
+    - **Context-Aware Model Picker:** Filtered models dynamically based on `ToolMode` (Chat, Image, Video).
+
+- **Redeployment:** Successful deployment to staging (`inhausbrain-beta.web.app`) with updated Cloud Functions.
+
+## Verification Checklist
+- [x] Python Backend: `poll_operation` fixed and 2.5 models passing through.
+- [x] Video Generation: Veo 3.1 results correctly parsed in Flutter (tested with `videoUri` key).
+- [x] Model Picker: Shows correct 2.0/2.5 series models.
+- [x] Vertex AI: Verified as default production client.
+
+> [!IMPORTANT]
+> Always perform a **Hard Refresh (Cmd+Shift+R)** in your browser after deployment to ensure new logic and model configurations are active.
+
+GenUI Architecture Walkthrough
 
 ## Overview
 This document visualizes the advanced Generative UI (GenUI) system v1.4, which enables the AI Assistant to render rich, interactive Flutter widgets directly in the chat stream based on user intent.

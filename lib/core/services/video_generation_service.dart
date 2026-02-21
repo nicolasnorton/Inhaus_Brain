@@ -144,12 +144,13 @@ class VideoGenerationService {
     
     // Tier 1: Cloud Final (Priority)
     try {
-      final result = await _generateVideoInternal(
-        prompt: effectivePrompt,
-        modelId: modelId ?? _finalModel, // Veo 3.1
-        isPreview: false,
-        onProgress: onProgress,
-      );
+        final result = await _generateVideoInternal(
+          prompt: effectivePrompt,
+          modelId: modelId ?? _finalModel, // Veo 3.1
+          isPreview: false,
+          onProgress: onProgress,
+          onStatusMessage: onStatusMessage,
+        );
       
       if (!result.startsWith('IMAGE:')) {
         stopwatch.stop();
@@ -197,12 +198,10 @@ class VideoGenerationService {
         final Map<String, dynamic> params = isPreview ? {
            'durationSeconds': _previewDurationParams,
            'aspectRatio': _previewAspectRatio,
-           'resolution': _previewResolution,
-           'sampleCount': 1,
+           // resolution removed because it is not supported in GenerateVideosConfig
         } : {
            'durationSeconds': 8,
            'aspectRatio': '16:9',
-           'sampleCount': 1
         };
 
         final config = AIModelConfig(
@@ -228,15 +227,16 @@ class VideoGenerationService {
             onStatusMessage: onStatusMessage,
           );
         } else if (proxyResponse['custom_type'] == 'veo_result') {
-           final predictions = proxyResponse['predictions'] as List?;
-           if (predictions != null && predictions.isNotEmpty) {
-             final videoUrl = predictions[0]['url'] ?? predictions[0]['videoUri'];
-             if (videoUrl != null) {
-               onProgress?.call(1.0);
-               onStatusMessage?.call('Video ready!');
-               return _sanitizeMediaUrl(videoUrl);
-             }
-           }
+          // Direct videoUri from Python serializer
+          final videoUrl = proxyResponse['videoUri'] 
+              ?? proxyResponse['all_videos']?[0] 
+              ?? (proxyResponse['predictions'] as List?)?[0]?['url'];
+          
+          if (videoUrl != null && videoUrl.toString().isNotEmpty) {
+            onProgress?.call(1.0);
+            onStatusMessage?.call('Video ready!');
+            return _sanitizeMediaUrl(videoUrl.toString());
+          }
         }
         
         throw Exception('Proxy returned no valid video URL or Operation ID.');
@@ -273,7 +273,7 @@ class VideoGenerationService {
     
     // EXTENDED TIMEOUT: 600s (60 polls with progressive intervals)
     const int maxPolls = 60;
-    const String deployVersion = "1.0.3-CLEAN-BUILD";
+    const String deployVersion = "1.0.4-HOTFIX";
     
     debugPrint('VideoService: ⚠️ FORCE RELOAD CHECK: Running v$deployVersion');
     
@@ -361,7 +361,8 @@ class VideoGenerationService {
 
                  // 1. Recursive Search for any known video key
                  final foundUrl = _findKeyRecursive(data, [
-                   'gcsUri', 'uri', 'url', 'videoUri', 'outputUri', 'output_uri', 'video', 'bytesBase64Encoded'
+                   'videoUri', // ← NEW: from Python serializer
+                   'gcsUri', 'uri', 'url', 'outputUri', 'output_uri', 'video', 'bytesBase64Encoded'
                  ]);
                  
                  if (foundUrl != null && foundUrl.toString().isNotEmpty) {

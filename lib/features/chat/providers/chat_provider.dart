@@ -12,13 +12,10 @@ import '../../../core/utils/sanitization_utils.dart';
 import '../../../core/services/orchestrator_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../../core/services/system_prompts_service.dart';
-import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/mcp/tools/image_generation_tool.dart';
 import '../../../core/mcp/tools/video_generation_tool.dart';
-import '../../../core/mcp/tools/audio_generation_tool.dart';
 import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
-import '../agents/router_agent.dart';
 import '../agents/router_agent.dart';
 import '../agents/agency_agents.dart';
 import '../../reports/agents/data_analyst_agent.dart';
@@ -115,7 +112,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     return false;
   }
 
-  Future<void> sendMessage(String text, {List<Attachment> attachments = const [], AIModelConfig? modelConfig}) async {
+  Future<void> sendMessage(String text, {List<Attachment> attachments = const [], AIModelConfig? modelConfig, ToolMode toolMode = ToolMode.chat}) async {
     if (state == null) return;
 
     final userMessage = ChatMessage(
@@ -141,10 +138,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final imagenKey = await vault.getImagenKey();
     final bananaKey = await vault.getBananaKey();
     final veoKey = await vault.getVeoKey();
-    final lyriaKey = await vault.getLyriaKey();
-    
-    
-    // Phase 35: Multi-Model Keys - REMOVED (Legacy)
+
 
     // A2A Handoff Logic: Trigger Creative Agent on Strategy Approval
     if (text.toLowerCase().contains('looks great. approved') && text.toLowerCase().contains('strategy')) {
@@ -152,22 +146,28 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
        return;
     }
 
-    // Auto-reply logic
-    final lowerText = text.toLowerCase();
-    
-    // Multimedia Triggers
-    if (lowerText.contains('generate video') || lowerText.contains('create video')) {
+    // --- TOOL MODE DISPATCH ---
+    if (toolMode == ToolMode.video) {
        await _handleVideoGeneration(text, veoKey: veoKey);
        return;
     }
-    if (lowerText.contains('generate music') || lowerText.contains('create audio') || lowerText.contains('compose')) {
-       await _handleAudioGeneration(text, lyriaKey: lyriaKey);
+
+    if (toolMode == ToolMode.image) {
+       // Creative Agent handles Image Generation
+       await _handleCreativeAgentResponse(text, context: knowledgeContext, memoryContext: null, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey, config: modelConfig, forceImage: true);
        return;
     }
 
+    if (toolMode == ToolMode.code) {
+       await _handleDeveloperResponse(text, context: knowledgeContext, memoryContext: null, apiKey: apiKey, gemmaKey: gemmaKey, config: modelConfig);
+       return;
+    }
+    
     // Get Memory Context
     final memoryService = ref.read(memoryServiceProvider);
     final memoryContext = memoryService.getContextString(campaignId: state!.campaignId);
+    
+    final lowerText = text.toLowerCase();
 
     // --- INTELLIGENT ROUTING (Phase 23: Step 2 - The Engine) ---
     // Respect explicit commands, but otherwise use the RouterAgent (The Front Door)
@@ -176,7 +176,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     } else {
       await _handleIntelligentRouting(text, knowledgeContext, memoryContext, apiKey, gemmaKey, imagenKey, bananaKey, modelConfig);
     }
-
+    
     // TRIGGER MEMORY HARVESTING (Post-Response)
     _harvestInsights(text, apiKey: apiKey, gemmaKey: gemmaKey);
   }
@@ -335,22 +335,13 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       );
     }
 
+
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
       updatedAt: DateTime.now(),
     );
   }
 
-  Future<void> _handleAudioGeneration(String userPrompt, {String? lyriaKey}) async {
-    final toolMsg = ChatMessage(
-      id: const Uuid().v4(),
-      content: 'Composing audio via Lyria...',
-      sender: MessageSender.creativeAgent, 
-      type: MessageType.toolUsage,
-      createdAt: DateTime.now(),
-      metadata: {'tool': 'lyria_music_gen'},
-    );
-    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
     final audioTool = AudioGenerationTool(lyriaKey: lyriaKey);
     final result = await audioTool.execute({'prompt': userPrompt});
@@ -614,9 +605,9 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     );
   }
 
-  Future<void> _handleCreativeAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, AIModelConfig? config}) async {
+  Future<void> _handleCreativeAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, AIModelConfig? config, bool forceImage = false}) async {
     // Visual Generation Check
-    if (userPrompt.toLowerCase().contains('generate') || userPrompt.toLowerCase().contains('concept') || userPrompt.toLowerCase().contains('image')) {
+    if (forceImage || userPrompt.toLowerCase().contains('generate') || userPrompt.toLowerCase().contains('concept') || userPrompt.toLowerCase().contains('image')) {
        final toolMsg = ChatMessage(
         id: const Uuid().v4(),
         content: 'Generating production-grade visuals...',
@@ -663,6 +654,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
           createdAt: DateTime.now(),
         );
       }
+
 
       state = state!.copyWith(
         messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],

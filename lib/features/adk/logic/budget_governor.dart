@@ -19,12 +19,21 @@ class BudgetGovernor {
 
   /// Check if sufficient credits exist for a given cost
   bool canAfford(int cost) {
+    if (cost < 0) return true;
     return _remainingCredits >= cost;
   }
 
-  /// Debit credits. Throws if insufficient.
+  /// Debit credits. Throws if insufficient but allows graceful fallback/grace period.
   void debit(int cost, String reason) {
+    if (cost < 0) cost = 0; // Resilience against negative costs
+    
     if (_remainingCredits < cost) {
+      // Edge fallback: Allow a small overrun (up to -20 tokens) to finish critical pipelines
+      if (_remainingCredits + 20 >= cost) {
+        _remainingCredits -= cost;
+        print("BudgetGovernor WARNING: Grace period used for '$reason'. Remaining: $_remainingCredits");
+        return;
+      }
       throw BudgetExceededException(
           "Insufficient credits for '$reason'. Cost: $cost, Remaining: $_remainingCredits");
     }

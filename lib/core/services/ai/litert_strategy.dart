@@ -35,7 +35,7 @@ class LiteRTStrategy extends AIStrategy {
   }
 
   @override
-  Future<AIGenerationResult> generate(AIGenerationRequest request) async {
+  Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref}) async {
     if (!_initialized) await init();
 
     final config = request.config;

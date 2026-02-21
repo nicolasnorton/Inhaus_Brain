@@ -28,8 +28,11 @@ import 'core/widgets/hotkey_cheat_sheet.dart';
 import 'package:flutter/services.dart';
 import 'core/globals.dart';
 import 'core/services/orchestration_service.dart';
+import 'core/services/ai_proxy_service.dart';
 import 'core/services/blackboard_persistence_service.dart';
 import 'core/utils/global_error_handler.dart';
+import 'features/workspace/workspace_init_provider.dart';
+import 'core/services/remote_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +56,7 @@ void main() async {
   if (kDebugMode) {
     try {
       final String host = Uri.base.host;
+      // Only use emulators if we are actually local. Prevents hanging on hosted debug builds.
       // Only use emulators if we are actually local. Prevents hanging on hosted debug builds.
       if (host.contains('localhost') || host.contains('127.0.0.1')) {
         final String emulatorHost = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : '127.0.0.1';
@@ -108,7 +112,14 @@ void main() async {
     debugPrint('ℹ️ App Check: Activation skipped (This is expected on non-whitelisted domains): $e');
   }
 
-  runApp(const ProviderScope(child: InhausBrainApp()));
+  // Initialize Remote Config
+  final container = ProviderContainer();
+  await container.read(remoteConfigInitializationProvider.future);
+
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const InhausBrainApp(),
+  ));
 }
 
 class InhausBrainApp extends ConsumerWidget {
@@ -116,8 +127,12 @@ class InhausBrainApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Initialize Orchestration Service
+    // Initialize Core AI Services
+    ref.read(aiProxyServiceProvider);
     ref.read(orchestrationServiceProvider).init();
+    
+    // Initialize Inhaus Brain Workspace (seeds Firestore on first launch)
+    ref.watch(workspaceInitProvider);
     
     // Initialize Persistence Service & Restore Session
     final persistence = ref.read(blackboardPersistenceServiceProvider);

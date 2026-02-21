@@ -49,7 +49,7 @@ class TranslateGemmaService {
       config = AIModelConfig(
         modelId: 'translategemma-4b',
         provider: AIProvider.gemma,
-        displayName: 'TranslateGemma',
+        // displayName: 'TranslateGemma',
         temperature: 0.2,
         maxTokens: content.length * 2, // Translations can be longer
       );

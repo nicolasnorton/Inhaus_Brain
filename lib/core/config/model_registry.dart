@@ -46,6 +46,9 @@ enum SpecializedModel {
 
   /// Research with grounding (Google Search)
   research,
+
+  /// Long-running complex research reports (Interactions Agent)
+  deepResearch,
 }
 
 class ModelRegistry {
@@ -58,11 +61,17 @@ class ModelRegistry {
     ModelTier.flashLite: 'gemini-2.5-flash-lite',
   };
 
+  // ── Gemini 3.0 Frontier (Preview) ──────────────────────────
+  static const _gemini3 = {
+    ModelTier.pro: 'gemini-3-pro-preview',
+    ModelTier.flash: 'gemini-3-flash-preview',
+  };
+
   // ── Gemma Open Models (via Model Garden / Python proxy) ─────
   static const _gemma = {
     ModelTier.gemmaFast: 'gemma-3-4b-it',
     SpecializedModel.summarize: 'gemma-3-27b-it',
-    SpecializedModel.functionCall: 'functiongemma-270m',
+    SpecializedModel.functionCall: 'functiongemma-7b',
     SpecializedModel.translate: 'translategemma-4b',
   };
 
@@ -71,6 +80,7 @@ class ModelRegistry {
     SpecializedModel.image: 'imagen-4.0-generate-001',
     SpecializedModel.video: 'veo-3.1-generate-001',
     SpecializedModel.embed: 'text-embedding-004',
+    SpecializedModel.deepResearch: 'deep-research-pro-preview-12-2025',
   };
 
   // ── Experimental / Preview ──────────────────────────────────
@@ -112,9 +122,17 @@ class ModelRegistry {
       return _gemma[model] as String;
     }
 
-    // Research uses Flash with grounding enabled
+    // Research with grounding (Flash-tiered by default)
     if (model == SpecializedModel.research) {
-      return _gemini[ModelTier.flash]!; // Grounding is a config, not model ID
+      if (FeatureFlags.enableExperimentalModels) {
+        return _gemini3[ModelTier.flash]!;
+      }
+      return _gemini[ModelTier.flash]!; 
+    }
+
+    // Deep Research Agent
+    if (model == SpecializedModel.deepResearch) {
+      return _media[SpecializedModel.deepResearch]!;
     }
 
     return _media[model] ?? _gemini[ModelTier.flash]!;

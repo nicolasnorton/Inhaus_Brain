@@ -58,6 +58,9 @@ class FeatureFlags {
   static bool get enableTranslateGemma =>
       _overrides['enableTranslateGemma'] ?? AppConfig.enableTranslateGemma;
 
+  static bool get enableStitch =>
+      _overrides['enableStitch'] ?? AppConfig.enableStitch;
+
   /// Check any flag by name (for dynamic/future flags)
   static bool isEnabled(String flagName, {bool defaultValue = false}) =>
       _overrides[flagName] ?? defaultValue;

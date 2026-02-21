@@ -1,0 +1,90 @@
+Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 93.0.0 (94.0.0 available)
+  analyzer 10.0.1 (10.0.2 available)
+  build_runner 2.11.0 (2.11.1 available)
+  camera 0.11.3 (0.11.3+1 available)
+  characters 1.4.0 (1.4.1 available)
+  ffi 2.1.5 (2.2.0 available)
+  file_picker 8.3.7 (10.3.10 available)
+  firebase_ai 3.7.0 (3.8.0 available)
+  firebase_analytics 12.1.1 (12.1.2 available)
+  flutter_dotenv 5.2.1 (6.0.0 available)
+  flutter_facebook_auth 6.0.4 (7.1.5 available)
+  flutter_facebook_auth_platform_interface 5.0.0 (6.1.2 available)
+  flutter_facebook_auth_web 5.0.1 (6.1.2 available)
+  flutter_launcher_icons 0.13.1 (0.14.4 available)
+  flutter_markdown 0.7.7+1 (discontinued replaced by flutter_markdown_plus)
+  flutter_riverpod 2.6.1 (3.2.1 available)
+  google_fonts 6.3.3 (8.0.1 available)
+  google_sign_in 6.3.0 (7.2.0 available)
+  google_sign_in_android 6.2.1 (7.2.7 available)
+  google_sign_in_ios 5.9.0 (6.3.0 available)
+  google_sign_in_platform_interface 2.5.0 (3.1.0 available)
+  google_sign_in_web 0.12.4+4 (1.1.0 available)
+  image 4.5.4 (4.7.2 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.17.0 (1.18.1 available)
+  record 5.2.1 (6.2.0 available)
+  record_linux 0.7.2 (1.3.0 available)
+  riverpod 2.6.1 (3.2.1 available)
+  sentry 8.14.2 (9.13.0 available)
+  sentry_flutter 8.14.2 (9.13.0 available)
+  share_plus 10.1.4 (12.0.1 available)
+  share_plus_platform_interface 5.0.2 (6.1.0 available)
+  syncfusion_flutter_core 32.2.3 (32.2.4 available)
+  syncfusion_flutter_datagrid 32.2.3 (32.2.4 available)
+  syncfusion_flutter_gauges 32.2.3 (32.2.4 available)
+  syncfusion_flutter_pdf 32.2.3 (32.2.4 available)
+  test_api 0.7.7 (0.7.9 available)
+  url_launcher_ios 6.3.6 (6.4.0 available)
+  video_player_avfoundation 2.9.1 (2.9.3 available)
+Got dependencies!
+1 package is discontinued.
+39 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Package flutter_facebook_auth:macos references facebook_auth_desktop:macos as the default plugin, but the package does not exist, or is not a plugin package.
+Ask the maintainers of flutter_facebook_auth to either avoid referencing a default implementation via `platforms: macos: default_package: facebook_auth_desktop` or create a plugin named facebook_auth_desktop.
+
+Package flutter_facebook_auth:macos references facebook_auth_desktop:macos as the default plugin, but the package does not exist, or is not a plugin package.
+Ask the maintainers of flutter_facebook_auth to either avoid referencing a default implementation via `platforms: macos: default_package: facebook_auth_desktop` or create a plugin named facebook_auth_desktop.
+
+Package flutter_facebook_auth:macos references facebook_auth_desktop:macos as the default plugin, but the package does not exist, or is not a plugin package.
+Ask the maintainers of flutter_facebook_auth to either avoid referencing a default implementation via `platforms: macos: default_package: facebook_auth_desktop` or create a plugin named facebook_auth_desktop.
+
+Package flutter_facebook_auth:macos references facebook_auth_desktop:macos as the default plugin, but the package does not exist, or is not a plugin package.
+Ask the maintainers of flutter_facebook_auth to either avoid referencing a default implementation via `platforms: macos: default_package: facebook_auth_desktop` or create a plugin named facebook_auth_desktop.
+
+Analyzing 3 items...                                            
+
+warning • Unused import: '../../copilot/data/copilot_repository.dart' • lib/features/assistant/services/assistant_service.dart:17:8 • unused_import
+warning • Unused import: '../../copilot/presentation/copilot_view.dart' • lib/features/assistant/services/assistant_service.dart:18:8 • unused_import
+warning • Unused import: '../../../core/architecture/memory.dart' • lib/features/assistant/services/assistant_service.dart:22:8 • unused_import
+warning • Unused import: 'package:ag_ui/ag_ui.dart' • lib/features/assistant/services/assistant_service.dart:23:8 • unused_import
+warning • Unused import: '../domain/agent_outputs.dart' • lib/features/assistant/services/assistant_service.dart:27:8 • unused_import
+warning • The stack trace variable 'stack' isn't used and can be removed • lib/features/assistant/services/assistant_service.dart:119:17 • unused_catch_stack
+warning • The member 'state' can only be used within 'package:state_notifier/state_notifier.dart' or a test • lib/features/assistant/services/assistant_service.dart:186:20 • invalid_use_of_visible_for_testing_member
+warning • The member 'state' can only be used within instance members of subclasses of 'StateNotifier' • lib/features/assistant/services/assistant_service.dart:186:20 • invalid_use_of_protected_member
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:292:8 • avoid_print
+   info • Statements in an if should be enclosed in a block • lib/features/assistant/services/assistant_service.dart:319:90 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/assistant/services/assistant_service.dart:320:69 • curly_braces_in_flow_control_structures
+warning • The value of the local variable 'groundingSources' isn't used • lib/features/assistant/services/assistant_service.dart:376:18 • unused_local_variable
+   info • Use interpolation to compose strings and values • lib/features/assistant/services/assistant_service.dart:452:54 • prefer_interpolation_to_compose_strings
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:516:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:548:14 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:550:14 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:551:14 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:556:17 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:560:17 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:568:17 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:572:20 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:576:17 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:647:15 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:662:30 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:677:27 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:841:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:842:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/assistant/services/assistant_service.dart:847:14 • avoid_print
+
+28 issues found. (ran in 2.9s)

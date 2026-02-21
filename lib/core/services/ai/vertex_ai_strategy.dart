@@ -23,7 +23,7 @@ class VertexAIStrategy extends AIStrategy {
   bool get supportsStreaming => true;
 
   @override
-  Future<AIGenerationResult> generate(AIGenerationRequest request) async {
+  Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref}) async {
     final stopwatch = Stopwatch()..start();
     final config = request.config;
     final prompt = request.effectivePrompt;
@@ -51,7 +51,7 @@ class VertexAIStrategy extends AIStrategy {
   }
 
   @override
-  Stream<AIGenerationResult> generateStream(AIGenerationRequest request) async* {
+  Stream<AIGenerationResult> generateStream(AIGenerationRequest request, {dynamic ref}) async* {
     final config = request.config;
     final prompt = request.effectivePrompt;
 

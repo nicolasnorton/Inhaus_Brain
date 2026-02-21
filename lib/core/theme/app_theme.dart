@@ -7,7 +7,9 @@ class AppTheme {
   static const Color surface = Color(0xFF161B28); // Slightly lighter for cards
   static const Color primary = Color(0xFF6C63FF);
   static const Color secondary = Color(0xFF00D2FF);
-  static const Color accent = Color(0xFFFF00D6);
+  static const Color accent = Color(0xFFE8006A); // INHAUS Pink
+  static const Color inhausPink = Color(0xFFE8006A);
+  static const Color inhausPurple = Color(0xFF1A1423);
   
   static const Color textPrimaryDark = Colors.white;
   static const Color textSecondaryDark = Colors.white70;

@@ -13,13 +13,26 @@ class ToolRetrievalService {
     
     // Define tool categories
     final Set<String> researchTools = {'extract_pdf', 'read_url'};
-    final Set<String> creativeTools = {'image_generation', 'video_generation', 'create_campaign'}; // Add creative tools
+    final Set<String> creativeTools = {
+      'image_generation', 
+      'video_generation', 
+      'create_campaign',
+      'stitch_create_project',
+      'stitch_generate_screen',
+    }; 
     final Set<String> managementTools = {
       'create_client', 'update_client', 'create_project', 'create_task', 
       'navigate_to', 'create_campaign', 'create_knowledge_source',
-      'read_url'
+      'read_url',
+      'stitch_create_project',
+      'stitch_list_projects',
     };
-    final Set<String> devTools = {'read_file', 'list_dir', 'grep_search'}; // Hypothetical dev tools
+    final Set<String> devTools = {
+      'read_file', 'list_dir', 'grep_search',
+      'stitch_get_code',
+      'stitch_extract_design',
+      'stitch_build_site',
+    }; 
     final Set<String> seoTools = {'KeywordResearcher', 'CompetitorSEOAnalyzer', 'TechnicalAuditor', 'LocalSEOOptimizer', 'read_url', 'web_search'};
     final Set<String> aeoTools = {'AnswerIntentAnalyzer', 'SnippetOptimizer', 'SchemaGenerator', 'VoiceTester', 'read_url', 'web_search'};
 
@@ -29,6 +42,7 @@ class ToolRetrievalService {
       case RouterIntent.creative:
       case RouterIntent.creativeImage:
       case RouterIntent.creativeVideo:
+      case RouterIntent.creativeDesign:
         return allTools.where((t) => creativeTools.contains(t.name) || t.name == 'image_generation' || t.name == 'video_generation' || t.name == 'gen_ui_component').toList();
       case RouterIntent.genUiReport:
         return allTools.where((t) => t.name == 'gen_ui_component' || researchTools.contains(t.name)).toList();

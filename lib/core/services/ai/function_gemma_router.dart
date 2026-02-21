@@ -62,7 +62,8 @@ User message: $userMessage''',
         config: AIModelConfig(
           modelId: 'functiongemma-270m',
           provider: AIProvider.gemma,
-          displayName: 'FunctionGemma',
+
+          // displayName: 'FunctionGemma', // Removed from config
           temperature: 0.1,
           maxTokens: 128,
           responseMimeType: 'application/json',

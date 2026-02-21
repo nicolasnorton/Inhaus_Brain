@@ -21,7 +21,7 @@ class GemmaStrategy extends AIStrategy {
   String get name => 'gemma';
 
   @override
-  Future<AIGenerationResult> generate(AIGenerationRequest request) async {
+  Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref}) async {
     if (!AppConfig.enableGemma) {
       throw StateError('Gemma is disabled in ${AppConfig.current.name} environment');
     }

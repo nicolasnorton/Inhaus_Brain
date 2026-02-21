@@ -55,7 +55,21 @@ class ProposalPdfService {
       try {
         final netBundle = NetworkAssetBundle(Uri.parse(clientLogoUrl));
         final data = await netBundle.load(clientLogoUrl);
-        clientLogo = pw.MemoryImage(data.buffer.asUint8List());
+        final bytes = data.buffer.asUint8List();
+        
+        // Basic check for image magic bytes to avoid PDF render crash
+        if (bytes.length > 4) {
+          final isJpeg = bytes[0] == 0xFF && bytes[1] == 0xD8;
+          final isPng = bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47;
+          final isGif = bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46;
+          final isWebp = bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46; // RIFF
+          
+          if (isJpeg || isPng || isGif || isWebp) {
+             clientLogo = pw.MemoryImage(bytes);
+          } else {
+             debugPrint('ProposalPdfService: Client logo URL returned invalid image type. Size: ${bytes.length} bytes');
+          }
+        }
       } catch (e) {
         debugPrint('ProposalPdfService: Failed to load client logo from URL ($clientLogoUrl): $e');
       }

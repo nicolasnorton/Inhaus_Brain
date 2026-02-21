@@ -15,6 +15,7 @@ import '../../../../core/services/integration_service.dart';
 import '../../knowledge/widgets/add_source_dialog.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../../knowledge/providers/knowledge_service_providers.dart';
+import '../../knowledge/providers/knowledge_provider.dart';
 import '../../../../core/services/edge_ai_service.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
@@ -104,8 +105,32 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
   }
 
   Future<void> _handleKnowledgeSourceAdded(Report report, KnowledgeSource ks) async {
-    // 1. Ingest into Knowledge Module (if report has datasetId)
-    // Show a small overlay or snackbar for ingestion progress
+    // 0. Ensure Report has a Dataset ID (Knowledge Base)
+    String? datasetId = report.datasetId;
+    if (datasetId == null) {
+        // Create new KB
+        try {
+            final api = ref.read(knowledgeApiServiceProvider);
+            final kb = await api.createKnowledgeBase(
+                name: "KB for ${report.title}", 
+                description: "Auto-generated knowledge base for report."
+            );
+            datasetId = kb.id;
+            
+            // Update Report with new Dataset ID immediately
+            final updatedReport = report.copyWith(datasetId: datasetId);
+            await ref.read(reportsServiceProvider).updateReport(updatedReport);
+            
+            // Update local report reference to ensure subsequent calls use the new ID
+            report = updatedReport;
+            
+        } catch (e) {
+            _showErrorDialog("Failed to create Knowledge Base: $e");
+            return;
+        }
+    }
+
+    // 1. Ingest/Index Source (Async)
     if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(
          SnackBar(
@@ -113,7 +138,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
              children: [
                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                const SizedBox(width: 12),
-               Text("Ingesting ${ks.title} into your Knowledge Base..."),
+               Text("Ingesting ${ks.title} into Knowledge Base..."),
              ],
            ),
            backgroundColor: AppTheme.primary.withOpacity(0.8),
@@ -123,12 +148,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     }
 
     try {
-      if (report.datasetId != null) {
-         final ingestor = ref.read(knowledgeIngestionServiceProvider);
-         await ingestor.ingestSource(report.datasetId!, ks);
-      }
-
-      // 2. Convert to ReportSource
+      // 2. Index via ReportsLMService (Chunking & Embedding)
       final sourceType = _mapKnowledgeSourceTypeToReportSourceType(ks.type);
       final reportSource = ReportSource(
         id: ks.id,
@@ -141,8 +161,18 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
         uri: ks.type == KnowledgeSourceType.url || ks.type == KnowledgeSourceType.youtube ? ks.content : null,
       );
 
-      // 3. Add to Report
+      // Trigger Indexing (Background or Await based on UX preference)
+      // We await it to ensure it's ready before user asks questions
+      // Note: We use reportSource.content which is assumed to be populated (e.g. text/file text)
+      // If it's a URL without content scraped, indexSource might need to scrape it first, 
+      // but typically AddSourceDialog handles that.
+      await ReportsLMService.indexSource(reportSource, datasetId!, ref);
+
+      // 3. Add to Report UI/DB
+      // We add AFTER indexing so we know it's ready, or we could add BEFORE and show state.
+      // Current flow: Add after.
       await _addSource(report, reportSource);
+
     } catch (e) {
       if (mounted) _showErrorDialog("Ingestion Error: $e");
     }
@@ -213,10 +243,11 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
             content: result.content,
             uri: result.uri,
             createdAt: DateTime.now(),
+            citations: result.citations,
           );
           await _addOutput(report, output);
 
-          _showResultDialog("Audio Overview Ready", result.content, url: result.uri, isAudio: true);
+          _showResultDialog("Audio Overview Ready", result.content, url: result.uri, isAudio: true, citations: result.citations);
         }
       }
     } catch (e) {
@@ -306,9 +337,10 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   type: ReportOutputType.text,
                   content: result.content,
                   createdAt: DateTime.now(),
+                  citations: result.citations,
                );
                await _addOutput(report, output);
-              _showResultDialog("Final Report", result.content);
+              _showResultDialog("Final Report", result.content, citations: result.citations);
             }
         }
       } catch (e) {
@@ -472,7 +504,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
     );
   }
 
-  void _showResultDialog(String title, String content, {String? url, bool isVideo = false, bool isAudio = false}) {
+  void _showResultDialog(String title, String content, {String? url, bool isVideo = false, bool isAudio = false, List<Citation>? citations}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -501,6 +533,27 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                          ],
                        ),
                     ),
+                  )
+              ],
+              if (citations != null && citations.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  const Text("References", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: citations.map((c) => ActionChip(
+                      label: Text(c.sourceName + (c.pageNumber != null ? " (p.${c.pageNumber})" : ""), style: const TextStyle(fontSize: 12)),
+                      avatar: const Icon(Icons.description, size: 14, color: AppTheme.primary),
+                      backgroundColor: AppTheme.background,
+                      side: const BorderSide(color: Colors.white24),
+                      onPressed: () {
+                         // TODO: Highlight source
+                         Navigator.pop(context);
+                         // Logic to show source would go here
+                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Source: ${c.sourceName}"), duration: const Duration(seconds: 1)));
+                      },
+                    )).toList(),
                   )
               ]
             ],

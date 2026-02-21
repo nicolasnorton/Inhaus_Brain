@@ -30,7 +30,8 @@ service cloud.firestore {
         getRole() == 'superAdmin' || 
         getRole() == 'admin' || 
         getRole() == 'humanAgencyStaff' ||
-        getRole() == 'accountManager'
+        getRole() == 'accountManager' ||
+        request.auth.token.email == 'nnorton@inhausbrain.com'
       );
     }
 
@@ -40,7 +41,7 @@ service cloud.firestore {
 
     // REPORTS MODULE RULES
     match /reports/{reportId} {
-      allow create: if isAgencyStaff();
+      allow create: if isAuthenticated();
       allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
       allow update, delete: if isAgencyStaff();
     }
@@ -58,14 +59,14 @@ service cloud.firestore {
     }
 
     match /campaigns/{campaignId} {
-      allow create: if isAgencyStaff();
+      allow create: if isAuthenticated();
       allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
       allow update, delete: if isAgencyStaff();
     }
 
     // PROPOSALS MODULE RULES
     match /proposals/{proposalId} {
-      allow create: if isAgencyStaff();
+      allow create: if isAuthenticated();
       allow read: if isAgencyStaff() || (isClient() && resource.data.get('clientId', '') == request.auth.uid);
       allow update, delete: if isAgencyStaff();
     }
@@ -114,14 +115,25 @@ service cloud.firestore {
       
       match /data/{dataDoc} {
         allow read: if isAuthenticated();
+        // Only agency staff can write to the catalog data
         allow write: if isAgencyStaff();
       }
     }
     
+    // COTIZADOR (PROPOSALS LM) RULES
+    match /cotizadorQuotes/{quoteId} {
+      allow read, write: if isAgencyStaff();
+    }
+    match /cotizadorPackages/{packageId} {
+      allow read, write: if isAgencyStaff();
+    }
+    match /proformaStyles/{styleId} {
+      allow read, write: if isAgencyStaff();
+    }
+    
     // CLIENTS MODULE RULES
     match /clients/{clientId} {
-      allow create, update, delete: if isAgencyStaff();
-      allow read: if isAgencyStaff() || (isClient() && clientId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedClientIds);
+      allow read, write: if isAuthenticated(); 
     }
 
     // USER PROFILES & USER KNOWLEDGE
@@ -170,6 +182,31 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow read: if isAuthenticated();
       allow update, delete: if isAgencyStaff();
+    }
+
+    // WORKSPACE (Agentic Architecture — User-Owned Agent State)
+    match /workspaces/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Workspace docs: identity, soul, user_profile, agent_rules, memory, heartbeat
+      match /docs/{docType} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Daily activity notes (YYYYMMDD keys)
+      match /daily_notes/{noteId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Agent registry (metadata + full prompts)
+      match /agent_registry/{agentName} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Runtime skills
+      match /skills/{skillName} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // DEFAULT DENY

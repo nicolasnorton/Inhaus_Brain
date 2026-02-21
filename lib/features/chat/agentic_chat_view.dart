@@ -27,6 +27,8 @@ import 'widgets/thinking_indicator.dart';
 import 'widgets/sources_carousel.dart';
 import 'widgets/message_actions_row.dart';
 
+import 'widgets/tool_selector_bar.dart';
+
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
 
@@ -41,6 +43,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
   List<Attachment> _pendingAttachments = [];
   AIModelConfig _selectedModelConfig = AIModelConfig.geminiFlash;
   bool _isAutoReadEnabled = false;
+  ToolMode _toolMode = ToolMode.chat;
 
   @override
   void initState() {
@@ -70,10 +73,16 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
       _textController.text,
       attachments: _pendingAttachments,
       modelConfig: _selectedModelConfig,
+      toolMode: _toolMode,
     );
     
     _textController.clear();
-    setState(() => _pendingAttachments = []);
+    setState(() {
+       _pendingAttachments = [];
+       // Reset tool mode to chat after sending, or keep it sticky? 
+       // Plan implies explicit control, so maybe sticky is better.
+       // For now, let's keep it sticky as per "Tool Mode" concept.
+    });
     
     // Scroll to bottom after message
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -183,7 +192,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Ask the Research or Creative Agent for help.',
+            'Select a tool or ask Brian for help.',
             style: TextStyle(color: Colors.white24, fontSize: 13),
           ),
         ],
@@ -569,8 +578,6 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
     );
   }
 
-
-
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -597,9 +604,15 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
               },
             ),
 
+            // Tool Selector Bar (New)
+            ToolSelectorBar(
+              selectedMode: _toolMode,
+              onModeChanged: (mode) => setState(() => _toolMode = mode),
+            ),
+
             Row(
               children: [
-                _buildModelPicker(),
+
                 IconButton(
                   icon: const Icon(FontAwesomeIcons.bookOpen, size: 16, color: Colors.white54),
                   tooltip: 'Context Board',
@@ -645,6 +658,10 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     );
                   },
                 ),
+                _buildVoiceButton(),
+                const SizedBox(width: 4),
+                _buildModelPicker(),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _textController,
@@ -652,7 +669,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                     onSubmitted: (_) => _handleSend(),
                     style: const TextStyle(fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: 'Collaborate with agents...',
+                      hintText: _getHintText(),
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.03),
                       border: OutlineInputBorder(
@@ -660,7 +677,6 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      suffixIcon: _buildVoiceButton(),
                     ),
                   ),
                 ),
@@ -713,11 +729,20 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
     );
   }
 
+  String _getHintText() {
+    switch (_toolMode) {
+      case ToolMode.image: return 'Describe the image you want to generate...';
+      case ToolMode.video: return 'Describe the video you want to generate...';
+      case ToolMode.code: return 'Describe the code you need...';
+      case ToolMode.chat: default: return 'Collaborate with agents...';
+    }
+  }
+
   Widget _buildModelPicker() {
     return PopupMenuButton<AIModelConfig>(
       tooltip: 'Select AI Model',
       color: const Color(0xFF1E1E1E),
-      offset: const Offset(0, -200),
+      offset: const Offset(0, -300),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
@@ -739,16 +764,43 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         ),
       ),
       itemBuilder: (context) => [
-        _buildModelMenuItem(AIModelConfig.geminiFlash, FontAwesomeIcons.bolt),
+        _buildGroupHeader('FRONTIER'),
+        _buildModelMenuItem(AIModelConfig.geminiFlash3, FontAwesomeIcons.bolt),
+        _buildModelMenuItem(AIModelConfig.geminiPro3, FontAwesomeIcons.microchip),
+        const PopupMenuDivider(),
+        _buildGroupHeader('TEXT MODELS'),
+        _buildModelMenuItem(AIModelConfig.geminiFlash, FontAwesomeIcons.solidCircleDot),
         _buildModelMenuItem(AIModelConfig.geminiPro, FontAwesomeIcons.google),
         _buildModelMenuItem(AIModelConfig.geminiFlashLite, FontAwesomeIcons.gaugeHigh),
+        const PopupMenuDivider(),
+        _buildGroupHeader('RESEARCH'),
         _buildModelMenuItem(AIModelConfig.geminiResearch, FontAwesomeIcons.magnifyingGlass),
-        if (AppConfig.isStaging)
+        _buildModelMenuItem(AIModelConfig.geminiDeepResearch, FontAwesomeIcons.microscope),
+        const PopupMenuDivider(),
+        _buildGroupHeader('MEDIA'),
+        _buildModelMenuItem(AIModelConfig.imagen4, FontAwesomeIcons.image),
+        _buildModelMenuItem(AIModelConfig.veo31, FontAwesomeIcons.video),
+        if (AppConfig.isStaging) ...[
+          const PopupMenuDivider(),
+          _buildGroupHeader('EDGE / EXPERIMENTAL'),
           _buildModelMenuItem(AIModelConfig.gemma3Fast, FontAwesomeIcons.gem),
+          _buildModelMenuItem(AIModelConfig.gemma3Quality, FontAwesomeIcons.gem),
+        ],
       ],
       onSelected: (config) {
         setState(() => _selectedModelConfig = config);
       },
+    );
+  }
+
+  PopupMenuItem<AIModelConfig> _buildGroupHeader(String title) {
+    return PopupMenuItem<AIModelConfig>(
+      enabled: false,
+      height: 24,
+      child: Text(
+        title, 
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white54, letterSpacing: 1.2)
+      ),
     );
   }
 

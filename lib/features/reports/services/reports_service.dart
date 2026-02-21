@@ -72,8 +72,28 @@ class ReportsService {
         while (attempts < 60) {
           await Future.delayed(const Duration(seconds: 5));
           final res = await AIProxyService.pollResearch(id);
-          if (res['status'] == 'completed' || res['status'] == 'complete') {
-            content = res['output'];
+          final status = (res['status'] ?? 'unknown').toString().toLowerCase();
+          
+          if (status == 'completed' || status == 'complete') {
+            // New Interaction API returns 'outputs' (list)
+            if (res['outputs'] != null && (res['outputs'] as List).isNotEmpty) {
+                final List<dynamic> outputs = res['outputs'];
+                // Join all text outputs
+                content = outputs
+                    .where((o) => o['type'] == 'text')
+                    .map((o) => o['text'] ?? '')
+                    .join('\n\n');
+                
+                if (content.isEmpty) {
+                    // Fallback: check if metadata or thought blocks have anything
+                    content = outputs
+                        .map((o) => o['text'] ?? o['thought'] ?? '')
+                        .join('\n\n');
+                }
+            } else if (res['output'] != null) {
+                // Legacy fallback
+                content = res['output'];
+            }
             break;
           }
           attempts++;

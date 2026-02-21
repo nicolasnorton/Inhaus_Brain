@@ -3,7 +3,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import '../models/inhaus_proposal_models.dart';
+import '../models/proposal_style.dart';
 
 /// INHAUS-Style PDF Generator
 /// Exact replication of INHAUS proposal visual style
@@ -13,13 +15,30 @@ class InhausProposalPdfGenerator {
     return PdfColor(color.red * opacity, color.green * opacity, color.blue * opacity, opacity);
   }
 
-  // INHAUS Color Palette (Vibrant v2.0)
-  static final _bgDark = PdfColor.fromInt(0xFF05050B);    // Dark/Black
-  static final _cardDark = PdfColor.fromInt(0xFF0F0F16);  // Card elevation
-  static final _accentPurple = PdfColor.fromInt(0xFF6E48AA); // Vibrant Purple for accents
-  static final _deepPurple = PdfColor.fromInt(0xFF1A1423);   // Deep purple for backgrounds
-  static const _textWhite = PdfColors.white;
-  static const _textGray = PdfColor.fromInt(0xFFA0A0A0); // Light Gray
+  final ProposalStyle style;
+  late final PdfColor _bgDark = PdfColor.fromHex(style.fondoHex);
+  late final PdfColor _cardDark = PdfColor.fromHex(style.tarjetasHex);
+  late final PdfColor _accentColor = PdfColor.fromHex(style.acentoHex);
+  late final PdfColor _textWhite = PdfColor.fromHex(style.textoPrincipalHex);
+  late final PdfColor _textGray = PdfColor.fromHex(style.textoSecundarioHex);
+  late final PdfColor _textSutil = PdfColor.fromHex(style.textoSutilHex);
+  late final PdfColor _border = PdfColor.fromHex(style.bordesHex);
+
+  InhausProposalPdfGenerator({ProposalStyle? style}) 
+      : style = style ?? ProposalStyle.inhausClasico;
+
+  static Uint8List? _cachedInhausLogo;
+
+  static Future<Uint8List?> _getInhausLogo() async {
+    if (_cachedInhausLogo != null) return _cachedInhausLogo;
+    try {
+      final ByteData data = await rootBundle.load('assets/images/inhaus_logo_white.png');
+      _cachedInhausLogo = data.buffer.asUint8List();
+    } catch (e) {
+      // fallback
+    }
+    return _cachedInhausLogo;
+  }
 
   /// Generate One Page Quote PDF
   static Future<Uint8List> generateOnePageQuote(
@@ -27,7 +46,23 @@ class InhausProposalPdfGenerator {
     Uint8List? agencyLogo,
     Uint8List? clientLogo,
     List<Uint8List>? additionalImages,
+    ProposalStyle? style,
   }) async {
+    return InhausProposalPdfGenerator(style: style)._generateOnePageQuote(
+      quote,
+      agencyLogo: agencyLogo,
+      clientLogo: clientLogo,
+      additionalImages: additionalImages,
+    );
+  }
+
+  Future<Uint8List> _generateOnePageQuote(
+    InhausOnePageQuote quote, {
+    Uint8List? agencyLogo,
+    Uint8List? clientLogo,
+    List<Uint8List>? additionalImages,
+  }) async {
+    agencyLogo ??= await _getInhausLogo();
     final pdf = pw.Document();
     final fontRegular = await PdfGoogleFonts.montserratRegular();
     final fontBold = await PdfGoogleFonts.montserratBold();
@@ -71,7 +106,23 @@ build: (context) {
     Uint8List? agencyLogo,
     Uint8List? clientLogo,
     List<Uint8List>? additionalImages,
+    ProposalStyle? style,
   }) async {
+    return InhausProposalPdfGenerator(style: style)._generateDetailedProposal(
+      proposal,
+      agencyLogo: agencyLogo,
+      clientLogo: clientLogo,
+      additionalImages: additionalImages,
+    );
+  }
+
+  Future<Uint8List> _generateDetailedProposal(
+    InhausDetailedProposal proposal, {
+    Uint8List? agencyLogo,
+    Uint8List? clientLogo,
+    List<Uint8List>? additionalImages,
+  }) async {
+    agencyLogo ??= await _getInhausLogo();
     final pdf = pw.Document();
     final fontRegular = await PdfGoogleFonts.montserratRegular();
     final fontBold = await PdfGoogleFonts.montserratBold();
@@ -112,63 +163,87 @@ build: (context) {
   }
 
   /// Build Header (Common for both types)
-  static pw.Widget _buildHeader(
+  pw.Widget _buildHeader(
     InhausProposalHeader header, {
     Uint8List? agencyLogo,
     Uint8List? clientLogo,
     required pw.Font bold,
   }) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(40),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      padding: const pw.EdgeInsets.only(left: 40, right: 40, top: 40, bottom: 20),
+      child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          // Left: Agency branding
-          pw.Column(
+          // Top: Agency branding
+          if (agencyLogo != null)
+            pw.SizedBox(
+              height: 48,
+              child: pw.Image(pw.MemoryImage(agencyLogo)),
+            )
+          else
+            pw.Text(
+              header.agencyTitle,
+              style: pw.TextStyle(
+                color: _textWhite,
+                fontSize: 24,
+                fontWeight: pw.FontWeight.bold,
+                letterSpacing: 4.0,
+              ),
+            ),
+          pw.SizedBox(height: 40),
+          // Info Row
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              if (agencyLogo != null)
-                pw.SizedBox(
-                  height: 35,
-                  child: pw.Image(pw.MemoryImage(agencyLogo)),
-                )
-              else
-                pw.Text(
-                  header.agencyTitle,
-                  style: pw.TextStyle(
-                    color: _accentPurple,
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
-                    letterSpacing: 1.2,
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'CLIENTE:',
+                    style: pw.TextStyle(
+                      color: _textGray,
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                ),
-            ],
-          ),
-          // Right: Client info
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.end,
-            children: [
-              if (clientLogo != null)
-                pw.Container(
-                  height: 30,
-                  margin: const pw.EdgeInsets.only(bottom: 8),
-                  child: pw.Image(pw.MemoryImage(clientLogo)),
-                ),
-              pw.Text(
-                header.clientName.toUpperCase(),
-                style: pw.TextStyle(
-                  color: _textWhite,
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
-                ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    header.clientName,
+                    style: pw.TextStyle(
+                      color: _textWhite,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                header.date,
-                style: const pw.TextStyle(
-                  color: _textGray,
-                  fontSize: 10,
+              pw.Container(
+                decoration: pw.BoxDecoration(
+                  border: pw.Border(left: pw.BorderSide(color: _accentColor, width: 2)),
+                ),
+                padding: const pw.EdgeInsets.only(left: 8),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'FECHA:',
+                      style: pw.TextStyle(
+                        color: _textGray,
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      header.date,
+                      style: pw.TextStyle(
+                        color: _textWhite,
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -179,111 +254,150 @@ build: (context) {
   }
 
   /// Build One Page Quote Content
-  static pw.Widget _buildOnePageContent(InhausQuoteSummary summary, {required pw.Font bold}) {
+  pw.Widget _buildOnePageContent(InhausQuoteSummary summary, {required pw.Font bold}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 40),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          // Title Header
-          pw.Text(
-            'ONE-PAGE SUMMARY',
-            style: pw.TextStyle(
-              color: _accentPurple,
-              fontSize: 11,
-              fontWeight: pw.FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-          ),
-          pw.SizedBox(height: 20),
-          
           // Intro Paragraph
-          pw.Text(
-            summary.introParagraph,
-            style: pw.TextStyle(
-              color: _textWhite,  // WHITE text for visibility
-              fontSize: 13,
-              height: 1.5,
-            ),
-          ),
-          pw.SizedBox(height: 24),
-          
-          // EJECUCIÓN Section
-          if (summary.ejecucion != null && summary.ejecucion!.isNotEmpty) ...[
-            _buildSectionHeader('EJECUCIÓN'),
-            pw.SizedBox(height: 8),
+          if (summary.introParagraph.isNotEmpty) ...[
             pw.Text(
-              summary.ejecucion!,
-              style: const pw.TextStyle(
-                color: _textWhite,  // WHITE text
+              summary.introParagraph,
+              style: pw.TextStyle(
+                color: _textWhite,  // WHITE text for visibility
                 fontSize: 11,
-                height: 1.4,
+                height: 1.5,
               ),
             ),
-            pw.SizedBox(height: 20),
+            pw.SizedBox(height: 24),
           ],
           
-          // INCLUYE Section
-          if (summary.incluye.isNotEmpty) ...[
-            _buildSectionHeader('INCLUYE'),
-            pw.SizedBox(height: 8),
-            ...summary.incluye.map((item) => _buildBulletItem(item, isIncluded: true)),
-            pw.SizedBox(height: 16),
-          ],
-          
-          // NO INCLUYE Section
-          if (summary.noIncluye.isNotEmpty) ...[
-            _buildSectionHeader('NO INCLUYE'),
-            pw.SizedBox(height: 8),
-            ...summary.noIncluye.map((item) => _buildBulletItem(item, isIncluded: false)),
-            pw.SizedBox(height: 16),
-          ],
-          
-          // EQUIPO Section
-          if (summary.equipo.isNotEmpty) ...[
-            _buildSectionHeader('EQUIPO'),
-            pw.SizedBox(height: 8),
-            ...summary.equipo.map((member) => _buildBulletItem(member)),
-            pw.SizedBox(height: 16),
-          ],
-          
-          // ENTREGABLES Section
-          if (summary.entregables.isNotEmpty) ...[
-            _buildSectionHeader('ENTREGABLES'),
-            pw.SizedBox(height: 8),
-            ...summary.entregables.map((deliverable) => _buildBulletItem(deliverable)),
-            pw.SizedBox(height: 20),
-          ],
-          
-          // Total Price Box
-          pw.Container(
-            padding: const pw.EdgeInsets.all(24),
-            decoration: pw.BoxDecoration(
-              color: _accentPurple,
-              borderRadius: pw.BorderRadius.circular(12),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  summary.precio.label,
-                  style: pw.TextStyle(
-                    color: _textWhite,  // WHITE text
-                    fontSize: 12,
-                    fontWeight: pw.FontWeight.bold,
+          // Pricing Breakdown / Packages
+          if (summary.lineItems.isNotEmpty) ...[
+            ...summary.lineItems.map((item) => pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 16),
+              padding: const pw.EdgeInsets.all(20),
+              decoration: pw.BoxDecoration(
+                color: _cardDark,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Expanded(
+                        child: pw.Text(
+                          item.serviceName.toUpperCase(),
+                          style: pw.TextStyle(
+                            color: _textWhite,
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          if (item.paymentType != null)
+                            pw.Text(
+                              item.paymentType!,
+                              style: pw.TextStyle(color: _textGray, fontSize: 8),
+                            ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            item.price,
+                            style: pw.TextStyle(
+                              color: _accentColor,
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          if (summary.applyIva)
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.only(top: 2),
+                              child: pw.Text(
+                                '*no incluye IVA',
+                                style: pw.TextStyle(
+                                  color: _withOpacity(_textGray, 0.7),
+                                  fontSize: 8,
+                                  fontStyle: pw.FontStyle.italic,
+                                ),
+                              ),
+                            )
+                        ],
+                      ),
+                    ],
                   ),
+                  if (item.description != null && item.description!.isNotEmpty) ...[
+                    pw.SizedBox(height: 12),
+                    pw.Text(
+                      item.description!,
+                      style: pw.TextStyle(
+                        color: _textWhite,
+                        fontSize: 9,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            )),
+            
+            // Subtotal / Descuento rows
+            if (summary.subtotal != null || summary.descuento != null || summary.ivaAmount != null)
+              pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 8),
+                padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: pw.Column(
+                  children: [
+                    if (summary.subtotal != null && summary.descuento != null)
+                      _buildPricingRow('Subtotal', summary.subtotal!, bold: bold),
+                    if (summary.descuento != null)
+                      _buildPricingRow(
+                        'Descuento${summary.descuentoPct != null ? ' (${summary.descuentoPct!.toStringAsFixed(0)}%)' : ''}',
+                        '-${summary.descuento!}',
+                        bold: bold, color: _accentColor
+                      ),
+                    if (summary.ivaAmount != null)
+                      _buildPricingRow('IVA (15%)', summary.ivaAmount!, bold: bold),
+                  ],
                 ),
-                pw.Text(
-                  summary.precio.amount,
-                  style: pw.TextStyle(
-                    color: _textWhite,  // WHITE text
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
+              ),
+
+            // TOTAL row
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              decoration: pw.BoxDecoration(
+                color: _cardDark,
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'TOTAL',
+                    style: pw.TextStyle(
+                      color: _accentColor,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                  pw.Text(
+                    summary.precio.amount,
+                    style: pw.TextStyle(
+                      color: _accentColor,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
           
           // CTA (if present)
           if (summary.cta.isNotEmpty) ...[
@@ -292,7 +406,7 @@ build: (context) {
               summary.cta,
               style: pw.TextStyle(
                 color: _textGray,
-                fontSize: 12,
+                fontSize: 10,
                 fontStyle: pw.FontStyle.italic,
               ),
             ),
@@ -303,7 +417,7 @@ build: (context) {
   }
 
   /// Build Detailed Section
-  static pw.Widget _buildDetailedSection(InhausProposalSection section, {required pw.Font bold}) {
+  pw.Widget _buildDetailedSection(InhausProposalSection section, {required pw.Font bold}) {
     return pw.Container(
       margin: const pw.EdgeInsets.only(left: 40, right: 40, bottom: 30),
       child: pw.Column(
@@ -313,7 +427,7 @@ build: (context) {
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: pw.BoxDecoration(
-              color: _accentPurple,
+              color: _accentColor,
               borderRadius: pw.BorderRadius.circular(8),
             ),
             child: pw.Row(
@@ -333,7 +447,7 @@ build: (context) {
                   children: [
                     pw.Text(
                       section.price.label,
-                      style: const pw.TextStyle(
+                      style: pw.TextStyle(
                         color: _textWhite,  // WHITE text
                         fontSize: 8,
                       ),
@@ -359,7 +473,7 @@ build: (context) {
               padding: const pw.EdgeInsets.only(left: 20, bottom: 16),
               child: pw.Text(
                 section.introParagraph!,
-                style: const pw.TextStyle(
+                style: pw.TextStyle(
                   color: _textWhite,  // WHITE text for visibility
                   fontSize: 11,
                   height: 1.4,
@@ -377,7 +491,7 @@ build: (context) {
                   pw.Text(
                     'EJECUCIÓN:',
                     style: pw.TextStyle(
-                      color: _accentPurple,
+                      color: _accentColor,
                       fontSize: 10,
                       fontWeight: pw.FontWeight.bold,
                     ),
@@ -385,7 +499,7 @@ build: (context) {
                   pw.SizedBox(height: 6),
                   pw.Text(
                     section.ejecucion!,
-                    style: const pw.TextStyle(
+                    style: pw.TextStyle(
                       color: _textWhite,  // WHITE text
                       fontSize: 10,
                       height: 1.4,
@@ -411,7 +525,7 @@ build: (context) {
                           pw.Text(
                             'INCLUYE:',
                             style: pw.TextStyle(
-                              color: _accentPurple,
+                              color: _accentColor,
                               fontSize: 9,
                               fontWeight: pw.FontWeight.bold,
                             ),
@@ -421,7 +535,7 @@ build: (context) {
                             padding: const pw.EdgeInsets.only(bottom: 4),
                             child: pw.Text(
                               '✓ $item',
-                              style: const pw.TextStyle(
+                              style: pw.TextStyle(
                                 color: _textWhite,  // WHITE text
                                 fontSize: 9,
                               ),
@@ -448,7 +562,7 @@ build: (context) {
                             padding: const pw.EdgeInsets.only(bottom: 4),
                             child: pw.Text(
                               '✗ $item',
-                              style: const pw.TextStyle(
+                              style: pw.TextStyle(
                                 color: _textGray,
                                 fontSize: 9,
                               ),
@@ -471,7 +585,7 @@ build: (context) {
                   pw.Text(
                     'EQUIPO:',
                     style: pw.TextStyle(
-                      color: _accentPurple,
+                      color: _accentColor,
                       fontSize: 9,
                       fontWeight: pw.FontWeight.bold,
                     ),
@@ -481,7 +595,7 @@ build: (context) {
                     padding: const pw.EdgeInsets.only(bottom: 4),
                     child: pw.Text(
                       '• $member',
-                      style: const pw.TextStyle(
+                      style: pw.TextStyle(
                         color: _textWhite,  // WHITE text
                         fontSize: 9,
                       ),
@@ -501,7 +615,7 @@ build: (context) {
                   pw.Text(
                     'ENTREGABLES:',
                     style: pw.TextStyle(
-                      color: _accentPurple,
+                      color: _accentColor,
                       fontSize: 9,
                       fontWeight: pw.FontWeight.bold,
                     ),
@@ -511,7 +625,7 @@ build: (context) {
                     padding: const pw.EdgeInsets.only(bottom: 4),
                     child: pw.Text(
                       '• $deliverable',
-                      style: const pw.TextStyle(
+                      style: pw.TextStyle(
                         color: _textWhite,  // WHITE text
                         fontSize: 9,
                       ),
@@ -526,7 +640,7 @@ build: (context) {
   }
 
   /// Build Footer
-  static pw.Widget _buildFooter(String footer) {
+  pw.Widget _buildFooter(String footer) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(40),
       child: pw.Row(
@@ -534,7 +648,7 @@ build: (context) {
         children: [
           pw.Text(
             footer,
-            style: const pw.TextStyle(
+            style: pw.TextStyle(
               color: _textGray,
               fontSize: 10,
             ),
@@ -545,11 +659,11 @@ build: (context) {
   }
 
   /// Build Section Header (for one-page quote sections)
-  static pw.Widget _buildSectionHeader(String title) {
+  pw.Widget _buildSectionHeader(String title) {
     return pw.Text(
       title,
       style: pw.TextStyle(
-        color: _accentPurple,
+        color: _accentColor,
         fontSize: 10,
         fontWeight: pw.FontWeight.bold,
         letterSpacing: 1.2,
@@ -558,7 +672,7 @@ build: (context) {
   }
 
   /// Build Bullet Item (for lists)
-  static pw.Widget _buildBulletItem(String text, {bool? isIncluded}) {
+  pw.Widget _buildBulletItem(String text, {bool? isIncluded}) {
     final icon = isIncluded == null ? '•' : (isIncluded ? '✓' : '✗');
     final color = isIncluded == false ? _textGray : _textWhite;
     
@@ -588,8 +702,28 @@ build: (context) {
     );
   }
 
+  /// Build a pricing summary row (Subtotal, Descuento, IVA)
+  pw.Widget _buildPricingRow(String label, String value, {required pw.Font bold, PdfColor? color}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(color: _textGray, fontSize: 10),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(color: color ?? _textWhite, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Build Moodboard Section
-  static pw.Widget _buildMoodboard(List<Uint8List> images, {required pw.Font bold}) {
+  pw.Widget _buildMoodboard(List<Uint8List> images, {required pw.Font bold}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 40),
       child: pw.Column(
@@ -598,7 +732,7 @@ build: (context) {
           pw.Text(
             'MOODBOARD & REFERENCIAS',
             style: pw.TextStyle(
-              color: _accentPurple,
+              color: _accentColor,
               fontSize: 11,
               fontWeight: pw.FontWeight.bold,
               letterSpacing: 1.5,

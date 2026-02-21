@@ -170,6 +170,9 @@ class SystemDefaultModelDialog extends ConsumerWidget {
       case ModelProviderType.image:
         icon = FontAwesomeIcons.image;
         break;
+      case ModelProviderType.video:
+        icon = FontAwesomeIcons.video;
+        break;
     }
     return Icon(icon, color: color, size: 14);
   }

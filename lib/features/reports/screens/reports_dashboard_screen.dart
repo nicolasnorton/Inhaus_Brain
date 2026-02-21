@@ -7,6 +7,7 @@ import '../models/report_model.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/reports_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
+import '../../clients/providers/client_provider.dart';
 
 class ReportsDashboardScreen extends ConsumerWidget {
   const ReportsDashboardScreen({super.key});
@@ -129,6 +130,14 @@ class ReportsDashboardScreen extends ConsumerWidget {
       ),
       child: InkWell(
         onTap: () async {
+          final selectedClient = ref.read(selectedClientProvider);
+          if (selectedClient == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please select a client first'), backgroundColor: Colors.orange),
+            );
+            return;
+          }
+
           // 1. Create Knowledge Base for this report
           final api = ref.read(knowledgeApiServiceProvider);
           final kb = await api.createKnowledgeBase(
@@ -136,10 +145,10 @@ class ReportsDashboardScreen extends ConsumerWidget {
             description: 'Source library for agentic analysis',
           );
 
-          // 2. Create new report with dataset link
+          // 2. Create new report linked to selected client
           final newReport = Report.create(
             title: 'New Analysis', 
-            clientId: 'client_1',
+            clientId: selectedClient.id,
             datasetId: kb.id,
           );
           

@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const { VertexAI } = require("@google-cloud/vertexai");
 // Import the Copilot handler
 const { copilotHandler } = require('./copilot');
+const { proxyStitch } = require('./stitch-proxy');
 
 admin.initializeApp();
 
@@ -474,7 +475,7 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
 
             // --- PATH D: VIDEO GENERATION (Veo) ---
             if (modelId.toLowerCase().includes('veo')) {
-                const { GoogleAuth } = require('google-auth-library');
+                const { GoogleAuth = require('google-auth-library').GoogleAuth } = {}; // Dynamic require if needed
                 const auth = new GoogleAuth({
                     scopes: 'https://www.googleapis.com/auth/cloud-platform'
                 });
@@ -525,14 +526,13 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
 
             const regions = ['us-central1', 'us-east4', 'us-west1'];
 
-            // AGGRESSIVE SANITIZATION: Replace legacy aliases with stable versioned IDs
-            // We also add fallbacks to handle regional availability and model retirements
+            // AGGRESSIVE SANITIZATION: Force upgrade to 2.5/3.0 fleet
             let modelVariations = [modelId];
 
-            if (modelId.includes('gemini-1.5-flash') || modelId.includes('gemini-2.5-flash') || modelId.includes('gemini-2.0-flash')) {
+            if (modelId.includes('flash')) {
                 // Try stable 2.5 Flash variants
                 modelVariations = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview'];
-            } else if (modelId.includes('gemini-1.5-pro') || modelId.includes('gemini-2.5-pro') || modelId.includes('gemini-2.0-pro')) {
+            } else if (modelId.includes('pro')) {
                 modelVariations = ['gemini-2.5-pro', 'gemini-3-pro-preview'];
             }
 
@@ -597,6 +597,9 @@ exports.copilotRuntime = functions.https.onRequest(copilotHandler);
 // Expose Vertex AI Chat (Direct LangChain - Recommended)
 const { vertexChatHandler } = require('./vertex-chat');
 exports.vertexChat = functions.https.onRequest(vertexChatHandler);
+
+// Expose Stitch Proxy
+exports.proxyStitch = proxyStitch;
 
 /**
  * GHL WEBHOOK RECEIVER

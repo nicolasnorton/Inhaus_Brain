@@ -37,7 +37,7 @@ class TaskQueueService {
           'metadata': metadata ?? {},
         });
       } catch (e) {
-        debugPrint('TaskQueue: Remote dispatch failed: $event');
+        debugPrint('TaskQueue: Remote dispatch failed: $e');
         // Fallback or rethrow based on criticality
         rethrow;
       }

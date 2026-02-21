@@ -47,13 +47,13 @@ class BlackboardPersistenceService {
           .collection('users')
           .doc(user.uid)
           .collection('sessions')
-          .doc('active');
+          .doc(state.sessionId ?? 'assistant_global');
 
       await sessionRef.set({
         ...state.toJson(),
         'lastUpdated': FieldValue.serverTimestamp(),
       });
-      debugPrint('Persistence: Session saved successfully.');
+      debugPrint('Persistence: Session ${state.sessionId ?? 'assistant_global'} saved successfully.');
     } catch (e) {
       debugPrint('Persistence: Error saving session: $e');
     } finally {
@@ -62,9 +62,15 @@ class BlackboardPersistenceService {
   }
 
   Future<void> restoreSession() async {
+    final state = _ref.read(blackboardProvider);
+    final sessionId = state.sessionId ?? 'assistant_global';
+    await loadSession(sessionId);
+  }
+
+  Future<void> loadSession(String sessionId) async {
     final user = _ref.read(authServiceProvider).currentUser;
     if (user == null) {
-      debugPrint('Persistence: Cannot restore session - No user logged in.');
+      debugPrint('Persistence: Cannot load session - No user logged in.');
       return;
     }
 
@@ -73,20 +79,21 @@ class BlackboardPersistenceService {
           .collection('users')
           .doc(user.uid)
           .collection('sessions')
-          .doc('active')
+          .doc(sessionId)
           .get();
 
       if (sessionDoc.exists && sessionDoc.data() != null) {
         final data = sessionDoc.data()!;
         final restoredState = BlackboardState.fromJson(data);
         
-        debugPrint('Persistence: Restoring session state...');
+        debugPrint('Persistence: Restoring session state for $sessionId...');
         _ref.read(blackboardProvider.notifier).restoreState(restoredState);
       } else {
-        debugPrint('Persistence: No active session found to restore.');
+        debugPrint('Persistence: No session found to restore for $sessionId. Initializing new...');
+        _ref.read(blackboardProvider.notifier).initialize(sessionId);
       }
     } catch (e) {
-      debugPrint('Persistence: Error restoring session: $e');
+      debugPrint('Persistence: Error loading session $sessionId: $e');
     }
   }
 
@@ -94,16 +101,18 @@ class BlackboardPersistenceService {
     final user = _ref.read(authServiceProvider).currentUser;
     if (user == null) return;
 
+    final state = _ref.read(blackboardProvider);
+    final sessionId = state.sessionId ?? 'assistant_global';
+
     try {
       await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('sessions')
-          .doc('active')
+          .doc(sessionId)
           .delete();
-      debugPrint('Persistence: Session cleared from Firestore.');
-      // Also clear local blackboard?
-      // _ref.read(blackboardProvider.notifier).clear(); 
+      debugPrint('Persistence: Session $sessionId cleared from Firestore.');
+      _ref.read(blackboardProvider.notifier).clear(sessionId: sessionId); 
     } catch (e) {
       debugPrint('Persistence: Error clearing session: $e');
     }

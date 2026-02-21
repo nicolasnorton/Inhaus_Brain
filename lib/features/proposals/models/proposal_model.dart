@@ -15,6 +15,8 @@ class Proposal {
   final List<ProposalSource> sources;
   final List<ProposalOutput> outputs;
   final ProposalStatus status;
+  final double discount;
+  final bool applyIva;
 
   Proposal({
     required this.id,
@@ -28,6 +30,8 @@ class Proposal {
     List<ProposalSource>? sources,
     List<ProposalOutput>? outputs,
     this.status = ProposalStatus.draft,
+    this.discount = 0.0,
+    this.applyIva = false,
   })  : sources = sources ?? [],
         outputs = outputs ?? [];
 
@@ -64,6 +68,8 @@ class Proposal {
       'sources': sources.map((s) => s.toJson()).toList(),
       'outputs': outputs.map((o) => o.toJson()).toList(),
       'status': status.toString().split('.').last,
+      'discount': discount,
+      'applyIva': applyIva,
     };
   }
 
@@ -87,6 +93,8 @@ class Proposal {
         (e) => e.toString().split('.').last == json['status'],
         orElse: () => ProposalStatus.draft,
       ),
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      applyIva: json['applyIva'] ?? false,
     );
   }
 
@@ -102,6 +110,8 @@ class Proposal {
     List<ProposalSource>? sources,
     List<ProposalOutput>? outputs,
     ProposalStatus? status,
+    double? discount,
+    bool? applyIva,
   }) {
     return Proposal(
       id: id ?? this.id,
@@ -115,6 +125,8 @@ class Proposal {
       sources: sources ?? this.sources,
       outputs: outputs ?? this.outputs,
       status: status ?? this.status,
+      discount: discount ?? this.discount,
+      applyIva: applyIva ?? this.applyIva,
     );
   }
 }
@@ -270,7 +282,7 @@ class ProposalOutput {
       id: json['id'],
       title: json['title'],
       type: ProposalOutputType.values.firstWhere(
-        (e) => e.toString().split('.').last == json['type'],
+        (e) => e.toString().split('.').last == json['type']?.toString(),
         orElse: () => ProposalOutputType.detailedPdf,
       ),
       uri: json['uri'],

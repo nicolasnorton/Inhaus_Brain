@@ -15,6 +15,7 @@ class AIGenerationRequest {
   final String? systemInstruction;
   final String? outputMode; // 'json' or null
   final List<KnowledgeSource> context;
+  final List<Map<String, dynamic>>? tools;
   
   // Multimodal attachments
   final Uint8List? imageBytes;
@@ -25,6 +26,7 @@ class AIGenerationRequest {
   final String? videoMimeType;
   final Uint8List? pdfBytes;
   final String? pdfMimeType;
+  final String? previousInteractionId;
 
   // Optional overrides
   final String? apiKey;
@@ -44,6 +46,8 @@ class AIGenerationRequest {
     this.videoMimeType,
     this.pdfBytes,
     this.pdfMimeType,
+    this.previousInteractionId,
+    this.tools,
     this.apiKey,
     this.vertexKey,
   });

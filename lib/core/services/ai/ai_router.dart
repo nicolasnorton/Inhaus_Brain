@@ -40,10 +40,10 @@ class AIRouter {
     _logger.d('AIRouter: Routing to ${strategy.name} for ${request.config.modelId}');
 
     try {
-      return await strategy.generate(request);
+      return await strategy.generate(request, ref: ref);
     } catch (e) {
       _logger.w('AIRouter: ${strategy.name} failed: $e. Trying fallback chain.');
-      return _fallback(request, failedStrategy: strategy.name, error: e);
+      return _fallback(request, failedStrategy: strategy.name, error: e, ref: ref);
     }
   }
 
@@ -55,9 +55,9 @@ class AIRouter {
     final strategy = _resolveStrategy(request);
     if (!strategy.supportsStreaming) {
       _logger.w('AIRouter: ${strategy.name} does not support streaming, falling back to VertexAI');
-      return _vertexAI.generateStream(request);
+      return _vertexAI.generateStream(request, ref: ref);
     }
-    return strategy.generateStream(request);
+    return strategy.generateStream(request, ref: ref);
   }
 
   /// Determine which strategy to use for this request.
@@ -88,12 +88,13 @@ class AIRouter {
     AIGenerationRequest request, {
     required String failedStrategy,
     required Object error,
+    dynamic ref,
   }) async {
     // If proxy failed, try direct SDK
     if (failedStrategy == 'proxy') {
       try {
         _logger.i('AIRouter: Proxy failed, trying direct VertexAI SDK');
-        return await _vertexAI.generate(request);
+        return await _vertexAI.generate(request, ref: ref);
       } catch (e) {
         _logger.w('AIRouter: VertexAI SDK also failed: $e');
       }
@@ -102,8 +103,8 @@ class AIRouter {
     // If VertexAI/proxy both failed and NOT on web, try LiteRT as last resort
     if (!kIsWeb && (failedStrategy == 'vertex_ai' || failedStrategy == 'proxy')) {
       try {
-        _logger.i('AIRouter: Trying LiteRT fallback (native platform)');
-        return await _liteRT.generate(request);
+        _logger.i('AIRouter: Trying LiteRT fallback');
+        return await _liteRT.generate(request, ref: ref);
       } catch (e) {
         _logger.w('AIRouter: LiteRT also failed: $e');
       }

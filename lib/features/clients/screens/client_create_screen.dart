@@ -1,8 +1,11 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:inhaus_brain/l10n/app_localizations.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../clients/services/client_storage_service.dart';
 import '../providers/client_provider.dart';
 import '../models/client_model.dart';
 
@@ -32,6 +35,12 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
   final _linkedinController = TextEditingController();
   final _descController = TextEditingController();
   DateTime? _birthDate;
+  
+  // Logo Upload
+  String? _logoUrl;
+  bool _isUploadingLogo = false;
+  Uint8List? _localLogoBytes;
+  String? _localLogoName;
 
   @override
   void dispose() {
@@ -50,6 +59,49 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
     super.dispose();
   }
 
+  Future<void> _pickAndUploadLogo() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true, // Needed for web/bytes
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.bytes != null) {
+          setState(() {
+            _isUploadingLogo = true;
+            _localLogoBytes = file.bytes;
+            _localLogoName = file.name;
+          });
+
+          // Upload immediately
+          final url = await ClientStorageService.uploadClientLogo(
+            fileBytes: file.bytes!,
+            fileName: file.name,
+          );
+
+          if (mounted) {
+            setState(() {
+              _logoUrl = url;
+              _isUploadingLogo = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Logo uploaded successfully!')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingLogo = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logo upload failed: $e')),
+        );
+      }
+    }
+  }
+
   void _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
@@ -57,6 +109,7 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
           name: _nameController.text.trim(),
           clientType: _selectedType,
           industry: _industryController.text.trim(),
+          logoUrl: _logoUrl, // Pass the uploaded logo URL
           email: _emailController.text.trim(),
           website: _websiteController.text.trim(),
           address: _addressController.text.trim(),
@@ -212,6 +265,34 @@ class _ClientCreateScreenState extends ConsumerState<ClientCreateScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionHeader('Basic Info'),
+            
+            // Logo Selection
+            Center(
+              child: GestureDetector(
+                onTap: _isUploadingLogo ? null : _pickAndUploadLogo,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24),
+                    image: _localLogoBytes != null 
+                        ? DecorationImage(image: MemoryImage(_localLogoBytes!), fit: BoxFit.cover)
+                        : null,
+                  ),
+                  child: _isUploadingLogo 
+                      ? const CircularProgressIndicator()
+                      : (_localLogoBytes == null 
+                          ? const Icon(Icons.add_a_photo, color: Colors.white54, size: 32)
+                          : null),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Center(child: Text('Tap to upload logo', style: TextStyle(color: Colors.white38, fontSize: 12))),
+            const SizedBox(height: 24),
+
             _buildTextField(isCorporate ? 'Company Name' : 'Full Name', _nameController, isRequired: true),
             const SizedBox(height: 16),
             _buildTextField(isCorporate ? 'Industry' : 'Profession/Title', _industryController, isRequired: true),

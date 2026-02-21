@@ -9,7 +9,7 @@ import '../utils/resilience_utils.dart';
 import 'audit_log_service.dart';
 
 class AIProxyService {
-  static Ref? _globalRef;
+  static Ref? globalRef;
   final Ref _ref;
 
   // Circuit Breakers for production resilience
@@ -82,8 +82,12 @@ class AIProxyService {
     List<Map<String, dynamic>>? tools,
     bool thinking = false,
     bool audio = false,
+    String? previousInteractionId,
     bool usePython = true,
+    Ref? ref,
   }) async {
+    final effectiveRef = ref ?? globalRef;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       throw Exception('User must be logged in to use AI Proxy.');
@@ -108,6 +112,10 @@ class AIProxyService {
       if (tools != null) "tools": tools,
       "thinking": thinking,
       "audio": audio,
+      if (previousInteractionId != null) "previousInteractionId": previousInteractionId,
+      if (config.thinkingLevel != null) "thinkingLevel": config.thinkingLevel,
+      if (config.thinkingSummaries != null) "thinkingSummaries": config.thinkingSummaries,
+      if (config.responseJsonSchema != null) "responseJsonSchema": config.responseJsonSchema,
     };
 
     if (usePython) {
@@ -128,16 +136,18 @@ class AIProxyService {
              throw Exception('Python API Error: ${data['error']}');
           }
           
-          _auditLog(
-            action: 'ai/generate_content',
-            resourceType: 'model',
-            resourceId: config.modelId,
-            metadata: {
-              'promptLength': prompt.toString().length,
-              'thinking': thinking,
-              'audio': audio,
-            },
-          );
+          if (effectiveRef != null) {
+            effectiveRef.read(auditLogServiceProvider).log(
+              action: 'ai/generate_content',
+              resourceType: 'model',
+              resourceId: config.modelId,
+              metadata: {
+                'promptLength': prompt.toString().length,
+                'thinking': thinking,
+                'audio': audio,
+              }
+            );
+          }
 
           return data;
         } else {
@@ -180,7 +190,10 @@ class AIProxyService {
     required String prompt,
     String model = 'imagen-3',
     Map<String, dynamic>? config,
+    Ref? ref,
   }) async {
+    final effectiveRef = ref ?? globalRef;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
@@ -199,23 +212,137 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 60)));
 
     if (response.statusCode == 200) {
-      _auditLog(
-        action: 'ai/generate_image',
-        resourceType: 'model',
-        resourceId: model,
-        metadata: {'prompt': prompt},
-      );
+      if (effectiveRef != null) {
+        effectiveRef.read(auditLogServiceProvider).log(
+          action: 'ai/generate_image',
+          resourceType: 'model',
+          resourceId: model,
+          metadata: {'prompt': prompt}
+        );
+      }
       return jsonDecode(response.body);
     } else {
       throw Exception('Image Generation Failed (${response.statusCode}): ${response.body}');
     }
   }
 
+/// Generates an image using Nano Banana (Native Generation).
+static Future<Map<String, dynamic>> generateNanoBanana({
+  required String prompt,
+  String model = 'gemini-2.5-flash-image',
+  List<String> responseModalities = const ['Text', 'Image'],
+  String? aspectRatio,
+  String? imageSize,
+  List<Map<String, dynamic>>? referenceImages,
+  Ref? ref,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) throw Exception('Unauthenticated');
+  final idToken = await user.getIdToken();
+
+  final response = await _imageCircuit.execute(() => http.post(
+    Uri.parse('https://us-central1-inhausbrain.cloudfunctions.net/generate_nano_banana'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $idToken',
+    },
+    body: jsonEncode({
+      "prompt": prompt,
+      "model": model,
+      "responseModalities": responseModalities,
+      "aspectRatio": aspectRatio,
+      "imageSize": imageSize,
+      "referenceImages": referenceImages,
+    }),
+  ).timeout(const Duration(seconds: 60)));
+
+  if (response.statusCode == 200) {
+    if (ref != null) {
+      ref.read(auditLogServiceProvider).log(
+        action: 'ai/generate_nano_banana',
+        resourceType: 'model',
+        resourceId: model,
+        metadata: {'prompt': prompt}
+      );
+    }
+    return jsonDecode(response.body);
+  } else {
+    throw Exception('Nano Banana Generation Failed (${response.statusCode}): ${response.body}');
+  }
+}
+
+/// Uploads a file via the Gemini Files API.
+static Future<Map<String, dynamic>> uploadFile({
+  required Uint8List fileBytes,
+  required String mimeType,
+  String? displayName,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) throw Exception('Unauthenticated');
+  final idToken = await user.getIdToken();
+
+  final response = await _contentCircuit.execute(() => http.post(
+    Uri.parse('https://us-central1-inhausbrain.cloudfunctions.net/upload_file'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $idToken',
+    },
+    body: jsonEncode({
+      "data": base64Encode(fileBytes),
+      "mimeType": mimeType,
+      "displayName": displayName,
+    }),
+  ).timeout(const Duration(seconds: 300))); // Allow longer timeout for uploads
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw Exception('File Upload Failed (${response.statusCode}): ${response.body}');
+  }
+}
+
+/// Processes a document for understanding/extraction.
+static Future<Map<String, dynamic>> processDocument({
+  String? fileUri,
+  Map<String, dynamic>? inlineData, // {data: b64, mimeType: str}
+  String prompt = "Analyze this document.",
+  String model = 'gemini-2.0-flash',
+  Map<String, dynamic>? responseJsonSchema,
+  Ref? ref,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) throw Exception('Unauthenticated');
+  final idToken = await user.getIdToken();
+
+  final response = await _contentCircuit.execute(() => http.post(
+    Uri.parse('https://us-central1-inhausbrain.cloudfunctions.net/process_document'),
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $idToken',
+    },
+    body: jsonEncode({
+      "prompt": prompt,
+      "model": model,
+      "fileUri": fileUri,
+      "inlineData": inlineData,
+      "responseJsonSchema": responseJsonSchema,
+    }),
+  ).timeout(const Duration(seconds: 120)));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
+  } else {
+    throw Exception('Document Processing Failed (${response.statusCode}): ${response.body}');
+  }
+}
   /// Starts a Deep Research task.
   static Future<Map<String, dynamic>> startResearch({
     required String prompt,
-    String model = 'gemini-2.5-flash',
+    String model = 'deep-research-pro-preview-12-2025',
+    Ref? ref,
   }) async {
+    final effectiveRef = ref ?? globalRef;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');
     final idToken = await user.getIdToken();
@@ -233,10 +360,12 @@ class AIProxyService {
     ).timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
-      _auditLog(
-        action: 'ai/research_start',
-        metadata: {'prompt': prompt},
-      );
+      if (effectiveRef != null) {
+        effectiveRef.read(auditLogServiceProvider).log(
+          action: 'ai/research_start',
+          metadata: {'prompt': prompt}
+        );
+      }
       return jsonDecode(response.body);
     } else {
       throw Exception('Start Research Failed (${response.statusCode}): ${response.body}');

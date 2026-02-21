@@ -86,15 +86,16 @@ class CodeViewerWidget extends StatelessWidget {
           ),
           
           // Code Content
-          Expanded(
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 400),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: SelectableText(
                 rawCode,
                 style: const TextStyle(
-                  fontFamily: 'monospace', // Or specific monospaced font if available
+                  fontFamily: 'monospace',
                   fontSize: 13,
-                  color: Color(0xFFD4D4D4), // VS Code default text color
+                  color: Color(0xFFD4D4D4),
                   height: 1.5,
                 ),
               ),

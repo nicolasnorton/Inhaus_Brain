@@ -22,6 +22,7 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
   late TabController _tabController;
   String _searchQuery = '';
   String _filterFrequency = 'all';
+  String _selectedCategory = 'Todos'; // New category filter
   bool _isUploading = false;
 
   @override
@@ -158,6 +159,14 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
   List<AgencyService> _getFilteredServices(List<AgencyService> services) {
     var filtered = services;
 
+    // Apply category filter
+    if (_selectedCategory != 'Todos') {
+      filtered = filtered.where((s) {
+        final category = s.metadata['category'] as String? ?? 'General';
+        return category == _selectedCategory;
+      }).toList();
+    }
+
     // Apply frequency filter
     if (_filterFrequency != 'all') {
       filtered = filtered.where((s) => s.frequency == _filterFrequency).toList();
@@ -193,7 +202,6 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
               if (service == null) {
                 final newService = AgencyService.create(
                   name: data['name'],
-                  nameEs: data['nameEs'],
                   description: data['description'],
                   type: ServiceType.values.byName(data['type']),
                   price: data['price'],
@@ -207,12 +215,12 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
                   excludes: data['excludes'],
                   frequency: data['billingCycle'] == 'oneTime' ? 'one-time' : data['billingCycle'],
                   billingCycle: BillingCycle.values.byName(data['billingCycle']),
+                  metadata: {'category': data['category']},
                 );
                 await repository.addService(newService);
               } else {
                 final updated = service.copyWith(
                   name: data['name'],
-                  nameEs: data['nameEs'],
                   description: data['description'],
                   type: ServiceType.values.byName(data['type']),
                   price: data['price'],
@@ -226,6 +234,7 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
                   excludes: data['excludes'],
                   frequency: data['billingCycle'] == 'oneTime' ? 'one-time' : data['billingCycle'],
                   billingCycle: BillingCycle.values.byName(data['billingCycle']),
+                  metadata: {...service.metadata, 'category': data['category']},
                   updatedAt: DateTime.now(),
                 );
                 await repository.updateService(updated);
@@ -336,6 +345,7 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
               Column(
                 children: [
                   _buildFilterBar(),
+                  _buildCategoryFilter(catalog.services),
                   _buildStatsBar(catalog, filteredServices),
                   Expanded(
                     child: filteredServices.isEmpty
@@ -425,6 +435,47 @@ class _AgencyServicesDashboardState extends ConsumerState<AgencyServicesDashboar
           DropdownMenuItem(value: 'yearly', child: Text('Yearly')),
         ],
         onChanged: (value) => setState(() => _filterFrequency = value ?? 'all'),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter(List<AgencyService> allServices) {
+    // Extract unique categories
+    final Set<String> categories = {'Todos'};
+    for (var s in allServices) {
+      categories.add(s.metadata['category'] as String? ?? 'General');
+    }
+
+    final categoryList = categories.toList()..sort();
+    
+    // Sort 'Todos' to be the first item
+    categoryList.remove('Todos');
+    categoryList.insert(0, 'Todos');
+
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categoryList.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final cat = categoryList[index];
+          final isSelected = _selectedCategory == cat;
+          return Center(
+            child: ChoiceChip(
+              label: Text(cat, style: TextStyle(color: isSelected ? Colors.white : Colors.white70)),
+              selected: isSelected,
+              selectedColor: const Color(0xFFFF0055), // INHAUS Pink
+              backgroundColor: AppTheme.surface,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedCategory = cat);
+                }
+              },
+            ),
+          );
+        },
       ),
     );
   }

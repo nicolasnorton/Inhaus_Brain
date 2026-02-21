@@ -59,6 +59,9 @@ class AppConfig {
   /// TranslateGemma for multilingual campaign content
   static bool get enableTranslateGemma => isStaging;
 
+  /// Google Stitch MCP — AI-powered UI design generation
+  static bool get enableStitch => isStaging;
+
   // ── Display ────────────────────────────────────────
   static String get environmentLabel => isStaging ? 'STAGING' : 'PRODUCTION';
 }

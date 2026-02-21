@@ -138,45 +138,51 @@ class DeepAnalysisReportWidget extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth > 600;
-              return Flex(
-                direction: isWide ? Axis.horizontal : Axis.vertical,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Insights
-                  if (keyInsights.isNotEmpty)
-                    Expanded(
-                      flex: isWide ? 1 : 0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('KEY INSIGHTS', style: _sectionHeaderStyle),
-                          const SizedBox(height: 12),
-                          ...keyInsights.map((insight) => _buildBulletItem(insight, Icons.lightbulb_outline, Colors.amberAccent)),
-                        ],
-                      ),
-                    ),
-                  
-                  if (isWide && keyInsights.isNotEmpty && recommendations.isNotEmpty)
-                     const SizedBox(width: 32), // Spacer
-                  if (!isWide && keyInsights.isNotEmpty && recommendations.isNotEmpty)
-                     const SizedBox(height: 32),
+              
+              Widget insightsSection = keyInsights.isNotEmpty
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('KEY INSIGHTS', style: _sectionHeaderStyle),
+                      const SizedBox(height: 12),
+                      ...keyInsights.map((insight) => _buildBulletItem(insight, Icons.lightbulb_outline, Colors.amberAccent)),
+                    ],
+                  )
+                : const SizedBox.shrink();
+              
+              Widget recommendationsSection = recommendations.isNotEmpty
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('STRATEGIC RECOMMENDATIONS', style: _sectionHeaderStyle),
+                      const SizedBox(height: 12),
+                      ...recommendations.map((rec) => _buildBulletItem(rec, Icons.verified_outlined, Colors.greenAccent)),
+                    ],
+                  )
+                : const SizedBox.shrink();
 
-                  // Recommendations
-                  if (recommendations.isNotEmpty)
-                    Expanded(
-                      flex: isWide ? 1 : 0,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('STRATEGIC RECOMMENDATIONS', style: _sectionHeaderStyle),
-                          const SizedBox(height: 12),
-                          ...recommendations.map((rec) => _buildBulletItem(rec, Icons.verified_outlined, Colors.greenAccent)),
-                        ],
-                      ),
-                    ),
-                ],
-              );
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (keyInsights.isNotEmpty) Expanded(child: insightsSection),
+                    if (keyInsights.isNotEmpty && recommendations.isNotEmpty) const SizedBox(width: 32),
+                    if (recommendations.isNotEmpty) Expanded(child: recommendationsSection),
+                  ],
+                );
+              } else {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    insightsSection,
+                    if (keyInsights.isNotEmpty && recommendations.isNotEmpty) const SizedBox(height: 32),
+                    recommendationsSection,
+                  ],
+                );
+              }
             },
           ),
           

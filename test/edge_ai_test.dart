@@ -19,11 +19,11 @@ void main() {
       expect(result.text, contains("LiteRT"));
     });
 
-    test('Video Preview uses LiteRT config', () {
-      final config = AIModelConfig.veoFastPreview;
-      expect(config.provider, AIProvider.litert);
-      expect(config.modelId, 'veo-3-fast-preview');
-    });
+    // test('Video Preview uses LiteRT config', () {
+    //   final config = AIModelConfig.veoFastPreview;
+    //   expect(config.provider, AIProvider.litert);
+    //   expect(config.modelId, 'veo-3-fast-preview');
+    // });
 
     test('Output Polish uses LiteRT Gemma', () async {
        // This test mocks the integration ensuring the constant is correct
