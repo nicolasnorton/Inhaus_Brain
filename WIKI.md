@@ -103,7 +103,13 @@ Inhaus Brain deploys dedicated agents for specific operational tasks, governed b
 *   **Knowledge Maintainer**: A background agent that curates the Knowledge Base, identifying gaps (e.g., "Missing Brand Tone") and suggesting web searches to fill them.
 *   **Reports Orchestrator**: An expert analyst that transforms raw data into narrative-driven insights, explaining *why* numbers changed, not just *what* happened.
 
-### 11. 🧭 Antigravity Agent Skills
+### 11. 🧭 A2UI Composer IDE
+A powerful internal tool specifically for visualizing GenUI JSON directly in the platform:
+*   **3-Pane Sandbox**: A side-by-side view with a JSON Editor, a Live Canvas, and an AI Copilot Assistant that writes the structure for you. 
+*   **Material 3 GenUI**: Built on the Atomic UI Renderer, the engine renders standard Material 3 layouts inside the chat dynamically.
+*   **Gallery Templates**: Get started quickly using built-in interactive examples, including Audio/Video generation players.
+
+### 12. 🛡️ Antigravity Agent Skills
 To ensure consistent quality, safety, and cultural relevance, all agents operate using a unified **Skills System**. These reusable modules enforce strict guidelines:
 
 *   **Cultural Safety**: Automatically adapts all content to be Ecuadorian/LatAm neutral, avoiding stereotypes and ensuring regional relevance.
@@ -242,4 +248,14 @@ Is video generation stalling or failing? Use these steps to diagnose and fix com
     2.  The system now strictly forbids placeholders. If you see placeholders, try refreshing or re-prompting with "Use real data for the report."
     3.  Detailed reports require at least 5-7 sections; if the report is too short, the model may be ignoring quality guidelines.
 
-*Built with ❤️ to make AI automation accessible for everyone.*
+### 6. "AI generation temporarily unavailable" or "UNEXPECTED_TOOL_CALL"
+*   **Symptom**: Chat shows "AI generation temporarily unavailable" or displays raw `<tool_code>`/JSON blocks.
+*   **Cause**: 
+    1.  **Model Mapping**: The system was using "futuristic" IDs (e.g., `gemini-2.5-pro`) that don't exist in the Vertex AI API yet.
+    2.  **Schema Validation**: Vertex AI rejected tool calls due to loosely defined `data` properties.
+*   **Fix**: 
+    1.  **Automated Mapping**: The system now maps futuristic IDs to stable ones (e.g., `2.5 Pro` → `1.5 Pro 002`, `3.0 Flash` → `2.0 Flash 001`).
+    2.  **A2UI Enforcement**: All `gen_ui_component` calls now use strict property schemas.
+    3.  **Robust Parsing**: Malformed outputs or `<tool_code>` artifacts are now repaired by the `JsonParserService`.
+
+*Built with ❤️ by the Inhaus Automation Team.*

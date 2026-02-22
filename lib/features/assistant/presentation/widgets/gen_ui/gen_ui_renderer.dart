@@ -25,6 +25,7 @@ import 'knowledge_dashboard_widget.dart';
 import 'stitch_design_preview_widget.dart';
 import 'stitch_design_carousel_widget.dart';
 import 'stitch_code_export_widget.dart';
+import 'atomic_ui_renderer.dart';
 
 /// A shared factory widget to render GenUI components based on a JSON payload.
 /// This ensures consistent rendering across the Assistant chat and the Canvas.
@@ -110,6 +111,14 @@ class GenUIRenderer extends StatelessWidget {
       case 'gen_ui_layout':
         return GenUiLayoutWidget(payload: payload, isCanvas: isCanvas);
       default:
+        // Check for Atomic A2UI Spec (nested component tree)
+        if (payload.containsKey('component') && payload['component'] is Map) {
+          return AtomicUIRenderer(node: payload);
+        }
+        // If the payload has an 'id' and 'component' at any nesting level
+        if (type == null && payload.containsKey('id') && payload.containsKey('component')) {
+          return AtomicUIRenderer(node: payload);
+        }
         // Fallback for any other type that might have sections (generic report)
         if (payload.containsKey('sections') || payload.containsKey('trends')) {
           return TrendReportWidget(data: payload);

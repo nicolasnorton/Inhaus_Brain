@@ -1,4 +1,5 @@
 from google.genai import types
+from a2ui_schema import A2UIComponentDef, ComponentParameters, ComponentProperty
 
 def get_weather_schema():
     """Returns the tool definition for weather lookups."""
@@ -242,3 +243,79 @@ def get_task_orchestration_schema():
             )
         ]
     )
+
+def get_a2ui_catalog() -> list[A2UIComponentDef]:
+    """Returns the A2UI component catalog for GenUI generation."""
+    return [
+        A2UIComponentDef(
+            name="flightStatus",
+            description="Displays the status of a flight, including departure, arrival, and gate information.",
+            parameters=ComponentParameters(
+                properties={
+                    "flightNumber": ComponentProperty(type="string", description="The flight number (e.g., UA123)."),
+                    "status": ComponentProperty(type="string", enum=["On Time", "Delayed", "Cancelled", "Boarding"]),
+                    "departureTime": ComponentProperty(type="string", description="ISO 8601 formatted departure time."),
+                    "arrivalTime": ComponentProperty(type="string", description="ISO 8601 formatted arrival time."),
+                    "gate": ComponentProperty(type="string", description="Departure gate.")
+                },
+                required=["flightNumber", "status", "departureTime"]
+            )
+        ),
+        A2UIComponentDef(
+            name="kanbanBoard",
+            description="Displays a Kanban board with columns and tasks. Use when the user asks for a project board or task list.",
+            parameters=ComponentParameters(
+                properties={
+                    "title": ComponentProperty(type="string", description="The title of the Kanban board."),
+                    "columns": ComponentProperty(
+                        type="array",
+                        description="The columns in the board.",
+                        items={
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "title": {"type": "string"},
+                                "tasks": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {"type": "string"},
+                                            "title": {"type": "string"},
+                                            "description": {"type": "string"}
+                                        },
+                                        "required": ["id", "title"]
+                                    }
+                                }
+                            },
+                            "required": ["id", "title"]
+                        }
+                    )
+                },
+                required=["title", "columns"]
+            )
+        ),
+        A2UIComponentDef(
+            name="checklist",
+            description="Displays an interactive checklist.",
+            parameters=ComponentParameters(
+                properties={
+                    "title": ComponentProperty(type="string", description="The title of the checklist."),
+                    "items": ComponentProperty(
+                        type="array",
+                        description="The items in the checklist.",
+                        items={
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "text": {"type": "string"},
+                                "isCompleted": {"type": "boolean"}
+                            },
+                            "required": ["id", "text", "isCompleted"]
+                        }
+                    )
+                },
+                required=["title", "items"]
+            )
+        )
+    ]

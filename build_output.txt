@@ -1,7 +1,7 @@
 Resolving dependencies...
 Downloading packages...
-  _fe_analyzer_shared 93.0.0 (96.0.0 available)
-  analyzer 10.0.1 (10.2.0 available)
+  _fe_analyzer_shared 93.0.0 (95.0.0 available)
+  analyzer 10.0.1 (10.1.0 available)
   archive 4.0.7 (4.0.9 available)
   build_runner 2.11.0 (2.11.1 available)
   built_value 8.12.3 (8.12.4 available)
@@ -47,14 +47,13 @@ Downloading packages...
   syncfusion_flutter_pdf 32.2.3 (32.2.5 available)
   test_api 0.7.7 (0.7.9 available)
   url_launcher_ios 6.3.6 (6.4.1 available)
-  uuid 4.5.2 (4.5.3 available)
   video_player 2.10.1 (2.11.0 available)
   video_player_android 2.9.1 (2.9.4 available)
   video_player_avfoundation 2.9.1 (2.9.3 available)
   webview_flutter_wkwebview 3.23.6 (3.23.7 available)
 Got dependencies!
 1 package is discontinued.
-51 packages have newer versions incompatible with dependency constraints.
+50 packages have newer versions incompatible with dependency constraints.
 Try `flutter pub outdated` for more information.
 Package flutter_facebook_auth:macos references facebook_auth_desktop:macos as the default plugin, but the package does not exist, or is not a plugin package.
 Ask the maintainers of flutter_facebook_auth to either avoid referencing a default implementation via `platforms: macos: default_package: facebook_auth_desktop` or create a plugin named facebook_auth_desktop.
@@ -89,22 +88,21 @@ Consider addressing these issues to enable wasm builds. See docs for more info: 
 
 Use --no-wasm-dry-run to disable these warnings.
 Target dart2js failed: ProcessException: Process exited abnormally with exit code 1:
-lib/features/composer/screens/composer_gallery_screen.dart:46:22:
-Error: Can't find ')' to match '('.
-        return Dialog(
-                     ^
-lib/features/composer/screens/composer_gallery_screen.dart:108:40:
-Error: The method 'GenUIRenderer' isn't defined for the type 'ComposerGalleryScreen'.
- - 'ComposerGalleryScreen' is from 'package:inhaus_brain/features/composer/screens/composer_gallery_screen.dart' ('lib/features/composer/screens/composer_gallery_screen.dart').
-                                child: GenUIRenderer(
-                                       ^^^^^^^^^^^^^
-lib/features/composer/screens/composer_gallery_screen.dart:254:34:
-Error: The method 'GenUIRenderer' isn't defined for the type '_TemplateCard'.
- - '_TemplateCard' is from 'package:inhaus_brain/features/composer/screens/composer_gallery_screen.dart' ('lib/features/composer/screens/composer_gallery_screen.dart').
-                          child: GenUIRenderer(
-                                 ^^^^^^^^^^^^^
+lib/features/proposalsLM/widgets/cotizador_panel.dart:134:35:
+Error: Required named parameter 'service' must be provided.
+        return PackagesManagerView(
+                                  ^
+lib/features/proposalsLM/views/packages_manager_view.dart:23:9:
+Info: Found this candidate, but the arguments don't match.
+  const PackagesManagerView({
+        ^^^^^^^^^^^^^^^^^^^
+lib/features/chat/providers/chat_provider.dart:356:23:
+Error: The method 'AudioGenerationTool' isn't defined for the type 'ChatNotifier'.
+ - 'ChatNotifier' is from 'package:inhaus_brain/features/chat/providers/chat_provider.dart' ('lib/features/chat/providers/chat_provider.dart').
+    final audioTool = AudioGenerationTool(lyriaKey: lyriaKey);
+                      ^^^^^^^^^^^^^^^^^^^
 Error: Compilation failed.
-  Command: /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/homebrew/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DENVIRONMENT=staging -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/1527ae0ec577a4ef50e65f6fefcfc1326707d9bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/flutter_build/1a9d1f67830c7836a408e0a9d633e801/app.dill --packages=/Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/package_config.json --cfe-only /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/flutter_build/1a9d1f67830c7836a408e0a9d633e801/main.dart
+  Command: /opt/homebrew/share/flutter/bin/cache/dart-sdk/bin/dart compile js --platform-binaries=/opt/homebrew/share/flutter/bin/cache/flutter_web_sdk/kernel --invoker=flutter_tool -Ddart.vm.product=true -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -DFLUTTER_WEB_USE_SKIA=true -DFLUTTER_WEB_USE_SKWASM=false -DFLUTTER_WEB_CANVASKIT_URL=https://www.gstatic.com/flutter-canvaskit/1527ae0ec577a4ef50e65f6fefcfc1326707d9bf/ --native-null-assertions --no-source-maps -O4 --minify -o /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/flutter_build/42ddcac4c138f456d4b573213464645d/app.dill --packages=/Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/package_config.json --cfe-only /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/.dart_tool/flutter_build/42ddcac4c138f456d4b573213464645d/main.dart
 #0      RunResult.throwException (package:flutter_tools/src/base/process.dart:153:5)
 #1      _DefaultProcessUtils.run (package:flutter_tools/src/base/process.dart:379:19)
 <asynchronous suspension>
@@ -145,5 +143,5 @@ Error: Compilation failed.
 #19     main (package:flutter_tools/executable.dart:103:3)
 <asynchronous suspension>
 
-Compiling lib/main.dart for the Web...                             42.7s
+Compiling lib/main.dart for the Web...                             37.9s
 Error: Failed to compile application for the Web.

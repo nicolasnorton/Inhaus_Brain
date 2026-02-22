@@ -6,6 +6,7 @@ from gemini_client import GeminiClient
 import base64
 from google.genai import types
 import tools as custom_tools
+import a2ui_schema
 from dialogue_manager import DialogueManager
 from workspace_context_builder import WorkspaceContextBuilder
 from dynamic_router import build_router_prompt_from_firestore
@@ -147,6 +148,33 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             except Exception as ws_err:
                 print(f"Workspace context failed (non-fatal): {ws_err}")
 
+        # A2UI Integration: Inject the Generative UI Catalog
+        a2ui_catalog = custom_tools.get_a2ui_catalog()
+        a2ui_instruction = f"""
+# A2UI Generation Rendering (V0.8)
+You have the ability to render dynamic web components alongside your text responses.
+When a user asks for a visual widget (e.g., flight card, kanban board, checklist), you MUST follow this protocol:
+
+1. You MUST emit a `beginRendering` JSON block immediately before generating the data for the component.
+2. You MUST emit a `surfaceUpdate` JSON block containing the actual component data.
+3. You MUST wrap these JSON blocks in markdown fences starting with `json ---a2ui_JSON---`.
+
+**Available Components Catalog Definition:**
+```json
+{json.dumps([c.model_dump() for c in a2ui_catalog], indent=2)}
+```
+
+**Example Output Flow:**
+Here is the flight status you requested:
+```json ---a2ui_JSON---
+{json.dumps(a2ui_schema.BeginRendering(surfaceId="generated-id-123", fallbackText="Flight Status Card").model_dump())}
+```
+```json ---a2ui_JSON---
+{json.dumps(a2ui_schema.SurfaceUpdate(surfaceId="generated-id-123", component="flightStatus", data={{"flightNumber": "UA123", "status": "On Time", "departureTime": "2026-02-21T10:00:00Z"}}).model_dump())}
+```
+Let me know if you need any other cards!
+        """
+        system_instruction = f"{a2ui_instruction}\n\n---\n\n{system_instruction}" if system_instruction else a2ui_instruction
         
         # Inject custom tool definitions if requested by string
         if isinstance(tools, list):
@@ -185,6 +213,13 @@ def generate_content(req: https_fn.Request) -> https_fn.Response:
             print(f"Gemini Proxy: Available Models: {available}")
 
         print(f"Gemini Proxy: Calling {model_name} with thinking={thinking}, search={use_google_search}")
+        
+        if tools:
+            tool_names = []
+            for t in tools:
+                if isinstance(t, dict) and "name" in t:
+                    tool_names.append(t["name"])
+            print(f"Gemini Proxy: Passing {len(tools)} tools to SDK: {tool_names}")
         
         # Call Generation
         print(f"Gemini Proxy: Attempting to call generation on {model_name}...")

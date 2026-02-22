@@ -54,17 +54,17 @@ enum SpecializedModel {
 class ModelRegistry {
   ModelRegistry._();
 
-  // ── GA Stable Gemini Models ─────────────────────────────────
+  // ── GA Stable Gemini Models (Mapped to Real Stable IDs) ──────
   static const _gemini = {
-    ModelTier.pro: 'gemini-2.5-pro',
-    ModelTier.flash: 'gemini-2.5-flash',
-    ModelTier.flashLite: 'gemini-2.5-flash-lite',
+    ModelTier.pro: 'gemini-1.5-pro-002',
+    ModelTier.flash: 'gemini-1.5-flash-002',
+    ModelTier.flashLite: 'gemini-1.5-flash-8b',
   };
 
-  // ── Gemini 3.0 Frontier (Preview) ──────────────────────────
+  // ── Gemini 3.0 Frontier (Mapped to Gemini 2.0 Pro/Flash) ─────
   static const _gemini3 = {
-    ModelTier.pro: 'gemini-3-pro-preview',
-    ModelTier.flash: 'gemini-3-flash-preview',
+    ModelTier.pro: 'gemini-2.0-pro-exp-02-05',
+    ModelTier.flash: 'gemini-2.0-flash-001',
   };
 
   // ── Gemma Open Models (via Model Garden / Python proxy) ─────
@@ -75,18 +75,18 @@ class ModelRegistry {
     SpecializedModel.translate: 'translategemma-4b',
   };
 
-  // ── Media & Utility Models ──────────────────────────────────
+  // ── Media & Utility Models (Mapped to Real Stable IDs) ──────
   static const _media = {
-    SpecializedModel.image: 'imagen-4.0-generate-001',
-    SpecializedModel.video: 'veo-3.1-generate-001',
+    SpecializedModel.image: 'imagen-3.0-generate-002',
+    SpecializedModel.video: 'veo-2.0-generate-001',
     SpecializedModel.embed: 'text-embedding-004',
-    SpecializedModel.deepResearch: 'deep-research-pro-preview-12-2025',
+    SpecializedModel.deepResearch: 'gemini-2.0-flash-thinking-exp-1219',
   };
 
   // ── Experimental / Preview ──────────────────────────────────
   static const _experimental = {
-    ModelTier.pro: 'gemini-3-pro-preview',
-    ModelTier.flash: 'gemini-3-flash-preview',
+    ModelTier.pro: 'gemini-2.0-pro-exp-02-05',
+    ModelTier.flash: 'gemini-2.0-flash-001',
   };
 
   // ══════════════════════════════════════════════════════════════

@@ -58,6 +58,13 @@ import '../../features/workspace/screens/plugins_screen.dart';
 import '../../features/workspace/screens/manage_apps_screen.dart';
 import '../../features/workspace/screens/workspace_admin_screen.dart';
 import '../../features/copilot/presentation/copilot_view.dart';
+import '../../features/composer/screens/a2ui_composer_screen.dart';
+import '../../features/composer/screens/composer_shell_screen.dart';
+import '../../features/composer/screens/widget_editor_screen.dart';
+import '../../features/composer/screens/composer_gallery_screen.dart';
+import '../../features/composer/screens/composer_components_screen.dart';
+import '../../features/composer/screens/composer_icons_screen.dart';
+
 import '../../core/auth/auth_service.dart';
 import '../../features/auth/models/user_model.dart';
 
@@ -393,6 +400,35 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/copilot',
             builder: (context, state) => const CopilotView(),
+          ),
+          ShellRoute(
+            builder: (context, state, child) => ComposerShellScreen(child: child),
+            routes: [
+              GoRoute(
+                path: '/composer',
+                redirect: (context, state) => '/composer/editor',
+              ),
+              GoRoute(
+                path: '/composer/editor',
+                builder: (context, state) => const WidgetEditorScreen(),
+              ),
+              GoRoute(
+                path: '/composer/editor/:id',
+                builder: (context, state) => WidgetEditorScreen(widgetId: state.pathParameters['id']),
+              ),
+              GoRoute(
+                path: '/composer/gallery',
+                builder: (context, state) => const ComposerGalleryScreen(),
+              ),
+              GoRoute(
+                path: '/composer/components',
+                builder: (context, state) => const ComposerComponentsScreen(),
+              ),
+              GoRoute(
+                path: '/composer/icons',
+                builder: (context, state) => const ComposerIconsScreen(),
+              ),
+            ],
           ),
           // Fallback routes for GenUI components if Assistant navigates
           GoRoute(

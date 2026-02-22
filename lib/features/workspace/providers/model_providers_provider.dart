@@ -143,7 +143,7 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
         ),
         availableModels: [
           ModelConfig(
-            id: 'gemini-2.5-pro',
+            id: 'gemini-1.5-pro-002',
             name: 'Gemini 2.5 Pro (Enterprise Reasoning)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
@@ -154,7 +154,7 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'gemini-3-pro-preview',
+            id: 'gemini-2.0-pro-exp-02-05',
             name: 'Gemini 3 Pro (Frontier Agentic)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
@@ -165,7 +165,7 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'gemini-2.5-flash',
+            id: 'gemini-1.5-flash-002',
             name: 'Gemini 2.5 Flash (Performance)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
@@ -176,7 +176,7 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'gemini-3-flash-preview',
+            id: 'gemini-2.0-flash-001',
             name: 'Gemini 3 Flash (Real-time Adaptive)',
             provider: ModelProvider.google,
             type: ModelProviderType.llm,
@@ -187,8 +187,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: true,
           ),
           ModelConfig(
-            id: 'imagen-4.0-generate-001',
-            name: 'Imagen 4 (High Fidelity)',
+            id: 'imagen-3.0-generate-002',
+            name: 'Imagen 3 (High Fidelity)',
             provider: ModelProvider.google,
             type: ModelProviderType.image,
             contextWindow: 0,
@@ -198,8 +198,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: false,
           ),
           ModelConfig(
-            id: 'veo-3.1-generate-001',
-            name: 'Veo 3.1 (Video Generation)',
+            id: 'veo-2.0-generate-001',
+            name: 'Veo 2 (Video Generation)',
             provider: ModelProvider.google,
             type: ModelProviderType.video,
             contextWindow: 0,

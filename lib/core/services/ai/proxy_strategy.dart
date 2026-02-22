@@ -161,6 +161,12 @@ class ProxyStrategy extends AIStrategy {
       text = 'Proxy Error: ${proxyRes['error']}';
     }
 
+    // DEBUG: If we STILL have 'No proxy content.', dump the whole response
+    if (text == 'No proxy content.') {
+      _logger.w('Proxy: Failed to parse valid content. Raw response: $proxyRes');
+      text = jsonEncode(proxyRes);
+    }
+
     // Strip markdown wrapper from JSON responses
     if (request.outputMode == 'json') {
       text = _stripMarkdown(text);

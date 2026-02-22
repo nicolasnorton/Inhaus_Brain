@@ -19,6 +19,7 @@ The application coordinates several specialized models via the `EdgeAIService` a
 - **Nano Banana 🍌**: Agentic visual refinement and image editing.
 - **External Providers**: Support for **OpenAI**, **Anthropic**, **xAI (Grok)**, **Runway**, **Midjourney**, and **Eleven Labs** via `EdgeAIService` routing.
 - **Strict Mode**: `EdgeAIService` enforces structured JSON output using Dart classes (`StrategyOutput`) and `responseMimeType`.
+- **A2UI Protocol**: Leverages the Flutter GenUI SDK for robust, streamable UI components.
 - **The Arbiter**: Intelligent stall detection that monitors agent retries and escalates supervision to a human when `retryCount > 2`.
 
 ### 2. Model Context Protocol (MCP) Standards
@@ -26,14 +27,16 @@ All agent capabilities are abstracted into the `AgentTool` (at `lib/core/mcp/`) 
 - **`WebSearchTool`**: Drives the Research Agent; returns structured market snippets and URLs.
 - **`ImageGenerationTool`**: Interfaces with Imagen/Banana; returns generated asset URLs.
 - **`VideoGenerationTool` / `AudioGenerationTool`**: Specialized tool interfaces for multi-modal expansion.
-- **`GenUIComponentTool`**: (`gen_ui_component`) Triggers rich, interactive Flutter widgets directly in the chat stream (e.g., `BudgetChart`, `KanbanBoard`, `StrategyBoard`).
+- **`GenUIComponentTool`**: (`gen_ui_component`) Triggers rich, interactive Flutter widgets directly in the chat stream (e.g., `BudgetChart`, `KanbanBoard`, `StrategyBoard`). Enforces strict Vertex AI schema compliance with explicit property definitions.
+- **`JsonParserService`**: Robust post-processing of LLM outputs to strip `<tool_code>` artifacts and repair malformed JSON candidates.
 
-### 3. Rich GenUI Library
+### 3. Rich GenUI Library & A2UI Composer
 The assistant can render specialized interactive components via the `gen_ui_component` tool:
 - **Budget Chart**: Visualizes linear progress bars for financial allocation.
 - **Kanban Board**: Multi-column task board for project status management.
 - **Strategy Board**: Structured views for high-level strategic objectives and milestones.
-- **Fallback Routing**: Routes like `/budget` and `/kanban` provide full-screen fallbacks for these components.
+- **AtomicUI Framework (v3.0)**: The `AtomicUIRenderer` generates full Material 3 Flutter widgets directly from a recursive JSON schema, avoiding hardcoding components.
+- **A2UI Composer IDE**: An internal workspace (`ComposerComponentsScreen` and `WidgetEditorScreen`) consisting of a 3-pane window. It features code-editing for the atomic schema, live preview canvases, and an integrated copilot for instant UI prototyping.
 
 ### 4. Agent Roster & Behavior
 The Inhaus Brain features an 11-step specialized agency roster:
@@ -102,5 +105,9 @@ The `PublishService` coordinates the deployment of workflows across multiple pla
 ## Important Configuration Notes
 - **Vertex AI API**: Must be enabled in Google Cloud Console for the project.
 - **App Check**: Enforced in Production (ReCaptcha). Local development uses a Debug Token and requires the Firestore Emulator (`npx firebase emulators:start --only functions,firestore`).
-- **Stabilization (v1.2.1)**: CopilotKit v1.x protocol alignment and Vertex AI Proxy hardening for generational model parameters.
+- **Stabilization (v1.2.1+28)**: 
+    - **Model ID Mapping**: Transparently maps futuristic IDs (`2.5`, `3.0`) to real Vertex AI endpoints.
+    - **A2UI Schema Enforcement**: Strict property validation for `gen_ui_component` resolves "UNEXPECTED_TOOL_CALL" errors.
+    - **Robust Post-Processing**: `JsonParserService` handles `<tool_code>` artifacts and repairs LLM formatting issues.
+    - **Vertex AI Proxy Hardening**: Improved regional fallbacks and parameter parity for Imagen 3 and Veo.
 

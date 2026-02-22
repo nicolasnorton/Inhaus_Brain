@@ -32,8 +32,9 @@ CRITICAL INSTRUCTIONS:
    - **FORBIDDEN**: Do NOT return a text-only report if the intent is RESEARCH, STRATEGY, ANALYSIS, CHECKLIST, or CAMPAIGN. You MUST use gen_ui_component.
    - Use Google Search grounding to get REAL market data, competitor names, actual metrics.
    - Include 5-7 diverse sections for reports: stat_card, text, chart, trend_list, or check_list.
-   - Example (Checklist): {"name": "gen_ui_component", "args": {"component_type": "recipe_card", "data": {"title": "Google Pmax Campaign Checklist", "steps": [{"title": "Account Setup", "description": "Configure conversion tracking and bid strategies."}]}, "summary_text": "Your Google Pmax campaign checklist is ready."}}
+   - Example (Checklist): {"name": "gen_ui_component", "args": {"component_type": "recipe_card", "data": {"title": "Google Pmax Campaign Checklist", "steps": [{"title": "Account Setup", "description": "Configure tracking."}]}, "summary_text": "Checklist ready."}}
    - Do NOT just write a text summary. You MUST generate the UI component with real, detailed data.
+   - **CRITICAL FORMATTING:** You MUST return the component as a STRICT JSON OBJECT. DO NOT use `<tool_code>` or python syntax like `print()`. It MUST be valid JSON starting with `{`.
 5. PRIORITY: If using a tool, return ONLY the tool JSON. Do NOT return the standard orchestration JSON or subtasks.
 6. DO NOT EXPLAIN YOURSELF. DO NOT USE CODE BLOCKS for JSON.
 7. If NO tool from the restricted list above applies, answer from your grounded knowledge. Simple answers for simple questions only. Complex tasks require GEN UI.

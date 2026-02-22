@@ -1,3 +1,21 @@
+## [1.2.1+28] - 2026-02-21
+
+### Fixed
+- **Model Registry Alignment**: Corrected "futuristic" model IDs (`gemini-2.5-pro`, `gemini-3-pro-preview`) that caused `400 Bad Request` in Vertex AI. 
+- **Tiered Mapping**: Mapped ModelTiers to real, stable Vertex AI IDs:
+  - `pro` → `gemini-1.5-pro-002`
+  - `flash` → `gemini-1.5-flash-002`
+  - `frontier` → `gemini-2.0-pro-exp-02-05`
+  - `research` → `gemini-2.0-flash-thinking-exp-1219`
+- **Frontend/Backend Synchronization**: Updated both `ModelRegistry.dart` (Flutter) and `gemini_client.py` (Cloud Functions) for consistent routing.
+
+## [1.2.1+27] - 2026-02-21
+
+### Fixed
+- **GenUI/A2UI Logic**: Resolved "UNEXPECTED_TOOL_CALL" error by enforcing strict Vertex AI schema compliance.
+- **JSON Robustness**: Enhanced `JsonParserService` with robust fallback for Gemini's native `<tool_code>` artifacts.
+- **Workflow Stabilization**: Improved agent reliability for Research and Strategy tasks with multi-modal output support.
+
 ## [1.2.1-clean-fix] - 2026-02-09
 
 ### Fixed

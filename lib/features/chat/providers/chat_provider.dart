@@ -408,14 +408,17 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       ref: ref, // Phase 89: Pass ref for proximity sync
     );
 
+    final parsedA2ui = _extractA2uiPayload(aiRes.text);
+
     // Orchestrator Audit
-    final auditedContent = await ref.read(orchestratorProvider).auditResponse(aiRes.text, 'CopywriterAgent');
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(parsedA2ui.cleanText, 'CopywriterAgent');
 
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.copywriterAgent,
       createdAt: DateTime.now(),
+      metadata: parsedA2ui.uiPayload != null ? {'uiPayload': parsedA2ui.uiPayload} : null,
     );
 
     state = state!.copyWith(
@@ -448,14 +451,17 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       gemmaKey: gemmaKey,
     );
 
+    final parsedA2ui = _extractA2uiPayload(aiRes.text);
+
     // Orchestrator Audit
-    final auditedContent = await ref.read(orchestratorProvider).auditResponse(aiRes.text, 'DeveloperAgent');
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(parsedA2ui.cleanText, 'DeveloperAgent');
 
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.developerAgent,
       createdAt: DateTime.now(),
+      metadata: parsedA2ui.uiPayload != null ? {'uiPayload': parsedA2ui.uiPayload} : null,
     );
 
     state = state!.copyWith(
@@ -496,14 +502,17 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     // Let me update `ManagementAgent` properly in the next step to actually execute the tool.
     // For now, I'll update ChatProvider to just display the result.
     
+    final parsedA2ui = _extractA2uiPayload(resultText);
+
     // Orchestrator Audit
-    final auditedContent = await ref.read(orchestratorProvider).auditResponse(resultText, 'ManagementAgent');
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(parsedA2ui.cleanText, 'ManagementAgent');
 
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.managementAgent,
       createdAt: DateTime.now(),
+      metadata: parsedA2ui.uiPayload != null ? {'uiPayload': parsedA2ui.uiPayload} : null,
     );
 
     state = state!.copyWith(
@@ -578,7 +587,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     _updateMessageStatus(toolMsgId, 'Research Complete. Sources found: ${aiRes.sourceCitations?.length ?? 0}', extraMetadata: {'status': 'complete'});
 
     // 4. Orchestrator Audit
-    final auditedContent = await ref.read(orchestratorProvider).auditResponse(aiRes.text, 'ResearchAgent');
+    final parsedA2ui = _extractA2uiPayload(aiRes.text);
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(parsedA2ui.cleanText, 'ResearchAgent');
 
     // 5. Final Message with Sources Metadata
     // Transform simple URL strings into the map format likely expected by UI (or just pass as is if UI handles it)
@@ -591,13 +601,20 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         'snippet': 'Referenced by Google Grounding'
       }).toList();
     }
+    
+    Map<String, dynamic>? finalMetadata;
+    if (sourcesMetadata != null || parsedA2ui.uiPayload != null) {
+       finalMetadata = {};
+       if (sourcesMetadata != null) finalMetadata['sources'] = sourcesMetadata;
+       if (parsedA2ui.uiPayload != null) finalMetadata['uiPayload'] = parsedA2ui.uiPayload;
+    }
 
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.researchAgent,
       createdAt: DateTime.now(),
-      metadata: sourcesMetadata != null ? {'sources': sourcesMetadata} : null,
+      metadata: finalMetadata,
     );
 
     // 6. Propose Approval Widget
@@ -703,14 +720,17 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       gemmaKey: gemmaKey,
     );
 
+    final parsedA2ui = _extractA2uiPayload(aiRes.text);
+
     // Orchestrator Audit
-    final auditedContent = await ref.read(orchestratorProvider).auditResponse(aiRes.text, 'CreativeAgent');
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(parsedA2ui.cleanText, 'CreativeAgent');
 
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
       content: auditedContent,
       sender: MessageSender.creativeAgent,
       createdAt: DateTime.now(),
+      metadata: parsedA2ui.uiPayload != null ? {'uiPayload': parsedA2ui.uiPayload} : null,
     );
 
     // 4. Propose Approval Widget
@@ -834,12 +854,15 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       ref: ref,
     );
 
+    final parsedA2ui = _extractA2uiPayload(aiRes.text);
+
     final finalMsg = ChatMessage(
       id: const Uuid().v4(),
-      content: aiRes.text,
+      content: parsedA2ui.cleanText,
       sender: MessageSender.system,
       createdAt: DateTime.now(),
-      suggestedPrompts: await _generateSuggestedPrompts(aiRes.text, apiKey: apiKey),
+      metadata: parsedA2ui.uiPayload != null ? {'uiPayload': parsedA2ui.uiPayload} : null,
+      suggestedPrompts: await _generateSuggestedPrompts(parsedA2ui.cleanText, apiKey: apiKey),
     );
 
     state = state!.copyWith(
@@ -1038,6 +1061,48 @@ $lastResponse
       updatedAt: DateTime.now(),
     );
   }
+}
+
+class _A2uiParseResult {
+  final String cleanText;
+  final Map<String, dynamic>? uiPayload;
+  _A2uiParseResult(this.cleanText, this.uiPayload);
+}
+
+_A2uiParseResult _extractA2uiPayload(String text) {
+  Map<String, dynamic>? uiPayload;
+  String cleanText = text;
+  final a2uiRegex = RegExp(r'```json\s*---a2ui_JSON---\s*(\{.*?\})\s*```', dotAll: true, caseSensitive: false);
+  final matches = a2uiRegex.allMatches(text);
+  
+  if (matches.isNotEmpty) {
+    for (final match in matches) {
+       final jsonStr = match.group(1);
+       if (jsonStr != null) {
+          try {
+            final decoded = jsonDecode(jsonStr);
+            if (decoded is Map<String, dynamic>) {
+               if (decoded['type'] == 'surfaceUpdate' || decoded['type'] == 'beginRendering') {
+                  uiPayload ??= {};
+                  if (decoded['data'] != null) {
+                     uiPayload!.addAll(Map<String, dynamic>.from(decoded['data']));
+                     if (decoded['type'] == 'beginRendering' && decoded['data']['component'] != null) {
+                        uiPayload!['type'] = decoded['data']['component'];
+                     }
+                  } else {
+                     uiPayload!.addAll(decoded);
+                  }
+               }
+            }
+          } catch (e) {
+            debugPrint('ChatProvider: Error parsing A2UI block: $e');
+          }
+       }
+    }
+    cleanText = text.replaceAll(a2uiRegex, '').trim();
+    debugPrint('ChatProvider: Intercepted A2UI data. Cleaned text length: ${cleanText.length}');
+  }
+  return _A2uiParseResult(cleanText, uiPayload);
 }
 
 extension ListExtensions<T> on List<T> {

@@ -20,6 +20,13 @@ class JsonParserService {
       cleanText = match.group(1)!.trim();
     }
 
+    // 1.5 Strip <tool_code> tags (Gemini Code Execution artifact)
+    final toolCodeRegex = RegExp(r'<tool_code>\s*(.*?)\s*</tool_code>', dotAll: true);
+    final toolCodeMatch = toolCodeRegex.firstMatch(cleanText);
+    if (toolCodeMatch != null) {
+      cleanText = toolCodeMatch.group(1)!.trim();
+    }
+
     // 2. Strip Python print() wrapper (Common Gemini artifact)
     if (cleanText.startsWith('print(') && cleanText.endsWith(')')) {
       cleanText = cleanText.substring(6, cleanText.length - 1).trim();

@@ -473,6 +473,7 @@ class AssistantService {
     }
 
     String responseText = "";
+    Map<String, dynamic>? extractedUiPayload;
     
     // DIRECT EDGE AI SERVICE (Primary)
     List<String>? sources;
@@ -554,12 +555,15 @@ class AssistantService {
         mainConfig = AIModelConfig.geminiFlash;
       }
       
+      final nativeTools = combinedTools.where((t) => t.name != 'director').toList();
+      final toolList = nativeTools.map((t) => t.toFunctionSchema()).toList();
+      
       final edgeResult = await EdgeAIService.generateText(
         mainPrompt,
         modelConfig: mainConfig,
         ref: _ref,
         imageBytes: attachment != null ? Uint8List.fromList(attachment) : null,
-        tools: combinedTools.map((t) => t.toFunctionSchema()).toList(),
+        tools: toolList,
       );
 
       sources = edgeResult.sourceCitations;
@@ -568,7 +572,41 @@ class AssistantService {
       
       responseText = edgeResult.text;
       
-      // Parse JSON from EdgeAI response using JsonParserService
+      // --- A2UI Native Intercept ---
+      // Matches: ```json ---a2ui_JSON--- { ... } ```
+      final a2uiRegex = RegExp(r'```json\s*---a2ui_JSON---\s*(\{.*?\})\s*```', dotAll: true, caseSensitive: false);
+      final matches = a2uiRegex.allMatches(responseText);
+      
+      if (matches.isNotEmpty) {
+        for (final match in matches) {
+           final jsonStr = match.group(1);
+           if (jsonStr != null) {
+              try {
+                final decoded = jsonDecode(jsonStr);
+                if (decoded is Map<String, dynamic>) {
+                   if (decoded['type'] == 'surfaceUpdate' || decoded['type'] == 'beginRendering') {
+                      extractedUiPayload ??= {};
+                      if (decoded['data'] != null) {
+                         extractedUiPayload!.addAll(Map<String, dynamic>.from(decoded['data']));
+                         if (decoded['type'] == 'beginRendering' && decoded['data']['component'] != null) {
+                            extractedUiPayload!['type'] = decoded['data']['component'];
+                         }
+                      } else {
+                         extractedUiPayload!.addAll(decoded);
+                      }
+                   }
+                }
+              } catch (e) {
+                debugPrint('Assistant: Error parsing A2UI block: $e');
+              }
+           }
+        }
+        // Strip out the parsed A2UI blocks to leave clean conversational text
+        responseText = responseText.replaceAll(a2uiRegex, '').trim();
+        debugPrint('Assistant: Intercepted A2UI data. Cleaned text length: ${responseText.length}');
+      }
+      
+      // Parse JSON from EdgeAI response using JsonParserService (for classical tools)
       final parsed = JsonParserService.parseJson(responseText);
       debugPrint('Assistant: Parsed Object: $parsed');
 
@@ -806,22 +844,22 @@ class AssistantService {
            }
 
            // BRIAN ORCHESTRATION EXTRACTION
-           final hasOrchestration = parsed.containsKey('subtasks') || 
-                                  parsed.containsKey('final_output') ||
-                                  parsed.containsKey('subtareas') ||
-                                  parsed.containsKey('salida_final');
+           final hasOrchestration = parsed!.containsKey('subtasks') || 
+                                  parsed!.containsKey('final_output') ||
+                                  parsed!.containsKey('subtareas') ||
+                                  parsed!.containsKey('salida_final');
            
            if (hasOrchestration) {
              debugPrint('Assistant: Detected Brian Orchestration JSON');
              final blackboard = _ref.read(blackboardProvider.notifier);
-             final subtasks = parsed['subtasks'] ?? parsed['subtareas'];
+             final subtasks = parsed!['subtasks'] ?? parsed!['subtareas'];
              if (subtasks is List) {
                for (var task in subtasks) {
                  blackboard.addEvent(WorkflowEventType.agentAction, "Brian Plan: $task");
                }
              }
-             final output = parsed['final_output'] ?? parsed['salida_final'] ?? responseText;
-             final notes = parsed['verification_notes'] ?? parsed['notas_verificacion'];
+             final output = parsed!['final_output'] ?? parsed!['salida_final'] ?? responseText;
+             final notes = parsed!['verification_notes'] ?? parsed!['notas_verificacion'];
              if (notes != null) {
                blackboard.postFact('verification_notes', notes);
              }
@@ -848,7 +886,7 @@ class AssistantService {
        // Store in Cache
        await semanticCache.store(intentEnum.toString().split('.').last, mainPrompt, verifiedResponse);
        
-       return ToolExecutionSummary(text: verifiedResponse);
+       return ToolExecutionSummary(text: verifiedResponse, uiPayload: extractedUiPayload);
     }
 
     // Reset agents
@@ -870,7 +908,8 @@ class AssistantService {
 
     return ToolExecutionSummary(
       text: responseText, 
-      sources: sources
+      sources: sources,
+      uiPayload: extractedUiPayload,
     );
   }
 

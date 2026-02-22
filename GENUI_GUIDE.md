@@ -253,8 +253,76 @@ Strictly structured report with metrics and markdown content.
 
 ---
 
+## v3.0 Atomic Foundation Components
+
+The Atomic Spec enables rendering of standard Material 3 widgets from a nested JSON tree, mirroring Flutter's own widget hierarchy.
+
+### Schema Format
+```json
+{
+  "id": "unique-id",
+  "component": { "WidgetType": { ...props... } },
+  "children": [
+    { "id": "child-1", "component": { "Text": { "text": "Hello" } } }
+  ]
+}
+```
+
+### Supported Widget Types
+
+| Category | Widgets |
+| :--- | :--- |
+| **Layout** | `Row`, `Column`, `Stack`, `Wrap`, `Expanded`, `Padding`, `Center`, `SizedBox`, `AspectRatio` |
+| **Content** | `Text`, `Icon`, `Image` |
+| **Actions** | `Button`/`ElevatedButton`, `FilledButton`, `FilledTonalButton`, `OutlinedButton`, `TextButton`, `IconButton`, `FloatingActionButton` |
+| **Containers** | `Card`, `Container`, `ListTile` |
+| **Inputs** | `TextField`, `Checkbox`, `Switch`, `Slider`, `Radio`, `DropdownMenu` |
+| **Chips** | `Chip`, `ActionChip`, `FilterChip`, `ChoiceChip`, `InputChip` |
+| **Navigation** | `NavigationBar`, `BottomAppBar`, `Tabs`/`TabBar`, `SegmentedButton` |
+| **Feedback** | `LinearProgressIndicator`, `CircularProgressIndicator`, `Badge`, `SnackBarPreview` |
+| **Decoration** | `Divider`, `Tooltip` |
+
+### Text Styles (Material 3 Typography)
+Use `style` prop: `displayLarge`, `displayMedium`, `displaySmall`, `headlineLarge`, `headlineMedium`, `headlineSmall`, `titleLarge`, `titleMedium`, `titleSmall`, `bodyLarge`, `bodyMedium`, `bodySmall`, `labelLarge`, `labelMedium`, `labelSmall`.
+
+### Example: M3 Card with Actions
+```json
+{
+  "id": "profile-card",
+  "component": { "Card": { "elevation": 2, "borderRadius": 16 } },
+  "children": [
+    { "id": "img", "component": { "Image": { "url": "https://picsum.photos/400/200", "fit": "cover", "height": 200 } } },
+    { "id": "pad", "component": { "Padding": { "padding": 16 } }, "children": [
+      { "id": "title", "component": { "Text": { "text": "Material 3 Card", "style": "headlineSmall", "bold": true } } },
+      { "id": "body", "component": { "Text": { "text": "This card uses the Atomic A2UI Spec.", "style": "bodyMedium", "color": "grey" } } },
+      { "id": "actions", "component": { "Row": { "distribution": "end", "gap": "medium" } }, "children": [
+        { "id": "btn1", "component": { "OutlinedButton": { "label": "Cancel" } } },
+        { "id": "btn2", "component": { "FilledButton": { "label": "Submit" } } }
+      ]}
+    ]}
+  ]
+}
+```
+
+### Example: Chip Gallery
+```json
+{
+  "id": "chips", "component": { "Wrap": { "spacing": 8, "runSpacing": 8 } },
+  "children": [
+    { "id": "c1", "component": { "FilterChip": { "label": "Running", "selected": true } } },
+    { "id": "c2", "component": { "FilterChip": { "label": "Walking" } } },
+    { "id": "c3", "component": { "ActionChip": { "label": "Add Filter", "icon": "add" } } },
+    { "id": "c4", "component": { "InputChip": { "label": "Cycling", "icon": "directions_bike" } } }
+  ]
+}
+```
+
+---
+
 ## Implementation Notes
 - All components are rendered in `AiAssistantOverlay` via `_buildGenUI`.
+- **A2UI Compliance**: All components are registered via the `A2UILocalAdapter` for seamless streaming integration.
+- **Schema Validation**: Tool calls to `gen_ui_component` must include a valid `properties` map (even if empty) to satisfy Vertex AI strict mode.
 - Styles automatically adapt to Dark Mode (InhausBrain default).
 - For `carousel` and `mind_map`, ensure external URLs are valid/whitelisted if using strict CSP (though InhausBrain is loose on this currently).
 ### 3D Dialogue Scene (`dialogue_scene`)

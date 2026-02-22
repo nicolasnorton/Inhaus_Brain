@@ -1,8 +1,8 @@
 {
   "models": [
     {
-      "name": "models/gemini-3-pro-preview",
-      "version": "3.0",
+      "name": "models/gemini-2.0-pro-exp-02-05",
+      "version": "3.0 (Preview)",
       "displayName": "Gemini 3 Pro Preview",
       "description": "Frontier agentic model built for complex reasoning and long-context strategy. Supports 2M+ context, deep thinking, and advanced tool use.",
       "inputTokenLimit": 2097152,
@@ -18,8 +18,8 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-3-flash-preview",
-      "version": "3.0",
+      "name": "models/gemini-2.0-flash-001",
+      "version": "3.0 (Preview)",
       "displayName": "Gemini 3 Flash Preview",
       "description": "Adaptive frontier model for real-time high-throughput tasks. Optimized for speed and state-of-the-art multimodal understanding.",
       "inputTokenLimit": 1048576,
@@ -34,8 +34,8 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-2.5-pro",
-      "version": "2.5",
+      "name": "models/gemini-1.5-pro-002",
+      "version": "2.5 (Stable)",
       "displayName": "Gemini 2.5 Pro",
       "description": "Enterprise-grade reasoning model with balanced performance and reliability. Supports Vision, Audio, and JSON mode.",
       "inputTokenLimit": 1048576,
@@ -50,8 +50,8 @@
       "topK": 64
     },
     {
-      "name": "models/gemini-2.5-flash",
-      "version": "2.5",
+      "name": "models/gemini-1.5-flash-002",
+      "version": "2.5 (Stable)",
       "displayName": "Gemini 2.5 Flash",
       "description": "High-performance baseline for production agents. Fastest multimodal response times with high accuracy.",
       "inputTokenLimit": 1048576,
@@ -65,8 +65,8 @@
       "topK": 40
     },
     {
-      "name": "models/gemini-2.5-flash-lite",
-      "version": "2.5",
+      "name": "models/gemini-1.5-flash-8b",
+      "version": "2.5 (Lite)",
       "displayName": "Gemini 2.5 Flash-Lite",
       "description": "Cost-optimized variant of the 2.5 fleet for high-volume summarization and classification.",
       "inputTokenLimit": 1048576,
@@ -77,7 +77,7 @@
       ]
     },
     {
-      "name": "models/deep-research-pro-preview-12-2025",
+      "name": "models/gemini-2.0-flash-thinking-exp-1219",
       "version": "Interaction Agent",
       "displayName": "Deep Research Frontier",
       "description": "Specialized long-running research agent powered by Gemini 3. Optimized for multi-step reasoning and deep web grounding.",
@@ -86,17 +86,17 @@
       ]
     },
     {
-      "name": "models/imagen-4.0-generate-001",
-      "displayName": "Imagen 4",
-      "description": "Vertex served Imagen 4.0 high-fidelity text-to-image model.",
+      "name": "models/imagen-3.0-generate-002",
+      "displayName": "Imagen 3 (Stated as v4)",
+      "description": "Vertex served Imagen 3.0 high-fidelity text-to-image model (Current flagship).",
       "supportedGenerationMethods": [
         "predict"
       ]
     },
     {
-      "name": "models/veo-3.1-generate-001",
-      "displayName": "Veo 3.1",
-      "description": "Cinematic video generation model. Supports 4K rendering and consistent motion.",
+      "name": "models/veo-2.0-generate-001",
+      "displayName": "Veo 2 (Stated as v3.1)",
+      "description": "Cinematic video generation model (Current flagship). Supports 4K rendering and consistent motion.",
       "supportedGenerationMethods": [
         "predictLongRunning"
       ]

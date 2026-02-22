@@ -64,6 +64,7 @@ For "dialogue_scene":
           },
           'data': {
             'type': 'object',
+            'properties': {},
             'description': 'The structured data for the component. CRITICAL: Generate REAL, DETAILED, SPECIFIC data. Match the schema for the chosen component_type.'
           },
           'summary_text': {

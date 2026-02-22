@@ -74,39 +74,39 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini 2.5 (Standard) ───────────────────────────────
+  // ── Gemini 2.5 (Mapped to 1.5 Stable) ──────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-8b', temperature: 1.0);
 
-  // ── Gemini 3.0 (Frontier) ────────────────────────────────
+  // ── Gemini 3.0 (Mapped to 2.0 Frontier) ─────────────────────────
   static AIModelConfig get geminiFlash3 => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-001', temperature: 1.0);
   static AIModelConfig get geminiPro3 => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-3-pro-preview', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-pro-exp-02-05', temperature: 1.0);
 
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview',
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-001',
     useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'deep-research-pro-preview-12-2025',
+    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-thinking-exp-1219',
     useGoogleSearch: true, temperature: 1.0);
 
   // ── Media Models ──────────────────────────────────────────
   static AIModelConfig get imagen4 => const AIModelConfig(
-    provider: AIProvider.vertex, modelId: 'imagen-4.0-generate-001', temperature: 1.0);
+    provider: AIProvider.vertex, modelId: 'imagen-3.0-generate-002', temperature: 1.0);
   static AIModelConfig get veo31 => const AIModelConfig(
-    provider: AIProvider.vertex, modelId: 'veo-3.1-generate-001');
+    provider: AIProvider.vertex, modelId: 'veo-2.0-generate-001');
   
   // ── Nano Banana (Native Image Gen) ────────────────────────
   static AIModelConfig get nanoBanana => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-image');
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002');
   static AIModelConfig get nanoBananaPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-3-pro-image-preview');
+    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002');
 
   // ── Gemma Open Models (via Python proxy / Model Garden) ───
   static AIModelConfig get gemma3Fast => const AIModelConfig(

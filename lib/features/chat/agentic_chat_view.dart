@@ -28,6 +28,7 @@ import 'widgets/sources_carousel.dart';
 import 'widgets/message_actions_row.dart';
 
 import 'widgets/tool_selector_bar.dart';
+import '../assistant/presentation/widgets/gen_ui/gen_ui_renderer.dart';
 
 class AgenticChatView extends ConsumerStatefulWidget {
   const AgenticChatView({super.key});
@@ -322,6 +323,11 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                       ),
                       if (message.metadata != null && message.metadata!.containsKey('sources'))
                          SourcesCarousel(sources: (message.metadata!['sources'] as List).cast<Map<String, dynamic>>()),
+                      if (message.metadata != null && message.metadata!.containsKey('uiPayload'))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12.0),
+                          child: GenUIRenderer(payload: Map<String, dynamic>.from(message.metadata!['uiPayload'])),
+                        ),
                       if (message.attachments.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _buildAttachmentsList(message.attachments),

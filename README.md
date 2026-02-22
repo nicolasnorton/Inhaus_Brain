@@ -1,4 +1,4 @@
-# Inhaus Brain v1.1.13 - Agentic Workflow Management
+# Inhaus Brain v1.2.1+28 - Agentic Workflow Management
 
 **Inhaus Brain** is a premium, agent-led workflow orchestration platform designed for modern agencies. It leverages on-device AI and a human-in-the-loop architecture to automate campaign research, visual strategy, and creative execution.
 
@@ -57,7 +57,15 @@ A robust, event-driven architecture designed for stability and transparency:
 - **Semantic Cache**: Intelligent in-memory caching that stores LLM responses (hashed by intent and prompt) to reduce latency and token usage for repeated queries.
 - **Resilient Parsing**: Enhanced JSON extraction logic ensures reliable tool execution even with "noisy" LLM outputs.
 - **Human-in-the-Loop (The Gavel)**: Formal "Arbiter" pattern that detects stalled agents (retries > 2) and pauses execution for manual user review via specific `ApprovalCard` widgets.
-- **Strict Schema Enforcement**: "Typed Agents" use strict JSON validation to eliminate hallucinated structures.
+- **Strict Schema Enforcement**: "Typed Agents" use strict JSON validation (A2UI compliant) to eliminate hallucinated structures.
+- **A2UI Lifecycle**: Integrated with the Flutter GenUI SDK for streaming, token-efficient UI component delivery.
+
+### 🖥️ A2UI Composer Support 
+A fully-featured, built-in IDE experience for designing and testing AI UI components:
+- **3-Pane Widget Editor**: Live integrated JSON syntax editor, real-time widget preview canvas (using `AtomicUIRenderer`), and an isolated Copilot Agent for automated structural editing.
+- **Material 3 Parity**: Real-time rendering of complex Material 3 widgets via the Atomic Foundation Spec v3.0 (Buttons, Cards, Chips, Inputs, Media Players).
+- **Gallery & Components Library**: Pre-built, native documentation grids featuring rich sample templates like Music Players, Cinematic Video, and full page layouts.
+- **Cloud Persistence**: Seamlessly save and resume custom UI components to Firestore.
 
 ### 🏗️ Agent Development Kit (ADK)
 A powerful orchestration layer that allows for complex, multi-step workflows:
