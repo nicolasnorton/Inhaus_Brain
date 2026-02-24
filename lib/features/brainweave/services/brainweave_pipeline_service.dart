@@ -3,15 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/services/ai_proxy_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../workspace/services/agent_registry_service.dart';
-import '../models/brainweave_core.dart';
 import '../models/brainweave_node.dart';
-import '../models/brainweave_link.dart';
-import '../models/brainweave_session.dart';
 
 /// Implements the Ars Contexta 6R Pipeline for BrainWeave.
 /// Guaranteed fresh Gemini 2.5 Flash context per phase to prevent LLM attention decay.
@@ -20,26 +18,56 @@ class BrainWeavePipelineService {
   final FirebaseAuth _auth;
   final AgentRegistryService _agentRegistry;
   final BlackboardNotifier _blackboard;
-  final AIProxyService _aiProxy;
 
   BrainWeavePipelineService(
     this._firestore,
     this._auth,
     this._agentRegistry,
     this._blackboard,
-    this._aiProxy,
   );
 
   String get _userId => _auth.currentUser!.uid;
 
   CollectionReference get _cores => _firestore.collection('brainweave_cores');
   CollectionReference get _nodes => _firestore.collection('brainweave_nodes');
-  CollectionReference get _links => _firestore.collection('brainweave_links');
   CollectionReference get _sessions => _firestore.collection('brainweave_sessions');
 
   Future<String> _getArchitectPrompt() async {
     final prompt = await _agentRegistry.getAgentPrompt('brainweave_architect');
     return prompt ?? 'You are the BrainWeave Architect.';
+  }
+
+  /// Communicates with the external PicoClaw Go Cognitive Engine.
+  Future<Map<String, dynamic>> _callGoEngine({
+    required String sessionId,
+    required String phase,
+    required String input,
+    List<String> context = const [],
+  }) async {
+    // TODO: Move this to RemoteConfig or Environment variable
+    const engineUrl = 'http://localhost:8080/v1/pipeline/execute';
+    
+    try {
+      final response = await http.post(
+        Uri.parse(engineUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: dart_convert.jsonEncode({
+          'sessionId': sessionId,
+          'phase': phase,
+          'input': input,
+          'context': context,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return dart_convert.jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception('Go Engine returned ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('BrainWeavePipeline: Go Engine Error: $e');
+      rethrow;
+    }
   }
 
   /// Triggers the full 6R Pipeline for a given session.
@@ -53,11 +81,11 @@ class BrainWeavePipelineService {
 
     // PHASE 2: REDUCE
     _blackboard.transitionTo(BlackboardPhase.brainweaveReduce);
-    final insights = await _reducePhase(rawInput, architectPrompt);
+    final insights = await _reducePhase(sessionId, rawInput);
 
     // PHASE 3: REFLECT
     _blackboard.transitionTo(BlackboardPhase.brainweaveReflect);
-    final reflections = await _reflectPhase(insights, architectPrompt);
+    final reflections = await _reflectPhase(sessionId, insights);
 
     // PHASE 4: REWEAVE
     _blackboard.transitionTo(BlackboardPhase.brainweaveReweave);
@@ -83,7 +111,6 @@ class BrainWeavePipelineService {
   Future<void> resumePipelineOnApproval(String sessionId) async {
     final sessionDoc = await _sessions.doc(sessionId).get();
     if (!sessionDoc.exists) return;
-    
     final data = sessionDoc.data() as Map<String, dynamic>;
     final pendingReflections = List<dynamic>.from(data['pendingReflections'] ?? []);
     final architectPrompt = await _getArchitectPrompt();
@@ -142,32 +169,28 @@ class BrainWeavePipelineService {
     _blackboard.addEvent(WorkflowEventType.agentAction, "Record phase completed. Flow Space initialized.");
   }
 
-  /// 2. Reduce: Extract insights.
-  Future<List<dynamic>> _reducePhase(String rawInput, String systemInstruction) async {
-    final config = const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', responseMimeType: 'application/json');
-    final response = await AIProxyService.generateContent(
-      prompt: "Extract atomic structural insights from the following raw content: $rawInput\nReturn JSON array of strings.",
-      config: config,
-      systemInstruction: "$systemInstruction\nYou are in Phase 2: Reduce. Be ruthless in eliminating fluff.",
+  /// 2. Reduce: Extract insights via Go Engine.
+  Future<List<dynamic>> _reducePhase(String sessionId, String rawInput) async {
+    final response = await _callGoEngine(
+      sessionId: sessionId,
+      phase: 'reduce',
+      input: rawInput,
     );
     
-    final text = response['text'] as String;
-    // Assuming JSON array output due to structured prompting
-    return _parseJsonArray(text);
+    final output = response['output'] as String;
+    return _parseJsonArray(output);
   }
 
-  /// 3. Reflect: Synthesis and MOC mapping.
-  Future<List<dynamic>> _reflectPhase(List<dynamic> insights, String systemInstruction) async {
-    final config = const AIModelConfig(provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', responseMimeType: 'application/json');
-    final payload = insights.join('\n');
-    final response = await AIProxyService.generateContent(
-      prompt: "Synthesize these insights and propose MOC mappings: $payload\nReturn JSON array of JSON objects with 'title', 'description', and 'topics'.",
-      config: config,
-      systemInstruction: "$systemInstruction\nYou are in Phase 3: Reflect. Identify connections.",
+  /// 3. Reflect: Synthesis via Go Engine.
+  Future<List<dynamic>> _reflectPhase(String sessionId, List<dynamic> insights) async {
+    final response = await _callGoEngine(
+      sessionId: sessionId,
+      phase: 'reflect',
+      input: insights.join('\n'),
     );
     
-    final text = response['text'] as String;
-    return _parseJsonArray(text);
+    final output = response['output'] as String;
+    return _parseJsonArray(output);
   }
 
   /// 4. Reweave: Graph backward updates.
@@ -233,5 +256,5 @@ final brainWeavePipelineServiceProvider = Provider<BrainWeavePipelineService>((r
   final blackboard = ref.read(blackboardProvider.notifier);
   final aiProxy = ref.read(aiProxyServiceProvider);
 
-  return BrainWeavePipelineService(firestore, auth, registry, blackboard, aiProxy);
+  return BrainWeavePipelineService(firestore, auth, registry, blackboard);
 });

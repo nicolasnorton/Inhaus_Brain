@@ -6,7 +6,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:inhaus_brain/features/brainweave/services/brainweave_pipeline_service.dart';
 import 'package:inhaus_brain/core/architecture/blackboard.dart';
-import 'package:inhaus_brain/core/config/app_environment.dart';
 import 'package:inhaus_brain/core/services/ai_proxy_service.dart';
 
 // Mock Classes
@@ -15,9 +14,6 @@ class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
 class MockBlackboardNotifier extends Mock implements BlackboardNotifier {}
 class MockDocumentReference<T extends Object?> extends Mock implements DocumentReference<T> {}
 class MockCollectionReference<T extends Object?> extends Mock implements CollectionReference<T> {}
-
-
-
 class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 class MockAgentRegistryService extends Mock implements AgentRegistryService {}
 class MockUser extends Mock implements User {}
@@ -25,7 +21,6 @@ class MockAIProxyService extends Mock implements AIProxyService {}
 
 void main() {
   late BrainWeavePipelineService service;
-  late MockRef mockRef;
   late MockFirebaseFirestore mockFirestore;
   late MockFirebaseAuth mockAuth;
   late MockAgentRegistryService mockRegistry;
@@ -38,57 +33,96 @@ void main() {
   setUpAll(() {
     registerFallbackValue(BlackboardPhase.idle);
     registerFallbackValue(WorkflowEventType.agentAction);
+    registerFallbackValue(AgentStatus.idle);
+    registerFallbackValue(<String, dynamic>{});
+    registerFallbackValue(SetOptions(merge: true));
   });
 
   setUp(() {
-    mockRef = MockRef();
-    mockFirestore = MockFirebaseFirestore();
-    mockAuth = MockFirebaseAuth();
-    mockRegistry = MockAgentRegistryService();
-    mockAIProxy = MockAIProxyService();
-    mockBlackboard = MockBlackboardNotifier();
+    mockFirestore    = MockFirebaseFirestore();
+    mockAuth         = MockFirebaseAuth();
+    mockRegistry     = MockAgentRegistryService();
+    mockAIProxy      = MockAIProxyService();
+    mockBlackboard   = MockBlackboardNotifier();
     mockCollectionRef = MockCollectionReference<Map<String, dynamic>>();
-    mockDocRef = MockDocumentReference<Map<String, dynamic>>();
-    mockUser = MockUser();
+    mockDocRef       = MockDocumentReference<Map<String, dynamic>>();
+    mockUser         = MockUser();
 
     when(() => mockAuth.currentUser).thenReturn(mockUser);
     when(() => mockUser.uid).thenReturn('test-user-id');
-    when(() => mockRegistry.getAgentPrompt(any())).thenAnswer((_) async => 'prompt');
-
-    // Setup Blackboard Mock
-    when(() => mockRef.read(blackboardProvider.notifier)).thenReturn(mockBlackboard);
-    
-    // Setup Firestore Mock
+    when(() => mockRegistry.getAgentPrompt(any())).thenAnswer((_) async => 'You are the BrainWeave Architect.');
+    when(() => mockBlackboard.transitionTo(any())).thenReturn(null);
+    when(() => mockBlackboard.addEvent(any(), any())).thenReturn(null);
+    when(() => mockBlackboard.updateAgentStatus(any(), any())).thenReturn(null);
     when(() => mockFirestore.collection(any())).thenReturn(mockCollectionRef);
     when(() => mockCollectionRef.doc(any())).thenReturn(mockDocRef);
     when(() => mockDocRef.set(any(), any())).thenAnswer((_) async {});
     when(() => mockDocRef.update(any())).thenAnswer((_) async {});
 
-    service = BrainWeavePipelineService(mockFirestore, mockAuth, mockRegistry, mockBlackboard, mockAIProxy);
+    service = BrainWeavePipelineService(
+      mockFirestore, mockAuth, mockRegistry, mockBlackboard,
+    );
   });
 
-  group('BrainWeave 6R Pipeline Tests', () {
-    test('Service initialization isolates AI context safely', () {
+  group('BrainWeave 6R Pipeline — Phase Transition Tests', () {
+    test('Service instantiates correctly', () {
       expect(service, isNotNull);
     });
 
-    test('Phase 1: Record sets Blackboard into Record phase', () async {
-      when(() => mockBlackboard.transitionTo(any())).thenReturn(null);
-      when(() => mockBlackboard.addEvent(any(), any())).thenReturn(null);
-      
+    test('runPipeline transitions to brainweaveRecord as first phase', () async {
       try {
-         await service.runPipeline('session-123', 'Test input for recording');
-      } catch (e) {
-         // Expected to catch due to unmocked deeply nested static AIProxyService statics
+        await service.runPipeline('session-test', 'Test raw input');
+      } catch (_) {
+        // AIProxyService.generateContent is static; downstream errors expected in unit test
       }
-      
-      verify(() => mockBlackboard.transitionTo(BlackboardPhase.brainweaveRecord)).called(greaterThanOrEqualTo(1));
+      verify(() => mockBlackboard.transitionTo(BlackboardPhase.brainweaveRecord)).called(1);
     });
 
-    test('Zero-Conflict validation: Pipeline runs independently of active standard agents', () {
-      // Ensure the pipeline can orchestrate without colliding with standard AgentRegistry keys
-      expect(BlackboardPhase.values.contains(BlackboardPhase.approval), isTrue);
-      // Approval phase is reused properly by Gavel without introducing new core enums unnecessarilly
+    test('runPipeline transitions to brainweaveReduce after Record', () async {
+      try {
+        await service.runPipeline('session-test', 'Test raw input');
+      } catch (_) {}
+      verify(() => mockBlackboard.transitionTo(BlackboardPhase.brainweaveReduce)).called(1);
+    });
+
+    test('runPipeline eventually reaches reviewPending (Reweave Gavel)', () async {
+      try {
+        await service.runPipeline('session-test', 'Test raw input');
+      } catch (_) {}
+      verify(() => mockBlackboard.transitionTo(BlackboardPhase.reviewPending)).called(greaterThanOrEqualTo(1));
+    });
+
+    test('runPipeline emits humanFeedbackNeeded event at Reweave gate', () async {
+      try {
+        await service.runPipeline('session-test', 'Test raw input');
+      } catch (_) {}
+      verify(() => mockBlackboard.addEvent(WorkflowEventType.humanFeedbackNeeded, any())).called(greaterThanOrEqualTo(1));
+    });
+
+    test('finalizeRethink transitions to idle and emits agentFinished', () async {
+      when(() => mockDocRef.get()).thenAnswer((_) async {
+        final snap = MockDocumentSnapshot();
+        when(() => snap.exists).thenReturn(false);
+        return snap;
+      });
+      await service.finalizeRethink('session-rethink');
+      verify(() => mockBlackboard.transitionTo(BlackboardPhase.idle)).called(1);
+      verify(() => mockBlackboard.addEvent(WorkflowEventType.agentFinished, any())).called(1);
+    });
+
+    test('All 6 BrainWeave phases exist in BlackboardPhase enum', () {
+      final phases = BlackboardPhase.values.map((e) => e.name).toSet();
+      expect(phases, containsAll([
+        'brainweaveRecord',
+        'brainweaveReduce',
+        'brainweaveReflect',
+        'brainweaveReweave',
+        'brainweaveVerify',
+        'brainweaveRethink',
+      ]));
     });
   });
 }
+
+// Minimal mock for DocumentSnapshot
+class MockDocumentSnapshot extends Mock implements DocumentSnapshot<Map<String, dynamic>> {}

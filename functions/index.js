@@ -659,6 +659,22 @@ exports.ghlWebhook = functions.https.onRequest(async (req, res) => {
 const { exportEventsToBigQuery } = require('./analytics');
 exports.exportEventsToBigQuery = exportEventsToBigQuery;
 
+/**
+ * BRAINWEAVE — ARS CONTEXTA 4-HOOK CLOUD FUNCTIONS
+ */
+const {
+    brainweaveSessionStart,
+    brainweavePostToolUseValidate,
+    brainweaveAutoCommit,
+    brainweaveStop,
+} = require('./src/brainweave/bigquery_streaming');
+
+exports.brainweaveSessionStart = brainweaveSessionStart;
+exports.brainweavePostToolUseValidate = brainweavePostToolUseValidate;
+exports.brainweaveAutoCommit = brainweaveAutoCommit;
+exports.brainweaveStop = brainweaveStop;
+
+
 
 function _mapGhlStatus(ghlStatus) {
     const status = ghlStatus.toLowerCase();

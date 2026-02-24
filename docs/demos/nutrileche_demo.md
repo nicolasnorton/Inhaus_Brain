@@ -46,5 +46,5 @@
 ## Key Talking Points
 - Brand refresh is the deepest workflow (strategy → visuals → video → proposal → approval)
 - Demonstrates Veo video generation end-to-end
-- Showcases the full 6-phase PicoClaw pipeline
+- Showcases the full 6R BrainWeave pipeline (Ars Contexta native)
 - New client added with zero code changes to the pipeline

@@ -151,6 +151,7 @@ class DashboardScreen extends ConsumerWidget {
                         _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
                         _buildNavItem(context, 11, FontAwesomeIcons.building, "Agency", ref),
                         if (!isClient) _buildNavItem(context, 12, FontAwesomeIcons.wandMagicSparkles, "Composer", ref),
+                        _buildNavItem(context, 13, FontAwesomeIcons.brain, "BrainWeave", ref),
                         _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
                         if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
                         _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref), // Enabled for all
@@ -228,8 +229,9 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/debug')) return 8;
     if (location.startsWith('/admin')) return 9;
     if (location.startsWith('/reports')) return 10;
-    if (location.startsWith('/agency')) return 11; // Added
-    if (location.startsWith('/composer')) return 12; // Added
+    if (location.startsWith('/agency')) return 11;
+    if (location.startsWith('/composer')) return 12;
+    if (location.startsWith('/brainweave')) return 13;
     return 0;
   }
 
@@ -305,8 +307,11 @@ class DashboardScreen extends ConsumerWidget {
       case 11: // Added
         context.go('/agency');
         break;
-      case 12: // Added
+      case 12:
         context.go('/composer');
+        break;
+      case 13:
+        context.go('/brainweave');
         break;
     }
   }
@@ -455,6 +460,12 @@ class DashboardHome extends ConsumerWidget {
                           icon: FontAwesomeIcons.wandMagicSparkles,
                           label: "Composer",
                           onTap: () => context.go('/composer'),
+                        ),
+                         _buildNavCard(
+                          context,
+                          icon: FontAwesomeIcons.brain,
+                          label: "BrainWeave",
+                          onTap: () => context.go('/brainweave'),
                         ),
                         _buildNavCard(
                           context,

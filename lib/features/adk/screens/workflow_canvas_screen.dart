@@ -281,6 +281,9 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                       _buildCategoryHeader("OUTPUT"),
                       _buildTool(FontAwesomeIcons.commentDots, "Answer", WorkflowNodeType.answer),
                       _buildTool(FontAwesomeIcons.rightFromBracket, AppLocalizations.of(context)!.nodeEnd, WorkflowNodeType.output),
+                      const Divider(color: Colors.white10, height: 32),
+                      _buildCategoryHeader("BRAINWEAVE"),
+                      _buildTool(FontAwesomeIcons.brain, "6R Pipeline", WorkflowNodeType.brainweavePipeline),
                     ],
                   ),
                 ),
@@ -783,6 +786,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.deepResearch: return FontAwesomeIcons.magnifyingGlassChart;
       case WorkflowNodeType.imageGeneration: return FontAwesomeIcons.image;
       case WorkflowNodeType.videoGeneration: return FontAwesomeIcons.video;
+      case WorkflowNodeType.brainweavePipeline: return FontAwesomeIcons.brain;
     }
   }
 
@@ -825,6 +829,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return Colors.pinkAccent;
       case WorkflowNodeType.videoGeneration:
         return Colors.redAccent;
+      case WorkflowNodeType.brainweavePipeline:
+        return const Color(0xFF6C3DE8);
     }
   }
 

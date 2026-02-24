@@ -26,7 +26,7 @@ class RemoteConfigService {
     ));
 
     await _remoteConfig.setDefaults(const {
-      'pico_claw_enabled': true,
+      'brainweave_engine_enabled': true,
     });
 
     try {
@@ -37,5 +37,5 @@ class RemoteConfigService {
     }
   }
 
-  bool get picoClawEnabled => _remoteConfig.getBool('pico_claw_enabled');
+  bool get brainweaveEngineEnabled => _remoteConfig.getBool('brainweave_engine_enabled');
 }

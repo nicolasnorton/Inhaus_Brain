@@ -117,7 +117,8 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
       case WorkflowNodeType.documentExtractor: return FontAwesomeIcons.filePdf;
       case WorkflowNodeType.variableAssigner: return FontAwesomeIcons.penToSquare;
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
-      case WorkflowNodeType.note: return FontAwesomeIcons.stickyNote;
+      case WorkflowNodeType.note: return FontAwesomeIcons.noteSticky;
+      case WorkflowNodeType.brainweavePipeline: return FontAwesomeIcons.brain;
       default: return FontAwesomeIcons.circle;
     }
   }
@@ -208,7 +209,35 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
         return const Center(child: Text("Image Generation Config (Coming Soon)"));
       case WorkflowNodeType.videoGeneration:
         return const Center(child: Text("Video Generation Config (Coming Soon)"));
+      case WorkflowNodeType.brainweavePipeline:
+        return _buildBrainWeaveConfig(step);
     }
+  }
+
+  Widget _buildBrainWeaveConfig(PipelineStep step) {
+    final rawInput = step.config['rawInput'] ?? '';
+    final clientId = step.config['clientId'] ?? 'default';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSubtitle("BRAINWEAVE 6R PIPELINE"),
+        const Text(
+          "This node triggers a full 6R sequence: Record, Reduce, Reflect, Reweave, Verify, Rethink.",
+          style: TextStyle(color: Colors.white38, fontSize: 10),
+        ),
+        const SizedBox(height: 16),
+        _buildSubtitle("RAW INPUT (FLOW SPACE)"),
+        _buildTextArea(rawInput, (val) {
+          _updateStep(step.id, config: {...step.config, 'rawInput': val});
+        }, "Knowledge to process..."),
+        const SizedBox(height: 16),
+        _buildSubtitle("CLIENT CONTEXT (CORE SPACE)"),
+        _buildTextField(clientId, (val) {
+          _updateStep(step.id, config: {...step.config, 'clientId': val});
+        }, "e.g. baco_austro_01"),
+      ],
+    );
   }
 
   // --- Helper Widgets ---

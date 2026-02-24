@@ -61,6 +61,11 @@ class FeatureFlags {
   static bool get enableStitch =>
       _overrides['enableStitch'] ?? AppConfig.enableStitch;
 
+  // ── BrainWeave ────────────────────────────────────────────────────────────
+  /// Controls visibility of the BrainWeave workspace tab and 6R pipeline.
+  static bool get brainweaveEnabled =>
+      _overrides['brainweave_enabled'] ?? true;
+
   /// Check any flag by name (for dynamic/future flags)
   static bool isEnabled(String flagName, {bool defaultValue = false}) =>
       _overrides[flagName] ?? defaultValue;

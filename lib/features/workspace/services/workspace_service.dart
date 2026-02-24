@@ -87,8 +87,11 @@ class WorkspaceService {
       await updateDocument('agent_rules', '# Agent Rules\n\nNo specific rules configured.');
     }
 
-    // Initialize empty memory document
-    await updateDocument('memory', _defaultMemory);
+    // Seed HEARTBEAT.md (PicoClaw 0.1+)
+    await updateDocument('HEARTBEAT.md', _defaultHeartbeat);
+
+    // Seed TOOLS.md (PicoClaw 0.1+)
+    await updateDocument('TOOLS.md', _defaultTools);
 
     debugPrint('WorkspaceService: Workspace seeded successfully');
     return true;
@@ -104,25 +107,33 @@ class WorkspaceService {
 
     final parts = <String>[];
 
-    // 1. Identity (always loaded)
-    final identity = await getDocument('identity');
-    if (identity != null && identity.isNotEmpty) parts.add(identity);
+    // 1. IDENTITY.md (Standardized)
+    final identity = await getDocument('identity') ?? await getDocument('IDENTITY.md');
+    if (identity != null && identity.isNotEmpty) parts.add('FILE: IDENTITY.md\n$identity');
 
-    // 2. Soul (always loaded)
-    final soul = await getDocument('soul');
-    if (soul != null && soul.isNotEmpty) parts.add(soul);
+    // 2. SOUL.md (Standardized)
+    final soul = await getDocument('soul') ?? await getDocument('SOUL.md');
+    if (soul != null && soul.isNotEmpty) parts.add('FILE: SOUL.md\n$soul');
 
-    // 3. User profile (always loaded)
-    final profile = await getDocument('user_profile');
-    if (profile != null && profile.isNotEmpty) parts.add(profile);
+    // 3. USER.md (Standardized)
+    final profile = await getDocument('user_profile') ?? await getDocument('USER.md');
+    if (profile != null && profile.isNotEmpty) parts.add('FILE: USER.md\n$profile');
 
-    // 4. Agent rules (always loaded)
-    final rules = await getDocument('agent_rules');
-    if (rules != null && rules.isNotEmpty) parts.add(rules);
+    // 4. AGENTS.md (Standardized)
+    final rules = await getDocument('agent_rules') ?? await getDocument('AGENTS.md');
+    if (rules != null && rules.isNotEmpty) parts.add('FILE: AGENTS.md\n$rules');
 
-    // 5. Memory (always loaded — Phase 3 enriches this)
-    final memory = await getDocument('memory');
-    if (memory != null && memory.isNotEmpty) parts.add(memory);
+    // 5. MEMORY.md (Standardized)
+    final memory = await getDocument('memory') ?? await getDocument('MEMORY.md');
+    if (memory != null && memory.isNotEmpty) parts.add('FILE: MEMORY.md\n$memory');
+
+    // 6. HEARTBEAT.md (Periodic Tasks)
+    final heartbeat = await getDocument('HEARTBEAT.md');
+    if (heartbeat != null && heartbeat.isNotEmpty) parts.add('FILE: HEARTBEAT.md\n$heartbeat');
+
+    // 7. TOOLS.md (External Capability Definitions)
+    final tools = await getDocument('TOOLS.md');
+    if (tools != null && tools.isNotEmpty) parts.add('FILE: TOOLS.md\n$tools');
 
     return parts.join('\n\n---\n\n');
   }
@@ -176,12 +187,25 @@ You are Brian, the chief of staff for Inhaus Brain — a digital marketing agenc
 (Brian will update this as he learns about you)
 ''';
 
-  static const _defaultMemory = '''# Brian's Memory
-
-## Initialized
-- Workspace created. No memories recorded yet.
-''';
-}
+  static const _defaultMemory = '''# MEMORY.md
+ 
+ ## Initialized
+ - Workspace created. No memories recorded yet.
+ ''';
+ 
+   static const _defaultHeartbeat = '''# HEARTBEAT.md
+ ## Periodic Tasks
+ - Check active campaigns every 30 minutes.
+ - Summarize daily notes at 00:00.
+ ''';
+ 
+   static const _defaultTools = '''# TOOLS.md
+ ## Agency Capabilities
+ - search_ads: Search Google Ads data.
+ - generate_copy: Produce high-fidelity marketing copy.
+ - flux_generate: Produce AI imagery.
+ ''';
+ }
 
 // ─── Riverpod Providers ────────────────────────────────────────
 

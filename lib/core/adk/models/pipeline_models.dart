@@ -73,7 +73,8 @@ enum WorkflowNodeType {
   dialogueScene,
   deepResearch,
   imageGeneration,
-  videoGeneration
+  videoGeneration,
+  brainweavePipeline,
 }
 
 enum PipelineStepType { sequential, parallel, loop }

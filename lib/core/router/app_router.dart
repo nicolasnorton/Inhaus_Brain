@@ -64,6 +64,7 @@ import '../../features/composer/screens/widget_editor_screen.dart';
 import '../../features/composer/screens/composer_gallery_screen.dart';
 import '../../features/composer/screens/composer_components_screen.dart';
 import '../../features/composer/screens/composer_icons_screen.dart';
+import '../../features/brainweave/ui/brainweave_workspace_tab.dart';
 
 import '../../core/auth/auth_service.dart';
 import '../../features/auth/models/user_model.dart';
@@ -429,6 +430,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const ComposerIconsScreen(),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/brainweave',
+            builder: (context, state) => const BrainWeaveWorkspaceTab(),
           ),
           // Fallback routes for GenUI components if Assistant navigates
           GoRoute(
