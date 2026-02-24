@@ -22,133 +22,226 @@ const List<GalleryTemplate> composerGalleryTemplates = [
     jsonSchema: '''{
   "id": "root",
   "component": {
-    "Card": {
-      "child": "main-col"
-    }
+    "Card": {}
   },
   "children": [
     {
       "id": "main-col",
       "component": {
         "Column": {
-          "gap": "medium",
-          "children": { "explicitList": ["header-row", "cities-row", "details-row"] }
+          "gap": "medium"
         }
-      }
-    },
-    {
-      "id": "header-row",
-      "component": {
-        "Row": {
-          "distribution": "spaceBetween",
-          "alignment": "center",
-          "children": { "explicitList": ["flight-id-row", "date-text"] }
+      },
+      "children": [
+        {
+          "id": "header-row",
+          "component": {
+            "Row": {
+              "distribution": "spaceBetween",
+              "alignment": "center"
+            }
+          },
+          "children": [
+            {
+              "id": "flight-id-row",
+              "component": {
+                "Row": {
+                  "gap": "small",
+                  "alignment": "center"
+                }
+              },
+              "children": [
+                {
+                  "id": "plane-icon",
+                  "component": {
+                    "Icon": {
+                      "icon": "flight_takeoff",
+                      "size": 24,
+                      "color": "primary"
+                    }
+                  }
+                },
+                {
+                  "id": "flight-number",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "OS 87"
+                      },
+                      "style": "headlineMedium"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "date-text",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Mon, Dec 15"
+                  },
+                  "style": "bodyMedium",
+                  "color": "secondary"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "cities-row",
+          "component": {
+            "Row": {
+              "distribution": "spaceBetween",
+              "alignment": "center"
+            }
+          },
+          "children": [
+            {
+              "id": "city-dep",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Vienna"
+                  },
+                  "style": "titleLarge"
+                }
+              }
+            },
+            {
+              "id": "arrow-icon",
+              "component": {
+                "Icon": {
+                  "icon": "arrow_forward",
+                  "size": 20,
+                  "color": "secondary"
+                }
+              }
+            },
+            {
+              "id": "city-arr",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "New York"
+                  },
+                  "style": "titleLarge"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "details-row",
+          "component": {
+            "Row": {
+              "distribution": "spaceBetween"
+            }
+          },
+          "children": [
+            {
+              "id": "dep-info",
+              "component": {
+                "Column": {
+                  "gap": "small"
+                }
+              },
+              "children": [
+                {
+                  "id": "dep-label",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Departs"
+                      },
+                      "style": "labelMedium",
+                      "color": "secondary"
+                    }
+                  }
+                },
+                {
+                  "id": "dep-time",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "10:15 AM"
+                      },
+                      "style": "titleLarge"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "status-info",
+              "component": {
+                "Column": {
+                  "gap": "small"
+                }
+              },
+              "children": [
+                {
+                  "id": "status-label",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Status"
+                      },
+                      "style": "labelMedium",
+                      "color": "secondary"
+                    }
+                  }
+                },
+                {
+                  "id": "status-val",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "On Time"
+                      },
+                      "style": "bodyMedium",
+                      "color": "primary"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "arr-info",
+              "component": {
+                "Column": {
+                  "gap": "small"
+                }
+              },
+              "children": [
+                {
+                  "id": "arr-label",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Arrives"
+                      },
+                      "style": "labelMedium",
+                      "color": "secondary"
+                    }
+                  }
+                },
+                {
+                  "id": "arr-time",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "2:30 PM"
+                      },
+                      "style": "titleLarge"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
-      }
-    },
-    {
-      "id": "flight-id-row",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["plane-icon", "flight-number"] }
-        }
-      }
-    },
-    {
-      "id": "plane-icon",
-      "component": { "Icon": { "icon": "flight_takeoff", "size": 24, "color": "primary" } }
-    },
-    {
-      "id": "flight-number",
-      "component": { "Text": { "text": {"value": "OS 87"}, "style": "headlineMedium" } }
-    },
-    {
-      "id": "date-text",
-      "component": { "Text": { "text": {"value": "Mon, Dec 15"}, "style": "bodyMedium", "color": "secondary" } }
-    },
-    {
-      "id": "cities-row",
-      "component": {
-        "Row": {
-          "distribution": "spaceBetween",
-          "alignment": "center",
-          "children": { "explicitList": ["city-dep", "arrow-icon", "city-arr"] }
-        }
-      }
-    },
-    {
-      "id": "city-dep",
-      "component": { "Text": { "text": {"value": "Vienna"}, "style": "titleLarge" } }
-    },
-    {
-      "id": "arrow-icon",
-      "component": { "Icon": { "icon": "arrow_forward", "size": 20, "color": "secondary" } }
-    },
-    {
-      "id": "city-arr",
-      "component": { "Text": { "text": {"value": "New York"}, "style": "titleLarge" } }
-    },
-    {
-      "id": "details-row",
-      "component": {
-        "Row": {
-          "distribution": "spaceBetween",
-          "children": { "explicitList": ["dep-info", "status-info", "arr-info"] }
-        }
-      }
-    },
-    {
-      "id": "dep-info",
-      "component": {
-        "Column": {
-          "gap": "small",
-          "children": { "explicitList": ["dep-label", "dep-time"] }
-        }
-      }
-    },
-    {
-      "id": "dep-label",
-      "component": { "Text": { "text": {"value": "Departs"}, "style": "labelMedium", "color": "secondary" } }
-    },
-    {
-      "id": "dep-time",
-      "component": { "Text": { "text": {"value": "10:15 AM"}, "style": "titleLarge" } }
-    },
-    {
-      "id": "status-info",
-      "component": {
-        "Column": {
-          "gap": "small",
-          "children": { "explicitList": ["status-label", "status-val"] }
-        }
-      }
-    },
-    {
-      "id": "status-label",
-      "component": { "Text": { "text": {"value": "Status"}, "style": "labelMedium", "color": "secondary" } }
-    },
-    {
-      "id": "status-val",
-      "component": { "Text": { "text": {"value": "On Time"}, "style": "bodyMedium", "color": "primary" } }
-    },
-    {
-      "id": "arr-info",
-      "component": {
-        "Column": {
-          "gap": "small",
-          "children": { "explicitList": ["arr-label", "arr-time"] }
-        }
-      }
-    },
-    {
-      "id": "arr-label",
-      "component": { "Text": { "text": {"value": "Arrives"}, "style": "labelMedium", "color": "secondary" } }
-    },
-    {
-      "id": "arr-time",
-      "component": { "Text": { "text": {"value": "2:30 PM"}, "style": "titleLarge" } }
+      ]
     }
   ]
 }''',
@@ -160,9 +253,7 @@ const List<GalleryTemplate> composerGalleryTemplates = [
     jsonSchema: '''{
   "id": "root",
   "component": {
-    "Card": {
-      "child": "main-col"
-    }
+    "Card": {}
   },
   "children": [
     {
@@ -170,88 +261,181 @@ const List<GalleryTemplate> composerGalleryTemplates = [
       "component": {
         "Column": {
           "alignment": "center",
-          "gap": "medium",
-          "children": { "explicitList": ["avatar", "name", "handle", "bio", "stats-row", "follow-btn"] }
+          "gap": "medium"
         }
-      }
-    },
-    {
-      "id": "avatar",
-      "component": {
-        "Image": {
-          "url": "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-          "width": 100,
-          "height": 100,
-          "borderRadius": 50,
-          "fit": "cover"
+      },
+      "children": [
+        {
+          "id": "avatar",
+          "component": {
+            "Image": {
+              "url": "https://i.pravatar.cc/150?u=a042581f4e29026704d",
+              "width": 100,
+              "height": 100,
+              "borderRadius": 50,
+              "fit": "cover"
+            }
+          }
+        },
+        {
+          "id": "name",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "Sarah Chen"
+              },
+              "style": "headlineSmall"
+            }
+          }
+        },
+        {
+          "id": "handle",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "@sarahchen"
+              },
+              "style": "bodyMedium",
+              "color": "secondary"
+            }
+          }
+        },
+        {
+          "id": "bio",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "Product Designer at Tech Co. Creating delightful experiences."
+              },
+              "style": "bodyMedium",
+              "textAlign": "center"
+            }
+          }
+        },
+        {
+          "id": "stats-row",
+          "component": {
+            "Row": {
+              "distribution": "spaceEvenly"
+            }
+          },
+          "children": [
+            {
+              "id": "stat-1",
+              "component": {
+                "Column": {
+                  "alignment": "center",
+                  "gap": "small"
+                }
+              },
+              "children": [
+                {
+                  "id": "v1",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "12.4K"
+                      },
+                      "style": "titleMedium"
+                    }
+                  }
+                },
+                {
+                  "id": "l1",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Followers"
+                      },
+                      "style": "labelMedium",
+                      "color": "secondary"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "stat-2",
+              "component": {
+                "Column": {
+                  "alignment": "center",
+                  "gap": "small"
+                }
+              },
+              "children": [
+                {
+                  "id": "v2",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "892"
+                      },
+                      "style": "titleMedium"
+                    }
+                  }
+                },
+                {
+                  "id": "l2",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Following"
+                      },
+                      "style": "labelMedium",
+                      "color": "secondary"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "stat-3",
+              "component": {
+                "Column": {
+                  "alignment": "center",
+                  "gap": "small"
+                }
+              },
+              "children": [
+                {
+                  "id": "v3",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "347"
+                      },
+                      "style": "titleMedium"
+                    }
+                  }
+                },
+                {
+                  "id": "l3",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Posts"
+                      },
+                      "style": "labelMedium",
+                      "color": "secondary"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "follow-btn",
+          "component": {
+            "Button": {
+              "label": {
+                "value": "Follow"
+              },
+              "style": "filled"
+            }
+          }
         }
-      }
-    },
-    {
-      "id": "name",
-      "component": { "Text": { "text": {"value": "Sarah Chen"}, "style": "headlineSmall" } }
-    },
-    {
-      "id": "handle",
-      "component": { "Text": { "text": {"value": "@sarahchen"}, "style": "bodyMedium", "color": "secondary" } }
-    },
-    {
-      "id": "bio",
-      "component": { "Text": { "text": {"value": "Product Designer at Tech Co. Creating delightful experiences."}, "style": "bodyMedium", "textAlign": "center" } }
-    },
-    {
-      "id": "stats-row",
-      "component": {
-        "Row": {
-          "distribution": "spaceEvenly",
-          "children": { "explicitList": ["stat-1", "stat-2", "stat-3"] }
-        }
-      }
-    },
-    {
-      "id": "stat-1",
-      "component": {
-        "Column": {
-          "alignment": "center",
-          "gap": "small",
-          "children": { "explicitList": ["v1", "l1"] }
-        }
-      }
-    },
-    { "id": "v1", "component": { "Text": { "text": {"value": "12.4K"}, "style": "titleMedium" } } },
-    { "id": "l1", "component": { "Text": { "text": {"value": "Followers"}, "style": "labelMedium", "color": "secondary" } } },
-    {
-      "id": "stat-2",
-      "component": {
-        "Column": {
-          "alignment": "center",
-          "gap": "small",
-          "children": { "explicitList": ["v2", "l2"] }
-        }
-      }
-    },
-    { "id": "v2", "component": { "Text": { "text": {"value": "892"}, "style": "titleMedium" } } },
-    { "id": "l2", "component": { "Text": { "text": {"value": "Following"}, "style": "labelMedium", "color": "secondary" } } },
-    {
-      "id": "stat-3",
-      "component": {
-        "Column": {
-          "alignment": "center",
-          "gap": "small",
-          "children": { "explicitList": ["v3", "l3"] }
-        }
-      }
-    },
-    { "id": "v3", "component": { "Text": { "text": {"value": "347"}, "style": "titleMedium" } } },
-    { "id": "l3", "component": { "Text": { "text": {"value": "Posts"}, "style": "labelMedium", "color": "secondary" } } },
-    {
-      "id": "follow-btn",
-      "component": {
-        "Button": {
-          "label": {"value": "Follow"},
-          "style": "filled"
-        }
-      }
+      ]
     }
   ]
 }''',
@@ -338,9 +522,7 @@ const List<GalleryTemplate> composerGalleryTemplates = [
     jsonSchema: '''{
   "id": "root",
   "component": {
-    "Card": {
-      "child": "main-col"
-    }
+    "Card": {}
   },
   "children": [
     {
@@ -348,68 +530,143 @@ const List<GalleryTemplate> composerGalleryTemplates = [
       "component": {
         "Column": {
           "alignment": "center",
-          "gap": "medium",
-          "children": { "explicitList": ["header", "steps", "goal", "stats"] }
+          "gap": "medium"
         }
-      }
-    },
-    {
-      "id": "header",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["walk-icon", "title"] }
+      },
+      "children": [
+        {
+          "id": "header",
+          "component": {
+            "Row": {
+              "gap": "small",
+              "alignment": "center"
+            }
+          },
+          "children": [
+            {
+              "id": "walk-icon",
+              "component": {
+                "Icon": {
+                  "icon": "directions_walk",
+                  "size": 24,
+                  "color": "primary"
+                }
+              }
+            },
+            {
+              "id": "title",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Today's Steps"
+                  },
+                  "style": "titleMedium"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "steps",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "8,432"
+              },
+              "style": "headlineLarge"
+            }
+          }
+        },
+        {
+          "id": "goal",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "84% of 10,000 goal"
+              },
+              "style": "bodyMedium",
+              "color": "secondary"
+            }
+          }
+        },
+        {
+          "id": "stats",
+          "component": {
+            "Row": {
+              "distribution": "spaceEvenly"
+            }
+          },
+          "children": [
+            {
+              "id": "dist",
+              "component": {
+                "Column": {
+                  "alignment": "center"
+                }
+              },
+              "children": [
+                {
+                  "id": "dist-v",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "3.8 mi"
+                      },
+                      "style": "titleMedium"
+                    }
+                  }
+                },
+                {
+                  "id": "dist-l",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Distance"
+                      },
+                      "style": "bodySmall",
+                      "color": "secondary"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cal",
+              "component": {
+                "Column": {
+                  "alignment": "center"
+                }
+              },
+              "children": [
+                {
+                  "id": "cal-v",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "312"
+                      },
+                      "style": "titleMedium"
+                    }
+                  }
+                },
+                {
+                  "id": "cal-l",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "Calories"
+                      },
+                      "style": "bodySmall",
+                      "color": "secondary"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
-      }
-    },
-    {
-      "id": "walk-icon",
-      "component": { "Icon": { "icon": "directions_walk", "size": 24, "color": "primary" } }
-    },
-    {
-      "id": "title",
-      "component": { "Text": { "text": {"value": "Today's Steps"}, "style": "titleMedium" } }
-    },
-    {
-      "id": "steps",
-      "component": { "Text": { "text": {"value": "8,432"}, "style": "headlineLarge" } }
-    },
-    {
-      "id": "goal",
-      "component": { "Text": { "text": {"value": "84% of 10,000 goal"}, "style": "bodyMedium", "color": "secondary" } }
-    },
-    {
-      "id": "stats",
-      "component": {
-        "Row": {
-          "distribution": "spaceEvenly",
-          "children": { "explicitList": ["dist", "cal"] }
-        }
-      }
-    },
-    {
-      "id": "dist",
-      "component": {
-        "Column": {
-          "alignment": "center",
-          "children": { "explicitList": ["dist-v", "dist-l"] }
-        }
-      }
-    },
-    { "id": "dist-v", "component": { "Text": { "text": {"value": "3.8 mi"}, "style": "titleMedium" } } },
-    { "id": "dist-l", "component": { "Text": { "text": {"value": "Distance"}, "style": "bodySmall", "color": "secondary" } } },
-    {
-      "id": "cal",
-      "component": {
-        "Column": {
-          "alignment": "center",
-          "children": { "explicitList": ["cal-v", "cal-l"] }
-        }
-      }
-    },
-    { "id": "cal-v", "component": { "Text": { "text": {"value": "312"}, "style": "titleMedium" } } },
-    { "id": "cal-l", "component": { "Text": { "text": {"value": "Calories"}, "style": "bodySmall", "color": "secondary" } } }
+      ]
+    }
   ]
 }''',
   ),
@@ -420,57 +677,107 @@ const List<GalleryTemplate> composerGalleryTemplates = [
     jsonSchema: '''{
   "id": "root",
   "component": {
-    "Card": {
-      "child": "main-col"
-    }
+    "Card": {}
   },
   "children": [
     {
       "id": "main-col",
       "component": {
         "Column": {
-          "gap": "medium",
-          "children": { "explicitList": ["title", "subtitle", "email-field", "pass-field", "login-btn", "signup-cto"] }
+          "gap": "medium"
         }
-      }
-    },
-    {
-      "id": "title",
-      "component": { "Text": { "text": {"value": "Welcome back"}, "style": "headlineSmall", "textAlign": "center" } }
-    },
-    {
-      "id": "subtitle",
-      "component": { "Text": { "text": {"value": "Sign in to your account"}, "style": "bodyMedium", "color": "secondary", "textAlign": "center" } }
-    },
-    {
-      "id": "email-field",
-      "component": { "TextField": { "label": "Email", "placeholder": "Please enter a value", "type": "email" } }
-    },
-    {
-      "id": "pass-field",
-      "component": { "TextField": { "label": "Password", "placeholder": "Please enter a value", "type": "password" } }
-    },
-    {
-      "id": "login-btn",
-      "component": { "Button": { "label": {"value": "Sign in"}, "style": "filled" } }
-    },
-    {
-      "id": "signup-cto",
-      "component": {
-        "Row": {
-          "alignment": "center",
-          "distribution": "spaceBetween",
-          "children": { "explicitList": ["no-account", "signup-btn"] }
+      },
+      "children": [
+        {
+          "id": "title",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "Welcome back"
+              },
+              "style": "headlineSmall",
+              "textAlign": "center"
+            }
+          }
+        },
+        {
+          "id": "subtitle",
+          "component": {
+            "Text": {
+              "text": {
+                "value": "Sign in to your account"
+              },
+              "style": "bodyMedium",
+              "color": "secondary",
+              "textAlign": "center"
+            }
+          }
+        },
+        {
+          "id": "email-field",
+          "component": {
+            "TextField": {
+              "label": "Email",
+              "placeholder": "Please enter a value",
+              "type": "email"
+            }
+          }
+        },
+        {
+          "id": "pass-field",
+          "component": {
+            "TextField": {
+              "label": "Password",
+              "placeholder": "Please enter a value",
+              "type": "password"
+            }
+          }
+        },
+        {
+          "id": "login-btn",
+          "component": {
+            "Button": {
+              "label": {
+                "value": "Sign in"
+              },
+              "style": "filled"
+            }
+          }
+        },
+        {
+          "id": "signup-cto",
+          "component": {
+            "Row": {
+              "alignment": "center",
+              "distribution": "spaceBetween"
+            }
+          },
+          "children": [
+            {
+              "id": "no-account",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Don't have an account?"
+                  },
+                  "style": "bodyMedium"
+                }
+              }
+            },
+            {
+              "id": "signup-btn",
+              "component": {
+                "Button": {
+                  "label": {
+                    "value": "Sign up"
+                  },
+                  "style": "outlined"
+                }
+              }
+            }
+          ]
         }
-      }
-    },
-    {
-      "id": "no-account",
-      "component": { "Text": { "text": {"value": "Don't have an account?"}, "style": "bodyMedium" } }
-    },
-    {
-      "id": "signup-btn",
-      "component": { "Button": { "label": {"value": "Sign up"}, "style": "outlined" } }
+      ]
     }
   ]
 }''',
@@ -483,7 +790,6 @@ const List<GalleryTemplate> composerGalleryTemplates = [
   "id": "root",
   "component": {
     "Card": {
-      "child": "main-col",
       "padding": "none"
     }
   },
@@ -492,85 +798,176 @@ const List<GalleryTemplate> composerGalleryTemplates = [
       "id": "main-col",
       "component": {
         "Column": {
-          "gap": "medium",
-          "children": { "explicitList": ["hero-img", "content"] }
+          "gap": "medium"
         }
-      }
-    },
-    {
-      "id": "hero-img",
-      "component": {
-        "Image": {
-          "url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80",
-          "height": 180,
-          "fit": "cover"
+      },
+      "children": [
+        {
+          "id": "hero-img",
+          "component": {
+            "Image": {
+              "url": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80",
+              "height": 180,
+              "fit": "cover"
+            }
+          }
+        },
+        {
+          "id": "content",
+          "component": {
+            "Column": {
+              "gap": "medium",
+              "padding": "medium"
+            }
+          },
+          "children": [
+            {
+              "id": "title",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Mediterranean Quinoa Bowl"
+                  },
+                  "style": "titleLarge",
+                  "maxLines": 2
+                }
+              }
+            },
+            {
+              "id": "rating-row",
+              "component": {
+                "Row": {
+                  "gap": "small",
+                  "alignment": "center"
+                }
+              },
+              "children": [
+                {
+                  "id": "star",
+                  "component": {
+                    "Icon": {
+                      "icon": "star",
+                      "size": 16,
+                      "color": "primary"
+                    }
+                  }
+                },
+                {
+                  "id": "score",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "4.9"
+                      },
+                      "style": "bodyMedium"
+                    }
+                  }
+                },
+                {
+                  "id": "reviews",
+                  "component": {
+                    "Text": {
+                      "text": {
+                        "value": "(1,247 reviews)"
+                      },
+                      "style": "bodySmall",
+                      "color": "secondary"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "time-row",
+              "component": {
+                "Row": {
+                  "gap": "medium",
+                  "alignment": "center"
+                }
+              },
+              "children": [
+                {
+                  "id": "prep",
+                  "component": {
+                    "Row": {
+                      "gap": "small",
+                      "alignment": "center"
+                    }
+                  },
+                  "children": [
+                    {
+                      "id": "prep-icon",
+                      "component": {
+                        "Icon": {
+                          "icon": "schedule",
+                          "size": 16,
+                          "color": "secondary"
+                        }
+                      }
+                    },
+                    {
+                      "id": "prep-txt",
+                      "component": {
+                        "Text": {
+                          "text": {
+                            "value": "15 min prep"
+                          },
+                          "style": "bodySmall",
+                          "color": "secondary"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "cook",
+                  "component": {
+                    "Row": {
+                      "gap": "small",
+                      "alignment": "center"
+                    }
+                  },
+                  "children": [
+                    {
+                      "id": "cook-icon",
+                      "component": {
+                        "Icon": {
+                          "icon": "local_fire_department",
+                          "size": 16,
+                          "color": "secondary"
+                        }
+                      }
+                    },
+                    {
+                      "id": "cook-txt",
+                      "component": {
+                        "Text": {
+                          "text": {
+                            "value": "20 min cook"
+                          },
+                          "style": "bodySmall",
+                          "color": "secondary"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "serves",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Serves 4"
+                  },
+                  "style": "bodySmall"
+                }
+              }
+            }
+          ]
         }
-      }
-    },
-    {
-      "id": "content",
-      "component": {
-        "Column": {
-          "gap": "medium",
-          "padding": "medium",
-          "children": { "explicitList": ["title", "rating-row", "time-row", "serves"] }
-        }
-      }
-    },
-    {
-      "id": "title",
-      "component": { "Text": { "text": {"value": "Mediterranean Quinoa Bowl"}, "style": "titleLarge", "maxLines": 2 } }
-    },
-    {
-      "id": "rating-row",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["star", "score", "reviews"] }
-        }
-      }
-    },
-    { "id": "star", "component": { "Icon": { "icon": "star", "size": 16, "color": "primary" } } },
-    { "id": "score", "component": { "Text": { "text": {"value": "4.9"}, "style": "bodyMedium" } } },
-    { "id": "reviews", "component": { "Text": { "text": {"value": "(1,247 reviews)"}, "style": "bodySmall", "color": "secondary" } } },
-    {
-      "id": "time-row",
-      "component": {
-        "Row": {
-          "gap": "medium",
-          "alignment": "center",
-          "children": { "explicitList": ["prep", "cook"] }
-        }
-      }
-    },
-    {
-      "id": "prep",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["prep-icon", "prep-txt"] }
-        }
-      }
-    },
-    { "id": "prep-icon", "component": { "Icon": { "icon": "schedule", "size": 16, "color": "secondary" } } },
-    { "id": "prep-txt", "component": { "Text": { "text": {"value": "15 min prep"}, "style": "bodySmall", "color": "secondary" } } },
-    {
-      "id": "cook",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["cook-icon", "cook-txt"] }
-        }
-      }
-    },
-    { "id": "cook-icon", "component": { "Icon": { "icon": "local_fire_department", "size": 16, "color": "secondary" } } },
-    { "id": "cook-txt", "component": { "Text": { "text": {"value": "20 min cook"}, "style": "bodySmall", "color": "secondary" } } },
-    {
-      "id": "serves",
-      "component": { "Text": { "text": {"value": "Serves 4"}, "style": "bodySmall" } }
+      ]
     }
   ]
 }''',
@@ -582,57 +979,72 @@ const List<GalleryTemplate> composerGalleryTemplates = [
     jsonSchema: '''{
   "id": "root",
   "component": {
-    "Card": {
-      "child": "main-col"
-    }
+    "Card": {}
   },
   "children": [
     {
       "id": "main-col",
       "component": {
         "Column": {
-          "gap": "large",
-          "children": { "explicitList": ["album-art", "song-info", "audio-player"] }
+          "gap": "large"
         }
-      }
-    },
-    {
-      "id": "album-art",
-      "component": {
-        "Image": {
-          "url": "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&q=80&w=800",
-          "height": 200,
-          "width": 300,
-          "fit": "cover",
-          "borderRadius": 12
+      },
+      "children": [
+        {
+          "id": "album-art",
+          "component": {
+            "Image": {
+              "url": "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&q=80&w=800",
+              "height": 200,
+              "width": 300,
+              "fit": "cover",
+              "borderRadius": 12
+            }
+          }
+        },
+        {
+          "id": "song-info",
+          "component": {
+            "Column": {
+              "gap": "small",
+              "alignment": "center"
+            }
+          },
+          "children": [
+            {
+              "id": "title",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Midnight City Lights"
+                  },
+                  "style": "titleLarge"
+                }
+              }
+            },
+            {
+              "id": "artist",
+              "component": {
+                "Text": {
+                  "text": {
+                    "value": "Neon Synthwave"
+                  },
+                  "style": "bodyMedium",
+                  "color": "secondary"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "audio-player",
+          "component": {
+            "AudioPlayer": {
+              "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+            }
+          }
         }
-      }
-    },
-    {
-      "id": "song-info",
-      "component": {
-        "Column": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["title", "artist"] }
-        }
-      }
-    },
-    {
-      "id": "title",
-      "component": { "Text": { "text": {"value": "Midnight City Lights"}, "style": "titleLarge" } }
-    },
-    {
-      "id": "artist",
-      "component": { "Text": { "text": {"value": "Neon Synthwave"}, "style": "bodyMedium", "color": "secondary" } }
-    },
-    {
-      "id": "audio-player",
-      "component": {
-        "AudioPlayer": {
-          "url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-        }
-      }
+      ]
     }
   ]
 }''',
@@ -645,7 +1057,6 @@ const List<GalleryTemplate> composerGalleryTemplates = [
   "id": "root",
   "component": {
     "Card": {
-      "child": "main-col",
       "padding": "none"
     }
   },
@@ -653,64 +1064,104 @@ const List<GalleryTemplate> composerGalleryTemplates = [
     {
       "id": "main-col",
       "component": {
-        "Column": {
-          "children": { "explicitList": ["video-player", "video-details"] }
+        "Column": {}
+      },
+      "children": [
+        {
+          "id": "video-player",
+          "component": {
+            "Video": {
+              "url": "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+              "title": "Epic Sci-Fi Trailer",
+              "caption": "A stunning visual journey through a futuristic neon city generated by Google Veo.",
+              "autoplay": true
+            }
+          }
+        },
+        {
+          "id": "video-details",
+          "component": {
+            "Padding": {
+              "padding": 16
+            }
+          },
+          "children": [
+            {
+              "id": "details-row",
+              "component": {
+                "Row": {
+                  "distribution": "spaceBetween",
+                  "alignment": "center"
+                }
+              },
+              "children": [
+                {
+                  "id": "author-info",
+                  "component": {
+                    "Row": {
+                      "gap": "small",
+                      "alignment": "center"
+                    }
+                  },
+                  "children": [
+                    {
+                      "id": "pro-badge",
+                      "component": {
+                        "Icon": {
+                          "icon": "auto_awesome",
+                          "size": 18,
+                          "color": "primary"
+                        }
+                      }
+                    },
+                    {
+                      "id": "author-text",
+                      "component": {
+                        "Text": {
+                          "text": {
+                            "value": "Generated with Veo 3.1"
+                          },
+                          "style": "labelMedium",
+                          "color": "secondary"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "actions",
+                  "component": {
+                    "Row": {
+                      "gap": "small"
+                    }
+                  },
+                  "children": [
+                    {
+                      "id": "like-btn",
+                      "component": {
+                        "IconButton": {
+                          "icon": "favorite_border",
+                          "size": 20
+                        }
+                      }
+                    },
+                    {
+                      "id": "share-btn",
+                      "component": {
+                        "IconButton": {
+                          "icon": "share",
+                          "size": 20
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
-      }
-    },
-    {
-      "id": "video-player",
-      "component": {
-        "Video": {
-          "url": "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-          "title": "Epic Sci-Fi Trailer",
-          "caption": "A stunning visual journey through a futuristic neon city generated by Google Veo.",
-          "autoplay": true
-        }
-      }
-    },
-    {
-      "id": "video-details",
-      "component": {
-        "Padding": {
-          "padding": 16,
-          "child": "details-row"
-        }
-      }
-    },
-    {
-      "id": "details-row",
-      "component": {
-        "Row": {
-          "distribution": "spaceBetween",
-          "alignment": "center",
-          "children": { "explicitList": ["author-info", "actions"] }
-        }
-      }
-    },
-    {
-      "id": "author-info",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "alignment": "center",
-          "children": { "explicitList": ["pro-badge", "author-text"] }
-        }
-      }
-    },
-    { "id": "pro-badge", "component": { "Icon": { "icon": "auto_awesome", "size": 18, "color": "primary" } } },
-    { "id": "author-text", "component": { "Text": { "text": {"value": "Generated with Veo 3.1"}, "style": "labelMedium", "color": "secondary" } } },
-    {
-      "id": "actions",
-      "component": {
-        "Row": {
-          "gap": "small",
-          "children": { "explicitList": ["like-btn", "share-btn"] }
-        }
-      }
-    },
-    { "id": "like-btn", "component": { "IconButton": { "icon": "favorite_border", "size": 20 } } },
-    { "id": "share-btn", "component": { "IconButton": { "icon": "share", "size": 20 } } }
+      ]
+    }
   ]
 }''',
   )

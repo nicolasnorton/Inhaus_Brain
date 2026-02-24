@@ -73,30 +73,29 @@ class GeminiClient:
                 return "gemini-3-pro-image-preview"
             return model_name
 
-        # Gemini 2.5 is GA - pass through directly
-        # Map Gemini 2.0/2.5 to Stable/Exp (Jan 2026)
-        if "gemini-2.0" in name_lower or "gemini-2.5" in name_lower:
+        # Map Gemini 2.5/3.x to latest stable/preview
+        if "gemini-2.5" in name_lower or "gemini-3" in name_lower:
             if "lite" in name_lower:
-                return "gemini-1.5-flash-8b"
+                return "gemini-2.5-flash-lite"
             if "pro" in name_lower:
-                return "gemini-1.5-pro-002"
-            return "gemini-1.5-flash-002"
-
-        # Map Gemini 3 (Frontier) to 2.0 Frontier
-        if "gemini-3" in name_lower:
-            if "pro" in name_lower:
-                return "gemini-2.0-pro-exp-02-05"
-            return "gemini-2.0-flash-001"
+                if "3.1" in name_lower:
+                    return "gemini-3.1-pro-preview"
+                return "gemini-2.5-pro"
+            if "3-flash" in name_lower or "3.1-flash" in name_lower:
+                return "gemini-3-flash-preview"
+            return "gemini-2.5-flash"
 
         # Map Media Models
-        if "imagen-4" in name_lower:
-             return "imagen-3.0-generate-002"
-        if "veo-3" in name_lower:
-             return "veo-2.0-generate-001"
+        if "imagen-4" in name_lower or "imagen" in name_lower:
+             return "gemini-2.5-flash-image"
+        if "veo-3.1" in name_lower:
+             return "veo-3.1-generate-preview"
+        if "veo" in name_lower:
+             return "veo-3.1-generate-preview"
 
         # Standardize simple/legacy names to latest stable
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
-             return "gemini-1.5-pro-002" if "pro" in name_lower else "gemini-1.5-flash-002"
+             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
             
         return model_name
 
@@ -117,9 +116,9 @@ class GeminiClient:
              estimated_tokens = sum(len(str(p)) for p in prompt) / 4
 
         if task_complexity == "high" or estimated_tokens > 10000:
-             return "gemini-1.5-pro-002"
+             return "gemini-2.0-pro-exp-02-05"
         
-        return "gemini-1.5-flash-002"
+        return "gemini-2.0-flash-001"
 
     def generate_content(
         self, 

@@ -74,53 +74,51 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini 2.5 (Mapped to 1.5 Stable) ──────────────────────────
+  // ── Gemini 2.5 Stable ──────────────────────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-8b', temperature: 1.0);
-
-  // ── Gemini 3.0 (Mapped to 2.0 Frontier) ─────────────────────────
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
+    
+  // ── Gemini 3.x Frontier (Preview) ─────────────────────────────
   static AIModelConfig get geminiFlash3 => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-001', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
   static AIModelConfig get geminiPro3 => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-pro-exp-02-05', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-3.1-pro-preview', temperature: 1.0);
 
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-001',
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash',
     useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.0-flash-thinking-exp-1219',
+    provider: AIProvider.gemini, modelId: 'deep-research-pro-preview-12-2025',
     useGoogleSearch: true, temperature: 1.0);
 
   // ── Media Models ──────────────────────────────────────────
   static AIModelConfig get imagen4 => const AIModelConfig(
-    provider: AIProvider.vertex, modelId: 'imagen-3.0-generate-002', temperature: 1.0);
+    provider: AIProvider.vertex, modelId: 'gemini-2.5-flash-image', temperature: 1.0);
   static AIModelConfig get veo31 => const AIModelConfig(
-    provider: AIProvider.vertex, modelId: 'veo-2.0-generate-001');
+    provider: AIProvider.vertex, modelId: 'veo-3.1-generate-preview');
   
   // ── Nano Banana (Native Image Gen) ────────────────────────
   static AIModelConfig get nanoBanana => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-flash-002');
+    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-image');
   static AIModelConfig get nanoBananaPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-1.5-pro-002');
+    provider: AIProvider.gemini, modelId: 'gemini-3-pro-image-preview');
 
-  // ── Gemma Open Models (via Python proxy / Model Garden) ───
-  static AIModelConfig get gemma3Fast => const AIModelConfig(
-    provider: AIProvider.gemma, modelId: 'gemma-3-4b-it', temperature: 0.3);
-  static AIModelConfig get gemma3Quality => const AIModelConfig(
-    provider: AIProvider.gemma, modelId: 'gemma-3-27b-it', temperature: 0.7);
-  static AIModelConfig get functionGemma => const AIModelConfig(
-    provider: AIProvider.gemma, modelId: 'functiongemma-270m', temperature: 0.1);
-  static AIModelConfig get translateGemma => const AIModelConfig(
-    provider: AIProvider.gemma, modelId: 'translategemma-4b', temperature: 0.3);
+  // ── Gemma Open Models (LiteRT / MediaPipe Web) ──────────────
+  static AIModelConfig get gemma3n => const AIModelConfig(
+    provider: AIProvider.litert, modelId: 'gemma-3n-e2b-it', temperature: 0.3);
 
   // ── LiteRT On-Device ──────────────────────────────────────
-  static AIModelConfig get gemma2n => const AIModelConfig(
-    provider: AIProvider.litert, modelId: 'gemma-2b-it-gpu');
+  static AIModelConfig get gemma3nLite => const AIModelConfig(
+    provider: AIProvider.litert, modelId: 'gemma-3n-e2b-it');
+
+  // Legacy aliases
+  static AIModelConfig get gemma3Fast => gemma3n;
+  static AIModelConfig get gemma3Quality => gemma3nLite;
 
   // ── Serialization ─────────────────────────────────────────
   Map<String, dynamic> toJson() => {

@@ -16,6 +16,17 @@ enum BlackboardPhase {
   production,
   reviewPending, // Human-in-the-Loop
   userArbitration, // The Gavel
+  brainweaveRecord, // BrainWeave 6R
+  brainweaveResearch,
+  brainweaveRefine,
+  brainweaveReview,
+  brainweaveRender,
+  brainweaveRelease,
+  brainweaveReduce,
+  brainweaveReflect,
+  brainweaveReweave,
+  brainweaveVerify,
+  brainweaveRethink,
 }
 
 enum AgentStatus {

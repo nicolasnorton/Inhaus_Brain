@@ -100,8 +100,8 @@ class AIRouter {
       }
     }
 
-    // If VertexAI/proxy both failed and NOT on web, try LiteRT as last resort
-    if (!kIsWeb && (failedStrategy == 'vertex_ai' || failedStrategy == 'proxy')) {
+    // If VertexAI/proxy both failed, try LiteRT as last resort
+    if (failedStrategy == 'vertex_ai' || failedStrategy == 'proxy') {
       try {
         _logger.i('AIRouter: Trying LiteRT fallback');
         return await _liteRT.generate(request, ref: ref);

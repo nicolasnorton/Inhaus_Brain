@@ -15,6 +15,9 @@ from session_summarizer import maybe_summarize
 # ProposalsLM Integration
 from proposals_functions import tune_proforma, import_packages, proposals_chat
 
+# BigQuery Integration
+from bigquery_proxy import bigqueryProxy
+
 # Initialize global managers (note: these might reset on cold starts, strict statelessness preferred usually)
 # but for simple caching, we can keep them.
 # However, DialogueManager is designed to be instantiated per request or handle statelessness.

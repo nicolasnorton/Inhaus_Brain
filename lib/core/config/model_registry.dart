@@ -54,20 +54,20 @@ enum SpecializedModel {
 class ModelRegistry {
   ModelRegistry._();
 
-  // ── GA Stable Gemini Models (Mapped to Real Stable IDs) ──────
+  // ── GA Stable Gemini Models (Stable) ─────────────────────────
   static const _gemini = {
-    ModelTier.pro: 'gemini-1.5-pro-002',
-    ModelTier.flash: 'gemini-1.5-flash-002',
-    ModelTier.flashLite: 'gemini-1.5-flash-8b',
+    ModelTier.pro: 'gemini-2.5-pro',
+    ModelTier.flash: 'gemini-2.5-flash',
+    ModelTier.flashLite: 'gemini-2.5-flash-lite',
   };
 
-  // ── Gemini 3.0 Frontier (Mapped to Gemini 2.0 Pro/Flash) ─────
+  // ── Gemini 3.1 Frontier (Preview) ──────────────────────────
   static const _gemini3 = {
-    ModelTier.pro: 'gemini-2.0-pro-exp-02-05',
-    ModelTier.flash: 'gemini-2.0-flash-001',
+    ModelTier.pro: 'gemini-3.1-pro-preview',
+    ModelTier.flash: 'gemini-3-flash-preview',
   };
 
-  // ── Gemma Open Models (via Model Garden / Python proxy) ─────
+  // ── Gemma Open Models (LiteRT / MediaPipe Web) ──────────────
   static const _gemma = {
     ModelTier.gemmaFast: 'gemma-3-4b-it',
     SpecializedModel.summarize: 'gemma-3-27b-it',
@@ -75,18 +75,19 @@ class ModelRegistry {
     SpecializedModel.translate: 'translategemma-4b',
   };
 
-  // ── Media & Utility Models (Mapped to Real Stable IDs) ──────
+  // ── Media & Utility Models ──────────────────────────────────
   static const _media = {
-    SpecializedModel.image: 'imagen-3.0-generate-002',
-    SpecializedModel.video: 'veo-2.0-generate-001',
-    SpecializedModel.embed: 'text-embedding-004',
-    SpecializedModel.deepResearch: 'gemini-2.0-flash-thinking-exp-1219',
+    SpecializedModel.image: 'gemini-2.5-flash-image',
+    SpecializedModel.video: 'veo-3.1-generate-preview',
+    SpecializedModel.embed: 'gemini-embedding-001',
+    SpecializedModel.deepResearch: 'deep-research-pro-preview-12-2025',
   };
 
-  // ── Experimental / Preview ──────────────────────────────────
+  // ── Experimental / On-Device Fallback ────────────────────────
   static const _experimental = {
-    ModelTier.pro: 'gemini-2.0-pro-exp-02-05',
-    ModelTier.flash: 'gemini-2.0-flash-001',
+    ModelTier.pro: 'gemini-3.1-pro-preview',
+    ModelTier.flash: 'gemini-3-flash-preview',
+    ModelTier.flashLite: 'gemma-3n-e2b-it',
   };
 
   // ══════════════════════════════════════════════════════════════

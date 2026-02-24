@@ -1,10 +1,10 @@
 {
   "models": [
     {
-      "name": "models/gemini-2.0-pro-exp-02-05",
-      "version": "3.0 (Preview)",
-      "displayName": "Gemini 3 Pro Preview",
-      "description": "Frontier agentic model built for complex reasoning and long-context strategy. Supports 2M+ context, deep thinking, and advanced tool use.",
+      "name": "models/gemini-3.1-pro-preview",
+      "version": "3.1 (Preview)",
+      "displayName": "Gemini 3.1 Pro (Frontier)",
+      "description": "Our most advanced model for complex reasoning and agentic workflows. Featuring high intelligence and vibe-coding capabilities.",
       "inputTokenLimit": 2097152,
       "outputTokenLimit": 16384,
       "supportedGenerationMethods": [
@@ -18,10 +18,10 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-2.0-flash-001",
+      "name": "models/gemini-3-flash-preview",
       "version": "3.0 (Preview)",
-      "displayName": "Gemini 3 Flash Preview",
-      "description": "Adaptive frontier model for real-time high-throughput tasks. Optimized for speed and state-of-the-art multimodal understanding.",
+      "displayName": "Gemini 3 Flash (Frontier)",
+      "description": "Frontier-class performance rivaling larger models at a fraction of the cost. Optimized for real-time speed.",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192,
       "supportedGenerationMethods": [
@@ -34,12 +34,12 @@
       "thinking": true
     },
     {
-      "name": "models/gemini-1.5-pro-002",
+      "name": "models/gemini-2.5-pro",
       "version": "2.5 (Stable)",
       "displayName": "Gemini 2.5 Pro",
-      "description": "Enterprise-grade reasoning model with balanced performance and reliability. Supports Vision, Audio, and JSON mode.",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192,
+      "description": "Enterprise-grade reasoning with deep reliability. Supports massive context and advanced multimodal understanding.",
+      "inputTokenLimit": 2097152,
+      "outputTokenLimit": 16384,
       "supportedGenerationMethods": [
         "generateContent",
         "countTokens",
@@ -50,10 +50,10 @@
       "topK": 64
     },
     {
-      "name": "models/gemini-1.5-flash-002",
+      "name": "models/gemini-2.5-flash",
       "version": "2.5 (Stable)",
       "displayName": "Gemini 2.5 Flash",
-      "description": "High-performance baseline for production agents. Fastest multimodal response times with high accuracy.",
+      "description": "Best price-performance for low-latency, high-volume tasks that require reasoning.",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 8192,
       "supportedGenerationMethods": [
@@ -65,38 +65,37 @@
       "topK": 40
     },
     {
-      "name": "models/gemini-1.5-flash-8b",
-      "version": "2.5 (Lite)",
-      "displayName": "Gemini 2.5 Flash-Lite",
-      "description": "Cost-optimized variant of the 2.5 fleet for high-volume summarization and classification.",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 8192,
+      "name": "models/gemma-3n-e2b-it",
+      "version": "On-Device",
+      "displayName": "Gemma 3n (Local)",
+      "description": "Lightweight on-device fallback model built for state-of-the-art performance in low-resource environments. Supports multimodal input.",
+      "inputTokenLimit": 32768,
+      "outputTokenLimit": 2048,
       "supportedGenerationMethods": [
-        "generateContent",
-        "countTokens"
+        "generateContent"
       ]
     },
     {
-      "name": "models/gemini-2.0-flash-thinking-exp-1219",
+      "name": "models/deep-research-pro-preview-12-2025",
       "version": "Interaction Agent",
       "displayName": "Deep Research Frontier",
-      "description": "Specialized long-running research agent powered by Gemini 3. Optimized for multi-step reasoning and deep web grounding.",
+      "description": "Agentic model that autonomously plans and executes multi-step research across hundreds of sources.",
       "supportedGenerationMethods": [
         "createInteraction"
       ]
     },
     {
-      "name": "models/imagen-3.0-generate-002",
-      "displayName": "Imagen 3 (Stated as v4)",
-      "description": "Vertex served Imagen 3.0 high-fidelity text-to-image model (Current flagship).",
+      "name": "models/gemini-2.5-flash-image",
+      "displayName": "Nano Banana",
+      "description": "Native image generation and editing designed for fast, creative workflows.",
       "supportedGenerationMethods": [
         "predict"
       ]
     },
     {
-      "name": "models/veo-2.0-generate-001",
-      "displayName": "Veo 2 (Stated as v3.1)",
-      "description": "Cinematic video generation model (Current flagship). Supports 4K rendering and consistent motion.",
+      "name": "models/veo-3.1-generate-preview",
+      "displayName": "Veo 3.1",
+      "description": "Cinematic video generation with natively synchronized audio.",
       "supportedGenerationMethods": [
         "predictLongRunning"
       ]

@@ -220,7 +220,7 @@ Sources: $sources
     if (isPreview) {
       final res = await EdgeAIService.generateText(
         _detailedGeneratorPrompt(sources),
-        modelConfig: AIModelConfig.gemma2n,
+        modelConfig: AIModelConfig.gemma3nLite,
         ref: ref,
       );
       return GenerationResult(content: res.text);
@@ -416,7 +416,7 @@ ${isOnePage ? """
     if (isPreview) {
       final res = await EdgeAIService.generateText(
         _onePageGeneratorPrompt(sources),
-        modelConfig: AIModelConfig.gemma2n,
+        modelConfig: AIModelConfig.gemma3nLite,
         ref: ref,
       );
       return GenerationResult(content: res.text);

@@ -249,12 +249,16 @@ class _TemplateCard extends StatelessWidget {
                     child: Transform.scale(
                       scale: 0.65, // Scale down to fit as a thumbnail
                       alignment: Alignment.topCenter,
-                      child: SingleChildScrollView(
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: GenUIRenderer(
-                            payload: jsonDecode(template.jsonSchema),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: SizedBox(
+                          width: 400,
+                          height: 450,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: GenUIRenderer(
+                              payload: jsonDecode(template.jsonSchema),
+                            ),
                           ),
                         ),
                       ),

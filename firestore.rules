@@ -209,6 +209,11 @@ service cloud.firestore {
       }
     }
 
+    // A2UI Composer & Library
+    match /a2ui_widgets/{widgetId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // DEFAULT DENY
     match /{document=**} {
       allow read, write: if false;

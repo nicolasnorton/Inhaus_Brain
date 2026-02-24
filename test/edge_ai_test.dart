@@ -11,7 +11,7 @@ void main() {
       // But we can check if generation works without error
       final result = await EdgeAIService.generateText(
         "Test Prompt", 
-        modelConfig: AIModelConfig.gemma2n
+        modelConfig: AIModelConfig.gemma3nLite
       );
       
       expect(result.proximity, AIProximity.local);
@@ -27,7 +27,7 @@ void main() {
 
     test('Output Polish uses LiteRT Gemma', () async {
        // This test mocks the integration ensuring the constant is correct
-       final config = AIModelConfig.gemma2n;
+       final config = AIModelConfig.gemma3nLite;
        expect(config.provider, AIProvider.litert);
     });
   });
