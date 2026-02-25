@@ -14,7 +14,7 @@ import '../../workspace/services/agent_registry_service.dart';
 import '../models/brainweave_node.dart';
 
 /// Implements the Ars Contexta 6R Pipeline for BrainWeave.
-/// Guaranteed fresh Gemini 2.5 Flash context per phase to prevent LLM attention decay.
+/// Guaranteed fresh Gemini 3.1 Pro context per phase to prevent LLM attention decay.
 class BrainWeavePipelineService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
