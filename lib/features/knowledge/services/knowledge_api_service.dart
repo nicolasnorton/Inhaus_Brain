@@ -65,7 +65,7 @@ class KnowledgeApiService {
       createdAt: now,
       updatedBy: _userId ?? 'system',
       updatedAt: now,
-      embeddingModel: 'text-embedding-004',
+      embeddingModel: 'gemini-embedding-001',
       embeddingModelProvider: 'google',
       embeddingAvailable: true,
     );
