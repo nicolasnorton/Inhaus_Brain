@@ -35,7 +35,7 @@ app.use(async (req, res, next) => {
         req.serviceAdapter = new LangChainAdapter({
             chainFn: async ({ messages, tools }) => {
                 let model = new ChatVertexAI({
-                    model: "gemini-2.5-pro",
+                    model: "gemini-3.1-pro-preview",
                     location: "us-central1",
                     maxOutputTokens: 8192,
                 });

@@ -7,7 +7,9 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/services/ai_proxy_service.dart';
+import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
+import '../../knowledge/providers/knowledge_provider.dart';
 import '../../workspace/services/agent_registry_service.dart';
 import '../models/brainweave_node.dart';
 
@@ -18,12 +20,14 @@ class BrainWeavePipelineService {
   final FirebaseAuth _auth;
   final AgentRegistryService _agentRegistry;
   final BlackboardNotifier _blackboard;
+  final VertexApiService _vertexAi;
 
   BrainWeavePipelineService(
     this._firestore,
     this._auth,
     this._agentRegistry,
     this._blackboard,
+    this._vertexAi,
   );
 
   String get _userId => _auth.currentUser!.uid;
@@ -44,13 +48,18 @@ class BrainWeavePipelineService {
     required String input,
     List<String> context = const [],
   }) async {
-    // TODO: Move this to RemoteConfig or Environment variable
-    const engineUrl = 'http://localhost:8080/v1/pipeline/execute';
+    const engineUrl = String.fromEnvironment('PICOCLAW_ENGINE_URL', 
+        defaultValue: 'https://picoclaw-401317811527.us-central1.run.app/v1/pipeline/execute');
     
     try {
+      final idToken = await _auth.currentUser?.getIdToken();
+
       final response = await http.post(
         Uri.parse(engineUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (idToken != null) 'Authorization': 'Bearer $idToken',
+        },
         body: dart_convert.jsonEncode({
           'sessionId': sessionId,
           'phase': phase,
@@ -197,6 +206,19 @@ class BrainWeavePipelineService {
   Future<void> _reweavePhase(List<dynamic> nodes, String systemInstruction) async {
     for (final nodeData in nodes) {
       final docRef = _nodes.doc();
+
+      // Generate embedding
+      List<double>? embedding;
+      try {
+        final contentToEmbed = "${nodeData['title']} ${nodeData['description']} ${nodeData['content']}";
+        final embeddings = await _vertexAi.getEmbeddings([contentToEmbed]);
+        if (embeddings.isNotEmpty) {
+          embedding = embeddings.first;
+        }
+      } catch (e) {
+        debugPrint("BrainWeavePipeline: Failed to generate embedding for node: $e");
+      }
+
       final node = BrainWeaveNode(
         id: docRef.id,
         clientId: _userId,
@@ -207,6 +229,7 @@ class BrainWeavePipelineService {
         content: nodeData['content'] ?? '',
         type: BrainWeaveNodeType.atomic,
         topics: List<String>.from(nodeData['topics'] ?? []),
+        embedding: embedding,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -254,7 +277,7 @@ final brainWeavePipelineServiceProvider = Provider<BrainWeavePipelineService>((r
   final auth = FirebaseAuth.instance;
   final registry = ref.read(agentRegistryServiceProvider);
   final blackboard = ref.read(blackboardProvider.notifier);
-  final aiProxy = ref.read(aiProxyServiceProvider);
+  final vertexAi = ref.read(vertexApiServiceProvider);
 
-  return BrainWeavePipelineService(firestore, auth, registry, blackboard);
+  return BrainWeavePipelineService(firestore, auth, registry, blackboard, vertexAi);
 });

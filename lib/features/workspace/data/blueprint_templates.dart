@@ -42,7 +42,7 @@ class BlueprintTemplate {
           uiPosition: {'x': 400, 'y': 300},
           dependencies: ['start'],
           config: {
-            'model': 'gemini-2.5-pro',
+            'model': 'gemini-3.1-pro-preview',
             'prompt': '''
 You are a Cloud Solution Architect. Generate a detailed technical architecture specification for the following use case.
 

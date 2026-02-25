@@ -299,7 +299,7 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
            Row(
               children: [
                  Expanded(
-                    child: _buildDropdown(["gemini-2.5-pro", "gemini-3-pro-preview", "gemini-2.5-flash", "gemini-3-flash-preview", "claude-3-5-sonnet", "gpt-4o"], model, (val) {
+                    child: _buildDropdown(["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-flash-lite", "claude-3-5-sonnet", "gpt-4o"], model, (val) {
                        _updateStep(step.id, config: {...step.config, 'model': val});
                     }),
                  ),
@@ -1377,7 +1377,7 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
            Row(
               children: [
                  Expanded(
-                    child: _buildDropdown(["gpt-4o", "claude-3-5-sonnet", "gemini-3-pro-preview"], model, (val) {
+                    child: _buildDropdown(["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gpt-4o", "claude-3-5-sonnet"], model, (val) {
                        _updateStep(step.id, config: {...step.config, 'model': val});
                     }),
                  ),

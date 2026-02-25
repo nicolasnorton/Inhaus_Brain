@@ -9,6 +9,7 @@ import '../assistant/widgets/ai_assistant_button.dart';
 import '../assistant/widgets/ai_assistant_overlay.dart';
 import '../../core/providers/demo_provider.dart';
 import '../../features/knowledge/providers/knowledge_provider.dart';
+import '../../core/config/feature_flags.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final Widget child;
@@ -151,7 +152,7 @@ class DashboardScreen extends ConsumerWidget {
                         _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
                         _buildNavItem(context, 11, FontAwesomeIcons.building, "Agency", ref),
                         if (!isClient) _buildNavItem(context, 12, FontAwesomeIcons.wandMagicSparkles, "Composer", ref),
-                        _buildNavItem(context, 13, FontAwesomeIcons.brain, "BrainWeave", ref),
+                        if (FeatureFlags.brainweaveEnabled) _buildNavItem(context, 13, FontAwesomeIcons.brain, "BrainWeave", ref),
                         _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
                         if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
                         _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref), // Enabled for all
@@ -461,12 +462,13 @@ class DashboardHome extends ConsumerWidget {
                           label: "Composer",
                           onTap: () => context.go('/composer'),
                         ),
-                         _buildNavCard(
-                          context,
-                          icon: FontAwesomeIcons.brain,
-                          label: "BrainWeave",
-                          onTap: () => context.go('/brainweave'),
-                        ),
+                        if (FeatureFlags.brainweaveEnabled)
+                          _buildNavCard(
+                            context,
+                            icon: FontAwesomeIcons.brain,
+                            label: "BrainWeave",
+                            onTap: () => context.go('/brainweave'),
+                          ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.bug,

@@ -4,6 +4,10 @@
 /// hardcoded model strings across `llm_provider.dart`, agent code,
 /// and `gemini_client.py`. Supports tiered routing:
 ///   Gemma (fast/cheap) → Flash-Lite → Flash → Pro
+///
+/// Model Migration (Feb 2026): All deprecated gemini-2.0-* removed.
+/// Defaults upgraded to Gemini 3.1/3.x series. 2.5-flash-lite kept
+/// for cost-sensitive tasks.
 library;
 
 import 'app_environment.dart';
@@ -14,13 +18,13 @@ enum ModelTier {
   /// Gemma 3 4B — ultra-fast routing, classification, simple extraction
   gemmaFast,
 
-  /// Gemini 2.5 Flash-Lite — massive scale, cost-sensitive tasks
+  /// Gemini 2.5 Flash-Lite — cost-sensitive, light tasks
   flashLite,
 
-  /// Gemini 2.5 Flash — balanced speed/quality, most agent tasks
+  /// Gemini 3 Flash — fast, high-volume, daily queries
   flash,
 
-  /// Gemini 2.5 Pro — complex reasoning, strategy, proposals
+  /// Gemini 3.1 Pro — complex reasoning, BrainWeave, strategy
   pro,
 }
 
@@ -54,17 +58,18 @@ enum SpecializedModel {
 class ModelRegistry {
   ModelRegistry._();
 
-  // ── GA Stable Gemini Models (Stable) ─────────────────────────
+  // ── Primary Gemini Models (Gemini 3.x + safe 2.5) ──────────
   static const _gemini = {
-    ModelTier.pro: 'gemini-2.5-pro',
-    ModelTier.flash: 'gemini-2.5-flash',
+    ModelTier.pro: 'gemini-3.1-pro-preview',
+    ModelTier.flash: 'gemini-3-flash-preview',
     ModelTier.flashLite: 'gemini-2.5-flash-lite',
   };
 
-  // ── Gemini 3.1 Frontier (Preview) ──────────────────────────
-  static const _gemini3 = {
-    ModelTier.pro: 'gemini-3.1-pro-preview',
-    ModelTier.flash: 'gemini-3-flash-preview',
+  // ── Gemini 2.5 Stable Fallback ─────────────────────────────
+  static const _geminiLegacy = {
+    ModelTier.pro: 'gemini-2.5-pro',
+    ModelTier.flash: 'gemini-2.5-flash',
+    ModelTier.flashLite: 'gemini-2.5-flash-lite',
   };
 
   // ── Gemma Open Models (LiteRT / MediaPipe Web) ──────────────
@@ -125,9 +130,6 @@ class ModelRegistry {
 
     // Research with grounding (Flash-tiered by default)
     if (model == SpecializedModel.research) {
-      if (FeatureFlags.enableExperimentalModels) {
-        return _gemini3[ModelTier.flash]!;
-      }
       return _gemini[ModelTier.flash]!; 
     }
 

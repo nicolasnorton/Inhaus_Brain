@@ -1,10 +1,13 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 COPY . .
-RUN go build -o engine main.go
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -o picoclaw main.go
 
-FROM alpine:latest
-WORKDIR /app
-COPY --from=builder /app/engine .
-CMD ["./engine"]
+FROM alpine:latest  
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/picoclaw .
+EXPOSE 8080
+CMD ["./picoclaw"]

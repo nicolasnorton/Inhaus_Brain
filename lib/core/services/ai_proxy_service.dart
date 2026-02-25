@@ -306,7 +306,7 @@ static Future<Map<String, dynamic>> processDocument({
   String? fileUri,
   Map<String, dynamic>? inlineData, // {data: b64, mimeType: str}
   String prompt = "Analyze this document.",
-  String model = 'gemini-2.0-flash',
+  String model = 'gemini-3-flash-preview',
   Map<String, dynamic>? responseJsonSchema,
   Ref? ref,
 }) async {
@@ -399,7 +399,7 @@ static Future<Map<String, dynamic>> processDocument({
   /// Counts tokens using the Python Gemini SDK.
   static Future<int> countTokens({
     required String prompt,
-    String model = 'gemini-2.5-flash',
+    String model = 'gemini-3-flash-preview',
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -479,7 +479,7 @@ static Future<Map<String, dynamic>> processDocument({
     required String document,
     required Map<String, dynamic> schema,
     List<Map<String, dynamic>>? examples,
-    String model = 'gemini-2.5-flash',
+    String model = 'gemini-3-flash-preview',
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('Unauthenticated');

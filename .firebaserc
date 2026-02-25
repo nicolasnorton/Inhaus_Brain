@@ -28,6 +28,26 @@
           "inhaus-brain-full-prod"
         ]
       }
+    },
+    "inhaus-brain-vane-staging": {
+      "hosting": {
+        "production": [
+          "inhaus-brain-vane-staging"
+        ],
+        "inhaus-brain": [
+          "inhaus-brain-vane-staging"
+        ]
+      }
+    },
+    "inhaus-brain-ari-staging": {
+      "hosting": {
+        "production": [
+          "inhaus-brain-ari-staging"
+        ],
+        "inhaus-brain": [
+          "inhaus-brain-ari-staging"
+        ]
+      }
     }
   },
   "etags": {}

@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/config/feature_flags.dart';
+import '../../knowledge/providers/knowledge_provider.dart';
 import '../models/brainweave_node.dart';
 import '../services/brainweave_pipeline_service.dart';
 import '../services/brainweave_storage_service.dart';
@@ -237,6 +238,34 @@ class _BrainWeaveWorkspaceTabState
     }
   }
 
+  Future<void> _performSemanticSearch(String query) async {
+    if (query.trim().isEmpty) return;
+    setState(() => _statusMessage = 'Generating vector embedding for query…');
+    try {
+      final vertexAi = ref.read(vertexApiServiceProvider);
+      final embeddings = await vertexAi.getEmbeddings([query]);
+      if (embeddings.isNotEmpty) {
+        setState(() => _statusMessage = 'Searching Weave Space via Vector Index…');
+        final results = await vertexAi.searchVectorIndex(queryVector: embeddings.first);
+        if (mounted) {
+          setState(() {
+            _statusMessage = '✅ Semantic search complete. Found ${results.length} nodes.';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Semantic Search: Found ${results.length} related nodes.'),
+              backgroundColor: _kPhaseGreen,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _statusMessage = '❌ Semantic Search error: $e');
+      }
+    }
+  }
+
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
@@ -298,7 +327,10 @@ class _BrainWeaveWorkspaceTabState
             const SizedBox(height: 24),
 
             // ── Query Field (NL Fallback) ─────────────────────────────────────
-            _QueryField(controller: _queryController),
+            _QueryField(
+              controller: _queryController,
+              onSubmitted: _performSemanticSearch,
+            ),
             const SizedBox(height: 24),
 
             // ── Node Graph List ───────────────────────────────────────────────
@@ -663,12 +695,14 @@ class _InboxCapture extends StatelessWidget {
 
 class _QueryField extends StatelessWidget {
   final TextEditingController controller;
-  const _QueryField({required this.controller});
+  final ValueChanged<String>? onSubmitted;
+  const _QueryField({required this.controller, this.onSubmitted});
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: 'Natural language query across nodes…',
         prefixIcon: const Icon(Icons.search, color: Colors.white38),

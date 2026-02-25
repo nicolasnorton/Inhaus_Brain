@@ -170,7 +170,7 @@ class _CreateAppDialogState extends ConsumerState<CreateAppDialog> {
             nodeType: WorkflowNodeType.llm,
             instruction: 'Text Generator',
             uiPosition: {'x': 400, 'y': 200},
-            config: {'model': 'gemini-pro'},
+            config: {'model': 'gemini-3.1-pro-preview'},
           ),
         ];
       }

@@ -74,11 +74,11 @@ class AIModelConfig {
     }
   }
 
-  // ── Gemini 2.5 Stable ──────────────────────────────────────────
+  // ── Gemini 3.x Primary ──────────────────────────────────────────
   static AIModelConfig get geminiPro => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-pro', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-3.1-pro-preview', temperature: 1.0);
   static AIModelConfig get geminiFlash => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
     
@@ -90,7 +90,7 @@ class AIModelConfig {
 
   // ── Research (Gemini + Google Search grounding) ───────────
   static AIModelConfig get geminiResearch => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash',
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview',
     useGoogleSearch: true, temperature: 1.0);
   static AIModelConfig get geminiDeepResearch => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'deep-research-pro-preview-12-2025',
