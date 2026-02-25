@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"github.com/google/generative-ai-go/genai"
@@ -142,40 +145,7 @@ func handlePipelineExecute(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[CognitiveEngine] Executing phase %s for session %s", req.Phase, req.SessionID)
 
-	ctx := context.Background()
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		http.Error(w, "GEMINI_API_KEY not configured", http.StatusInternalServerError)
-		return
-	}
-
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create genai client: %v", err), http.StatusInternalServerError)
-		return
-	}
-	defer client.Close()
-
-	model := client.GenerativeModel("gemini-3.1-pro-preview")
-	model.SetTemperature(0.3)
-	model.ResponseMIMEType = "application/json"
-	model.ResponseSchema = &genai.Schema{
-		Type: genai.TypeArray,
-		Items: &genai.Schema{
-			Type: genai.TypeObject,
-			Properties: map[string]*genai.Schema{
-				"title":       {Type: genai.TypeString},
-				"description": {Type: genai.TypeString},
-				"content":     {Type: genai.TypeString},
-				"topics":      {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}},
-			},
-			Required: []string{"title", "description", "content", "topics"},
-		},
-	}
-	
-	systemInstruction := "You are the BrainWeave Architect. Produce an array of structured knowledge nodes. Descriptions describe mechanism and implication. Content states definitive prose claims."
-	model.SystemInstruction = genai.NewUserContent(genai.Text(systemInstruction))
-
+	// Build the prompt based on phase
 	var prompt string
 	if req.Phase == Reduce {
 		prompt = fmt.Sprintf("REDUCE PHASE:\nExtract clear atomic insights from the following raw input flow. Break down complex facts into distinct nodes.\n\n[INPUT]\n%s", req.Input)
@@ -185,31 +155,216 @@ func handlePipelineExecute(w http.ResponseWriter, r *http.Request) {
 		prompt = fmt.Sprintf("PHASE: %s\nInput:\n%s", req.Phase, req.Input)
 	}
 
-	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
-	if err != nil {
-		log.Printf("Gemini generation failed: %v", err)
-		http.Error(w, fmt.Sprintf("failed generating content: %v", err), http.StatusInternalServerError)
-		return
-	}
+	systemInstruction := "You are the BrainWeave Architect. Produce an array of structured knowledge nodes. Descriptions describe mechanism and implication. Content states definitive prose claims."
 
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		http.Error(w, "no content generated", http.StatusInternalServerError)
-		return
-	}
-
-	var output strings.Builder
-	for _, part := range resp.Candidates[0].Content.Parts {
-		if text, ok := part.(genai.Text); ok {
-			output.WriteString(string(text))
+	// ── EDGE MODE CHECK ──────────────────────────────────────────────
+	// If EDGE_MODE=true, skip cloud entirely and go straight to Gemma.
+	edgeMode := os.Getenv("EDGE_MODE") == "true"
+	if edgeMode {
+		log.Printf("[CognitiveEngine] EDGE_MODE=true — using Gemma on-device directly")
+		output, err := callGemmaFallback(prompt, systemInstruction)
+		if err != nil {
+			log.Printf("[CognitiveEngine] Edge fallback also failed: %v", err)
+			http.Error(w, fmt.Sprintf("edge fallback failed: %v", err), http.StatusInternalServerError)
+			return
 		}
+		respondJSON(w, output, "Edge (Gemma) generation successful")
+		return
 	}
 
+	// ── CLOUD PATH: Gemini 3.1 Pro (Primary) ─────────────────────────
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		log.Printf("[CognitiveEngine] GEMINI_API_KEY not set — falling back to Gemma edge")
+		output, err := callGemmaFallback(prompt, systemInstruction)
+		if err != nil {
+			http.Error(w, "GEMINI_API_KEY not configured and edge fallback failed", http.StatusInternalServerError)
+			return
+		}
+		respondJSON(w, output, "Edge (Gemma) fallback — no API key")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		log.Printf("[CognitiveEngine] Failed to create genai client: %v — trying edge fallback", err)
+		output, edgeErr := callGemmaFallback(prompt, systemInstruction)
+		if edgeErr != nil {
+			http.Error(w, fmt.Sprintf("cloud client failed: %v, edge also failed: %v", err, edgeErr), http.StatusInternalServerError)
+			return
+		}
+		respondJSON(w, output, "Edge (Gemma) fallback — client init failed")
+		return
+	}
+	defer client.Close()
+
+	// Try primary model: gemini-3.1-pro-preview
+	cloudModels := []string{"gemini-3.1-pro-preview", "gemini-2.5-pro"}
+	var cloudOutput string
+	var cloudSuccess bool
+
+	for _, modelName := range cloudModels {
+		log.Printf("[CognitiveEngine] Trying cloud model: %s", modelName)
+		model := client.GenerativeModel(modelName)
+		model.SetTemperature(0.3)
+		model.ResponseMIMEType = "application/json"
+		model.ResponseSchema = &genai.Schema{
+			Type: genai.TypeArray,
+			Items: &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"title":       {Type: genai.TypeString},
+					"description": {Type: genai.TypeString},
+					"content":     {Type: genai.TypeString},
+					"topics":      {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}},
+				},
+				Required: []string{"title", "description", "content", "topics"},
+			},
+		}
+		model.SystemInstruction = genai.NewUserContent(genai.Text(systemInstruction))
+
+		resp, genErr := model.GenerateContent(ctx, genai.Text(prompt))
+		if genErr != nil {
+			log.Printf("[CognitiveEngine] %s failed: %v", modelName, genErr)
+			continue
+		}
+
+		if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+			log.Printf("[CognitiveEngine] %s returned no candidates", modelName)
+			continue
+		}
+
+		var outputBuilder strings.Builder
+		for _, part := range resp.Candidates[0].Content.Parts {
+			if text, ok := part.(genai.Text); ok {
+				outputBuilder.WriteString(string(text))
+			}
+		}
+		cloudOutput = outputBuilder.String()
+		cloudSuccess = true
+		log.Printf("[CognitiveEngine] ✅ Success with cloud model %s", modelName)
+		break
+	}
+
+	if cloudSuccess {
+		respondJSON(w, cloudOutput, "Cloud generation successful")
+		return
+	}
+
+	// ── EDGE FALLBACK: Gemma via Ollama ──────────────────────────────
+	log.Printf("[CognitiveEngine] All cloud models failed — invoking Gemma edge fallback")
+	output, edgeErr := callGemmaFallback(prompt, systemInstruction)
+	if edgeErr != nil {
+		http.Error(w, fmt.Sprintf("all cloud models and edge fallback failed: %v", edgeErr), http.StatusInternalServerError)
+		return
+	}
+	respondJSON(w, output, "Edge (Gemma) fallback — cloud unavailable")
+}
+
+// respondJSON writes a PipelineResponse as JSON to the HTTP response.
+func respondJSON(w http.ResponseWriter, output string, message string) {
 	response := PipelineResponse{
 		Status:  "success",
-		Output:  output.String(),
-		Message: "Generation successful",
+		Output:  output,
+		Message: message,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// callGemmaFallback runs the prompt through a local Ollama instance.
+// Environment variables:
+//   - EDGE_FALLBACK_MODEL: model name (default "gemma3:9b")
+//   - OLLAMA_HOST: Ollama endpoint (default "http://localhost:11434")
+func callGemmaFallback(prompt string, systemInstruction string) (string, error) {
+	ollamaHost := os.Getenv("OLLAMA_HOST")
+	if ollamaHost == "" {
+		ollamaHost = "http://localhost:11434"
+	}
+	edgeModel := os.Getenv("EDGE_FALLBACK_MODEL")
+	if edgeModel == "" {
+		edgeModel = "gemma3:9b"
+	}
+
+	log.Printf("[CognitiveEngine] 🧠 Gemma Edge Fallback: model=%s host=%s", edgeModel, ollamaHost)
+
+	// Wrap prompt with JSON instruction since Gemma doesn't support responseSchema
+	wrappedPrompt := fmt.Sprintf(`%s
+
+IMPORTANT: You MUST respond with ONLY a JSON array. Each element must have these exact keys: "title" (string), "description" (string), "content" (string), "topics" (array of strings).
+
+%s`, systemInstruction, prompt)
+
+	ollamaReq := map[string]interface{}{
+		"model":  edgeModel,
+		"prompt": wrappedPrompt,
+		"stream": false,
+		"format": "json",
+		"options": map[string]interface{}{
+			"temperature":   0.3,
+			"num_predict":   4096,
+		},
+	}
+
+	body, err := json.Marshal(ollamaReq)
+	if err != nil {
+		return "", fmt.Errorf("marshal ollama request: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", ollamaHost+"/api/generate", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create ollama request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("ollama request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("ollama returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var ollamaResp struct {
+		Response string `json:"response"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
+		return "", fmt.Errorf("decode ollama response: %w", err)
+	}
+
+	// Clean up: Gemma sometimes wraps JSON in markdown fences
+	output := strings.TrimSpace(ollamaResp.Response)
+	output = strings.TrimPrefix(output, "```json")
+	output = strings.TrimPrefix(output, "```")
+	output = strings.TrimSuffix(output, "```")
+	output = strings.TrimSpace(output)
+
+	// Validate it's parseable JSON
+	var check interface{}
+	if err := json.Unmarshal([]byte(output), &check); err != nil {
+		log.Printf("[CognitiveEngine] ⚠️ Gemma output is not valid JSON, wrapping: %v", err)
+		// Wrap the raw text as a single-node array
+		fallbackNode := []map[string]interface{}{
+			{
+				"title":       "Edge Processing Result",
+				"description": "Generated by Gemma on-device model (unstructured fallback)",
+				"content":     output,
+				"topics":      []string{"edge-fallback", "gemma"},
+			},
+		}
+		wrapped, _ := json.Marshal(fallbackNode)
+		output = string(wrapped)
+	}
+
+	log.Printf("[CognitiveEngine] ✅ Gemma edge fallback successful (%d bytes)", len(output))
+	return output, nil
 }

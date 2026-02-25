@@ -66,6 +66,26 @@ class FeatureFlags {
   static bool get brainweaveEnabled =>
       _overrides['brainweave_enabled'] ?? true;
 
+  /// When true, PicoClaw prefers Gemma on-device over cloud Gemini.
+  /// Default false — cloud is primary for demo reliability.
+  static bool get useEdgeFallback =>
+      _overrides['use_edge_fallback'] ?? false;
+
+  // ── Model Override Keys (String Remote Config) ────────────────────────
+  static final Map<String, String> _stringOverrides = {};
+
+  /// Remote Config model strings — fall back to hardcoded defaults.
+  static String get defaultReasoningModel =>
+      _stringOverrides['gemini_default_reasoning_model'] ?? 'gemini-3.1-pro-preview';
+  static String get fastModel =>
+      _stringOverrides['gemini_fast_model'] ?? 'gemini-3-flash-preview';
+  static String get embeddingModel =>
+      _stringOverrides['gemini_embedding_model'] ?? 'gemini-embedding-001';
+  static String get picoClawModel =>
+      _stringOverrides['pico_claw_model'] ?? 'gemini-3.1-pro-preview';
+  static String get edgeFallbackModel =>
+      _stringOverrides['edge_fallback_model'] ?? 'gemma-3-9b';
+
   /// Check any flag by name (for dynamic/future flags)
   static bool isEnabled(String flagName, {bool defaultValue = false}) =>
       _overrides[flagName] ?? defaultValue;

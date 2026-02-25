@@ -42,6 +42,7 @@ class BrainWeavePipelineService {
   }
 
   /// Communicates with the external PicoClaw Go Cognitive Engine.
+  /// Falls back to Vertex AI proxy if Cloud Run is unavailable.
   Future<Map<String, dynamic>> _callGoEngine({
     required String sessionId,
     required String phase,
@@ -66,7 +67,7 @@ class BrainWeavePipelineService {
           'input': input,
           'context': context,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return dart_convert.jsonDecode(response.body) as Map<String, dynamic>;
@@ -74,8 +75,43 @@ class BrainWeavePipelineService {
         throw Exception('Go Engine returned ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      debugPrint('BrainWeavePipeline: Go Engine Error: $e');
-      rethrow;
+      debugPrint('BrainWeavePipeline: Go Engine Error: $e — trying Vertex AI proxy fallback');
+      
+      // ── FALLBACK: Route through Vertex AI Cloud Functions proxy ───
+      try {
+        final prompt = _buildPhasePrompt(phase, input);
+        final result = await AIProxyService.generateContent(
+          prompt: prompt,
+          config: const AIModelConfig(
+            provider: AIProvider.gemini,
+            modelId: 'gemini-3.1-pro-preview',
+            temperature: 0.3,
+          ),
+          systemInstruction: 'You are the BrainWeave Architect. Produce an array of structured knowledge nodes as JSON. Each node must have: title, description, content, topics.',
+        );
+        
+        final text = result['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '[]';
+        return {
+          'status': 'success',
+          'output': text,
+          'message': 'Proxy fallback successful',
+        };
+      } catch (proxyErr) {
+        debugPrint('BrainWeavePipeline: Proxy fallback also failed: $proxyErr');
+        rethrow;
+      }
+    }
+  }
+
+  /// Builds the phase-specific prompt for fallback routing.
+  String _buildPhasePrompt(String phase, String input) {
+    switch (phase) {
+      case 'reduce':
+        return 'REDUCE PHASE:\nExtract clear atomic insights from the following raw input flow. Break down complex facts into distinct nodes.\n\n[INPUT]\n$input';
+      case 'reflect':
+        return 'REFLECT PHASE:\nSynthesize these insights. Group them logically and create MOC (Map of Content) nodes that connect and elevate these facts.\n\n[INPUT]\n$input';
+      default:
+        return 'PHASE: $phase\nInput:\n$input';
     }
   }
 

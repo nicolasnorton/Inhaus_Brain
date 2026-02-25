@@ -6,7 +6,7 @@ import 'ai_proxy_service.dart';
 class VertexApiService {
   static const String _projectId = 'inhausbrain';
   static const String _location = 'us-central1';
-  static const String _embeddingModel = 'text-embedding-004';
+  static const String _embeddingModel = 'gemini-embedding-001';
 
   /// Generate embeddings for a list of texts (Batched to max 250)
   Future<List<List<double>>> getEmbeddings(
