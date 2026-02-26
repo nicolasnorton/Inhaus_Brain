@@ -1661,3 +1661,4 @@ def build_dynamic_router(req: https_fn.Request) -> https_fn.Response:
         )
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
+from marketing_ingestion import sync_tiktok_ads, daily_sync_tiktok_ads, sync_linkedin_ads, daily_sync_linkedin_ads

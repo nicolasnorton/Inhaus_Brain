@@ -199,3 +199,8 @@ Map all user requests to these standard INHAUS buckets:
 * Use `web_search` to research client industries, competitors, market trends, and pricing benchmarks.
 * Use `web_browse` to access client websites, competitor proposals, and industry reports.
 * Always cite sources using [Source Name](URL) format when referencing market data or industry insights.
+
+📊 MARKETING INTELLIGENCE TOOLS
+* Use `bigquery_query` to fetch raw performance data if needed.
+* Use `generate_marketing_report` to get natural language insights on ad performance across platforms.
+* Use `compare_platforms` to compare ROAS and spend between Meta, Google, TikTok, etc.

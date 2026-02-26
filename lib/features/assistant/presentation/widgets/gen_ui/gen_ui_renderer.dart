@@ -26,6 +26,7 @@ import 'stitch_design_preview_widget.dart';
 import 'stitch_design_carousel_widget.dart';
 import 'stitch_code_export_widget.dart';
 import 'atomic_ui_renderer.dart';
+import 'marketing_intelligence_panel.dart';
 
 /// A shared factory widget to render GenUI components based on a JSON payload.
 /// This ensures consistent rendering across the Assistant chat and the Canvas.
@@ -80,6 +81,9 @@ class GenUIRenderer extends StatelessWidget {
         return DeepAnalysisReportWidget(data: payload);
       case 'knowledge_dashboard':
         return KnowledgeDashboardWidget(data: payload);
+      case 'marketing_intelligence':
+      case 'ad_performance':
+        return MarketingIntelligencePanel(data: payload);
       case 'dialogue_scene':
         return DialogueSceneWidget(
           initialUrl: payload['initialUrl'] ?? payload['url'],

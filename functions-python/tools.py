@@ -317,5 +317,29 @@ def get_a2ui_catalog() -> list[A2UIComponentDef]:
                 },
                 required=["title", "items"]
             )
+        ),
+        A2UIComponentDef(
+            name="marketing_intelligence",
+            description="Displays an ad performance and marketing intelligence dashboard with metrics from various platforms.",
+            parameters=ComponentParameters(
+                properties={
+                    "title": ComponentProperty(type="string", description="The title of the marketing board."),
+                    "platformData": ComponentProperty(
+                        type="array",
+                        description="Array of performance objects per platform.",
+                        items={
+                            "type": "object",
+                            "properties": {
+                                "platform": {"type": "string"},
+                                "total_spend": {"type": "number"},
+                                "roas": {"type": "number"},
+                                "total_conversions": {"type": "number"}
+                            },
+                            "required": ["platform", "total_spend"]
+                        }
+                    )
+                },
+                required=["title", "platformData"]
+            )
         )
     ]

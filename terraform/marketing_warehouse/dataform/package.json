@@ -1,0 +1,9 @@
+{
+    "name": "marketing_intelligence",
+    "version": "1.0.0",
+    "description": "Dataform project for marketing data transformations (raw → staging → mart)",
+    "warehouse": "bigquery",
+    "defaultSchema": "marketing_staging",
+    "defaultDatabase": "inhausbrain",
+    "assertionSchema": "marketing_assertions"
+}

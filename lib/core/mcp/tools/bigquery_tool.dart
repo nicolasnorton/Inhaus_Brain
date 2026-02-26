@@ -1,4 +1,5 @@
 import '../agent_tool.dart';
+import '../../services/bigquery_service.dart';
 
 class BigQueryTool extends AgentTool {
   BigQueryTool()
@@ -17,18 +18,15 @@ class BigQueryTool extends AgentTool {
     final query = parameters['query'] as String?;
     if (query == null) return ToolResult.failure("Missing query parameter");
 
-    // Stub implementation
-    // usage: { "query": "SELECT * FROM `inhaus.client_data` LIMIT 5" }
-    
-    // In a real app, this would use googleapis/bigquery or HTTP REST
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    return ToolResult.success({
-      "rows": [
-        {"campaign_id": "c1", "impressions": 1500, "clicks": 120},
-        {"campaign_id": "c2", "impressions": 3000, "clicks": 450},
-      ],
-      "status": "success"
-    });
+    try {
+      final bq = BigQueryService();
+      final results = await bq.executeQuery(query);
+      return ToolResult.success({
+        "rows": results,
+        "status": "success"
+      });
+    } catch (e) {
+      return ToolResult.failure("Failed to execute query: $e");
+    }
   }
 }
