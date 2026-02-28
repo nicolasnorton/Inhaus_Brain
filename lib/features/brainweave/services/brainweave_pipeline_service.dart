@@ -11,6 +11,7 @@ import '../../../core/services/vertex_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
 import '../../workspace/services/agent_registry_service.dart';
+import '../models/brainweave_link.dart';
 import '../models/brainweave_node.dart';
 
 /// Implements the Ars Contexta 6R Pipeline for BrainWeave.
@@ -34,6 +35,7 @@ class BrainWeavePipelineService {
 
   CollectionReference get _cores => _firestore.collection('brainweave_cores');
   CollectionReference get _nodes => _firestore.collection('brainweave_nodes');
+  CollectionReference get _links => _firestore.collection('brainweave_links');
   CollectionReference get _sessions => _firestore.collection('brainweave_sessions');
 
   Future<String> _getArchitectPrompt() async {
@@ -238,8 +240,32 @@ class BrainWeavePipelineService {
     return _parseJsonArray(output);
   }
 
+  /// Classify node type from LLM output or heuristics.
+  BrainWeaveNodeType _classifyNodeType(Map<String, dynamic> nodeData) {
+    // 1. Check explicit type from LLM
+    final rawType = (nodeData['type'] as String? ?? '').toLowerCase().trim();
+    if (rawType == 'moc') return BrainWeaveNodeType.moc;
+    if (rawType == 'topic') return BrainWeaveNodeType.topic;
+    if (rawType == 'atomic') return BrainWeaveNodeType.atomic;
+
+    // 2. Heuristic: title starts with "MOC:"
+    final title = (nodeData['title'] as String? ?? '');
+    if (title.startsWith('MOC:') || title.startsWith('MOC ')) {
+      return BrainWeaveNodeType.moc;
+    }
+
+    // 3. Heuristic: many topics → topic hub
+    final topics = List<String>.from(nodeData['topics'] ?? []);
+    if (topics.length >= 4) return BrainWeaveNodeType.topic;
+
+    return BrainWeaveNodeType.atomic;
+  }
+
   /// 4. Reweave: Graph backward updates.
   Future<void> _reweavePhase(List<dynamic> nodes, String systemInstruction) async {
+    final createdNodeIds = <String>[];
+    final createdNodes = <BrainWeaveNode>[];
+
     for (final nodeData in nodes) {
       final docRef = _nodes.doc();
 
@@ -255,6 +281,8 @@ class BrainWeavePipelineService {
         debugPrint("BrainWeavePipeline: Failed to generate embedding for node: $e");
       }
 
+      final nodeType = _classifyNodeType(nodeData as Map<String, dynamic>);
+
       final node = BrainWeaveNode(
         id: docRef.id,
         clientId: _userId,
@@ -263,15 +291,98 @@ class BrainWeavePipelineService {
         title: nodeData['title'] ?? 'Untitled Node',
         description: nodeData['description'] ?? '',
         content: nodeData['content'] ?? '',
-        type: BrainWeaveNodeType.atomic,
+        type: nodeType,
         topics: List<String>.from(nodeData['topics'] ?? []),
         embedding: embedding,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
       await docRef.set(node.toJson());
+      createdNodeIds.add(docRef.id);
+      createdNodes.add(node);
     }
-    _blackboard.addEvent(WorkflowEventType.agentAction, "Reweave completed: Nodes integrated.");
+
+    // ── Generate brainweave_links for nodes sharing topics ──
+    await _generateTopicLinks(createdNodes);
+
+    _blackboard.addEvent(WorkflowEventType.agentAction, 
+        "Reweave completed: ${createdNodes.length} nodes integrated with topic links.");
+  }
+
+  /// Creates brainweave_link documents for nodes that share common topics.
+  Future<void> _generateTopicLinks(List<BrainWeaveNode> newNodes) async {
+    // Also load existing nodes to link against
+    final existingSnap = await _nodes
+        .where('ownerId', isEqualTo: _userId)
+        .limit(300)
+        .get();
+    final allNodes = <BrainWeaveNode>[];
+    for (final doc in existingSnap.docs) {
+      allNodes.add(BrainWeaveNode.fromJson(
+          doc.data() as Map<String, dynamic>, doc.id));
+    }
+
+    // Build topic → nodeIds index
+    final topicIndex = <String, Set<String>>{};
+    for (final node in allNodes) {
+      for (final topic in node.topics) {
+        final key = topic.toLowerCase().trim();
+        topicIndex.putIfAbsent(key, () => {}).add(node.id);
+      }
+    }
+
+    // Load existing links to avoid duplicates
+    final existingLinksSnap = await _links
+        .where('ownerId', isEqualTo: _userId)
+        .limit(1000)
+        .get();
+    final existingPairs = <String>{};
+    for (final doc in existingLinksSnap.docs) {
+      final d = doc.data() as Map<String, dynamic>;
+      final pair = _linkPairKey(d['sourceNodeId'] ?? '', d['targetNodeId'] ?? '');
+      existingPairs.add(pair);
+    }
+
+    // Create links for topic-sharing pairs involving new nodes
+    final newNodeIds = newNodes.map((n) => n.id).toSet();
+    int linksCreated = 0;
+
+    for (final entry in topicIndex.entries) {
+      final nodeIds = entry.value.toList();
+      if (nodeIds.length < 2) continue;
+
+      for (int i = 0; i < nodeIds.length; i++) {
+        for (int j = i + 1; j < nodeIds.length; j++) {
+          // Only create if at least one node is new
+          if (!newNodeIds.contains(nodeIds[i]) && !newNodeIds.contains(nodeIds[j])) continue;
+
+          final pairKey = _linkPairKey(nodeIds[i], nodeIds[j]);
+          if (existingPairs.contains(pairKey)) continue;
+          existingPairs.add(pairKey);
+
+          final linkRef = _links.doc();
+          final link = BrainWeaveLink(
+            id: linkRef.id,
+            clientId: _userId,
+            projectId: 'default',
+            ownerId: _userId,
+            sourceNodeId: nodeIds[i],
+            targetNodeId: nodeIds[j],
+            relationshipType: 'shared_topic:${entry.key}',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          await linkRef.set(link.toJson());
+          linksCreated++;
+        }
+      }
+    }
+
+    debugPrint('BrainWeavePipeline: Generated $linksCreated topic links');
+  }
+
+  String _linkPairKey(String a, String b) {
+    return a.compareTo(b) < 0 ? '$a|$b' : '$b|$a';
   }
 
   /// 5. Verify: Schema tracking and evaluation.

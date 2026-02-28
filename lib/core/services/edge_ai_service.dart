@@ -139,7 +139,7 @@ class EdgeAIService {
 
     try {
       final result = await AIRouter.generate(request, ref: ref)
-          .timeout(const Duration(seconds: 45));
+          .timeout(const Duration(seconds: 120));
 
       stopwatch.stop();
 

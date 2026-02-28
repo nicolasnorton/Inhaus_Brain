@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/config/feature_flags.dart';
@@ -10,6 +11,7 @@ import '../../knowledge/providers/knowledge_provider.dart';
 import '../models/brainweave_node.dart';
 import '../services/brainweave_pipeline_service.dart';
 import '../services/brainweave_storage_service.dart';
+import 'knowledge_graph_explorer.dart';
 
 // ─── Colors & Style Constants ────────────────────────────────────────────────
 
@@ -206,6 +208,8 @@ class _BrainWeaveWorkspaceTabState
           _isExporting  = false;
           _statusMessage = '✅ ZIP exported.';
         });
+        // Auto-open download URL
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       }
     } catch (e) {
       if (mounted) setState(() {
@@ -229,6 +233,8 @@ class _BrainWeaveWorkspaceTabState
           _isExporting  = false;
           _statusMessage = '✅ PDF exported.';
         });
+        // Auto-open download URL
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       }
     } catch (e) {
       if (mounted) setState(() {
@@ -333,8 +339,8 @@ class _BrainWeaveWorkspaceTabState
             ),
             const SizedBox(height: 24),
 
-            // ── Node Graph List ───────────────────────────────────────────────
-            _NodeGraphList(userId: _userId),
+            // ── Knowledge Graph Explorer ──────────────────────────────────────
+            _GraphExplorerLauncher(userId: _userId),
             const SizedBox(height: 24),
 
             // ── Export Actions ────────────────────────────────────────────────
@@ -721,9 +727,9 @@ class _QueryField extends StatelessWidget {
   }
 }
 
-class _NodeGraphList extends ConsumerWidget {
+class _GraphExplorerLauncher extends ConsumerWidget {
   final String userId;
-  const _NodeGraphList({required this.userId});
+  const _GraphExplorerLauncher({required this.userId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -771,12 +777,52 @@ class _NodeGraphList extends ConsumerWidget {
             }
             final nodes = docs.map((doc) =>
                 BrainWeaveNode.fromJson(doc.data() as Map<String, dynamic>, doc.id)).toList();
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: nodes.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, idx) => _NodeTile(node: nodes[idx]),
+            return Column(
+              children: [
+                // ── Explore Button ──
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const Scaffold(
+                            body: KnowledgeGraphExplorer(),
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const FaIcon(FontAwesomeIcons.diagramProject, size: 14),
+                    label: Text('Explore Knowledge Graph  ·  ${nodes.length} nodes'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1A1D27),
+                      foregroundColor: const Color(0xFFD4A574),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: const Color(0xFF2A2D3A)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // ── Node preview list ──
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: nodes.length.clamp(0, 5),
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, idx) => _NodeTile(node: nodes[idx]),
+                ),
+                if (nodes.length > 5)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '+ ${nodes.length - 5} more nodes — tap Explore to see all',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+              ],
             );
           },
         ),
@@ -913,25 +959,32 @@ class _ExportActions extends StatelessWidget {
         ),
         if (exportUrl != null) ...[
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _kPhaseGreen.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _kPhaseGreen.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const FaIcon(FontAwesomeIcons.circleCheck, color: _kPhaseGreen, size: 14),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Download ready: ${exportUrl!.substring(0, 60)}…',
-                    style: const TextStyle(fontSize: 11, color: _kPhaseGreen),
-                    overflow: TextOverflow.ellipsis,
+          GestureDetector(
+            onTap: () {
+              launchUrl(Uri.parse(exportUrl!), mode: LaunchMode.externalApplication);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _kPhaseGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _kPhaseGreen.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const FaIcon(FontAwesomeIcons.circleCheck, color: _kPhaseGreen, size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '⬇ Tap to download: ${exportUrl!.length > 50 ? '${exportUrl!.substring(0, 50)}…' : exportUrl!}',
+                      style: const TextStyle(fontSize: 11, color: _kPhaseGreen, decoration: TextDecoration.underline, decorationColor: _kPhaseGreen),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  const FaIcon(FontAwesomeIcons.download, color: _kPhaseGreen, size: 12),
+                ],
+              ),
             ),
           ),
         ],
