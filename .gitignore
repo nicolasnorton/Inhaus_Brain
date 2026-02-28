@@ -53,3 +53,7 @@ venv/
 __pycache__/
 *.pyc
 .cloud_gen/
+terraform/.terraform/
+
+# Terraform local state
+terraform/**/.terraform/

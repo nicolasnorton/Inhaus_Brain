@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "firebase-admin": "^13.6.1",
-    "firebase-tools": "^15.4.0"
+    "firebase-tools": "^15.4.0",
+    "gcp-metadata": "^8.1.2"
   }
 }

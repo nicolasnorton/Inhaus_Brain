@@ -23,8 +23,31 @@ from bigquery_proxy import bigqueryProxy
 # However, DialogueManager is designed to be instantiated per request or handle statelessness.
 
 
-# Initialize Firebase Admin
-initialize_app()
+# Initialize Firebase Admin (default — uses the deployed project)
+_default_app = initialize_app()
+
+# Secondary Firebase Admin app for production project token verification.
+import firebase_admin
+from firebase_admin import credentials as fb_credentials
+try:
+    _prod_app = firebase_admin.initialize_app(
+        fb_credentials.ApplicationDefault(),
+        options={'projectId': 'inhausbrain'},
+        name='prod-verifier'
+    )
+    print("FirebaseAdmin: Initialized 'prod-verifier' for project 'inhausbrain'")
+except ValueError:
+    _prod_app = firebase_admin.get_app('prod-verifier')
+except Exception as e:
+    print(f"FirebaseAdmin ERROR: Failed to initialize 'prod-verifier': {e}")
+    _prod_app = None
+
+# API Key Health Check
+_api_key = os.environ.get("GOOGLE_API_KEY")
+if _api_key:
+    print(f"Gemini Proxy: GOOGLE_API_KEY found (starts with: {_api_key[:6]}...)")
+else:
+    print("Gemini Proxy WARNING: GOOGLE_API_KEY NOT FOUND IN ENVIRONMENT")
 
 def _verify_auth(req: https_fn.Request) -> tuple[str | None, str | None]:
     """Helper to verify Firebase Auth ID Token. Returns (uid, error_message)."""
@@ -33,13 +56,31 @@ def _verify_auth(req: https_fn.Request) -> tuple[str | None, str | None]:
         return None, "Unauthorized: Missing Authorization header"
     
     id_token = auth_header.split("Bearer ")[1]
+    
+    # Attempt 1: Default App (matches the project where the function is deployed)
     try:
         decoded_token = auth.verify_id_token(id_token)
         return decoded_token['uid'], None
     except Exception as e:
-        return None, f"Unauthorized: {str(e)}"
+        default_error = str(e)
+        print(f"Auth Attempt 1 (Default App) failed: {default_error}")
+    
+    # Attempt 2: Production App (always 'inhausbrain')
+    # This is needed because Flutter clients often authenticate with the production 
+    # project even when hitting staging Cloud Functions.
+    if _prod_app:
+        try:
+            # Explicitly use the secondary app for verification
+            decoded_token = auth.verify_id_token(id_token, app=_prod_app)
+            print(f"Auth Attempt 2 (Prod App) SUCCEEDED for user: {decoded_token['uid']}")
+            return decoded_token['uid'], None
+        except Exception as e:
+            print(f"Auth Attempt 2 (Prod App) failed: {e}")
+            return None, f"Unauthorized: Token validation failed for both staging and production audiences. Last error: {e}"
+    
+    return None, f"Unauthorized: {default_error}"
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def extract_structured(req: https_fn.Request) -> https_fn.Response:
     """
     Secure Proxy for Google LangExtract.
@@ -94,7 +135,7 @@ def extract_structured(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def generate_content(req: https_fn.Request) -> https_fn.Response:
     """
     Generate content using Gemini (Python SDK).
@@ -173,7 +214,7 @@ Here is the flight status you requested:
 {json.dumps(a2ui_schema.BeginRendering(surfaceId="generated-id-123", fallbackText="Flight Status Card").model_dump())}
 ```
 ```json ---a2ui_JSON---
-{json.dumps(a2ui_schema.SurfaceUpdate(surfaceId="generated-id-123", component="flightStatus", data={{"flightNumber": "UA123", "status": "On Time", "departureTime": "2026-02-21T10:00:00Z"}}).model_dump())}
+{json.dumps(a2ui_schema.SurfaceUpdate(surfaceId="generated-id-123", component="flightStatus", data={"flightNumber": "UA123", "status": "On Time", "departureTime": "2026-02-21T10:00:00Z"}).model_dump())}
 ```
 Let me know if you need any other cards!
         """
@@ -270,7 +311,7 @@ def _serialize_grounding(metadata):
         ]
     }
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def start_research(req: https_fn.Request) -> https_fn.Response:
     """Start a Deep Research interaction."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -348,7 +389,7 @@ def start_research(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def poll_research(req: https_fn.Request) -> https_fn.Response:
     """Poll a Deep Research interaction."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -414,7 +455,7 @@ def _normalize_operation_response(op_dict: dict, operation_name: str) -> dict:
         "result": result_data
     }
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def poll_operation(req: https_fn.Request) -> https_fn.Response:
     """Poll a standard LRO (e.g. Veo)."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -449,7 +490,7 @@ def poll_operation(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def generate_image(req: https_fn.Request) -> https_fn.Response:
     """Generate image using Imagen via Gemini SDK."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -472,7 +513,7 @@ def generate_image(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def count_tokens(req: https_fn.Request) -> https_fn.Response:
     """Count tokens using Gemini SDK."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -495,7 +536,7 @@ def count_tokens(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def create_cache(req: https_fn.Request) -> https_fn.Response:
     """Create a Context Cache."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -525,7 +566,7 @@ def create_cache(req: https_fn.Request) -> https_fn.Response:
     except Exception as e:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
     """
     Generate images using Nano Banana models via Gemini 2.5/3.0 Native Image Generation.
@@ -538,7 +579,7 @@ def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-2.5-flash-image")
+        model = data.get("model", "gemini-3.1-flash-image-preview")
         
         # Optional config
         aspect_ratio = data.get("aspectRatio")
@@ -568,7 +609,7 @@ def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
         traceback.print_exc()
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def upload_file(req: https_fn.Request) -> https_fn.Response:
     """
     Upload a file using the Gemini Files API.
@@ -611,7 +652,7 @@ def upload_file(req: https_fn.Request) -> https_fn.Response:
         print(f"Error in upload_file: {str(e)}")
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def process_document(req: https_fn.Request) -> https_fn.Response:
     """
     Process a document (PDF, etc.) for understanding/extraction.
@@ -706,7 +747,7 @@ def process_document(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def dialogue_engine(req: https_fn.Request) -> https_fn.Response:
     """
     Core Dialogue Engine Endpoint.
@@ -767,7 +808,7 @@ def dialogue_engine(req: https_fn.Request) -> https_fn.Response:
             status=500,
             headers={"Content-Type": "application/json"}
         )
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def enqueue_agent_task(req: https_fn.Request) -> https_fn.Response:
     """
     Enqueues an agent task for asynchronous processing.
@@ -815,7 +856,7 @@ def enqueue_agent_task(req: https_fn.Request) -> https_fn.Response:
         print(f"Error in enqueue_agent_task: {str(e)}")
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def gemma_generate(req: https_fn.Request) -> https_fn.Response:
     """
     Gemma model proxy endpoint.
@@ -910,7 +951,7 @@ def gemma_generate(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def chunk_and_embed(req: https_fn.Request) -> https_fn.Response:
     """Chunks text and generates embeddings."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -969,11 +1010,11 @@ def chunk_and_embed(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
     """Generate images using Nano Banana (native Gemini image generation).
     
-    Uses gemini-2.5-flash-image or gemini-3-pro-image-preview via
+    Uses gemini-3.1-flash-image-preview or gemini-3-pro-image-preview via
     generate_content with response_modalities=['Image'].
     """
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -983,7 +1024,7 @@ def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
     try:
         data = req.get_json()
         prompt = data.get("prompt")
-        model = data.get("model", "gemini-2.5-flash-image")
+        model = data.get("model", "gemini-3.1-flash-image-preview")
         aspect_ratio = data.get("aspectRatio")
         image_size = data.get("imageSize")  # "2K" or "4K" for Pro only
         response_modalities = data.get("responseModalities")  # e.g. ["Image"] or ["Text", "Image"]
@@ -1019,7 +1060,7 @@ def generate_nano_banana(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def upload_file(req: https_fn.Request) -> https_fn.Response:
     """Upload a file via the Gemini Files API.
     
@@ -1072,7 +1113,7 @@ def upload_file(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def process_document(req: https_fn.Request) -> https_fn.Response:
     """Process a document (PDF, etc.) using Gemini.
     
@@ -1142,7 +1183,7 @@ def process_document(req: https_fn.Request) -> https_fn.Response:
             headers={"Content-Type": "application/json"}
         )
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def get_live_token(req: https_fn.Request) -> https_fn.Response:
     """
     Generate a short-lived access token for Gemini Multimodal Live API (Vertex AI).
@@ -1192,7 +1233,7 @@ def get_live_token(req: https_fn.Request) -> https_fn.Response:
 # Phase 4: Source Verification Agent + Confidence Scoring
 # ═══════════════════════════════════════════════════════════════
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def verify_output(req: https_fn.Request) -> https_fn.Response:
     """Verifies generated output against source material.
     
@@ -1292,7 +1333,7 @@ SOURCES:
 # Phase 5.2: Multi-Speaker Audio Synthesis (Cloud TTS)
 # ═══════════════════════════════════════════════════════════════
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def synthesize_audio(req: https_fn.Request) -> https_fn.Response:
     """Synthesizes multi-speaker audio from a podcast script.
     
@@ -1404,7 +1445,7 @@ def synthesize_audio(req: https_fn.Request) -> https_fn.Response:
 # Agentic Architecture: Workspace, Memory, Skills, Heartbeat
 # ═══════════════════════════════════════════════════════════════
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def build_system_prompt(req: https_fn.Request) -> https_fn.Response:
     """Build system prompt from Firestore workspace documents."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1428,7 +1469,7 @@ def build_system_prompt(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def update_memory(req: https_fn.Request) -> https_fn.Response:
     """Update the user's long-term memory document."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1472,7 +1513,7 @@ def update_memory(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def log_activity(req: https_fn.Request) -> https_fn.Response:
     """Append to today's daily note."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1522,7 +1563,7 @@ def log_activity(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def read_memory(req: https_fn.Request) -> https_fn.Response:
     """Read memory + recent daily notes for system prompt building."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1546,7 +1587,7 @@ def read_memory(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def read_skill(req: https_fn.Request) -> https_fn.Response:
     """Load full skill content by name (lazy loading)."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1586,7 +1627,7 @@ def read_skill(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def create_skill(req: https_fn.Request) -> https_fn.Response:
     """Create a new skill from agent conversation."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1625,7 +1666,7 @@ def create_skill(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def run_heartbeat_endpoint(req: https_fn.Request) -> https_fn.Response:
     """Manually trigger heartbeat for a user (also callable by Cloud Scheduler)."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)
@@ -1645,7 +1686,7 @@ def run_heartbeat_endpoint(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 
-@https_fn.on_request(secrets=["GOOGLE_API_KEY"], invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["POST"]))
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=120, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
 def build_dynamic_router(req: https_fn.Request) -> https_fn.Response:
     """Build router prompt dynamically from agent registry."""
     if req.method != "POST": return https_fn.Response("Method Not Allowed", status=405)

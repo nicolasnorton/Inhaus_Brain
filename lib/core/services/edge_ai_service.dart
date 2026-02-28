@@ -239,30 +239,40 @@ class EdgeAIService {
     }
   }
 
-  /// Generate image via proxy (web) or throw on failure.
+  /// Generate image via Nano Banana 2 (native Gemini image generation).
   static Future<String> generateImage(String prompt, {String? imagenKey, String? vertexKey, dynamic ref, Map<String, dynamic>? generationParams, String? modelId}) async {
-    final effectiveModel = modelId ?? 'imagen-3.0-generate-001';
+    final effectiveModel = modelId ?? 'gemini-3.1-flash-image-preview';
 
     if (kIsWeb) {
       debugPrint('EdgeAI: [WEB] Image Generation via Proxy ($effectiveModel)...');
       if (ref == null) throw Exception('Ref required for Image Proxy');
-      final proxyResponse = await AIProxyService.generateImage(
+      final proxyResponse = await AIProxyService.generateNanoBanana(
         prompt: prompt,
         model: effectiveModel,
-        config: generationParams,
+        responseModalities: const ['Image'],
+        aspectRatio: generationParams?['aspectRatio'] as String?,
+        imageSize: generationParams?['imageSize'] as String?,
       );
-      final images = proxyResponse['images'] as List?;
-      if (images != null && images.isNotEmpty) {
-        final firstImg = images[0];
-        final base64Image = firstImg['data'];
-        if (base64Image != null) {
-          return "data:${firstImg['mimeType'] ?? 'image/png'};base64,$base64Image";
+
+      // Parse generate_content response: candidates[0].content.parts[].inline_data
+      final candidates = proxyResponse['candidates'] as List?;
+      if (candidates != null && candidates.isNotEmpty) {
+        final parts = (candidates[0]['content']?['parts'] as List?) ?? [];
+        for (final part in parts) {
+          final inlineData = part['inline_data'] ?? part['inlineData'];
+          if (inlineData != null) {
+            final base64Image = inlineData['data'];
+            final mimeType = inlineData['mime_type'] ?? inlineData['mimeType'] ?? 'image/png';
+            if (base64Image != null) {
+              return "data:$mimeType;base64,$base64Image";
+            }
+          }
         }
       }
-      throw Exception('Image generation returned no images. The Imagen service may be temporarily unavailable.');
+      throw Exception('Image generation returned no images. Please try a different prompt.');
     }
 
-    // Non-web: Imagen not yet wired for native platforms
+    // Non-web: Not yet wired for native platforms
     throw Exception('Image generation is currently only available on the web platform.');
   }
 

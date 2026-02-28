@@ -187,8 +187,8 @@ class ModelProvidersNotifier extends StateNotifier<List<ProviderConfig>> {
             supportsFunctionCalling: false,
           ),
           ModelConfig(
-            id: 'gemini-2.5-flash-image',
-            name: 'Nano Banana (High Fidelity)',
+            id: 'gemini-3.1-flash-image-preview',
+            name: 'Nano Banana 2 (High Fidelity)',
             provider: ModelProvider.google,
             type: ModelProviderType.image,
             contextWindow: 0,

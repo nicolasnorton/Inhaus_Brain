@@ -82,7 +82,7 @@ class ModelRegistry {
 
   // ── Media & Utility Models ──────────────────────────────────
   static const _media = {
-    SpecializedModel.image: 'gemini-2.5-flash-image',
+    SpecializedModel.image: 'gemini-3.1-flash-image-preview',
     SpecializedModel.video: 'veo-3.1-generate-preview',
     SpecializedModel.embed: 'gemini-embedding-001',
     SpecializedModel.deepResearch: 'deep-research-pro-preview-12-2025',

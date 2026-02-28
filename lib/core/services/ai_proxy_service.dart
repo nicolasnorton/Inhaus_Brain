@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../tokens/llm_provider.dart';
 import '../utils/resilience_utils.dart';
+import '../config/app_environment.dart';
 import 'audit_log_service.dart';
 
 class AIProxyService {
@@ -15,6 +16,30 @@ class AIProxyService {
   // Circuit Breakers for production resilience
   static final _contentCircuit = CircuitBreaker(name: 'GeminiContent', failureThreshold: 5);
   static final _imageCircuit = CircuitBreaker(name: 'ImagenImage', failureThreshold: 3);
+
+  static Exception _handleApiError(http.Response response, String defaultMessage) {
+    try {
+      final decoded = jsonDecode(response.body);
+      
+      // Handle Python SDK's specific error formatting
+      if (decoded['error'] != null) {
+        final errorStr = decoded['error'].toString();
+        // Check for 429 Quota
+        if (errorStr.contains('429') || errorStr.contains('quota') || errorStr.contains('too_many_requests')) {
+          return Exception('Google AI Quota Exceeded. Please check your billing account in Google AI Studio or try again later.');
+        }
+        return Exception(errorStr);
+      }
+    } catch (_) {
+      // Body wasn't JSON, fall through
+    }
+
+    if (response.statusCode == 429) {
+      return Exception('Google AI Quota Exceeded. Please check your billing account or try again later.');
+    }
+
+    return Exception('$defaultMessage (${response.statusCode}): ${response.body}');
+  }
 
   AIProxyService(this._ref) {
     globalRef = _ref;
@@ -39,16 +64,20 @@ class AIProxyService {
     return 'https://us-central1-inhausbrain.cloudfunctions.net/proxyVertexAI';
   }
 
-  static String get _pythonBaseUrl => 'https://generate-content-btdf7nijqa-uc.a.run.app'; 
+  // Always route to production Cloud Run since the Flutter client
+  // authenticates with the production Firebase project ('inhausbrain').
+  // The staging Cloud Run validates tokens against 'inhaus-brain-full-staging'
+  // which causes a 401 audience mismatch.
+  static String get _projectSuffix => '-1096509611056.us-central1.run.app';
 
-  static String get _generateImageUrl => 'https://generate-image-btdf7nijqa-uc.a.run.app';
-  static String get _generateContentUrl => 'https://generate-content-btdf7nijqa-uc.a.run.app';
-  static String get _countTokensUrl => 'https://count-tokens-btdf7nijqa-uc.a.run.app';
-  static String get _liveTokenUrl => 'https://get-live-token-btdf7nijqa-uc.a.run.app';
-  static String get _startResearchUrl => 'https://start-research-btdf7nijqa-uc.a.run.app';
-  static String get _pollResearchUrl => 'https://poll-research-btdf7nijqa-uc.a.run.app';
-  static String get _pollOperationUrl => 'https://poll-operation-btdf7nijqa-uc.a.run.app';
-  static String get _extractStructuredUrl => 'https://extract-structured-btdf7nijqa-uc.a.run.app';
+  static String get _generateImageUrl => 'https://generate-image$_projectSuffix';
+  static String get _generateContentUrl => 'https://generate-content$_projectSuffix';
+  static String get _countTokensUrl => 'https://count-tokens$_projectSuffix';
+  static String get _liveTokenUrl => 'https://get-live-token$_projectSuffix';
+  static String get _startResearchUrl => 'https://start-research$_projectSuffix';
+  static String get _pollResearchUrl => 'https://poll-research$_projectSuffix';
+  static String get _pollOperationUrl => 'https://poll-operation$_projectSuffix';
+  static String get _extractStructuredUrl => 'https://extract-structured$_projectSuffix';
 
   /// Fetch a short-lived access token for the Multimodal Live API.
   static Future<Map<String, dynamic>> getLiveToken() async {
@@ -133,7 +162,7 @@ class AIProxyService {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           if (data['error'] != null) {
-             throw Exception('Python API Error: ${data['error']}');
+             throw _handleApiError(response, 'Python API Error');
           }
           
           if (effectiveRef != null) {
@@ -153,7 +182,7 @@ class AIProxyService {
         } else {
           debugPrint('AIProxyService: Python Proxy failed (${response.statusCode}): ${response.body}');
           if (thinking || tools != null || prompt is List) {
-             throw Exception('Python Proxy failed (${response.statusCode}) and features are not available in legacy fallback.');
+             throw _handleApiError(response, 'Python Proxy failed');
           }
         }
       } catch (e) {
@@ -177,7 +206,7 @@ class AIProxyService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Proxy Error ${response.statusCode}: ${response.body}');
+        throw _handleApiError(response, 'Proxy Error');
       }
     } catch (e) {
       debugPrint('AIProxyService Legacy Error: $e');
@@ -222,14 +251,14 @@ class AIProxyService {
       }
       return jsonDecode(response.body);
     } else {
-      throw Exception('Image Generation Failed (${response.statusCode}): ${response.body}');
+      throw _handleApiError(response, 'Image Generation Failed');
     }
   }
 
 /// Generates an image using Nano Banana (Native Generation).
 static Future<Map<String, dynamic>> generateNanoBanana({
   required String prompt,
-  String model = 'gemini-2.5-flash-image',
+  String model = 'gemini-3.1-flash-image-preview',
   List<String> responseModalities = const ['Text', 'Image'],
   String? aspectRatio,
   String? imageSize,
@@ -368,7 +397,7 @@ static Future<Map<String, dynamic>> processDocument({
       }
       return jsonDecode(response.body);
     } else {
-      throw Exception('Start Research Failed (${response.statusCode}): ${response.body}');
+      throw _handleApiError(response, 'Start Research Failed');
     }
   }
 
@@ -392,7 +421,7 @@ static Future<Map<String, dynamic>> processDocument({
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Poll Research Failed (${response.statusCode}): ${response.body}');
+      throw _handleApiError(response, 'Poll Research Failed');
     }
   }
 
@@ -447,7 +476,7 @@ static Future<Map<String, dynamic>> processDocument({
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Poll Operation Failed: ${response.body}');
+      throw _handleApiError(response, 'Poll Operation Failed');
     }
   }
 
@@ -471,7 +500,7 @@ static Future<Map<String, dynamic>> processDocument({
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Embeddings Failed: ${response.body}');
+      throw _handleApiError(response, 'Embeddings Failed');
     }
   }
 
@@ -502,7 +531,7 @@ static Future<Map<String, dynamic>> processDocument({
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Extraction Failed: ${response.body}');
+      throw _handleApiError(response, 'Extraction Failed');
     }
   }
 }

@@ -101,7 +101,7 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		idToken := strings.TrimPrefix(authHeader, "Bearer ")
-		
+
 		// If running locally without credentials or a mock token is passed for testing
 		if os.Getenv("ENV") == "local" || idToken == "test-token" {
 			next.ServeHTTP(w, r)
@@ -185,7 +185,7 @@ func handlePipelineExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
@@ -304,8 +304,8 @@ IMPORTANT: You MUST respond with ONLY a JSON array. Each element must have these
 		"stream": false,
 		"format": "json",
 		"options": map[string]interface{}{
-			"temperature":   0.3,
-			"num_predict":   4096,
+			"temperature": 0.3,
+			"num_predict": 4096,
 		},
 	}
 

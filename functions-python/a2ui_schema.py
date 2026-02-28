@@ -16,7 +16,7 @@ class ComponentParameters(BaseModel):
 
 class A2UIComponentDef(BaseModel):
     """A definition of an A2UI component as provided to the LLM."""
-    name: str = Field(pattern=r'^[a-z][a-zA-Z0-9]*$')
+    name: str = Field(pattern=r'^[a-zA-Z_][a-zA-Z0-9_]*$')
     description: str
     parameters: ComponentParameters
 

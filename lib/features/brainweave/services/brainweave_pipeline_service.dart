@@ -67,7 +67,7 @@ class BrainWeavePipelineService {
           'input': input,
           'context': context,
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
         return dart_convert.jsonDecode(response.body) as Map<String, dynamic>;
@@ -286,6 +286,7 @@ class BrainWeavePipelineService {
   Future<void> _rethinkPhase(String sessionId, String systemInstruction) async {
     final coreRef = _cores.doc(_userId);
     await coreRef.set({
+      'ownerId': _userId,
       'methodology': 'Updated methodology based on recent friction logs...',
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));

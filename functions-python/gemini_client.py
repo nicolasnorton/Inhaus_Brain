@@ -66,9 +66,9 @@ class GeminiClient:
             if "nano-banana" in name_lower or "nano_banana" in name_lower:
                 if "pro" in name_lower:
                     return "gemini-3-pro-image-preview"
-                return "gemini-2.5-flash-image"
+                return "gemini-3.1-flash-image-preview"
             if "flash-image" in name_lower or "flash_image" in name_lower:
-                return "gemini-2.5-flash-image"
+                return "gemini-3.1-flash-image-preview"
             if "pro-image" in name_lower or "pro_image" in name_lower:
                 return "gemini-3-pro-image-preview"
             return model_name
@@ -87,7 +87,7 @@ class GeminiClient:
 
         # Map Media Models
         if "imagen-4" in name_lower or "imagen" in name_lower:
-             return "gemini-2.5-flash-image"
+             return "gemini-3.1-flash-image-preview"
         if "veo-3.1" in name_lower:
              return "veo-3.1-generate-preview"
         if "veo" in name_lower:
@@ -699,7 +699,7 @@ class GeminiClient:
     def generate_nano_banana(
         self,
         prompt: Union[str, List[Any]],
-        model: str = "gemini-2.5-flash-image",
+        model: str = "gemini-3.1-flash-image-preview",
         response_modalities: Optional[List[str]] = None,
         aspect_ratio: Optional[str] = None,
         image_size: Optional[str] = None,
@@ -760,7 +760,7 @@ class GeminiClient:
         print(f"GeminiClient: Generating Nano Banana image with {normalized_model}...")
         
         # Fallback chain for image models
-        fallback_models = [normalized_model, "gemini-2.5-flash-image"]
+        fallback_models = [normalized_model, "gemini-3.1-flash-image-preview"]
         fallback_models = list(dict.fromkeys(fallback_models))
         
         last_error = None

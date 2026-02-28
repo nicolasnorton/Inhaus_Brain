@@ -642,11 +642,11 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         sender: MessageSender.creativeAgent,
         type: MessageType.toolUsage,
         createdAt: DateTime.now(),
-        metadata: {'tool': 'imagen_3_gen'},
+        metadata: {'tool': 'nano_banana_gen'},
       );
       state = state!.copyWith(messages: [...state!.messages, toolMsg]);
 
-      final imageTool = ImageGenerationTool(ref, imagenKey: imagenKey);
+      final imageTool = ImageGenerationTool(ref);
       final stopWatch = Stopwatch()..start();
       final result = await imageTool.execute({'prompt': userPrompt});
       stopWatch.stop();
@@ -677,7 +677,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       } else {
         finalMsg = ChatMessage(
           id: const Uuid().v4(),
-          content: 'Image generation failed: ${result.errorMessage ?? "Unknown error"}. Please try again or check your Imagen API key.',
+          content: 'Image generation failed: ${result.errorMessage ?? "Unknown error"}. Please try again with a different prompt.',
           sender: MessageSender.creativeAgent,
           createdAt: DateTime.now(),
         );

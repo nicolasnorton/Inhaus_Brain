@@ -784,7 +784,8 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
         _buildModelMenuItem(AIModelConfig.geminiDeepResearch, FontAwesomeIcons.microscope),
         const PopupMenuDivider(),
         _buildGroupHeader('MEDIA'),
-        _buildModelMenuItem(AIModelConfig.imagen4, FontAwesomeIcons.image),
+        _buildModelMenuItem(AIModelConfig.nanoBanana, FontAwesomeIcons.image),
+        _buildModelMenuItem(AIModelConfig.nanoBananaPro, FontAwesomeIcons.wandMagicSparkles),
         _buildModelMenuItem(AIModelConfig.veo31, FontAwesomeIcons.video),
         if (AppConfig.isStaging) ...[
           const PopupMenuDivider(),

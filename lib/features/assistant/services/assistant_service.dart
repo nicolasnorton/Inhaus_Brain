@@ -870,6 +870,31 @@ class AssistantService {
       // If no tool was executed, responseText remains the raw text
     } catch (e) {
       debugPrint('Assistant AI Error: $e');
+      final errorStr = e.toString();
+      
+      // Friendly message for quota / rate-limit errors
+      if (errorStr.contains('Quota Exceeded') || 
+          errorStr.contains('429') || 
+          errorStr.contains('too_many_requests') ||
+          errorStr.contains('quota')) {
+        return ToolExecutionSummary(
+          text: "⚠️ **AI quota limit reached.** The Google AI service is temporarily rate-limited. "
+                "Please wait a moment and try again, or check your API quota in "
+                "[Google AI Studio](https://aistudio.google.com/app/apikey)."
+        );
+      }
+      
+      // Friendly message for network / connectivity errors
+      if (errorStr.contains('Failed to fetch') || 
+          errorStr.contains('ClientException') ||
+          errorStr.contains('SocketException') ||
+          errorStr.contains('TimeoutException')) {
+        return ToolExecutionSummary(
+          text: "🌐 **Connection issue.** I couldn't reach the AI service. "
+                "Please check your internet connection and try again."
+        );
+      }
+      
       return ToolExecutionSummary(text: "I encountered an error while processing your request: $e");
     }
 
