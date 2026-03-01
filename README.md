@@ -37,8 +37,9 @@ The Inhaus Brain features a team of 11+ specialized agents, each with a custom m
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 - **Proposal Specialist (New)**: Bilingual agent capable of generating structured, service-mapped client proposals. Now supports high-fidelity **PDF Document** (Portrait) and **Slide Deck** (Landscape) generation with dynamic branding integration.
 
-### 📈 Marketing Intelligence Layer (New)
-A comprehensive cortex-compatible data warehouse built right into BrainWeave:
+### 📈 Marketing Intelligence & Knowledge Graph (BrainWeave)
+A comprehensive cortex-compatible data warehouse and knowledge graph built right into BrainWeave:
+- **Shared Mind (Auto-Retrieval & Ingestion)**: Brian and all specialized agents now autonomously query the BrainWeave knowledge graph _before_ answering any prompt, ensuring all responses are grounded in your agency's accumulated intelligence. Significant agent outputs are automatically ingested back into the graph, creating a continuous learning loop.
 - **BunkerDB Replacement**: High-performance, low-latency BigQuery star schema replacing legacy third-party tools.
 - **Cross-Platform Ingestion pipelines**: Automated incremental loads for Meta Ads, TikTok Marketing API v2, GA4, LinkedIn, and Google Ads.
 - **Natural Language to SQL**: Users can ask natural language questions ("Why did ROAS drop this week?") and the engine autonomously queries the data warehouse.

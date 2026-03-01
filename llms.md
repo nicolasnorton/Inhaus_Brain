@@ -53,6 +53,11 @@ The Inhaus Brain features an 11-step specialized agency roster:
 - **Data Engineer Agent**: Manages schemas and data flow (Sensitive).
 - **Security Agent**: Audits all pipeline inputs and final outputs.
 
+### 4.5 BrainWeave & The "Shared Mind"
+- **Auto-Retrieval**: Through the MCP `QueryBrainWeaveTool`, every agent automatically queries the BrainWeave graph *before* responding. This injects up to 3 highly relevant `atomic nodes` into the system prompt's `{{KNOWLEDGE_GROUNDING}}` block.
+- **Auto-Ingestion Loop**: Significant agent texts (>100 chars) are autonomously ingested back into the BrainWeave graph via the `CreateAtomicNodeTool` (creating a virtuous cycle where agents learn from their own generated artifacts).
+- **Direct Agent Mutation**: Specialized agents can explicitly create, link, and read full node contexts using `GetNodeContextTool` along with Vertex AI semantic search.
+
 ### 4. Agent Development Kit (ADK)
 - **`AdkService`**: Coordinates pipeline execution, tool invocation, and events.
 - **`PipelineContext`**: Maintains a shared memory of `AdkArtifact`s across steps.

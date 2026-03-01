@@ -37,14 +37,13 @@ The Copilot is your AI assistant for running the platform. Instead of clicking t
 *   **Manage Knowledge**: "Add https://inhaus.corp/manual to my knowledge base", "List all my knowledge sources".
 *   **Create Apps**: "Build a new research app for Competitor Analysis".
 
-### 4. 📚 Knowledge Base (The Library)
-Inhaus Brain's Knowledge Module is designed for agency-level intelligence with enterprise security:
-*   **Adaptive Chunking**: Automatically adjusts how it "reads" your documents. Data records (like Google Ads) are kept granular, while long PDFs use larger context windows.
-*   **Semantic Caching**: The system remembers complex RAG queries. Repeat searches are nearly instantaneous and cost-saving.
-*   **Hybrid Search**: Combines literal keyword matching with AI-powered "semantic" understanding for >90% retrieval accuracy.
-*   **Google Drive Integration**: Select files directly from your Google Drive (Docs, Sheets, PDFs) for instant ingestion without manual downloads.
-*   **LiteRT Fallback**: If the cloud is unavailable, the platform automatically switches to local, on-device embedding models to ensure your knowledge is always accessible.
-*   **PII Scrubbing**: Before any data is processed for metadata extraction, names, emails, and phone numbers are automatically masked to ensure privacy compliance.
+### 4. 📚 BrainWeave Knowledge Graph (The "Shared Mind")
+Inhaus Brain's Knowledge Module (BrainWeave) is designed for agency-level intelligence with enterprise security. It acts as the **"Shared Mind"** for all AI agents on the platform.
+*   **Auto-Retrieval (Always On)**: Before any agent answers your question, they automatically query the BrainWeave graph. This ensures all agents are grounded in your agency's past learnings, style guides, and documentation.
+*   **Auto-Ingestion Loop**: When an agent provides a high-quality answer, the system automatically creates a new "node" in BrainWeave. The more you use the platform, the smarter it gets.
+*   **Semantic Caching**: The system remembers complex searches. Repeat questions are nearly instantaneous.
+*   **Google Drive Integration**: Select files directly from your Google Drive for instant ingestion.
+*   **PII Scrubbing**: Before data is processed, names, emails, and phone numbers are automatically masked for privacy compliance.
 
 ### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
