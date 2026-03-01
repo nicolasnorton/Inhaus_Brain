@@ -225,9 +225,29 @@ service cloud.firestore {
     }
 
     match /brainweave_nodes/{nodeId} {
-      allow create: if isAuthenticated() && request.resource.data.get('ownerId', '') == request.auth.uid;
-      allow read: if isAgencyStaff() || (isAuthenticated() && resource.data.get('ownerId', '') == request.auth.uid);
-      allow update, delete: if isAuthenticated() && resource.data.get('ownerId', '') == request.auth.uid;
+      // Helper variables for scope validation
+      function getScope(data) { return data.get('scope', 'PRIVATE'); }
+      function isNodeOwner(data) { return data.get('ownerId', '') == request.auth.uid; }
+      function isClientOwner(data) { return data.get('clientId', '') == request.auth.uid; }
+      
+      allow create: if isAuthenticated() && (
+        (getScope(request.resource.data) == 'AGENCY' && isAgencyStaff()) ||
+        (getScope(request.resource.data) == 'CLIENT' && (isNodeOwner(request.resource.data) || isAgencyStaff() || isClientOwner(request.resource.data))) ||
+        (getScope(request.resource.data) == 'PRIVATE' && isNodeOwner(request.resource.data))
+      );
+      
+      allow read: if isAuthenticated() && (
+        getScope(resource.data) == 'AGENCY' || 
+        isAgencyStaff() || 
+        isNodeOwner(resource.data) || 
+        (getScope(resource.data) == 'CLIENT' && isClientOwner(resource.data))
+      );
+      
+      allow update, delete: if isAuthenticated() && (
+        (getScope(resource.data) == 'AGENCY' && isAgencyStaff()) ||
+        (getScope(resource.data) == 'CLIENT' && (isNodeOwner(resource.data) || isAgencyStaff() || isClientOwner(resource.data))) ||
+        (getScope(resource.data) == 'PRIVATE' && isNodeOwner(resource.data))
+      );
     }
 
     match /brainweave_links/{linkId} {

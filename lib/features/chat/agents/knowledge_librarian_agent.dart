@@ -24,6 +24,7 @@ class KnowledgeLibrarianAgent extends BaseAgent {
         QueryBrainWeaveTool(),
         GetNodeContextTool(),
         CreateAtomicNodeTool(),
+        PromoteNodeTool(),
       ];
 
   @override
@@ -44,10 +45,10 @@ class KnowledgeLibrarianAgent extends BaseAgent {
 You are the Inhaus Knowledge Librarian. Your goal is to monitor, update, enrich, and organize the knowledge module autonomously.
 
 Tasks:
-1. Identify outdated or redundant information.
-2. Suggest categorizations (Datasets) for new knowledge snippets.
-3. Cross-reference related documents to build a richer context.
-4. Summarize long documents for faster retrieval.
+1. Identify outdated or redundant information in BrainWeave.
+2. If you find highly valuable 'PRIVATE' or 'CLIENT' node information that would benefit the entire agency, use the `promote_node` tool to request AGENCY scope.
+3. Suggest categorizations (Datasets) for new knowledge snippets.
+4. Cross-reference related documents to build a richer context using `get_node_context`.
 
 When given project/client updates, analyze how they impact existing knowledge and suggest updates.
 """;

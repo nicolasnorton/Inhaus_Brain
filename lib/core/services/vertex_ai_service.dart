@@ -216,16 +216,43 @@ class VertexApiService {
     debugPrint('VertexAI: Performing cosine similarity search (${queryVector.length}-dim, top $neighborCount)...');
 
     try {
-      // Fetch all brainweave_nodes for this user
-      final snapshot = await FirebaseFirestore.instance
-          .collection('brainweave_nodes')
-          .where('ownerId', isEqualTo: userId)
-          .limit(500)
-          .get();
+      // Fetch candidate nodes based on multi-scope boundaries
+      final activeClientId = filter?['clientId'] as String?;
+      final requestedScope = filter?['scope'] as String?; // Optional specific scope
 
+      final queries = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
+      final collection = FirebaseFirestore.instance.collection('brainweave_nodes');
+
+      if (requestedScope != null) {
+        // Specific scope requested
+        if (requestedScope == 'PRIVATE') {
+          queries.add(collection.where('ownerId', isEqualTo: userId).where('scope', isEqualTo: 'PRIVATE').limit(200).get());
+        } else if (requestedScope == 'AGENCY') {
+          queries.add(collection.where('scope', isEqualTo: 'AGENCY').limit(200).get());
+        } else if (requestedScope == 'CLIENT') {
+          if (activeClientId != null) {
+             queries.add(collection.where('scope', isEqualTo: 'CLIENT').where('clientId', isEqualTo: activeClientId).limit(200).get());
+          }
+          queries.add(collection.where('ownerId', isEqualTo: userId).where('scope', isEqualTo: 'CLIENT').limit(100).get());
+        }
+      } else {
+        // All accessible scopes
+        queries.add(collection.where('ownerId', isEqualTo: userId).limit(200).get());
+        queries.add(collection.where('scope', isEqualTo: 'AGENCY').limit(200).get());
+        if (activeClientId != null) {
+          queries.add(collection.where('scope', isEqualTo: 'CLIENT').where('clientId', isEqualTo: activeClientId).limit(200).get());
+        }
+      }
+
+      final snapshots = await Future.wait(queries);
+      
       final scored = <Map<String, dynamic>>[];
+      final processedDocIds = <String>{};
 
-      for (final doc in snapshot.docs) {
+      for (final snapshot in snapshots) {
+        for (final doc in snapshot.docs) {
+          if (processedDocIds.contains(doc.id)) continue;
+          processedDocIds.add(doc.id);
         final data = doc.data();
         final storedEmbedding = data['embedding'];
         if (storedEmbedding == null || storedEmbedding is! List) continue;
@@ -251,13 +278,14 @@ class VertexApiService {
           });
         }
       }
+    }
 
       // Sort by similarity (highest first) and return top K
       scored.sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
       final results = scored.take(neighborCount).toList();
 
       debugPrint('VertexAI: Cosine search found ${results.length} results '
-          '(from ${snapshot.docs.length} nodes, ${scored.length} above threshold).');
+          '(from ${processedDocIds.length} candidate nodes, ${scored.length} above threshold).');
       return results;
     } catch (e) {
       debugPrint('VertexAI: searchVectorIndex error: $e');

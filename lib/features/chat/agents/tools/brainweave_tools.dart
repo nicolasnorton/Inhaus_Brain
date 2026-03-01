@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/mcp/agent_tool.dart';
 import '../../../../core/services/vertex_ai_service.dart';
 import '../../../knowledge/providers/knowledge_provider.dart';
+import '../../../clients/providers/client_provider.dart';
 
 /// Semantic search implementation exposed to Agents
 class QueryBrainWeaveTool extends AgentTool {
@@ -19,6 +20,11 @@ class QueryBrainWeaveTool extends AgentTool {
             'limit': {
               'type': 'integer',
               'description': 'Maximum number of results to return (default 5).',
+            },
+            'scope': {
+              'type': 'string',
+              'description': 'Optional. Can be PRIVATE, CLIENT, or AGENCY. If omitted, searches all scopes the agent has access to.',
+              'enum': ['PRIVATE', 'CLIENT', 'AGENCY']
             }
           },
         );
@@ -35,6 +41,9 @@ class QueryBrainWeaveTool extends AgentTool {
 
     try {
       final vertexAi = ref.read(vertexApiServiceProvider);
+      final activeClientId = ref.read(clientProvider).selectedClientId;
+      final requestedScope = parameters['scope'] as String?;
+      
       final embeddings = await vertexAi.getEmbeddings([query]);
       if (embeddings.isEmpty) {
         return ToolResult.failure('Failed to generate embedding for query');
@@ -43,6 +52,10 @@ class QueryBrainWeaveTool extends AgentTool {
       final results = await vertexAi.searchVectorIndex(
         queryVector: embeddings.first,
         neighborCount: limit,
+        filter: {
+          if (requestedScope != null) 'scope': requestedScope,
+          if (activeClientId != null) 'clientId': activeClientId,
+        },
       );
 
       return ToolResult.success({'results': results});
@@ -136,6 +149,11 @@ class CreateAtomicNodeTool extends AgentTool {
               'type': 'array',
               'items': {'type': 'string'},
               'description': 'List of categorical topics to group this node.',
+            },
+            'scope': {
+              'type': 'string',
+              'description': 'The visibility scope of the node (PRIVATE, CLIENT, AGENCY). Defaults to PRIVATE.',
+              'enum': ['PRIVATE', 'CLIENT', 'AGENCY']
             }
           },
         );
@@ -150,6 +168,7 @@ class CreateAtomicNodeTool extends AgentTool {
     final description = parameters['description'] as String?;
     final content = parameters['content'] as String?;
     final topics = (parameters['topics'] as List?)?.cast<String>() ?? [];
+    final scope = parameters['scope'] as String? ?? 'PRIVATE';
 
     if (title == null || content == null) {
       return ToolResult.failure('Missing required title or content');
@@ -157,6 +176,7 @@ class CreateAtomicNodeTool extends AgentTool {
 
     try {
       final vertexAi = ref.read(vertexApiServiceProvider);
+      final activeClientId = ref.read(clientProvider).selectedClientId;
       
       // Generate embedding for semantic search
       final textToEmbed = "\$title \$description \$content";
@@ -164,7 +184,7 @@ class CreateAtomicNodeTool extends AgentTool {
       List<double>? embedding = embeddings.isNotEmpty ? embeddings.first : null;
 
       final nodeData = {
-        'clientId': 'user_\$userId',
+        'clientId': activeClientId ?? 'user_$userId',
         'projectId': 'default',
         'ownerId': userId,
         'title': title,
@@ -172,6 +192,7 @@ class CreateAtomicNodeTool extends AgentTool {
         'content': content,
         'type': 'atomic',
         'topics': topics,
+        'scope': scope,
         'embedding': embedding,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -194,3 +215,59 @@ class CreateAtomicNodeTool extends AgentTool {
     }
   }
 }
+
+/// Allows KnowledgeLibrarian to propose a node promotion to AGENCY scope
+class PromoteNodeTool extends AgentTool {
+  PromoteNodeTool()
+      : super(
+          name: 'promote_node',
+          description: 'Propose an existing node to be promoted to AGENCY scope. This creates a pending review for humans to approve.',
+          inputSchema: {
+            'nodeId': {
+              'type': 'string',
+              'description': 'The exact ID of the node to promote.',
+            },
+            'reason': {
+              'type': 'string',
+              'description': 'The rationale for why this should be agency-wide knowledge.',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final nodeId = parameters['nodeId'] as String?;
+    final reason = parameters['reason'] as String?;
+
+    if (nodeId == null || nodeId.isEmpty) {
+      return ToolResult.failure('Missing nodeId parameter');
+    }
+    if (reason == null || reason.isEmpty) {
+      return ToolResult.failure('Missing reason parameter');
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('brainweave_nodes').doc(nodeId).get();
+      if (!doc.exists) return ToolResult.failure('Node not found');
+      
+      final currentScope = doc.data()?['scope'] ?? 'PRIVATE';
+      if (currentScope == 'AGENCY') return ToolResult.failure('Node is already AGENCY scope');
+
+      await FirebaseFirestore.instance.collection('pending_promotions').add({
+        'nodeId': nodeId,
+        'title': doc.data()?['title'] ?? 'Untitled Node',
+        'reason': reason,
+        'requestedBy': FirebaseAuth.instance.currentUser?.uid ?? 'system',
+        'requestedAt': FieldValue.serverTimestamp(),
+        'status': 'PENDING',
+      });
+
+      return ToolResult.success({
+        'status': 'Promotion request created successfully. Waiting for human approval.'
+      });
+    } catch (e) {
+      return ToolResult.failure('Failed to request promotion: $e');
+    }
+  }
+}
+
