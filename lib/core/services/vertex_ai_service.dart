@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'ai_proxy_service.dart';
@@ -197,26 +200,84 @@ class VertexApiService {
       }).toList();
   }
 
-  /// Searches the Vertex AI Vector Search index.
+  /// Searches brainweave_nodes via client-side cosine similarity
+  /// against embeddings stored in Firestore.
   Future<List<Map<String, dynamic>>> searchVectorIndex({
     required List<double> queryVector,
     int neighborCount = 5,
     Map<String, dynamic>? filter,
   }) async {
-    // PATH 0: WEB PROXY (Implementation should match cloud function side)
-    if (kIsWeb) {
-       debugPrint('VertexAI: [WEB] Vector Search via Proxy...');
-       // In a real implementation, this would call a specialized endpoint or AIProxyService.generateContent with tools
-       return []; // Placeholder
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      debugPrint('VertexAI: searchVectorIndex — no authenticated user.');
+      return [];
     }
 
-    // PATH 1: Direct Vertex Search API (Placeholder for production grade)
-    debugPrint('VertexAI: Performing Vector Search (Project: $_projectId, Index: inhaus-knowledge)...');
-    
-    // Logic: In production, this hits:
-    // https://$_location-aiplatform.googleapis.com/v1/projects/$_projectId/locations/$_location/indexEndpoints/$INDEX_ENDPOINT_ID:findNeighbors
-    
-    return []; // Return empty for now; to be connected to real backend in Phase 4
+    debugPrint('VertexAI: Performing cosine similarity search (${queryVector.length}-dim, top $neighborCount)...');
+
+    try {
+      // Fetch all brainweave_nodes for this user
+      final snapshot = await FirebaseFirestore.instance
+          .collection('brainweave_nodes')
+          .where('ownerId', isEqualTo: userId)
+          .limit(500)
+          .get();
+
+      final scored = <Map<String, dynamic>>[];
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final storedEmbedding = data['embedding'];
+        if (storedEmbedding == null || storedEmbedding is! List) continue;
+
+        final nodeVector = storedEmbedding
+            .map((v) => v is num ? v.toDouble() : 0.0)
+            .toList();
+
+        // Vectors must be same dimension
+        if (nodeVector.length != queryVector.length) continue;
+
+        final similarity = _cosineSimilarity(queryVector, nodeVector);
+
+        // Only include nodes above a minimum similarity threshold
+        if (similarity > 0.3) {
+          scored.add({
+            'id': doc.id,
+            'title': data['title'] ?? '',
+            'description': data['description'] ?? '',
+            'type': data['type'] ?? 'atomic',
+            'topics': data['topics'] ?? [],
+            'score': similarity,
+          });
+        }
+      }
+
+      // Sort by similarity (highest first) and return top K
+      scored.sort((a, b) => (b['score'] as double).compareTo(a['score'] as double));
+      final results = scored.take(neighborCount).toList();
+
+      debugPrint('VertexAI: Cosine search found ${results.length} results '
+          '(from ${snapshot.docs.length} nodes, ${scored.length} above threshold).');
+      return results;
+    } catch (e) {
+      debugPrint('VertexAI: searchVectorIndex error: $e');
+      return [];
+    }
+  }
+
+  /// Cosine similarity: dot(a,b) / (|a| * |b|)
+  double _cosineSimilarity(List<double> a, List<double> b) {
+    double dot = 0.0;
+    double normA = 0.0;
+    double normB = 0.0;
+    for (int i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    final denom = math.sqrt(normA) * math.sqrt(normB);
+    if (denom == 0) return 0.0;
+    return dot / denom;
   }
 
   static String _safeError(dynamic e) {

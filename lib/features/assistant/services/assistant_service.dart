@@ -22,6 +22,7 @@ import '../../../core/services/system_prompts_service.dart';
 import '../../../core/architecture/memory.dart';
 import 'package:ag_ui/ag_ui.dart';
 import '../../../core/services/json_parser_service.dart';
+import '../../../core/utils/sanitization_utils.dart';
 import '../../../core/services/blackboard_persistence_service.dart';
 
 import '../domain/agent_outputs.dart';
@@ -29,6 +30,7 @@ import '../providers/assistant_provider.dart';
 import '../../reports/providers/reports_provider.dart';
 import '../../knowledge/services/knowledge_retriever_service.dart';
 import '../../clients/providers/client_provider.dart';
+import '../../chat/agents/tools/brainweave_tools.dart';
 
 enum AssistantMode { fast, planning }
 
@@ -175,6 +177,26 @@ class AssistantService {
        return response;
     }
 
+    // Fast-Path: Salutations (Instant Response)
+    if (SanitizationUtils.isSimpleSalutation(text)) {
+      final greetings = [
+        "Hello. What are we solving today?",
+        "I'm ready. Let's get to work.",
+        "Hi. What's the objective today?",
+        "Greetings. How can I assist?",
+      ];
+      final response = AssistantMessage(
+        id: DateTime.now().toString(),
+        text: greetings[DateTime.now().millisecond % greetings.length],
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+      _history.add(userMsg);
+      _history.add(response);
+      await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
+      return response;
+    }
+
     _history.add(userMsg);
     await _ref.read(persistenceServiceProvider).saveAssistantHistory(_history);
 
@@ -244,6 +266,28 @@ class AssistantService {
         .then((_) => debugPrint('AssistantService: ✅ Knowledge Auto-Ingest Complete'))
         .catchError((e) => debugPrint('AssistantService: ⚠️ Knowledge Auto-Ingest Error (Background): ${_safeError(e)}'))
       );
+
+      // FIRE-AND-FORGET: BrainWeave Auto-Ingestion (Shared Mind — Write Loop)
+      // Significant agent outputs are stored as atomic nodes for future retrieval.
+      if (message.text.length > 100 && !message.text.startsWith('Sorry,')) {
+        unawaited(
+          Future(() async {
+            try {
+              final intentLabel = message.modelName ?? 'Brian';
+              final createTool = CreateAtomicNodeTool();
+              await createTool.execute({
+                'title': 'Q: ${text.length > 80 ? text.substring(0, 80) + '...' : text}',
+                'description': 'Agent response from $intentLabel',
+                'content': message.text.length > 2000 ? message.text.substring(0, 2000) : message.text,
+                'topics': ['conversation', 'agent_output'],
+              }, ref: _ref);
+              debugPrint('AssistantService: ✅ BrainWeave auto-ingestion complete');
+            } catch (e) {
+              debugPrint('AssistantService: ⚠️ BrainWeave auto-ingestion failed (non-blocking): $e');
+            }
+          })
+        );
+      }
       
       return message;
     } catch (e) {
@@ -436,6 +480,30 @@ class AssistantService {
       }
     }
 
+    // F. BrainWeave Auto-Retrieval (Shared Mind)
+    // Every response is grounded in the org's accumulated knowledge graph.
+    try {
+      _ref.read(assistantStatusProvider.notifier).state = "Consulting knowledge graph...";
+      final brainweaveTool = QueryBrainWeaveTool();
+      final bwResults = await brainweaveTool.execute({'query': text, 'limit': 3}, ref: _ref);
+      if (bwResults.isSuccess) {
+        final results = bwResults.data['results'];
+        if (results is List && results.isNotEmpty) {
+          final bwContext = results.map((r) {
+            final title = r['title'] ?? 'Untitled';
+            final desc = r['description'] ?? '';
+            final score = r['score'];
+            return "• $title (relevance: ${score?.toStringAsFixed(2) ?? 'N/A'}): $desc";
+          }).join("\n");
+          retrievedGroundingContext += "\n\n### BrainWeave Graph Context:\n$bwContext";
+          groundingSources.addAll(results.map<String>((r) => "BrainWeave: ${r['title'] ?? 'node'}"));
+          debugPrint('Assistant: BrainWeave Shared Mind grounded with ${results.length} nodes.');
+        }
+      }
+    } catch (e) {
+      debugPrint('Assistant: BrainWeave auto-retrieval failed (non-blocking): $e');
+    }
+
     final promptService = _ref.read(systemPromptsProvider);
     final brianPersona = await promptService.getBrianPrompt();
 
@@ -571,6 +639,27 @@ class AssistantService {
       debugPrint('Assistant: AI Response: ${edgeResult.text.substring(0, edgeResult.text.length > 50 ? 50 : edgeResult.text.length)}...');
       
       responseText = edgeResult.text;
+
+      // Filter out visible thoughts (e.g. "**Analyzing the Greeting**\n\nOkay, here... ")
+      // If the response contains markdown thoughts and then a final answer, we want to extract just the final answer if possible.
+      // Or simply strip known thought blocks if they are wrapping the whole thing.
+      // Often, the model outputs "**Internal Monologue**..." or similar. 
+      // A quick heuristic: if it has multiple paragraphs, the last paragraph is usually the final output if not using tools.
+      // But to be safer, we remove exact thought patterns if detected.
+      
+      if (responseText.contains('**Internal Monologue:**') || responseText.contains('**Analyzing') || responseText.contains('**Thinking')) {
+          // Attempt to find the actual response. Usually separated by a horizontal rule --- or triple dashes, or it's the last paragraph.
+          final parts = responseText.split(RegExp(r'\n---\n|\n\*\*\*\n'));
+          if (parts.length > 1) {
+              responseText = parts.last.trim();
+          } else {
+             // If no clear separator, try splitting by double newline and taking the last substantial block
+             final paragraphs = responseText.split('\n\n').where((p) => p.trim().isNotEmpty).toList();
+             if (paragraphs.length > 1) {
+                 responseText = paragraphs.last.trim();
+             }
+          }
+      }
       
       // --- A2UI Native Intercept ---
       // Matches: ```json ---a2ui_JSON--- { ... } ```

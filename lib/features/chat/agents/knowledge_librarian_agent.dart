@@ -6,6 +6,8 @@ import '../../knowledge/models/knowledge_source.dart';
 import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart'; // Import for AIModelConfig
 import '../../../core/adk/services/adk_event_bus.dart';
+import '../../../core/mcp/agent_tool.dart'; // REQUIRED FOR: AgentTool
+import 'tools/brainweave_tools.dart';
 
 class KnowledgeLibrarianAgent extends BaseAgent {
   @override
@@ -16,6 +18,13 @@ class KnowledgeLibrarianAgent extends BaseAgent {
   
   @override
   String get systemPromptKey => "librarian_agent_prompt";
+
+  @override
+  List<AgentTool> get tools => [
+        QueryBrainWeaveTool(),
+        GetNodeContextTool(),
+        CreateAtomicNodeTool(),
+      ];
 
   @override
   Future<String> execute({
@@ -50,6 +59,7 @@ When given project/client updates, analyze how they impact existing knowledge an
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     )).text;
     
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));

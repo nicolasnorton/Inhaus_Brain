@@ -25,11 +25,20 @@ class AssistantChatState extends StateNotifier<List<AssistantMessage>> {
   AssistantChatState(this._service) : super([]);
 
   Future<void> sendMessage(String text, {List<int>? attachment, List<int>? audioAttachment, ToolMode toolMode = ToolMode.chat}) async {
-    // Service now uses Riverpod Ref for tools, no context needed
-    
-    // Optimistic update for user message (controlled by service actually, but triggered here)
-    // The service manages the authoritative history list, we just sync the state
+    // Optimistic update: show the user message bubble IMMEDIATELY
+    final optimisticUserMsg = AssistantMessage(
+      id: 'optimistic_${DateTime.now().millisecondsSinceEpoch}',
+      text: text,
+      isUser: true,
+      timestamp: DateTime.now(),
+      attachment: attachment,
+      audioAttachment: audioAttachment,
+    );
+    state = [...state, optimisticUserMsg];
+
+    // Now await the full service call (which adds both user + AI response to its history)
     await _service.sendMessage(text, attachment: attachment, audioAttachment: audioAttachment, toolMode: toolMode);
+    // Re-sync with the authoritative history from the service (replaces optimistic msg)
     state = [..._service.history];
   }
   

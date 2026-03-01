@@ -78,6 +78,8 @@ class _BrainWeaveWorkspaceTabState
   bool    _isRunning    = false;
   bool    _isExporting  = false;
   String? _exportUrl;
+  List<Map<String, dynamic>> _searchResults = [];
+  bool    _isSearching = false;
 
   @override
   void initState() {
@@ -246,16 +248,25 @@ class _BrainWeaveWorkspaceTabState
 
   Future<void> _performSemanticSearch(String query) async {
     if (query.trim().isEmpty) return;
-    setState(() => _statusMessage = 'Generating vector embedding for query…');
+    setState(() {
+      _statusMessage = 'Generating vector embedding for query…';
+      _isSearching = true;
+      _searchResults = [];
+    });
     try {
       final vertexAi = ref.read(vertexApiServiceProvider);
       final embeddings = await vertexAi.getEmbeddings([query]);
       if (embeddings.isNotEmpty) {
-        setState(() => _statusMessage = 'Searching Weave Space via Vector Index…');
-        final results = await vertexAi.searchVectorIndex(queryVector: embeddings.first);
+        setState(() => _statusMessage = 'Searching Weave Space via cosine similarity…');
+        final results = await vertexAi.searchVectorIndex(
+          queryVector: embeddings.first,
+          neighborCount: 10,
+        );
         if (mounted) {
           setState(() {
-            _statusMessage = '✅ Semantic search complete. Found ${results.length} nodes.';
+            _searchResults = results;
+            _isSearching = false;
+            _statusMessage = '✅ Semantic search complete. Found ${results.length} related nodes.';
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -264,12 +275,160 @@ class _BrainWeaveWorkspaceTabState
             ),
           );
         }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isSearching = false;
+            _statusMessage = '⚠️ Could not generate embedding for query.';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _statusMessage = '❌ Semantic Search error: $e');
+        setState(() {
+          _isSearching = false;
+          _statusMessage = '❌ Semantic Search error: $e';
+        });
       }
     }
+  }
+
+  Widget _buildSearchResults() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Icon(Icons.insights, size: 16, color: Colors.purpleAccent),
+            const SizedBox(width: 6),
+            Text(
+              'Semantic Matches (${_searchResults.length})',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () => setState(() => _searchResults = []),
+              child: const Text('Clear', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...List.generate(
+          _searchResults.length,
+          (i) {
+            final result = _searchResults[i];
+            final score = (result['score'] as double?) ?? 0.0;
+            final pct = (score * 100).toStringAsFixed(0);
+            final title = result['title'] ?? 'Untitled';
+            final desc = result['description'] ?? '';
+            final type = result['type'] ?? 'atomic';
+            final topics = (result['topics'] as List?)?.cast<String>() ?? [];
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.purpleAccent.withValues(alpha: 0.15 + score * 0.3),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Score badge
+                  Container(
+                    width: 44,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: score > 0.7
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : score > 0.5
+                              ? Colors.amber.withValues(alpha: 0.12)
+                              : Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$pct%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: score > 0.7
+                            ? Colors.greenAccent
+                            : score > 0.5
+                                ? Colors.amberAccent
+                                : Colors.white54,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (desc.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              desc,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            _resultTag(type, Colors.purpleAccent),
+                            ...topics.take(3).map(
+                                (t) => _resultTag(t, Colors.amber)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _resultTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w500),
+      ),
+    );
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -337,6 +496,13 @@ class _BrainWeaveWorkspaceTabState
               controller: _queryController,
               onSubmitted: _performSemanticSearch,
             ),
+            if (_isSearching)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+            if (_searchResults.isNotEmpty)
+              _buildSearchResults(),
             const SizedBox(height: 24),
 
             // ── Knowledge Graph Explorer ──────────────────────────────────────

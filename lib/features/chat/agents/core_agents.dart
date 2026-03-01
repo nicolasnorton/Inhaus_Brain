@@ -9,6 +9,7 @@ import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/tokens/llm_provider.dart';
+import 'tools/brainweave_tools.dart';
 
 class ResearchAgent extends BaseAgent {
   @override
@@ -19,7 +20,11 @@ class ResearchAgent extends BaseAgent {
   String get systemPromptKey => "research_prompt";
 
   @override
-  List<AgentTool> get tools => [];
+  List<AgentTool> get tools => [
+        QueryBrainWeaveTool(),
+        GetNodeContextTool(),
+        CreateAtomicNodeTool(),
+      ];
 
   @override
   Future<String> execute({
@@ -56,6 +61,7 @@ class ResearchAgent extends BaseAgent {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     
     onEvent?.call(AdkEvent(
@@ -107,6 +113,7 @@ class CreativeAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -146,6 +153,7 @@ class DesignAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -184,6 +192,7 @@ class VideoProductionAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -222,6 +231,7 @@ class CustomerServiceAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -260,6 +270,7 @@ class CRMAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -298,6 +309,7 @@ class CSuiteAdvisorAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -337,6 +349,7 @@ class StorytellingAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
     return aiRes.text;
@@ -376,6 +389,7 @@ class CopywriterAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
@@ -416,6 +430,7 @@ class DeveloperAgent extends BaseAgent {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
 
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));

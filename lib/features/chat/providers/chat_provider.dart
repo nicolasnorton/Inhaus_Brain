@@ -129,6 +129,9 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       updatedAt: DateTime.now(),
     );
 
+    // Yield to the event loop to ensure the UI renders the user message immediately
+    await Future.delayed(const Duration(milliseconds: 50));
+
     // Get current Knowledge Context
     final knowledgeContext = ref.read(knowledgeProvider);
     
@@ -205,7 +208,22 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
   Future<void> _handleIntelligentRouting(String text, List<KnowledgeSource> context, String? memoryContext, String? apiKey, String? gemmaKey, String? imagenKey, String? bananaKey, AIModelConfig? config) async {
     // 0. Fast-Path: Salutations (Instant Response)
     if (SanitizationUtils.isSimpleSalutation(text)) {
-      await _handleGeneralResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, config: config);
+      final greetings = [
+        "Hello. What are we solving today?",
+        "I'm ready. Let's get to work.",
+        "Hi. What's the objective today?",
+        "Greetings. How can I assist?",
+      ];
+      final greetingMsg = ChatMessage(
+        id: const Uuid().v4(),
+        content: greetings[DateTime.now().millisecond % greetings.length],
+        sender: MessageSender.system,
+        createdAt: DateTime.now(),
+      );
+      state = state!.copyWith(
+        messages: [...state!.messages, greetingMsg],
+        updatedAt: DateTime.now(),
+      );
       return;
     }
 

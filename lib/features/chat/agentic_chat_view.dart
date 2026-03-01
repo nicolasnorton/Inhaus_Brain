@@ -67,6 +67,25 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
     super.dispose();
   }
 
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        // Use a slight delay to ensure listview has calculated the new maxScrollExtent
+        // especially important when Markdown content renders
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
+  }
+
   void _handleSend() {
     if (_textController.text.isEmpty && _pendingAttachments.isEmpty) return;
     
@@ -85,16 +104,7 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
        // For now, let's keep it sticky as per "Tool Mode" concept.
     });
     
-    // Scroll to bottom after message
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    _scrollToBottom();
   }
 
   @override
@@ -104,6 +114,10 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
 
     // Auto-open logic
     ref.listen(chatProvider, (previous, next) {
+      if (next != null && previous != null && next.messages != previous.messages) {
+        _scrollToBottom();
+      }
+
       if (next != null && (previous == null || next.messages.length > previous.messages.length)) {
         final lastMsg = next.messages.last;
         if (lastMsg.sender != MessageSender.user) {

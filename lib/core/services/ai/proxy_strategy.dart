@@ -91,7 +91,8 @@ class ProxyStrategy extends AIStrategy {
         for (var part in parts) {
           if (part is Map) {
             if (part.containsKey('thought')) {
-              buffer.writeln('> *Thinking: ${part['thought']}* \n');
+              // Thoughts are internal model reasoning — do NOT render to the user.
+              _logger.d('Proxy: [Thought suppressed] ${(part['thought'] as String).length} chars');
             }
             if (part.containsKey('text')) {
               buffer.write(part['text']);
@@ -143,11 +144,10 @@ class ProxyStrategy extends AIStrategy {
         for (var output in outputs) {
           if (output is Map) {
             if (output['type'] == 'thought') {
+              // Thoughts are internal model reasoning — do NOT render to the user.
               final thought = output['thought'] ?? '';
               final summary = output['summary'] ?? '';
-              if (thought.isNotEmpty || summary.isNotEmpty) {
-                 buffer.writeln('> *Thinking: ${summary.isNotEmpty ? summary : thought}* \n');
-              }
+              _logger.d('Proxy: [Thought suppressed] ${(thought as String).length + (summary as String).length} chars');
             } else if (output['type'] == 'text') {
               buffer.write(output['text'] ?? '');
             } else if (output['type'] == 'function_call') {

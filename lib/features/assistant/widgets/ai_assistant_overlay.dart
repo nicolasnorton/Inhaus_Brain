@@ -114,13 +114,19 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    });
   }
 
   Future<void> _pickImage() async {
@@ -386,9 +392,12 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
       }
     });
 
-    // Listen for new messages to trigger TTS
+    // Listen for new messages to trigger TTS and auto-scroll
     ref.listen<List<AssistantMessage>>(assistantChatProvider, (prev, next) {
       if (next.isNotEmpty && (prev == null || prev.length < next.length)) {
+        // Auto-scroll on any new message (user or AI)
+        _scrollToBottom();
+        
         final lastMessage = next.last;
         if (!lastMessage.isUser && isOpen) {
           // It's a new AI response (and overlay is open)
