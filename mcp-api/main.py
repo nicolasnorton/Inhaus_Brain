@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from google.cloud import spanner
 
 import vertexai
@@ -16,6 +17,7 @@ from vertexai.generative_models import GenerativeModel
 from vertexai.language_models import TextEmbeddingModel
 
 app = Flask(__name__)
+CORS(app)
 
 PROJECT    = os.environ.get("GCP_PROJECT", "inhausbrain")
 INSTANCE   = os.environ.get("SPANNER_INSTANCE", "brainweave-graph")
