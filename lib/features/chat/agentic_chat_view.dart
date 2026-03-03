@@ -26,6 +26,7 @@ import 'widgets/watermarked_image.dart';
 import 'widgets/thinking_indicator.dart';
 import 'widgets/sources_carousel.dart';
 import 'widgets/message_actions_row.dart';
+import 'widgets/brians_thoughts_widget.dart';
 
 import 'widgets/tool_selector_bar.dart';
 import '../assistant/presentation/widgets/gen_ui/gen_ui_renderer.dart';
@@ -337,11 +338,15 @@ class _AgenticChatViewState extends ConsumerState<AgenticChatView> {
                       ),
                       if (message.metadata != null && message.metadata!.containsKey('sources'))
                          SourcesCarousel(sources: (message.metadata!['sources'] as List).cast<Map<String, dynamic>>()),
-                      if (message.metadata != null && message.metadata!.containsKey('uiPayload'))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
-                          child: GenUIRenderer(payload: Map<String, dynamic>.from(message.metadata!['uiPayload'])),
-                        ),
+                      if (message.metadata != null && message.metadata!.containsKey('uiPayload')) ...[
+                        if ((message.metadata!['uiPayload'] as Map).containsKey('agentThoughts'))
+                          BriansThoughtsWidget(thoughts: List<String>.from(message.metadata!['uiPayload']['agentThoughts'])),
+                        if ((message.metadata!['uiPayload'] as Map).keys.any((k) => k != 'agentThoughts'))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: GenUIRenderer(payload: Map<String, dynamic>.from(message.metadata!['uiPayload'])),
+                          ),
+                      ],
                       if (message.attachments.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _buildAttachmentsList(message.attachments),
