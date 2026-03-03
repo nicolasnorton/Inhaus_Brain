@@ -72,6 +72,7 @@ class _GraphNode {
       case BrainWeaveNodeType.topic:
         return _kNodeTopic;
       case BrainWeaveNodeType.atomic:
+      default:
         return _kNodeAtomic;
     }
   }
