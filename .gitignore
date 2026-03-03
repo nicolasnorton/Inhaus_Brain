@@ -57,3 +57,10 @@ terraform/.terraform/
 
 # Terraform local state
 terraform/**/.terraform/
+
+# Terraform
+infra/.terraform/
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+*.tfstate
+*.tfstate.*

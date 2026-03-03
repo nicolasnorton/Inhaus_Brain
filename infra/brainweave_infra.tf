@@ -1,7 +1,24 @@
 # ═══════════════════════════════════════════════════════════
 # BrainWeave 2.0 — Terraform Infrastructure
 # Pure Google Cloud Edition
+#
+# Usage:
+#   terraform init
+#   terraform apply
+#
+# Cloud Run services are deployed separately via:
+#   gcloud run deploy brainweave-indexer --source ../indexer/
+#   gcloud run deploy brainweave-mcp --source ../mcp-api/
 # ═══════════════════════════════════════════════════════════
+
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
 
 variable "project_id" {
   default = "inhausbrain"
@@ -11,19 +28,64 @@ variable "region" {
   default = "us-central1"
 }
 
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+# ─── Enable required APIs ──────────────────────────────────
+resource "google_project_service" "spanner" {
+  service            = "spanner.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "pubsub" {
+  service            = "pubsub.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "run" {
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "artifactregistry" {
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
 # ─── Cloud Spanner ─────────────────────────────────────────
 resource "google_spanner_instance" "brainweave" {
   name             = "brainweave-graph"
   config           = "regional-${var.region}"
   display_name     = "BrainWeave Graph Engine"
   processing_units = 100
+
+  depends_on = [google_project_service.spanner]
 }
 
 resource "google_spanner_database" "brainweave_db" {
   instance = google_spanner_instance.brainweave.name
   name     = "brainweave"
 
-  ddl = [file("spanner_schema.sql")]
+  ddl = [
+    "CREATE TABLE BrainWeaveNodes (node_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()), owner_id STRING(128) NOT NULL, client_id STRING(128), project_id STRING(128), scope STRING(16) NOT NULL, title STRING(512) NOT NULL, description STRING(2048), content STRING(MAX), node_type STRING(32) NOT NULL, topics ARRAY<STRING(256)>, markdown_uri STRING(1024), embedding ARRAY<FLOAT32>, source_agent STRING(128), confidence FLOAT64, version INT64, created_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true), updated_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true)) PRIMARY KEY (node_id)",
+
+    "CREATE INDEX NodesByOwner ON BrainWeaveNodes(owner_id, scope)",
+    "CREATE INDEX NodesByClient ON BrainWeaveNodes(client_id, scope)",
+    "CREATE INDEX NodesByType ON BrainWeaveNodes(node_type)",
+
+    "CREATE TABLE BrainWeaveEdges (edge_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()), owner_id STRING(128) NOT NULL, source_node_id STRING(36) NOT NULL, target_node_id STRING(36) NOT NULL, relationship_type STRING(64) NOT NULL, weight FLOAT64, confidence FLOAT64, embedding ARRAY<FLOAT32>, created_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true), CONSTRAINT FK_Edge_Source FOREIGN KEY (source_node_id) REFERENCES BrainWeaveNodes(node_id), CONSTRAINT FK_Edge_Target FOREIGN KEY (target_node_id) REFERENCES BrainWeaveNodes(node_id)) PRIMARY KEY (edge_id)",
+
+    "CREATE INDEX EdgesBySource ON BrainWeaveEdges(source_node_id)",
+    "CREATE INDEX EdgesByTarget ON BrainWeaveEdges(target_node_id)",
+
+    "CREATE PROPERTY GRAPH BrainWeaveGraph NODE TABLES (BrainWeaveNodes) EDGE TABLES (BrainWeaveEdges SOURCE KEY (source_node_id) REFERENCES BrainWeaveNodes(node_id) DESTINATION KEY (target_node_id) REFERENCES BrainWeaveNodes(node_id))",
+
+    "CREATE TABLE BrainWeaveSessions (session_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()), owner_id STRING(128) NOT NULL, client_id STRING(128), current_phase STRING(32) NOT NULL, session_logs ARRAY<STRING(MAX)>, raw_input STRING(MAX), created_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true), updated_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true)) PRIMARY KEY (session_id)",
+
+    "CREATE TABLE PendingPromotions (promotion_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()), node_id STRING(36) NOT NULL, requested_by STRING(128) NOT NULL, reason STRING(MAX), status STRING(16), created_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true)) PRIMARY KEY (promotion_id)",
+  ]
 
   deletion_protection = false
 }
@@ -52,6 +114,18 @@ resource "google_storage_bucket" "brainweave_vault" {
 # ─── Pub/Sub (Indexer trigger) ─────────────────────────────
 resource "google_pubsub_topic" "vault_changes" {
   name = "brainweave-vault-changes"
+
+  depends_on = [google_project_service.pubsub]
+}
+
+# Grant GCS service account permission to publish to Pub/Sub
+data "google_storage_project_service_account" "gcs_account" {
+}
+
+resource "google_pubsub_topic_iam_binding" "gcs_publisher" {
+  topic   = google_pubsub_topic.vault_changes.id
+  role    = "roles/pubsub.publisher"
+  members = ["serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"]
 }
 
 resource "google_storage_notification" "vault_notify" {
@@ -60,85 +134,10 @@ resource "google_storage_notification" "vault_notify" {
   payload_format = "JSON_API_V1"
   event_types    = ["OBJECT_FINALIZE", "OBJECT_DELETE"]
 
-  depends_on = [google_pubsub_topic.vault_changes]
-}
-
-# ─── Cloud Run — Indexer Service ───────────────────────────
-resource "google_cloud_run_v2_service" "indexer" {
-  name     = "brainweave-indexer"
-  location = var.region
-
-  template {
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/brainweave/indexer:latest"
-
-      resources {
-        limits = {
-          cpu    = "2"
-          memory = "2Gi"
-        }
-      }
-
-      env {
-        name  = "SPANNER_INSTANCE"
-        value = "brainweave-graph"
-      }
-      env {
-        name  = "SPANNER_DB"
-        value = "brainweave"
-      }
-      env {
-        name  = "GEMINI_MODEL"
-        value = "gemini-3.1-pro"
-      }
-      env {
-        name  = "GCP_PROJECT"
-        value = var.project_id
-      }
-    }
-
-    scaling {
-      min_instance_count = 0
-      max_instance_count = 10
-    }
-  }
-}
-
-# ─── Cloud Run — MCP API Service ───────────────────────────
-resource "google_cloud_run_v2_service" "mcp_api" {
-  name     = "brainweave-mcp"
-  location = var.region
-
-  template {
-    containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/brainweave/mcp-api:latest"
-
-      resources {
-        limits = {
-          cpu    = "2"
-          memory = "2Gi"
-        }
-      }
-
-      env {
-        name  = "SPANNER_INSTANCE"
-        value = "brainweave-graph"
-      }
-      env {
-        name  = "SPANNER_DB"
-        value = "brainweave"
-      }
-      env {
-        name  = "GCP_PROJECT"
-        value = var.project_id
-      }
-    }
-
-    scaling {
-      min_instance_count = 0
-      max_instance_count = 20
-    }
-  }
+  depends_on = [
+    google_pubsub_topic.vault_changes,
+    google_pubsub_topic_iam_binding.gcs_publisher,
+  ]
 }
 
 # ─── Artifact Registry (Docker images) ────────────────────
@@ -146,6 +145,8 @@ resource "google_artifact_registry_repository" "brainweave" {
   location      = var.region
   repository_id = "brainweave"
   format        = "DOCKER"
+
+  depends_on = [google_project_service.artifactregistry]
 }
 
 # ─── Output ───────────────────────────────────────────────
@@ -153,14 +154,19 @@ output "spanner_instance" {
   value = google_spanner_instance.brainweave.name
 }
 
+output "spanner_database" {
+  value = google_spanner_database.brainweave_db.name
+}
+
 output "vault_bucket" {
   value = google_storage_bucket.brainweave_vault.name
 }
 
-output "indexer_url" {
-  value = google_cloud_run_v2_service.indexer.uri
+output "pubsub_topic" {
+  value = google_pubsub_topic.vault_changes.name
 }
 
-output "mcp_api_url" {
-  value = google_cloud_run_v2_service.mcp_api.uri
+output "artifact_registry" {
+  value = google_artifact_registry_repository.brainweave.name
 }
+

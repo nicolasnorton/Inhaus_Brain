@@ -9,7 +9,7 @@ class BrainWeaveMcpClient {
   // TODO: Replace with your actual Cloud Run URL after deployment
   static const _baseUrl = String.fromEnvironment(
     'BRAINWEAVE_MCP_URL',
-    defaultValue: 'https://brainweave-mcp-inhausbrain.run.app',
+    defaultValue: 'https://brainweave-mcp-1096509611056.us-central1.run.app',
   );
 
   final FirebaseAuth _auth;
