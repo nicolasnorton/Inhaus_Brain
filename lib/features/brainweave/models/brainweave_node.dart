@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum BrainWeaveNodeType { atomic, moc, topic }
+enum BrainWeaveNodeType { atomic, moc, topic, campaign, client, insight, asset, trend }
 
 /// Represents the User's Knowledge Graph in the Weave Space.
 class BrainWeaveNode {
@@ -17,6 +17,13 @@ class BrainWeaveNode {
   final List<String> topics; // Forward linkages to MOCs
   final List<double>? embedding; // Vector index
 
+  // ── BrainWeave 2.0 fields ──────────────────────────
+  final String? markdownUri;   // gs:// pointer to Cloud Storage Markdown
+  final String? sourceAgent;   // Which agent created this node
+  final double confidence;     // Extraction confidence score
+  final int version;           // Version counter
+  final String scope;          // PRIVATE | CLIENT | AGENCY
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -31,6 +38,11 @@ class BrainWeaveNode {
     required this.type,
     required this.topics,
     this.embedding,
+    this.markdownUri,
+    this.sourceAgent,
+    this.confidence = 1.0,
+    this.version = 1,
+    this.scope = 'PRIVATE',
     required this.createdAt,
     required this.updatedAt,
   });
@@ -51,6 +63,11 @@ class BrainWeaveNode {
       embedding: json['embedding'] != null
           ? List<double>.from(json['embedding'])
           : null,
+      markdownUri: json['markdownUri'],
+      sourceAgent: json['sourceAgent'],
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
+      version: json['version'] as int? ?? 1,
+      scope: json['scope'] ?? 'PRIVATE',
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -67,8 +84,14 @@ class BrainWeaveNode {
       'type': type.name,
       'topics': topics,
       if (embedding != null) 'embedding': embedding,
+      if (markdownUri != null) 'markdownUri': markdownUri,
+      if (sourceAgent != null) 'sourceAgent': sourceAgent,
+      'confidence': confidence,
+      'version': version,
+      'scope': scope,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 }
+

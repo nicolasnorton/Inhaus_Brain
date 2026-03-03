@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/architecture/blackboard.dart';
+import '../../../core/config/app_environment.dart';
 import '../../../core/config/feature_flags.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
 import '../models/brainweave_node.dart';
@@ -459,6 +460,56 @@ class _BrainWeaveWorkspaceTabState
           children: [
             // ── Demo Banner ──────────────────────────────────────────────────
             _DemoBanner(pulseAnimation: _pulseAnimation),
+            const SizedBox(height: 12),
+
+            // ── BrainWeave 2.0 Debug Toggle ─────────────────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppConfig.brainweaveV2Enabled
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppConfig.brainweaveV2Enabled
+                      ? const Color(0xFF10B981).withValues(alpha: 0.4)
+                      : Colors.white.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    AppConfig.brainweaveV2Enabled
+                        ? Icons.cloud_done_rounded
+                        : Icons.cloud_off_rounded,
+                    color: AppConfig.brainweaveV2Enabled
+                        ? const Color(0xFF10B981)
+                        : Colors.white38,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      AppConfig.brainweaveV2Enabled
+                          ? 'BrainWeave 2.0 — Spanner Graph'
+                          : 'BrainWeave 1.x — Firestore',
+                      style: TextStyle(
+                        color: AppConfig.brainweaveV2Enabled
+                            ? const Color(0xFF10B981)
+                            : Colors.white38,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    value: AppConfig.brainweaveV2Enabled,
+                    activeColor: const Color(0xFF10B981),
+                    onChanged: (v) => setState(() => AppConfig.brainweaveV2Enabled = v),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
 
             // ── Load Sample Clients ──────────────────────────────────────────

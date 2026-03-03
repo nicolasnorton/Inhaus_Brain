@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/config/app_environment.dart';
 import '../../../../core/mcp/agent_tool.dart';
 import '../../../../core/services/vertex_ai_service.dart';
 import '../../../knowledge/providers/knowledge_provider.dart';
 import '../../../clients/providers/client_provider.dart';
+import '../../../brainweave/services/brainweave_mcp_client.dart';
+
+final _mcpClient = BrainWeaveMcpClient();
 
 /// Semantic search implementation exposed to Agents
 class QueryBrainWeaveTool extends AgentTool {
@@ -37,6 +41,23 @@ class QueryBrainWeaveTool extends AgentTool {
     if (query == null || query.isEmpty) {
       return ToolResult.failure('Missing query parameter');
     }
+
+    // ─── V2 Path: Cloud Spanner via MCP API ──────────────
+    if (AppConfig.brainweaveV2Enabled) {
+      try {
+        final requestedScope = parameters['scope'] as String?;
+        final results = await _mcpClient.graphQuery(
+          query: query,
+          scope: requestedScope,
+          limit: limit,
+        );
+        return ToolResult.success({'results': results});
+      } catch (e) {
+        return ToolResult.failure('V2 search failed: $e');
+      }
+    }
+
+    // ─── V1 Path: Firestore + client-side cosine ─────────
     if (ref == null) return ToolResult.failure('Riverpod ref is required');
 
     try {
@@ -86,6 +107,17 @@ class GetNodeContextTool extends AgentTool {
       return ToolResult.failure('Missing nodeId parameter');
     }
 
+    // ─── V2 Path ──────────────────────────────────────────
+    if (AppConfig.brainweaveV2Enabled) {
+      try {
+        final result = await _mcpClient.context(nodeId: nodeId);
+        return ToolResult.success(result);
+      } catch (e) {
+        return ToolResult.failure('V2 context failed: $e');
+      }
+    }
+
+    // ─── V1 Path ──────────────────────────────────────────
     try {
       final doc = await FirebaseFirestore.instance
           .collection('brainweave_nodes')
@@ -97,10 +129,8 @@ class GetNodeContextTool extends AgentTool {
       }
 
       final data = doc.data()!;
-      // Filter out embedding to save token space
       data.remove('embedding');
 
-      // Also fetch related edges (links) to provide context on connections
       final edgesSnapshot = await FirebaseFirestore.instance
           .collection('brainweave_links')
           .where('sourceId', isEqualTo: nodeId)
@@ -162,7 +192,6 @@ class CreateAtomicNodeTool extends AgentTool {
   Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return ToolResult.failure('No authenticated user');
-    if (ref == null) return ToolResult.failure('Riverpod ref is required');
 
     final title = parameters['title'] as String?;
     final description = parameters['description'] as String?;
@@ -174,12 +203,31 @@ class CreateAtomicNodeTool extends AgentTool {
       return ToolResult.failure('Missing required title or content');
     }
 
+    // ─── V2 Path ──────────────────────────────────────────
+    if (AppConfig.brainweaveV2Enabled) {
+      try {
+        final result = await _mcpClient.create(
+          title: title,
+          description: description ?? '',
+          content: content,
+          topics: topics,
+          scope: scope,
+          sourceAgent: 'chat_agent',
+        );
+        return ToolResult.success(result);
+      } catch (e) {
+        return ToolResult.failure('V2 create failed: $e');
+      }
+    }
+
+    // ─── V1 Path ──────────────────────────────────────────
+    if (ref == null) return ToolResult.failure('Riverpod ref is required');
+
     try {
       final vertexAi = ref.read(vertexApiServiceProvider);
       final activeClientId = ref.read(clientProvider).selectedClientId;
       
-      // Generate embedding for semantic search
-      final textToEmbed = "\$title \$description \$content";
+      final textToEmbed = "$title $description $content";
       final embeddings = await vertexAi.getEmbeddings([textToEmbed]);
       List<double>? embedding = embeddings.isNotEmpty ? embeddings.first : null;
 
@@ -201,10 +249,6 @@ class CreateAtomicNodeTool extends AgentTool {
       final docRef = await FirebaseFirestore.instance
           .collection('brainweave_nodes')
           .add(nodeData);
-
-      // Triggering backend link generation isn't strictly necessary here if we just inserted
-      // an isolated node, but for a true graph we should link it. 
-      // For Phase 1, the LLM creates the node. We will rely on the pipeline for backward-links later.
 
       return ToolResult.success({
         'status': 'Node created successfully',
@@ -246,6 +290,17 @@ class PromoteNodeTool extends AgentTool {
       return ToolResult.failure('Missing reason parameter');
     }
 
+    // ─── V2 Path ──────────────────────────────────────────
+    if (AppConfig.brainweaveV2Enabled) {
+      try {
+        final result = await _mcpClient.promote(nodeId: nodeId, reason: reason);
+        return ToolResult.success(result);
+      } catch (e) {
+        return ToolResult.failure('V2 promote failed: $e');
+      }
+    }
+
+    // ─── V1 Path ──────────────────────────────────────────
     try {
       final doc = await FirebaseFirestore.instance.collection('brainweave_nodes').doc(nodeId).get();
       if (!doc.exists) return ToolResult.failure('Node not found');
@@ -267,6 +322,150 @@ class PromoteNodeTool extends AgentTool {
       });
     } catch (e) {
       return ToolResult.failure('Failed to request promotion: $e');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BrainWeave 2.0 — New Tools (V2 Only)
+// ═══════════════════════════════════════════════════════════
+
+/// N-hop impact analysis from a given node
+class ImpactAnalysisTool extends AgentTool {
+  ImpactAnalysisTool()
+      : super(
+          name: 'brainweave_impact',
+          description: 'Analyze the ripple effect of changes to a knowledge node. '
+              'Shows all connected nodes that would be affected, with confidence scores.',
+          inputSchema: {
+            'nodeId': {
+              'type': 'string',
+              'description': 'The ID of the node to analyze impact for.',
+            },
+            'maxDepth': {
+              'type': 'integer',
+              'description': 'Maximum hops to traverse (default 3).',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    if (!AppConfig.brainweaveV2Enabled) {
+      return ToolResult.failure('Impact analysis requires BrainWeave 2.0 (Spanner Graph). Enable brainweaveV2Enabled.');
+    }
+
+    final nodeId = parameters['nodeId'] as String?;
+    if (nodeId == null) return ToolResult.failure('Missing nodeId');
+
+    try {
+      final result = await _mcpClient.impact(
+        nodeId: nodeId,
+        maxDepth: parameters['maxDepth'] as int? ?? 3,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Impact analysis failed: $e');
+    }
+  }
+}
+
+/// Community detection across the knowledge graph
+class ClusterAnalysisTool extends AgentTool {
+  ClusterAnalysisTool()
+      : super(
+          name: 'brainweave_cluster',
+          description: 'Discover communities and clusters of related knowledge nodes.',
+          inputSchema: {
+            'scope': {
+              'type': 'string',
+              'description': 'Optional. Filter clusters by scope.',
+              'enum': ['PRIVATE', 'CLIENT', 'AGENCY'],
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    if (!AppConfig.brainweaveV2Enabled) {
+      return ToolResult.failure('Cluster analysis requires BrainWeave 2.0.');
+    }
+
+    try {
+      final clusters = await _mcpClient.cluster(
+        scope: parameters['scope'] as String?,
+      );
+      return ToolResult.success({'clusters': clusters, 'count': clusters.length});
+    } catch (e) {
+      return ToolResult.failure('Cluster analysis failed: $e');
+    }
+  }
+}
+
+/// Detect recently changed nodes and assess ripple impact
+class DetectChangesTool extends AgentTool {
+  DetectChangesTool()
+      : super(
+          name: 'brainweave_detect_changes',
+          description: 'Find knowledge nodes modified since a given time. '
+              'Useful for detecting what has changed and needs review.',
+          inputSchema: {
+            'sinceMinutesAgo': {
+              'type': 'integer',
+              'description': 'Number of minutes to look back (default 60).',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    if (!AppConfig.brainweaveV2Enabled) {
+      return ToolResult.failure('Change detection requires BrainWeave 2.0.');
+    }
+
+    final minutes = parameters['sinceMinutesAgo'] as int? ?? 60;
+    final since = DateTime.now().subtract(Duration(minutes: minutes));
+
+    try {
+      final changed = await _mcpClient.detectChanges(since: since);
+      return ToolResult.success({'changed': changed, 'count': changed.length});
+    } catch (e) {
+      return ToolResult.failure('Change detection failed: $e');
+    }
+  }
+}
+
+/// GraphRAG: ANN search → subgraph expansion → Gemini answer
+class GraphRagTool extends AgentTool {
+  GraphRagTool()
+      : super(
+          name: 'brainweave_graphrag',
+          description: 'Ask a question grounded in the full knowledge graph. '
+              'Uses vector search + graph traversal + Gemini for deep answers.',
+          inputSchema: {
+            'query': {
+              'type': 'string',
+              'description': 'The natural language question to answer.',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    if (!AppConfig.brainweaveV2Enabled) {
+      return ToolResult.failure('GraphRAG requires BrainWeave 2.0.');
+    }
+
+    final query = parameters['query'] as String?;
+    if (query == null || query.isEmpty) {
+      return ToolResult.failure('Missing query parameter');
+    }
+
+    try {
+      final result = await _mcpClient.graphRag(query: query);
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('GraphRAG failed: $e');
     }
   }
 }

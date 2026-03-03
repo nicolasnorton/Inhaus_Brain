@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
-import 'package:google_sign_in_web/google_sign_in_web.dart' as web;
 import 'package:inhaus_brain/l10n/app_localizations.dart';
+import 'google_signin_button.dart'
+    if (dart.library.js_interop) 'google_signin_button_web.dart'
+    if (dart.library.io) 'google_signin_button_mobile.dart';
 import '../../core/auth/auth_service.dart';
 import '../../core/router/app_router.dart';
 import '../../core/providers/demo_provider.dart';
@@ -191,39 +192,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Widget _buildGoogleSignInButton() {
-    if (kIsWeb) {
-      return (GoogleSignInPlatform.instance as web.GoogleSignInPlugin).renderButton();
-    }
-    
-    // Native platforms: iOS, macOS, Android (Manual button triggering signInWithGoogle)
-    return SizedBox(
-      width: 300,
-      height: 56,
-      child: OutlinedButton.icon(
-        onPressed: _isLoading ? null : () async {
-          setState(() => _isLoading = true);
-          try {
-            await ref.read(authServiceProvider).signInWithGoogle();
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Google Sign-In Error: $e'), backgroundColor: Colors.redAccent),
-              );
-            }
-          } finally {
-            if (mounted) setState(() => _isLoading = false);
+    return buildGoogleSignInButton(
+      context: context,
+      isLoading: _isLoading,
+      onPressed: () async {
+        setState(() => _isLoading = true);
+        try {
+          await ref.read(authServiceProvider).signInWithGoogle();
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Google Sign-In Error: $e'), backgroundColor: Colors.redAccent),
+            );
           }
-        },
-        icon: const Icon(FontAwesomeIcons.google, size: 18, color: Colors.white),
-        label: Text(
-          AppLocalizations.of(context)!.signInLabel + " with Google", 
-          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
-        ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.white24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        ),
-      ),
+        } finally {
+          if (mounted) setState(() => _isLoading = false);
+        }
+      },
     );
   }
 

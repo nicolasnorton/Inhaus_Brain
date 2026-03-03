@@ -1,0 +1,5 @@
+flask>=3.0
+google-cloud-spanner>=3.40
+google-cloud-aiplatform>=1.50
+vertexai>=1.0
+gunicorn>=21.2

@@ -8,6 +8,8 @@
 	<string>Inhaus Brain</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>GIDClientID</key>
+	<string>1096509611056-vj2mmrttjvb8vh9mueqfk5g9689pes45.apps.googleusercontent.com</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -61,14 +63,9 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.1096509611056-vj2mmrttjvb8vh9mueqfk5g9689pes45</string>
-				<string>fbREPLACE_WITH_FACEBOOK_APP_ID</string>
 			</array>
 		</dict>
 	</array>
-	<key>FacebookAppID</key>
-	<string>REPLACE_WITH_FACEBOOK_APP_ID</string>
-	<key>FacebookClientToken</key>
-	<string>REPLACE_WITH_FACEBOOK_CLIENT_TOKEN</string>
 	<key>FacebookDisplayName</key>
 	<string>Inhaus Brain</string>
 	<key>LSApplicationQueriesSchemes</key>

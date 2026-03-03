@@ -64,8 +64,8 @@ class AIRouter {
   static AIStrategy _resolveStrategy(AIGenerationRequest request) {
     final provider = request.config.provider;
 
-    // On web, prefer Proxy for Gemini to bypass CORS/AppCheck 
-    if (kIsWeb && (provider == AIProvider.gemini || provider == AIProvider.vertex)) {
+    // Prefer Proxy for Gemini to bypass CORS/AppCheck everywhere 
+    if (provider == AIProvider.gemini || provider == AIProvider.vertex) {
       return _proxy;
     }
 

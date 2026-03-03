@@ -62,6 +62,11 @@ class AppConfig {
   /// Google Stitch MCP — AI-powered UI design generation
   static bool get enableStitch => isStaging;
 
+  /// BrainWeave 2.0 — Cloud Spanner Graph + MCP API backend
+  /// When false: uses Firestore + client-side cosine similarity (v1)
+  /// When true:  uses Cloud Spanner Graph + Cloud Run MCP API (v2.0)
+  static bool brainweaveV2Enabled = false;
+
   // ── Display ────────────────────────────────────────
   static String get environmentLabel => isStaging ? 'STAGING' : 'PRODUCTION';
 }

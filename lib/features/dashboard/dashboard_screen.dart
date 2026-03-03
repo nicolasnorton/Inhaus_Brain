@@ -73,15 +73,18 @@ class DashboardScreen extends ConsumerWidget {
 
                   // Main Content Area
                   Expanded(
-                    child: Stack(
-                      children: [
-                        child,
-                        // Mobile Menu Trigger (Only if not hiding and not in a special module)
-                        if (isMobile && !hideGlobalHamburger)
-                          Positioned(
-                            top: 12,
-                            left: 16, // More breathing room
-                            child: SafeArea(
+                    child: SafeArea(
+                      left: false, // Sidebar handles its own spacing if needed
+                      right: false,
+                      bottom: false,
+                      child: Stack(
+                        children: [
+                          child,
+                          // Mobile Menu Trigger (Only if not hiding and not in a special module)
+                          if (isMobile && !hideGlobalHamburger)
+                            Positioned(
+                              top: 12,
+                              left: 16, // More breathing room
                               child: Builder(
                                 builder: (context) => Container(
                                   decoration: BoxDecoration(
@@ -100,8 +103,8 @@ class DashboardScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -118,20 +121,21 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildSidebarContent(BuildContext context, WidgetRef ref, {bool isMobile = false}) {
-    return Column(
-      children: [
-         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
-          child: Image.asset(
-            Theme.of(context).brightness == Brightness.light 
-              ? 'assets/images/logo_light.png' 
-              : 'assets/images/logo.png',
-            width: 48,
-            height: 48,
-            errorBuilder: (context, error, stackTrace) => 
-                Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+    return SafeArea(
+      child: Column(
+        children: [
+           Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 8.0),
+            child: Image.asset(
+              Theme.of(context).brightness == Brightness.light 
+                ? 'assets/images/logo_light.png' 
+                : 'assets/images/logo.png',
+              width: 48,
+              height: 48,
+              errorBuilder: (context, error, stackTrace) => 
+                  Icon(FontAwesomeIcons.brain, color: Theme.of(context).primaryColor, size: 32),
+            ),
           ),
-        ),
         Expanded(
           child: SingleChildScrollView(
             child: Consumer(
@@ -183,6 +187,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ],
+      ),
     );
   }
 

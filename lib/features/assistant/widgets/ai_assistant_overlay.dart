@@ -1,8 +1,8 @@
 // import 'dart:io' show File, Directory; // Removed to avoid web crashes 
 
 import 'dart:convert';
-import 'package:web/web.dart' as web;
 import 'package:file_picker/file_picker.dart';
+import '../../../core/utils/web_file_downloader.dart' if (dart.library.js_interop) '../../../core/utils/web_file_downloader_web.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1096,13 +1096,7 @@ class _AiAssistantOverlayState extends ConsumerState<AiAssistantOverlay> {
     if (kIsWeb) {
       try {
         if (url.startsWith('data:')) {
-           // Standard Hack for downloading Base64 on Web
-           final anchor = web.HTMLAnchorElement()
-             ..href = url
-             ..download = 'inhaus_brain_image_${DateTime.now().millisecondsSinceEpoch}.png';
-           web.document.body?.append(anchor);
-           anchor.click();
-           anchor.remove();
+           downloadWebFile(url, 'inhaus_brain_image_${DateTime.now().millisecondsSinceEpoch}.png');
            return;
         }
 

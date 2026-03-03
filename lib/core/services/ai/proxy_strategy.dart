@@ -19,6 +19,9 @@ class ProxyStrategy extends AIStrategy {
   String get name => 'proxy';
 
   @override
+  bool get supportsStreaming => true;
+
+  @override
   Future<AIGenerationResult> generate(AIGenerationRequest request, {dynamic ref}) async {
     final stopwatch = Stopwatch()..start();
     final config = request.config;
@@ -177,7 +180,30 @@ class ProxyStrategy extends AIStrategy {
       modelUsed: 'Proxy: ${config.modelId}',
       strategyUsed: name,
       latency: stopwatch.elapsed,
+      confidence: 1.0,
     );
+  }
+
+  @override
+  Stream<AIGenerationResult> generateStream(AIGenerationRequest request, {dynamic ref}) async* {
+    _logger.d('Proxy: Simulating stream for ${request.config.modelId}');
+    yield AIGenerationResult(
+      text: 'Thinking...',
+      modelUsed: 'Proxy: ${request.config.modelId}',
+      strategyUsed: name,
+      confidence: 0.5,
+    );
+
+    // Proxy API doesn't have true SSE endpoints yet, so we await the full response
+    // and yield it to satisfy the chat UI's stream subscription.
+    final result = await generate(request, ref: ref);
+
+    if (result.text != 'No proxy content.' && !result.text.startsWith('Proxy Error:')) {
+      // Clear the "Thinking..." text and yield the final payload
+      yield result.copyWith(text: result.text);
+    } else {
+      yield result; // Yield the error
+    }
   }
 
   static String _stripMarkdown(String text) {

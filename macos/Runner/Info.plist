@@ -6,6 +6,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>GIDClientID</key>
+	<string>1096509611056-vj2mmrttjvb8vh9mueqfk5g9689pes45.apps.googleusercontent.com</string>
 	<key>CFBundleIconFile</key>
 	<string></string>
 	<key>CFBundleIdentifier</key>
@@ -36,5 +38,7 @@
 	<string>This app uses speech recognition to convert your voice to text.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to select images.</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.business</string>
 </dict>
 </plist>

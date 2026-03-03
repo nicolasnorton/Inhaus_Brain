@@ -92,6 +92,24 @@ class AIGenerationResult {
     this.latency,
   });
 
+  AIGenerationResult copyWith({
+    String? text,
+    String? modelUsed,
+    String? strategyUsed,
+    double? confidence,
+    List<String>? sourceCitations,
+    Duration? latency,
+  }) {
+    return AIGenerationResult(
+      text: text ?? this.text,
+      modelUsed: modelUsed ?? this.modelUsed,
+      strategyUsed: strategyUsed ?? this.strategyUsed,
+      confidence: confidence ?? this.confidence,
+      sourceCitations: sourceCitations ?? this.sourceCitations,
+      latency: latency ?? this.latency,
+    );
+  }
+
   /// Convert to legacy EdgeAIResult for backward compat.
   /// (Will be removed once EdgeAIService is fully migrated.)
 }
