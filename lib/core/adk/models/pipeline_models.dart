@@ -82,6 +82,7 @@ enum WorkflowNodeType {
   creativeRelightProduct,
   creativeVideoLipsync,
   creativeCompositingLayers,
+  creativeStitchDesign,  // M2 — Google Stitch integration node
 }
 
 enum PipelineStepType { sequential, parallel, loop }

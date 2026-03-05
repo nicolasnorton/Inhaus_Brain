@@ -1,14 +1,18 @@
 """
-BrainWeave 2.0 MCP API — Cloud Run Service
-Exposes 8 MCP tool endpoints backed by Cloud Spanner Graph (GQL).
+BrainWeave 2.0 MCP API — Cloud Run Service (Security-Hardened)
+Exposes MCP tool endpoints backed by Cloud Spanner Graph (GQL).
 Called from the Flutter client via HTTP.
 """
 import time
 import json
 import logging
 import os
+import re
 import uuid
+import threading
+import traceback as tb_module
 from datetime import datetime
+from functools import wraps
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -38,6 +42,80 @@ embed_model = TextEmbeddingModel.from_pretrained(EMBED_ID)
 publisher = pubsub_v1.PublisherClient()
 PROMOTION_TOPIC = f"projects/{PROJECT}/topics/brainweave-promotions"
 
+# ─── Security Constants ──────────────────────────────────────────────────────
+_MAX_CONCURRENT = 100
+_VALID_SCOPES = {"PRIVATE", "CLIENT", "AGENCY"}
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+_MAX_TITLE_LEN = 512
+_MAX_DESC_LEN = 4000
+_MAX_CONTENT_LEN = 50000
+
+# Thread-safe concurrency counter
+_active_lock = threading.Lock()
+_active_requests = 0
+
+
+# ─── Rate Limiting Decorator ─────────────────────────────────────────────────
+
+def rate_limited(f):
+    """Reject requests above _MAX_CONCURRENT concurrent limit."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        global _active_requests
+        with _active_lock:
+            if _active_requests >= _MAX_CONCURRENT:
+                app.logger.warning("Rate limit exceeded")
+                return jsonify({"error": "Too many requests. Try again shortly."}), 429
+            _active_requests += 1
+        try:
+            return f(*args, **kwargs)
+        finally:
+            with _active_lock:
+                _active_requests -= 1
+    return wrapper
+
+
+# ─── Input Validation Helpers ────────────────────────────────────────────────
+
+def _validate_uuid(val: str, name: str = "id"):
+    """Raise ValueError if val is not a valid UUID."""
+    if not val or not _UUID_RE.match(val):
+        raise ValueError(f"Invalid {name}: must be a valid UUID")
+
+
+def _validate_scope(scope: str):
+    """Raise ValueError if scope is not in the whitelist."""
+    if scope not in _VALID_SCOPES:
+        raise ValueError(f"Invalid scope '{scope}'. Must be one of: {_VALID_SCOPES}")
+
+
+def _sanitize_text(text: str, max_len: int, name: str = "text") -> str:
+    """Truncate text to max_len characters."""
+    if text and len(text) > max_len:
+        app.logger.warning(f"{name} truncated from {len(text)} to {max_len} chars")
+        return text[:max_len]
+    return text or ""
+
+
+def _safe_error(msg: str = "Internal server error", code: int = 500):
+    """Return a safe error response without leaking internals."""
+    return jsonify({"error": msg}), code
+
+
+# ─── Structured Audit Logger ─────────────────────────────────────────────────
+
+def _audit_log(action: str, owner_id: str, **details):
+    """Emit a structured JSON log line for security-relevant actions."""
+    entry = {
+        "severity": "INFO",
+        "audit": True,
+        "action": action,
+        "owner_id": owner_id,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        **details,
+    }
+    app.logger.info(json.dumps(entry))
+
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
 
@@ -47,29 +125,54 @@ def _get_embedding(text: str) -> list[float]:
     return result[0].values if result else []
 
 
+def _verify_token(req):
+    """Verify Firebase ID token and return the decoded claims dict.
+    Raises ValueError if no valid token is present."""
+    auth_header = req.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise ValueError("Missing or invalid Authorization header")
+    token = auth_header[7:]
+    return id_token.verify_firebase_token(
+        token, google_requests.Request(), audience=PROJECT
+    )
+
+
 def _authed_owner(req) -> str:
-    """Extract owner_id from auth header (Firebase ID token claim).
-    For dev, accept X-Owner-Id header as a shortcut."""
-    return req.headers.get("X-Owner-Id", "dev-user")
+    """Extract owner_id (Firebase UID) from a verified ID token.
+    No fallback — unauthenticated requests will fail."""
+    try:
+        decoded = _verify_token(req)
+        return decoded["sub"]  # Firebase UID
+    except Exception as e:
+        app.logger.warning(f"Auth failed: {e}")
+        raise ValueError("Authentication required") from e
 
 
 def _is_superadmin(req) -> bool:
     """Check if the request comes from a superadmin by verifying Firebase ID token claims."""
-    auth_header = req.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return False
-    token = auth_header[7:]
     try:
-        decoded = id_token.verify_firebase_token(token, google_requests.Request(), audience=PROJECT)
+        decoded = _verify_token(req)
         return decoded.get("superadmin", False) is True or decoded.get("role") == "superAdmin"
     except Exception as e:
         app.logger.warning(f"Superadmin check failed: {e}")
         return False
 
 
+# ─── Auth Error Handler ──────────────────────────────────────────────────────
+
+@app.errorhandler(ValueError)
+def handle_auth_error(e):
+    """Catch ValueError raised by _authed_owner for unauthenticated requests."""
+    msg = str(e)
+    if "Authentication required" in msg or "Authorization" in msg:
+        return jsonify({"error": "Authentication required"}), 401
+    return jsonify({"error": msg}), 400
+
+
 # ─── Tool 1: brainweave_graph_query ──────────────────────────────────────────
 
 @app.route("/brainweave_graph_query", methods=["POST"])
+@rate_limited
 def graph_query():
     """Semantic vector search + optional GQL subgraph expansion."""
     try:
@@ -94,6 +197,7 @@ def graph_query():
         param_types = {"owner_id": spanner.param_types.STRING}
 
         if scope:
+            _validate_scope(scope)
             sql += " AND scope = @scope"
             params["scope"] = scope
             param_types["scope"] = spanner.param_types.STRING
@@ -124,30 +228,33 @@ def graph_query():
             })
 
         return jsonify({"results": nodes, "count": len(nodes)})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        import traceback
-        app.logger.error(f"Error in graph_query: {e}\n{traceback.format_exc()}")
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        app.logger.error(f"Error in graph_query: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
 
 
 # ─── Tool 2: brainweave_impact ───────────────────────────────────────────────
 
 @app.route("/brainweave_impact", methods=["POST"])
+@rate_limited
 def impact():
     """N-hop impact analysis from a given node."""
     body = request.get_json()
     node_id = body.get("node_id")
-    max_depth = body.get("max_depth", 3)
-    min_confidence = body.get("min_confidence", 0.5)
+    max_depth = min(int(body.get("max_depth", 3)), 5)  # Clamp to 5
+    min_confidence = float(body.get("min_confidence", 0.5))
     owner_id = _authed_owner(request)
 
     if not node_id:
         return jsonify({"error": "node_id is required"}), 400
+    _validate_uuid(node_id, "node_id")
 
-    gql = """
+    gql = f"""
         GRAPH BrainWeaveGraph
         MATCH (start:BrainWeaveNodes WHERE start.node_id = @start_id)
-              -[e:BrainWeaveEdges]->{1,""" + str(max_depth) + """}
+              -[e:BrainWeaveEdges]->{{1,{max_depth}}}
               (affected:BrainWeaveNodes)
         WHERE e.confidence >= @min_conf
           AND affected.owner_id = @owner_id
@@ -190,6 +297,7 @@ def impact():
 # ─── Tool 3: brainweave_cluster ──────────────────────────────────────────────
 
 @app.route("/brainweave_cluster", methods=["POST"])
+@rate_limited
 def cluster():
     """Find connected components / communities in the graph."""
     body = request.get_json() or {}
@@ -247,6 +355,7 @@ def cluster():
 # ─── Tool 4: brainweave_context ──────────────────────────────────────────────
 
 @app.route("/brainweave_context", methods=["POST"])
+@rate_limited
 def context():
     """360° context view for a node: incoming + outgoing edges + full content."""
     body = request.get_json()
@@ -280,24 +389,24 @@ def context():
         "metadata": row[8],
     }
 
-    # Incoming edges
+    # Incoming edges (ACL: only edges where the source node belongs to same owner or is shared)
     with database.snapshot() as snapshot:
         incoming = list(snapshot.execute_sql(
             "SELECT e.edge_id, e.relationship_type, e.confidence, n.node_id, n.title "
             "FROM BrainWeaveEdges e JOIN BrainWeaveNodes n ON e.source_node_id = n.node_id "
-            "WHERE e.target_node_id = @nid",
-            params={"nid": node_id},
-            param_types={"nid": spanner.param_types.STRING},
+            "WHERE e.target_node_id = @nid AND (n.owner_id = @oid OR n.scope IN ('CLIENT', 'AGENCY'))",
+            params={"nid": node_id, "oid": owner_id},
+            param_types={"nid": spanner.param_types.STRING, "oid": spanner.param_types.STRING},
         ))
 
-    # Outgoing edges
+    # Outgoing edges (ACL: only edges where the target node belongs to same owner or is shared)
     with database.snapshot() as snapshot:
         outgoing = list(snapshot.execute_sql(
             "SELECT e.edge_id, e.relationship_type, e.confidence, n.node_id, n.title "
             "FROM BrainWeaveEdges e JOIN BrainWeaveNodes n ON e.target_node_id = n.node_id "
-            "WHERE e.source_node_id = @nid",
-            params={"nid": node_id},
-            param_types={"nid": spanner.param_types.STRING},
+            "WHERE e.source_node_id = @nid AND (n.owner_id = @oid OR n.scope IN ('CLIENT', 'AGENCY'))",
+            params={"nid": node_id, "oid": owner_id},
+            param_types={"nid": spanner.param_types.STRING, "oid": spanner.param_types.STRING},
         ))
 
     return jsonify({
@@ -318,17 +427,19 @@ def context():
 # ─── Tool 5: brainweave_create ───────────────────────────────────────────────
 
 @app.route("/brainweave_create", methods=["POST"])
+@rate_limited
 def create():
     """Create a new node with auto-linking via vector similarity."""
     body = request.get_json()
     owner_id = _authed_owner(request)
 
-    title = body.get("title", "")
-    description = body.get("description", "")
-    content = body.get("content", "")
+    title = _sanitize_text(body.get("title", ""), _MAX_TITLE_LEN, "title")
+    description = _sanitize_text(body.get("description", ""), _MAX_DESC_LEN, "description")
+    content = _sanitize_text(body.get("content", ""), _MAX_CONTENT_LEN, "content")
     node_type = body.get("node_type", "atomic")
     topics = body.get("topics", [])
     scope = body.get("scope", "PRIVATE")
+    _validate_scope(scope)
     client_id = body.get("client_id")
 
     if not title:
@@ -405,6 +516,7 @@ def create():
 # ─── Tool 6: brainweave_reweave ──────────────────────────────────────────────
 
 @app.route("/brainweave_reweave", methods=["POST"])
+@rate_limited
 def reweave():
     """Backward-update: re-process a node's neighbors with new context."""
     body = request.get_json()
@@ -471,6 +583,7 @@ def reweave():
 # ─── Tool 7: brainweave_detect_changes ───────────────────────────────────────
 
 @app.route("/brainweave_detect_changes", methods=["POST"])
+@rate_limited
 def detect_changes():
     """Find nodes modified since a given timestamp."""
     body = request.get_json() or {}
@@ -507,8 +620,11 @@ def detect_changes():
 # ─── Tool 8: brainweave_promote ──────────────────────────────────────────────
 
 @app.route("/brainweave_promote", methods=["POST"])
+@rate_limited
 def promote():
-    """Propose a node for promotion to CLIENT or AGENCY scope."""
+    """Propose a node for promotion to CLIENT or AGENCY scope.
+    PRIVATE → CLIENT requires superadmin approval (PENDING_APPROVAL state).
+    PRIVATE → AGENCY and CLIENT → AGENCY are immediate."""
     body = request.get_json()
     node_id = body.get("node_id")
     reason = body.get("reason", "")
@@ -517,6 +633,22 @@ def promote():
 
     if not node_id:
         return jsonify({"error": "node_id is required"}), 400
+    _validate_uuid(node_id, "node_id")
+    _validate_scope(target_scope)
+
+    # Check current scope to determine if approval is needed
+    with database.snapshot() as snapshot:
+        current = list(snapshot.execute_sql(
+            "SELECT scope FROM BrainWeaveNodes WHERE node_id = @nid AND owner_id = @oid",
+            params={"nid": node_id, "oid": owner_id},
+            param_types={"nid": spanner.param_types.STRING, "oid": spanner.param_types.STRING},
+        ))
+    if not current:
+        return jsonify({"error": "Node not found or not owned by you"}), 404
+
+    current_scope = current[0][0]
+    needs_approval = (current_scope == "PRIVATE" and target_scope == "CLIENT")
+    status = "PENDING_APPROVAL" if needs_approval else "APPROVED"
 
     promotion_id = str(uuid.uuid4())
 
@@ -530,37 +662,42 @@ def promote():
             ],
             values=[[
                 promotion_id, node_id, owner_id,
-                reason, "PENDING", spanner.COMMIT_TIMESTAMP,
+                reason, status, spanner.COMMIT_TIMESTAMP,
             ]],
         )
-        # Update the node's scope directly
-        transaction.update(
-            "BrainWeaveNodes",
-            columns=["node_id", "scope", "updated_at"],
-            values=[[node_id, target_scope, spanner.COMMIT_TIMESTAMP]],
-        )
+        # Only update scope immediately if no approval needed
+        if not needs_approval:
+            transaction.update(
+                "BrainWeaveNodes",
+                columns=["node_id", "scope", "updated_at"],
+                values=[[node_id, target_scope, spanner.COMMIT_TIMESTAMP]],
+            )
 
     database.run_in_transaction(write_txn)
+    _audit_log("promote", owner_id, node_id=node_id, target_scope=target_scope,
+               promotion_id=promotion_id, status=status, needs_approval=needs_approval)
 
     # Fire-and-forget Pub/Sub notification for reweave + notifications
-    try:
-        message_data = json.dumps({
-            "node_id": node_id,
-            "requested_by": owner_id,
-            "target_scope": target_scope,
-            "promotion_id": promotion_id,
-        }).encode("utf-8")
-        publisher.publish(PROMOTION_TOPIC, data=message_data)
-        app.logger.info(f"Published promotion event for node {node_id}")
-    except Exception as e:
-        app.logger.warning(f"Pub/Sub publish failed (non-fatal): {e}")
+    if not needs_approval:
+        try:
+            message_data = json.dumps({
+                "node_id": node_id,
+                "requested_by": owner_id,
+                "target_scope": target_scope,
+                "promotion_id": promotion_id,
+            }).encode("utf-8")
+            publisher.publish(PROMOTION_TOPIC, data=message_data)
+        except Exception as e:
+            app.logger.warning(f"Pub/Sub publish failed (non-fatal): {e}")
 
-    return jsonify({"promotion_id": promotion_id, "status": "PENDING", "target_scope": target_scope})
+    return jsonify({"promotion_id": promotion_id, "status": status, "target_scope": target_scope,
+                    "needs_approval": needs_approval})
 
 
 # ─── GraphRAG endpoint ──────────────────────────────────────────────────────
 
 @app.route("/brainweave_graphrag", methods=["POST"])
+@rate_limited
 def graphrag():
     """GraphRAG: ANN search → subgraph expansion → Gemini summarization."""
     body = request.get_json()
@@ -620,13 +757,18 @@ def graphrag():
 
     return jsonify({
         "answer": response.text,
-        "sources": [{"node_id": s[0], "title": s[1]} for s in seeds],
+        "sources": [
+            {"node_id": s[0], "title": s[1], "description": s[2][:200] if s[2] else "",
+             "provenance": f"spanner://brainweave/BrainWeaveNodes/{s[0]}"}
+            for s in seeds
+        ],
     })
 
 
 # ─── Graph Explorer Data (V2) ────────────────────────────────────────────────
 
 @app.route("/brainweave_graph_data", methods=["POST"])
+@rate_limited
 def get_graph_data():
     """Returns all nodes and edges for the graph explorer view."""
     try:
@@ -681,12 +823,13 @@ def get_graph_data():
         })
     except Exception as e:
         app.logger.error(f"Error in get_graph_data: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error()
 
 
 # ─── Agency Graph (Superadmin Only) ──────────────────────────────────────────
 
 @app.route("/brainweave_agency_graph", methods=["POST"])
+@rate_limited
 def agency_graph():
     """Full agency-wide graph view. Requires superadmin."""
     if not _is_superadmin(request):
@@ -731,12 +874,13 @@ def agency_graph():
                         "count_nodes": len(nodes), "count_edges": len(edges)})
     except Exception as e:
         app.logger.error(f"Agency graph error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error()
 
 
 # ─── Stats ───────────────────────────────────────────────────────────────────
 
 @app.route("/brainweave_stats", methods=["POST"])
+@rate_limited
 def stats():
     """Return node/edge counts + estimated cost for the authenticated user."""
     owner_id = _authed_owner(request)
@@ -776,14 +920,125 @@ def stats():
         })
     except Exception as e:
         app.logger.error(f"Stats error: {e}")
-        return jsonify({"error": str(e)}), 500
+        return _safe_error()
+
+
+# ─── Promotion Approval (Superadmin Only) ────────────────────────────────────
+
+@app.route("/brainweave_approve_promotion", methods=["POST"])
+@rate_limited
+def approve_promotion():
+    """Approve a pending PRIVATE → CLIENT promotion. Requires superadmin."""
+    if not _is_superadmin(request):
+        return jsonify({"error": "Superadmin access required"}), 403
+
+    body = request.get_json()
+    promotion_id = body.get("promotion_id")
+    if not promotion_id:
+        return jsonify({"error": "promotion_id is required"}), 400
+    _validate_uuid(promotion_id, "promotion_id")
+
+    approver_id = _authed_owner(request)
+
+    # Fetch the pending promotion
+    with database.snapshot() as snapshot:
+        rows = list(snapshot.execute_sql(
+            "SELECT node_id, requested_by, status FROM PendingPromotions WHERE promotion_id = @pid",
+            params={"pid": promotion_id},
+            param_types={"pid": spanner.param_types.STRING},
+        ))
+
+    if not rows:
+        return jsonify({"error": "Promotion not found"}), 404
+
+    node_id, requested_by, current_status = rows[0]
+    if current_status != "PENDING_APPROVAL":
+        return jsonify({"error": f"Promotion is already {current_status}"}), 409
+
+    def approve_txn(transaction):
+        transaction.update(
+            "PendingPromotions",
+            columns=["promotion_id", "status"],
+            values=[[promotion_id, "APPROVED"]],
+        )
+        transaction.update(
+            "BrainWeaveNodes",
+            columns=["node_id", "scope", "updated_at"],
+            values=[[node_id, "CLIENT", spanner.COMMIT_TIMESTAMP]],
+        )
+
+    database.run_in_transaction(approve_txn)
+    _audit_log("approve_promotion", approver_id, promotion_id=promotion_id,
+               node_id=node_id, original_requester=requested_by)
+
+    # Trigger reweave
+    try:
+        message_data = json.dumps({
+            "node_id": node_id,
+            "requested_by": requested_by,
+            "target_scope": "CLIENT",
+            "promotion_id": promotion_id,
+        }).encode("utf-8")
+        publisher.publish(PROMOTION_TOPIC, data=message_data)
+    except Exception as e:
+        app.logger.warning(f"Pub/Sub publish for approval failed (non-fatal): {e}")
+
+    return jsonify({"promotion_id": promotion_id, "status": "APPROVED", "node_id": node_id})
+
+
+# ─── Security Status (Superadmin Only) ───────────────────────────────────────
+
+@app.route("/brainweave_security_status", methods=["POST"])
+@rate_limited
+def security_status():
+    """Security dashboard data. Requires superadmin."""
+    if not _is_superadmin(request):
+        return jsonify({"error": "Superadmin access required"}), 403
+
+    try:
+        # Recent promotions (last 24h)
+        with database.snapshot() as snapshot:
+            recent_promotes = list(snapshot.execute_sql(
+                "SELECT COUNT(*) FROM PendingPromotions "
+                "WHERE created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)"
+            ))[0][0]
+
+        with database.snapshot() as snapshot:
+            pending_approvals = list(snapshot.execute_sql(
+                "SELECT COUNT(*) FROM PendingPromotions WHERE status = 'PENDING_APPROVAL'"
+            ))[0][0]
+
+        with database.snapshot() as snapshot:
+            total_nodes = list(snapshot.execute_sql(
+                "SELECT COUNT(*) FROM BrainWeaveNodes"
+            ))[0][0]
+
+        with database.snapshot() as snapshot:
+            total_users = list(snapshot.execute_sql(
+                "SELECT COUNT(DISTINCT owner_id) FROM BrainWeaveNodes"
+            ))[0][0]
+
+        return jsonify({
+            "encryption": "CMEK" if os.environ.get("CMEK_ENABLED") else "GOOGLE_MANAGED",
+            "fgac_enabled": os.environ.get("FGAC_ENABLED", "false") == "true",
+            "recent_promotes_24h": recent_promotes,
+            "pending_approvals": pending_approvals,
+            "total_nodes": total_nodes,
+            "total_users": total_users,
+            "audit_logs_enabled": True,
+            "rate_limit_max": _MAX_CONCURRENT,
+            "last_check": datetime.utcnow().isoformat() + "Z",
+        })
+    except Exception as e:
+        app.logger.error(f"Security status error: {e}")
+        return _safe_error()
 
 
 # ─── Health ──────────────────────────────────────────────────────────────────
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "healthy", "service": "brainweave-mcp-api"}), 200
+    return jsonify({"status": "healthy", "service": "brainweave-mcp-api", "version": "2.1-hardened"}), 200
 
 
 if __name__ == "__main__":

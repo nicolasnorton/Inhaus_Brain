@@ -23,7 +23,6 @@ class BrainWeaveMcpClient {
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
-      'X-Owner-Id': _auth.currentUser?.uid ?? 'dev-user',
     };
   }
 
@@ -192,5 +191,21 @@ class BrainWeaveMcpClient {
   /// Get graph stats: node/edge counts, daily interactions, estimated cost.
   Future<Map<String, dynamic>> getStats() async {
     return await _post('brainweave_stats', {});
+  }
+
+  // ─── Security (Superadmin Only) ──────────────────────────────────────────
+
+  /// Get security status dashboard data. Requires superadmin.
+  Future<Map<String, dynamic>> getSecurityStatus() async {
+    return await _post('brainweave_security_status', {});
+  }
+
+  /// Approve a pending PRIVATE → CLIENT promotion. Requires superadmin.
+  Future<Map<String, dynamic>> approvePromotion({
+    required String promotionId,
+  }) async {
+    return await _post('brainweave_approve_promotion', {
+      'promotion_id': promotionId,
+    });
   }
 }

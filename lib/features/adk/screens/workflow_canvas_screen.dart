@@ -295,6 +295,9 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                         _buildTool(FontAwesomeIcons.lightbulb, "Relight", WorkflowNodeType.creativeRelightProduct),
                         _buildTool(FontAwesomeIcons.video, "Video Gen", WorkflowNodeType.creativeVideoLipsync),
                         _buildTool(FontAwesomeIcons.layerGroup, "Composite", WorkflowNodeType.creativeCompositingLayers),
+                        const Divider(color: Colors.white10, height: 24),
+                        _buildCategoryHeader("INTEGRATIONS"),
+                        _buildTool(FontAwesomeIcons.google, "Stitch", WorkflowNodeType.creativeStitchDesign),
                       ],
                     ],
                   ),
@@ -806,6 +809,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.creativeRelightProduct: return FontAwesomeIcons.lightbulb;
       case WorkflowNodeType.creativeVideoLipsync: return FontAwesomeIcons.video;
       case WorkflowNodeType.creativeCompositingLayers: return FontAwesomeIcons.layerGroup;
+      case WorkflowNodeType.creativeStitchDesign: return FontAwesomeIcons.google;
     }
   }
 
@@ -863,6 +867,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return const Color(0xFF7C3AED);
       case WorkflowNodeType.creativeCompositingLayers:
         return const Color(0xFF059669);
+      case WorkflowNodeType.creativeStitchDesign:
+        return const Color(0xFF1A73E8);
     }
   }
 

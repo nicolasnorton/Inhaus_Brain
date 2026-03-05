@@ -18,6 +18,7 @@ import '../../features/proposals/screens/proposal_detail_screen.dart';
 
 import '../../features/campaigns/campaign_wizard_screen.dart';
 import '../../features/campaigns/campaign_detail_screen.dart'; // Added
+import '../../features/campaigns/screens/creative_campaign_canvas_screen.dart'; // M2
 import '../../features/onboarding/screens/welcome_screen.dart';
 import '../../features/onboarding/providers/onboarding_provider.dart';
 import '../../features/auth/auth_screen.dart';
@@ -169,6 +170,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => CampaignDetailScreen(
                   campaignId: state.pathParameters['id']!,
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'designer-canvas',
+                    builder: (context, state) => CreativeCampaignCanvasScreen(
+                      campaignId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

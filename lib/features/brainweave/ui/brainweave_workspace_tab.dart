@@ -83,6 +83,7 @@ class _BrainWeaveWorkspaceTabState
   String? _exportUrl;
   List<Map<String, dynamic>> _searchResults = [];
   bool    _isSearching = false;
+  bool    _isSuperAdmin = false;
 
   @override
   void initState() {
@@ -93,6 +94,20 @@ class _BrainWeaveWorkspaceTabState
     )..repeat(reverse: true);
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.04)
         .animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _checkSuperAdmin();
+  }
+
+  Future<void> _checkSuperAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final idTokenResult = await user.getIdTokenResult();
+    final claims = idTokenResult.claims;
+    if (mounted && claims != null) {
+      setState(() {
+        _isSuperAdmin = claims['superadmin'] == true ||
+            claims['role'] == 'superAdmin';
+      });
+    }
   }
 
   @override
@@ -564,7 +579,14 @@ class _BrainWeaveWorkspaceTabState
 
             // ── Graph Stats Dashboard ────────────────────────────────────────
             const _BrainWeaveStatsCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // ── Security Dashboard (Superadmin) ──────────────────────────────
+            if (_isSuperAdmin) ...[
+              const SecurityStatusPanel(),
+              const SizedBox(height: 24),
+            ] else
+              const SizedBox(height: 24),
 
             // ── Export Actions ────────────────────────────────────────────────
             _ExportActions(
@@ -1313,6 +1335,142 @@ class _BrainWeaveStatsCardState extends State<_BrainWeaveStatsCard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Security Status Panel (Superadmin Only) ────────────────────────────────
+
+class SecurityStatusPanel extends StatefulWidget {
+  const SecurityStatusPanel({super.key});
+
+  @override
+  State<SecurityStatusPanel> createState() => _SecurityStatusPanelState();
+}
+
+class _SecurityStatusPanelState extends State<SecurityStatusPanel> {
+  final _mcp = BrainWeaveMcpClient();
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await _mcp.getSecurityStatus();
+      if (mounted) setState(() { _data = data; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        height: 80,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (_error != null || _data == null) return const SizedBox.shrink();
+
+    final encryption = _data!['encryption'] ?? 'UNKNOWN';
+    final fgac = _data!['fgac_enabled'] == true;
+    final promotes = _data!['recent_promotes_24h'] ?? 0;
+    final pending = _data!['pending_approvals'] ?? 0;
+    final totalNodes = _data!['total_nodes'] ?? 0;
+    final totalUsers = _data!['total_users'] ?? 0;
+    final rateLimit = _data!['rate_limit_max'] ?? 100;
+    final lastCheck = _data!['last_check'] ?? '';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF0D1117),
+            const Color(0xFF161B22),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield, size: 18, color: fgac ? Colors.green : const Color(0xFFF59E0B)),
+              const SizedBox(width: 8),
+              const Text(
+                'Security Status',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: encryption == 'CMEK'
+                      ? Colors.green.withValues(alpha: 0.2)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  encryption,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: encryption == 'CMEK' ? Colors.green : const Color(0xFFF59E0B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              _statusChip(Icons.people, '$totalUsers users', Colors.blue),
+              _statusChip(Icons.hub, '$totalNodes nodes', Colors.purple),
+              _statusChip(Icons.publish, '$promotes promotes (24h)', Colors.teal),
+              if (pending > 0)
+                _statusChip(Icons.pending_actions, '$pending pending', Colors.orange),
+              _statusChip(Icons.speed, 'Rate: $rateLimit', Colors.grey),
+              _statusChip(
+                fgac ? Icons.lock : Icons.lock_open,
+                fgac ? 'FGAC ON' : 'FGAC OFF',
+                fgac ? Colors.green : Colors.orange,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Last check: ${lastCheck.length > 19 ? lastCheck.substring(0, 19) : lastCheck}',
+            style: const TextStyle(fontSize: 10, color: Colors.white30),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(IconData icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color.withValues(alpha: 0.8)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.9))),
+      ],
     );
   }
 }
