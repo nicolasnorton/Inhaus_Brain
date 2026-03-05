@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 import '../../../core/adk/models/pipeline_models.dart';
+import '../../../core/config/feature_flags.dart';
 
 /// Pre-built workflow templates for the Creative Campaign Canvas.
 ///
@@ -86,6 +87,19 @@ class CampaignWeavyTemplates {
         dependencies: [idComposite],
         uiPosition: {'x': 1500, 'y': 300},
       ),
+      if (FeatureFlags.enableFigmaIntegration)
+        PipelineStep(
+          id: _uuid.v4(),
+          nodeType: WorkflowNodeType.creativeFigmaSync,
+          instruction: 'Sync final composite to Figma for design team review.',
+          config: {
+            'direction': 'export',
+            'figmaFileKey': '', // To be filled by user
+            'exportMessage': 'Auto-synced from Designer Canvas',
+          },
+          dependencies: [idComposite],
+          uiPosition: {'x': 1500, 'y': 100},
+        ),
     ];
   }
 
@@ -204,17 +218,31 @@ class CampaignWeavyTemplates {
   /// Image → Video with lip-sync + text overlay.
   /// ImageGen → Video Lipsync → Compositing (text overlay) → Stitch Preview
   static List<PipelineStep> videoAdLipsyncPreset() {
+    final idFigmaImport = _uuid.v4();
     final idImageGen = _uuid.v4();
     final idVideo = _uuid.v4();
     final idComposite = _uuid.v4();
     final idStitch = _uuid.v4();
 
     return [
+      if (FeatureFlags.enableFigmaIntegration)
+        PipelineStep(
+          id: idFigmaImport,
+          nodeType: WorkflowNodeType.creativeFigmaSync,
+          instruction: 'Import initial mockup frames from Figma.',
+          config: {
+            'direction': 'import',
+            'figmaFileKey': '',
+            'exportFormat': 'png',
+          },
+          uiPosition: {'x': -200, 'y': 200},
+        ),
       PipelineStep(
         id: idImageGen,
         nodeType: WorkflowNodeType.creativeImageGen,
         instruction: 'Generate the key frame for the video ad.',
         config: {'prompt': '{{ad_concept}}', 'aspectRatio': '16:9', 'model': 'imagen'},
+        dependencies: FeatureFlags.enableFigmaIntegration ? [idFigmaImport] : [],
         uiPosition: {'x': 100, 'y': 200},
       ),
       PipelineStep(

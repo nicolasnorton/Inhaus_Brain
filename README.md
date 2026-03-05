@@ -114,6 +114,7 @@ Enterprise-grade safety integrated directly into the agentic flow:
 - **Final Output Verification**: A final security pass on all AI-generated content before it reaches the user.
 
 ### 🏢 Creative Studio & Client Factory
+- **Creative Campaign Canvas**: Node-based, Weavy-style DAG editor for chaining AI image generation, video lip-sync, and compositing tasks. Features bidirectional **Figma** syncing and **Google Stitch** component extraction.
 - **Streamlined Client Module**: Merged navigation for faster workflows (Contacts integrated into Overview, Commerce into Integrations).
 - **Project Plans & Task Boards**: Comprehensive portfolio management with real-time tracking.
 - **Third-Party Integrations**: Native connectors for **Gmail**, **Slack**, **Notion**, and **GoHighLevel**.
