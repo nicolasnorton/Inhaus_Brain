@@ -298,6 +298,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                         const Divider(color: Colors.white10, height: 24),
                         _buildCategoryHeader("INTEGRATIONS"),
                         _buildTool(FontAwesomeIcons.google, "Stitch", WorkflowNodeType.creativeStitchDesign),
+                        if (FeatureFlags.enableFigmaIntegration)
+                          _buildTool(FontAwesomeIcons.figma, "Figma", WorkflowNodeType.creativeFigmaSync),
                       ],
                     ],
                   ),
@@ -810,6 +812,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.creativeVideoLipsync: return FontAwesomeIcons.video;
       case WorkflowNodeType.creativeCompositingLayers: return FontAwesomeIcons.layerGroup;
       case WorkflowNodeType.creativeStitchDesign: return FontAwesomeIcons.google;
+      case WorkflowNodeType.creativeFigmaSync: return FontAwesomeIcons.figma;
     }
   }
 
@@ -869,6 +872,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return const Color(0xFF059669);
       case WorkflowNodeType.creativeStitchDesign:
         return const Color(0xFF1A73E8);
+      case WorkflowNodeType.creativeFigmaSync:
+        return const Color(0xFF0ACF83);
     }
   }
 

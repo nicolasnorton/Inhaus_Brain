@@ -14,6 +14,7 @@ import '../models/brainweave_node.dart';
 import '../services/brainweave_pipeline_service.dart';
 import '../services/brainweave_storage_service.dart';
 import '../services/brainweave_stats_service.dart';
+import '../services/brainweave_mcp_client.dart';
 import 'knowledge_graph_explorer.dart';
 
 // ─── Colors & Style Constants ────────────────────────────────────────────────

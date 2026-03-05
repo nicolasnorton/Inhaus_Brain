@@ -149,6 +149,124 @@ resource "google_artifact_registry_repository" "brainweave" {
   depends_on = [google_project_service.artifactregistry]
 }
 
+
+# ═══════════════════════════════════════════════════════════
+# SECURITY HARDENING — Dedicated Service Accounts
+# ═══════════════════════════════════════════════════════════
+
+resource "google_service_account" "brainweave_mcp_api" {
+  account_id   = "brainweave-mcp-api"
+  display_name = "BrainWeave MCP API"
+  project      = var.project_id
+}
+
+resource "google_service_account" "brainweave_indexer" {
+  account_id   = "brainweave-indexer"
+  display_name = "BrainWeave Indexer"
+  project      = var.project_id
+}
+
+resource "google_service_account" "brainweave_reweave" {
+  account_id   = "brainweave-reweave"
+  display_name = "BrainWeave Reweave Job"
+  project      = var.project_id
+}
+
+resource "google_service_account" "brainweave_export" {
+  account_id   = "brainweave-export"
+  display_name = "BrainWeave Export Function"
+  project      = var.project_id
+}
+
+# ─── IAM: Spanner databaseUser for each SA ─────────────────
+resource "google_spanner_database_iam_member" "mcp_api_db_user" {
+  instance = google_spanner_instance.brainweave.name
+  database = google_spanner_database.brainweave_db.name
+  role     = "roles/spanner.databaseUser"
+  member   = "serviceAccount:${google_service_account.brainweave_mcp_api.email}"
+}
+
+resource "google_spanner_database_iam_member" "indexer_db_user" {
+  instance = google_spanner_instance.brainweave.name
+  database = google_spanner_database.brainweave_db.name
+  role     = "roles/spanner.databaseUser"
+  member   = "serviceAccount:${google_service_account.brainweave_indexer.email}"
+}
+
+resource "google_spanner_database_iam_member" "reweave_db_user" {
+  instance = google_spanner_instance.brainweave.name
+  database = google_spanner_database.brainweave_db.name
+  role     = "roles/spanner.databaseUser"
+  member   = "serviceAccount:${google_service_account.brainweave_reweave.email}"
+}
+
+resource "google_spanner_database_iam_member" "export_db_reader" {
+  instance = google_spanner_instance.brainweave.name
+  database = google_spanner_database.brainweave_db.name
+  role     = "roles/spanner.databaseReader"
+  member   = "serviceAccount:${google_service_account.brainweave_export.email}"
+}
+
+# ─── IAM: Pub/Sub publisher for MCP API SA ─────────────────
+resource "google_pubsub_topic_iam_member" "mcp_api_pubsub" {
+  topic  = google_pubsub_topic.vault_changes.id
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:${google_service_account.brainweave_mcp_api.email}"
+}
+
+# ─── IAM: Vertex AI user for MCP API + Indexer ─────────────
+resource "google_project_iam_member" "mcp_api_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.brainweave_mcp_api.email}"
+}
+
+resource "google_project_iam_member" "indexer_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.brainweave_indexer.email}"
+}
+
+
+# ═══════════════════════════════════════════════════════════
+# SECURITY HARDENING — Cloud KMS (CMEK)
+# ═══════════════════════════════════════════════════════════
+
+resource "google_project_service" "kms" {
+  service            = "cloudkms.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_kms_key_ring" "brainweave" {
+  name     = "brainweave-keyring"
+  location = var.region
+
+  depends_on = [google_project_service.kms]
+}
+
+resource "google_kms_crypto_key" "brainweave_cmek" {
+  name     = "brainweave-cmek-key"
+  key_ring = google_kms_key_ring.brainweave.id
+  purpose  = "ENCRYPT_DECRYPT"
+
+  rotation_period = "7776000s" # 90 days
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+
+# ═══════════════════════════════════════════════════════════
+# SECURITY HARDENING — Cloud Monitoring Alert
+# ═══════════════════════════════════════════════════════════
+
+resource "google_project_service" "monitoring" {
+  service            = "monitoring.googleapis.com"
+  disable_on_destroy = false
+}
+
+
 # ─── Output ───────────────────────────────────────────────
 output "spanner_instance" {
   value = google_spanner_instance.brainweave.name
@@ -170,3 +288,22 @@ output "artifact_registry" {
   value = google_artifact_registry_repository.brainweave.name
 }
 
+output "kms_key" {
+  value = google_kms_crypto_key.brainweave_cmek.id
+}
+
+output "mcp_api_sa" {
+  value = google_service_account.brainweave_mcp_api.email
+}
+
+output "indexer_sa" {
+  value = google_service_account.brainweave_indexer.email
+}
+
+output "reweave_sa" {
+  value = google_service_account.brainweave_reweave.email
+}
+
+output "export_sa" {
+  value = google_service_account.brainweave_export.email
+}

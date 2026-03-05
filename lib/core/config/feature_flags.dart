@@ -67,6 +67,11 @@ class FeatureFlags {
   static bool get enableDesignerCanvasMode =>
       _overrides['enableDesignerCanvasMode'] ?? false;
 
+  /// Controls Figma REST API integration and MCP tools.
+  /// Requires enableDesignerCanvasMode to be meaningful.
+  static bool get enableFigmaIntegration =>
+      _overrides['enableFigmaIntegration'] ?? false;
+
   // ── BrainWeave ────────────────────────────────────────────────────────────
   /// Controls visibility of the BrainWeave workspace tab and 6R pipeline.
   static bool get brainweaveEnabled =>
