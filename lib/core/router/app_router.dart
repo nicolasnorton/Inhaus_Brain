@@ -186,6 +186,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const CreativeStudioScreen(),
           ),
           GoRoute(
+            path: '/creative-canvas',
+            builder: (context, state) => const CreativeCampaignCanvasScreen(
+              campaignId: 'sandbox',
+            ),
+          ),
+          GoRoute(
             path: '/clients',
             builder: (context, state) => const ClientListScreen(),
             routes: [

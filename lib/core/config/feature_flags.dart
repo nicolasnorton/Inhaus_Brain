@@ -65,12 +65,12 @@ class FeatureFlags {
   /// Controls visibility of the Designer Canvas mode in Campaigns.
   /// When false, no creative nodes or Designer Mode buttons appear.
   static bool get enableDesignerCanvasMode =>
-      _overrides['enableDesignerCanvasMode'] ?? false;
+      _overrides['enableDesignerCanvasMode'] ?? AppConfig.isStaging;
 
   /// Controls Figma REST API integration and MCP tools.
   /// Requires enableDesignerCanvasMode to be meaningful.
   static bool get enableFigmaIntegration =>
-      _overrides['enableFigmaIntegration'] ?? false;
+      _overrides['enableFigmaIntegration'] ?? AppConfig.isStaging;
 
   // ── BrainWeave ────────────────────────────────────────────────────────────
   /// Controls visibility of the BrainWeave workspace tab and 6R pipeline.

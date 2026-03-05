@@ -149,6 +149,7 @@ class DashboardScreen extends ConsumerWidget {
                         _buildNavItem(context, 0, FontAwesomeIcons.gaugeHigh, AppLocalizations.of(context)!.navDashboard, ref),
                         _buildNavItem(context, 1, FontAwesomeIcons.usersViewfinder, AppLocalizations.of(context)!.navClients, ref),
                         _buildNavItem(context, 2, FontAwesomeIcons.bullhorn, AppLocalizations.of(context)!.navCampaigns, ref),
+                        _buildNavItem(context, 14, FontAwesomeIcons.palette, 'Designer Canvas', ref),
                         _buildNavItem(context, 3, FontAwesomeIcons.chartLine, AppLocalizations.of(context)!.navAnalytics, ref),
                         _buildNavItem(context, 4, FontAwesomeIcons.diagramProject, AppLocalizations.of(context)!.navWorkflows, ref), // Enabled for all
                         _buildNavItem(context, 5, FontAwesomeIcons.rocket, AppLocalizations.of(context)!.navPublish, ref), // Enabled for all
@@ -238,6 +239,7 @@ class DashboardScreen extends ConsumerWidget {
     if (location.startsWith('/agency')) return 11;
     if (location.startsWith('/composer')) return 12;
     if (location.startsWith('/brainweave')) return 13;
+    if (location.startsWith('/creative-canvas')) return 14;
     return 0;
   }
 
@@ -318,6 +320,9 @@ class DashboardScreen extends ConsumerWidget {
         break;
       case 13:
         context.go('/brainweave');
+        break;
+      case 14:
+        context.go('/creative-canvas');
         break;
     }
   }
@@ -418,6 +423,12 @@ class DashboardHome extends ConsumerWidget {
                           icon: FontAwesomeIcons.bullhorn,
                           label: AppLocalizations.of(context)!.navCampaigns,
                           onTap: () => context.go('/campaigns'),
+                        ),
+                        _buildNavCard(
+                          context,
+                          icon: FontAwesomeIcons.palette,
+                          label: 'Designer Canvas',
+                          onTap: () => context.go('/creative-canvas'),
                         ),
                         _buildNavCard(
                           context,

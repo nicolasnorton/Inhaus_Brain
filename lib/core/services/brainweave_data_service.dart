@@ -24,6 +24,7 @@ class BrainWeaveDataService {
       final sqlResponse = await AIProxyService.generateContent(
         prompt: schemaContext,
         config: AIModelConfig(
+          provider: AIProvider.gemini,
           modelId: 'gemini-3.1-pro-preview',
           temperature: 0.1,
           maxTokens: 1024,

@@ -220,6 +220,15 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
         return const Center(child: Text("Video Generation Config (Coming Soon)"));
       case WorkflowNodeType.brainweavePipeline:
         return _buildBrainWeaveConfig(step);
+      case WorkflowNodeType.creativeFigmaSync:
+      case WorkflowNodeType.creativeImageGen:
+      case WorkflowNodeType.creativeInpaintOutpaint:
+      case WorkflowNodeType.creativeControlNet:
+      case WorkflowNodeType.creativeRelightProduct:
+      case WorkflowNodeType.creativeVideoLipsync:
+      case WorkflowNodeType.creativeCompositingLayers:
+      case WorkflowNodeType.creativeStitchDesign:
+        return const Center(child: Text("Creative Node Config (Coming Soon)"));
     }
   }
 

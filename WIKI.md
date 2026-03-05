@@ -202,10 +202,42 @@ Additional roles like **Designer**, **Ad Manager**, and **Social Media Manager**
 ---
 
 ## 🛡️ Production & Security
-Inhaus Brain is built with enterprise-grade safety:
-*   **Role-Based Security**: Access is strictly enforced via Firebase Security Rules at the database level and Firebase Auth Custom Claims for fast, secure permission checking.
+Inhaus Brain is built with enterprise-grade safety across authentication, data access, encryption, and monitoring.
+
+### Authentication & Authorization
+*   **JWT-Only Authentication**: All MCP API endpoints require a valid Firebase ID token in the `Authorization: Bearer` header. There are **zero fallback paths** — unauthenticated requests are rejected with `401 Unauthorized`.
 *   **Custom Claims Sync**: Cloud Functions automatically sync user roles from Firestore to Firebase Auth tokens, enabling instant RBAC validation without additional database reads.
+*   **Superadmin Gates**: Critical operations (promotion approval, security status, agency-wide graph access) are gated behind `superadmin` or `role: superAdmin` custom claims verified server-side.
 *   **UI Masking**: Navigation and action buttons are automatically hidden based on the active user's role (e.g., Client Users cannot see Debug, Knowledge, or Admin tools).
+
+### Knowledge Graph Security (BrainWeave)
+*   **Spanner Fine-Grained Access Control (FGAC)**: Three database-level roles enforce least-privilege access:
+    *   `brainweave_reader` — SELECT only on all tables.
+    *   `brainweave_writer` — Full CRUD on nodes/edges, limited writes on promotions.
+    *   `brainweave_superadmin` — Unrestricted access across all BrainWeave tables.
+*   **Dedicated Service Accounts**: Each workload (MCP API, Indexer, Reweave, Export) runs under its own GCP service account with minimal IAM bindings (`roles/spanner.databaseUser` or `roles/spanner.databaseReader`).
+*   **Owner-Scoped Queries**: All graph queries are automatically filtered by `owner_id` (extracted from the verified JWT). Cross-user data leaks are structurally impossible at the query level.
+*   **Scope Enforcement**: Edge traversals in `brainweave_context` enforce visibility rules — only `CLIENT` and `AGENCY` scoped nodes are returned for shared queries.
+
+### Encryption
+*   **Customer-Managed Encryption Keys (CMEK)**: A Cloud KMS key ring (`brainweave-keyring`) and crypto key (`brainweave-cmek-key`) are provisioned via Terraform with 90-day automatic rotation. Spanner currently uses Google-managed encryption with CMEK migration ready.
+*   **TLS Everywhere**: All API communication uses HTTPS/TLS. Cloud Run enforces TLS termination at the edge.
+
+### API Protections
+*   **Rate Limiting**: A thread-safe concurrency limiter caps all endpoints at 100 concurrent requests, preventing abuse and DoS attacks.
+*   **Input Validation**: All inputs are validated — UUIDs checked via regex, scopes restricted to `PRIVATE|CLIENT|AGENCY`, text fields sanitized and length-capped (title: 200 chars, description: 2000 chars, content: 50K chars).
+*   **GQL Injection Prevention**: All Spanner Graph queries use parameterized bindings — no string interpolation of user inputs into GQL.
+*   **Traceback Suppression**: Internal Python tracebacks are never exposed to clients; all errors return generic safe messages.
+
+### Promotion & Sharing Workflow
+*   **Approval-Gated Promotions**: Promoting a node from `PRIVATE` → `CLIENT` scope creates a `PendingPromotions` record with `PENDING_APPROVAL` status. A superadmin must explicitly approve via `/brainweave_approve_promotion` before the scope change takes effect.
+*   **Structured Audit Logging**: All security-relevant actions (`promote`, `approve_promotion`, `reject`, etc.) are logged as structured JSON entries to Cloud Logging with actor, target, and timestamp metadata.
+
+### Monitoring & Dashboards
+*   **Security Status Dashboard**: Superadmins see a real-time Security Status panel in the BrainWeave workspace showing: encryption type, FGAC status, total nodes/users, recent promotions (24h), pending approvals, and rate limit configuration.
+*   **Cloud Monitoring**: GCP Monitoring API is enabled for alerting on anomalous patterns.
+
+### Content Safety
 *   **Automatic Redaction**: Sensitive data like emails and phone numbers are automatically hidden from AI models to protect privacy.
 *   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
 *   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.

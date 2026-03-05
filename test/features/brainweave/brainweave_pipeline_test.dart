@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:inhaus_brain/features/brainweave/services/brainweave_pipeline_service.dart';
 import 'package:inhaus_brain/core/architecture/blackboard.dart';
 import 'package:inhaus_brain/core/services/ai_proxy_service.dart';
+import 'package:inhaus_brain/core/services/vertex_ai_service.dart';
 
 // Mock Classes
 class MockRef extends Mock implements Ref {}
@@ -18,13 +19,14 @@ class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 class MockAgentRegistryService extends Mock implements AgentRegistryService {}
 class MockUser extends Mock implements User {}
 class MockAIProxyService extends Mock implements AIProxyService {}
+class MockVertexApiService extends Mock implements VertexApiService {}
 
 void main() {
   late BrainWeavePipelineService service;
   late MockFirebaseFirestore mockFirestore;
   late MockFirebaseAuth mockAuth;
   late MockAgentRegistryService mockRegistry;
-  late MockAIProxyService mockAIProxy;
+  late MockVertexApiService mockVertexAi;
   late MockBlackboardNotifier mockBlackboard;
   late MockCollectionReference<Map<String, dynamic>> mockCollectionRef;
   late MockDocumentReference<Map<String, dynamic>> mockDocRef;
@@ -42,7 +44,7 @@ void main() {
     mockFirestore    = MockFirebaseFirestore();
     mockAuth         = MockFirebaseAuth();
     mockRegistry     = MockAgentRegistryService();
-    mockAIProxy      = MockAIProxyService();
+    mockVertexAi     = MockVertexApiService();
     mockBlackboard   = MockBlackboardNotifier();
     mockCollectionRef = MockCollectionReference<Map<String, dynamic>>();
     mockDocRef       = MockDocumentReference<Map<String, dynamic>>();
@@ -60,7 +62,7 @@ void main() {
     when(() => mockDocRef.update(any())).thenAnswer((_) async {});
 
     service = BrainWeavePipelineService(
-      mockFirestore, mockAuth, mockRegistry, mockBlackboard,
+      mockFirestore, mockAuth, mockRegistry, mockBlackboard, mockVertexAi
     );
   });
 
