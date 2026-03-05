@@ -128,7 +128,7 @@ Provide a brief status update or result. Be concise — this will be logged to d
 If the task requires external data you cannot access, note what would be needed."""
 
     response = client.generate_content(
-        model_name='gemini-2.5-flash',
+        model_name='gemini-3-flash-preview',
         prompt=prompt,
         system_instruction=system_prompt,
         generation_config={'max_output_tokens': 500, 'temperature': 0.3},

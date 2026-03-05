@@ -69,7 +69,7 @@ class BrainWeavePipelineService {
           'input': input,
           'context': context,
         }),
-      ).timeout(const Duration(seconds: 120));
+      ).timeout(const Duration(seconds: 300));
 
       if (response.statusCode == 200) {
         return dart_convert.jsonDecode(response.body) as Map<String, dynamic>;

@@ -96,6 +96,7 @@ class Report {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? datasetId; // Reference to Knowledge Base
+  final String? pdfUrl; // Reference to generated PDF report
   final List<ReportSource> sources; 
   final List<ReportOutput> outputs;
 
@@ -107,6 +108,7 @@ class Report {
     required this.createdAt,
     required this.updatedAt,
     this.datasetId,
+    this.pdfUrl,
     List<ReportSource>? sources,
     List<ReportOutput>? outputs,
   }) : sources = sources ?? [], outputs = outputs ?? [];
@@ -129,6 +131,7 @@ class Report {
       createdAt: now,
       updatedAt: now,
       datasetId: datasetId,
+      pdfUrl: null,
     );
   }
 
@@ -141,6 +144,7 @@ class Report {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'datasetId': datasetId,
+      'pdfUrl': pdfUrl,
       'sources': sources.map((s) => s.toJson()).toList(),
       'outputs': outputs.map((o) => o.toJson()).toList(),
     };
@@ -155,6 +159,7 @@ class Report {
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
       datasetId: json['datasetId']?.toString(),
+      pdfUrl: json['pdfUrl']?.toString(),
       sources: (json['sources'] as List<dynamic>?)
           ?.map((e) => ReportSource.fromJson(e))
           .toList(),
@@ -172,6 +177,7 @@ class Report {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? datasetId,
+    String? pdfUrl,
     List<ReportSource>? sources,
     List<ReportOutput>? outputs,
   }) {
@@ -183,6 +189,7 @@ class Report {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       datasetId: datasetId ?? this.datasetId,
+      pdfUrl: pdfUrl ?? this.pdfUrl,
       sources: sources ?? this.sources,
       outputs: outputs ?? this.outputs,
     );

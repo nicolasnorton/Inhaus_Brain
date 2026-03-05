@@ -75,6 +75,13 @@ enum WorkflowNodeType {
   imageGeneration,
   videoGeneration,
   brainweavePipeline,
+  // Creative Campaign Canvas nodes (M1)
+  creativeImageGen,
+  creativeInpaintOutpaint,
+  creativeControlNet,
+  creativeRelightProduct,
+  creativeVideoLipsync,
+  creativeCompositingLayers,
 }
 
 enum PipelineStepType { sequential, parallel, loop }

@@ -184,6 +184,14 @@ class CreateAtomicNodeTool extends AgentTool {
               'type': 'string',
               'description': 'The visibility scope of the node (PRIVATE, CLIENT, AGENCY). Defaults to PRIVATE.',
               'enum': ['PRIVATE', 'CLIENT', 'AGENCY']
+            },
+            'type': {
+              'type': 'string',
+              'description': 'The type of node (e.g., atomic, research, entity, claim). Defaults to atomic.',
+            },
+            'metadata': {
+              'type': 'object',
+              'description': 'Optional JSON object for storing extra metadata like URLs, confidence scores, etc.',
             }
           },
         );
@@ -198,6 +206,8 @@ class CreateAtomicNodeTool extends AgentTool {
     final content = parameters['content'] as String?;
     final topics = (parameters['topics'] as List?)?.cast<String>() ?? [];
     final scope = parameters['scope'] as String? ?? 'PRIVATE';
+    final nodeType = parameters['type'] as String? ?? 'atomic';
+    final metadata = parameters['metadata'] as Map<String, dynamic>?;
 
     if (title == null || content == null) {
       return ToolResult.failure('Missing required title or content');
@@ -210,9 +220,11 @@ class CreateAtomicNodeTool extends AgentTool {
           title: title,
           description: description ?? '',
           content: content,
+          nodeType: nodeType,
           topics: topics,
           scope: scope,
           sourceAgent: 'chat_agent',
+          metadata: metadata,
         );
         return ToolResult.success(result);
       } catch (e) {

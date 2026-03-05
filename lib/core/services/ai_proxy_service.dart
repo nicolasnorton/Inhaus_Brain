@@ -67,8 +67,9 @@ class AIProxyService {
   // Always route to production Cloud Run since the Flutter client
   // authenticates with the production Firebase project ('inhausbrain').
   // The staging Cloud Run validates tokens against 'inhaus-brain-full-staging'
+  // Validates tokens against 'inhaus-brain-full-staging'
   // which causes a 401 audience mismatch.
-  static String get _projectSuffix => '-1096509611056.us-central1.run.app';
+  static String get _projectSuffix => '-btdf7nijqa-uc.a.run.app';
 
   static String get _generateImageUrl => 'https://generate-image$_projectSuffix';
   static String get _generateContentUrl => 'https://generate-content$_projectSuffix';
@@ -78,6 +79,7 @@ class AIProxyService {
   static String get _pollResearchUrl => 'https://poll-research$_projectSuffix';
   static String get _pollOperationUrl => 'https://poll-operation$_projectSuffix';
   static String get _extractStructuredUrl => 'https://extract-structured$_projectSuffix';
+  static String get _ingestKnowledgeUrl => 'https://ingest-knowledge$_projectSuffix';
 
   /// Fetch a short-lived access token for the Multimodal Live API.
   static Future<Map<String, dynamic>> getLiveToken() async {
@@ -157,7 +159,7 @@ class AIProxyService {
             'Authorization': 'Bearer $idToken',
           },
           body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 120)));
+        ).timeout(const Duration(seconds: 300)));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -356,7 +358,7 @@ static Future<Map<String, dynamic>> processDocument({
       "inlineData": inlineData,
       "responseJsonSchema": responseJsonSchema,
     }),
-  ).timeout(const Duration(seconds: 120)));
+  ).timeout(const Duration(seconds: 300)));
 
   if (response.statusCode == 200) {
     return jsonDecode(response.body);
@@ -368,6 +370,7 @@ static Future<Map<String, dynamic>> processDocument({
   static Future<Map<String, dynamic>> startResearch({
     required String prompt,
     String model = 'deep-research-pro-preview-12-2025',
+    AIModelConfig? config,
     Ref? ref,
   }) async {
     final effectiveRef = ref ?? globalRef;
@@ -385,6 +388,7 @@ static Future<Map<String, dynamic>> processDocument({
       body: jsonEncode({
         "prompt": prompt,
         "model": model,
+        "useGoogleSearch": config?.useGoogleSearch ?? true, // Default to true for research
       }),
     ).timeout(const Duration(seconds: 30));
 
@@ -526,12 +530,43 @@ static Future<Map<String, dynamic>> processDocument({
         "examples": examples ?? [],
         "model": model,
       }),
-    ).timeout(const Duration(seconds: 120));
+    ).timeout(const Duration(seconds: 300));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
       throw _handleApiError(response, 'Extraction Failed');
+    }
+  }
+
+  static Future<Map<String, dynamic>> ingestKnowledge({
+    required String documentId,
+    required String title,
+    required String content,
+    String mimeType = 'text/plain',
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Unauthenticated');
+    final idToken = await user.getIdToken();
+
+    final response = await http.post(
+      Uri.parse(_ingestKnowledgeUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $idToken',
+      },
+      body: jsonEncode({
+        "documentId": documentId,
+        "title": title,
+        "content": content,
+        "mimeType": mimeType,
+      }),
+    ).timeout(const Duration(seconds: 60));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw _handleApiError(response, 'Knowledge Ingestion Failed');
     }
   }
 }

@@ -8,10 +8,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/config/app_environment.dart';
 import '../../../core/config/feature_flags.dart';
+import '../../../core/auth/auth_service.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
 import '../models/brainweave_node.dart';
 import '../services/brainweave_pipeline_service.dart';
 import '../services/brainweave_storage_service.dart';
+import '../services/brainweave_stats_service.dart';
 import 'knowledge_graph_explorer.dart';
 
 // ─── Colors & Style Constants ────────────────────────────────────────────────
@@ -560,6 +562,10 @@ class _BrainWeaveWorkspaceTabState
             _GraphExplorerLauncher(userId: _userId),
             const SizedBox(height: 24),
 
+            // ── Graph Stats Dashboard ────────────────────────────────────────
+            const _BrainWeaveStatsCard(),
+            const SizedBox(height: 24),
+
             // ── Export Actions ────────────────────────────────────────────────
             _ExportActions(
               isExporting: _isExporting,
@@ -1022,6 +1028,38 @@ class _GraphExplorerLauncher extends ConsumerWidget {
                     ),
                   ),
                 ),
+                // Agency View toggle (superadmin only)
+                FutureBuilder<bool>(
+                  future: ref.read(authServiceProvider).isSuperAdmin,
+                  builder: (ctx, snap) {
+                    if (snap.data != true) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const Scaffold(
+                                  body: KnowledgeGraphExplorer(agencyMode: true),
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.admin_panel_settings, size: 14, color: Color(0xFF7C3AED)),
+                          label: const Text('Agency-Wide Graph View',
+                              style: TextStyle(color: Color(0xFF7C3AED), fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF7C3AED)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 12),
                 // ── Node preview list ──
                 ListView.separated(
@@ -1206,6 +1244,75 @@ class _ExportActions extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ─── Stats Card ─────────────────────────────────────────────────────────────
+
+class _BrainWeaveStatsCard extends StatefulWidget {
+  const _BrainWeaveStatsCard();
+
+  @override
+  State<_BrainWeaveStatsCard> createState() => _BrainWeaveStatsCardState();
+}
+
+class _BrainWeaveStatsCardState extends State<_BrainWeaveStatsCard> {
+  final _stats = BrainWeaveStatsService();
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final data = await _stats.getStats();
+    if (mounted) setState(() { _data = data; _loading = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        height: 60,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (_data == null) return const SizedBox.shrink();
+
+    final nodes = _data!['node_count'] ?? 0;
+    final edges = _data!['edge_count'] ?? 0;
+    final daily = _data!['daily_interactions'] ?? 0;
+    final cost  = (_data!['est_cost_usd'] ?? 0.0).toStringAsFixed(2);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1A1D27),
+            const Color(0xFF1A1D27).withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2A2D3A)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.insights, size: 18, color: _kPhasePurple),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Your Graph: $nodes nodes \u2022 $edges edges \u2014 '
+              '$daily interactions today \u2022 Est. cost \$$cost',
+              style: const TextStyle(fontSize: 12, color: Colors.white60),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

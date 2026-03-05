@@ -279,7 +279,10 @@ class AssistantService {
                 'title': 'Q: ${text.length > 80 ? text.substring(0, 80) + '...' : text}',
                 'description': 'Agent response from $intentLabel',
                 'content': message.text.length > 2000 ? message.text.substring(0, 2000) : message.text,
-                'topics': ['conversation', 'agent_output'],
+                'type': 'atomic',
+                'topics': ['conversation', 'agent_output', 'req_${text.hashCode}'],
+                if (message.sources != null && message.sources!.isNotEmpty)
+                   'metadata': {'urls': message.sources},
               }, ref: _ref);
               debugPrint('AssistantService: ✅ BrainWeave auto-ingestion complete');
             } catch (e) {
@@ -563,6 +566,31 @@ class AssistantService {
               useDeepResearch: intentEnum == RouterIntent.research // Use Deep Research for 'research' intent
           );
           
+          // Fire-and-forget Deep Research Ingestion
+          unawaited(_ref.read(knowledgeIngestionServiceProvider).ingestDeepResearch(report));
+          unawaited(Future(() async {
+            try {
+              final createTool = CreateAtomicNodeTool();
+              
+              final metadata = <String, dynamic>{};
+              if (report.pdfUrl != null && report.pdfUrl!.isNotEmpty) {
+                 metadata['pdfUrl'] = report.pdfUrl;
+                 metadata['assetType'] = 'pdf';
+              }
+              
+              await createTool.execute({
+                'title': report.title,
+                'description': 'Executive Summary of Deep Research Report',
+                'content': report.outputs.isNotEmpty ? (report.outputs.first.content ?? '') : 'No content',
+                'type': 'research',
+                'topics': ['research', 'report', 'deep_dive', 'req_${text.hashCode}'],
+                if (metadata.isNotEmpty) 'metadata': metadata,
+              }, ref: _ref);
+            } catch (e) {
+              debugPrint('Assistant: ⚠️ Failed to auto-ingest deep research node: $e');
+            }
+          }));
+
           // Construct UI Payload for GenUI (Report View)
           Map<String, dynamic> reportData = {};
           if (report.outputs.isNotEmpty && report.outputs[0].content != null) {
@@ -639,6 +667,11 @@ class AssistantService {
       debugPrint('Assistant: AI Response: ${edgeResult.text.substring(0, edgeResult.text.length > 50 ? 50 : edgeResult.text.length)}...');
       
       responseText = edgeResult.text;
+
+      // Fire-and-forget Search Grounding Ingestion
+      if (sources != null && sources.isNotEmpty) {
+         unawaited(_ref.read(knowledgeIngestionServiceProvider).ingestSearchGrounding(text, responseText, sources));
+      }
 
       // Filter out visible thoughts (e.g. "**Analyzing the Greeting**\n\nOkay, here... ")
       // If the response contains markdown thoughts and then a final answer, we want to extract just the final answer if possible.
@@ -1033,16 +1066,54 @@ class AssistantService {
       final result = await tool.execute(args, ref: _ref);
       if (result.isSuccess) {
         if (name == 'image_generation') {
+          final imageUrl = result.data['url'];
+          // Fire-and-forget BrainWeave injection
+          unawaited(Future(() async {
+            try {
+              final createTool = CreateAtomicNodeTool();
+              await createTool.execute({
+                'title': 'Generated Image: ${args['prompt'].length > 30 ? args['prompt'].substring(0, 30) + "..." : args['prompt']}',
+                'description': 'AI Generated Image',
+                'content': args['prompt'],
+                'type': 'asset',
+                'topics': ['image', 'generation', 'creative_asset', 'req_${args['prompt'].hashCode}'],
+                'metadata': {'url': imageUrl, 'assetType': 'image'}
+              }, ref: _ref);
+              debugPrint('Assistant: ✅ BrainWeave image asset ingested');
+            } catch (e) {
+              debugPrint('Assistant: ⚠️ Failed to auto-ingest image asset into BrainWeave: $e');
+            }
+          }));
+
           return ToolExecutionSummary(
             text: "Here is the generated image based on your prompt: \"${args['prompt']}\"",
-            assetPath: result.data['url'],
+            assetPath: imageUrl,
             assetType: 'image'
           );
         }
         if (name == 'video_generation') {
+          final videoUrl = result.data['url'];
+          // Fire-and-forget BrainWeave injection
+          unawaited(Future(() async {
+            try {
+              final createTool = CreateAtomicNodeTool();
+              await createTool.execute({
+                'title': 'Generated Video: ${args['prompt'].length > 30 ? args['prompt'].substring(0, 30) + "..." : args['prompt']}',
+                'description': 'AI Generated Video',
+                'content': args['prompt'],
+                'type': 'asset',
+                'topics': ['video', 'generation', 'creative_asset', 'req_${args['prompt'].hashCode}'],
+                'metadata': {'url': videoUrl, 'assetType': 'video'}
+              }, ref: _ref);
+              debugPrint('Assistant: ✅ BrainWeave video asset ingested');
+            } catch (e) {
+              debugPrint('Assistant: ⚠️ Failed to auto-ingest video asset into BrainWeave: $e');
+            }
+          }));
+
           return ToolExecutionSummary(
             text: "I've created a video for you: \"${args['prompt']}\"",
-            assetPath: result.data['url'],
+            assetPath: videoUrl,
             assetType: 'video'
           );
         }

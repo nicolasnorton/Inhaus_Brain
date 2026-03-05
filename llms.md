@@ -53,9 +53,14 @@ The Inhaus Brain features an 11-step specialized agency roster:
 - **Data Engineer Agent**: Manages schemas and data flow (Sensitive).
 - **Security Agent**: Audits all pipeline inputs and final outputs.
 
-### 4.5 BrainWeave & The "Shared Mind"
+### 4.5 BrainWeave & The "Shared Mind" (V2)
+- **Spanner Graph**: Optimized for agency-scale relationship mapping (Property Graph).
+- **Agency View**: Super admins can access `brainweave_agency_graph` for global oversight across all users/clients.
+- **Node Promotion**: Manual promotion of nodes to `CLIENT` or `AGENCY` scope triggers asynchronous 6R reweaving.
+- **6R Reweave Pipeline**: Cloud Run Job (`brainweave-reweave-job`) triggered via Pub/Sub to re-evaluate context when knowledge is shared.
+- **Stats & Cost Dashboard**: Managed via `brainweave_stats` MCP tool for real-time monitoring of node density and GCP operational costs.
 - **Auto-Retrieval**: Through the MCP `QueryBrainWeaveTool`, every agent automatically queries the BrainWeave graph *before* responding. This injects up to 3 highly relevant `atomic nodes` into the system prompt's `{{KNOWLEDGE_GROUNDING}}` block.
-- **Auto-Ingestion Loop**: Significant agent texts (>100 chars) are autonomously ingested back into the BrainWeave graph via the `CreateAtomicNodeTool` (creating a virtuous cycle where agents learn from their own generated artifacts).
+- **Auto-Ingestion Loop**: Significant agent texts (>100 chars) are autonomously ingested back into the BrainWeave graph via the `CreateAtomicNodeTool`.
 - **Direct Agent Mutation**: Specialized agents can explicitly create, link, and read full node contexts using `GetNodeContextTool` along with Vertex AI semantic search.
 
 ### 4. Agent Development Kit (ADK)

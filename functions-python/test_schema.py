@@ -27,7 +27,7 @@ def test_tool():
     )
     
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.1-pro-preview",
         contents="Generate a gen_ui_component for a budget_chart with data: {\"some_unknown_field\": \"foo\", \"deep\": {\"nested\": 1}}.",
         config=config
     )

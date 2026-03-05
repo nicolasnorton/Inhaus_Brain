@@ -50,9 +50,9 @@ class GeminiClient:
         return self._vertex_client
 
     def _normalize_model_name(self, model_name: str) -> str:
-        """Normalize model names with awareness of Gemini 2.5 GA."""
+        """Normalize model names with awareness of Gemini 3.1 Pro Preview."""
         if not model_name:
-            return "gemini-2.5-flash"
+            return "gemini-3.1-pro-preview"
 
         name_lower = model_name.lower()
 
@@ -80,10 +80,10 @@ class GeminiClient:
             if "pro" in name_lower:
                 if "3.1" in name_lower:
                     return "gemini-3.1-pro-preview"
-                return "gemini-2.5-pro"
+                return "gemini-3.1-pro-preview"
             if "3-flash" in name_lower or "3.1-flash" in name_lower:
                 return "gemini-3-flash-preview"
-            return "gemini-2.5-flash"
+            return "gemini-3.1-pro-preview"
 
         # Map Media Models
         if "imagen-4" in name_lower or "imagen" in name_lower:
@@ -95,7 +95,7 @@ class GeminiClient:
 
         # Standardize simple/legacy names to latest stable
         if name_lower in ["gemini-flash", "gemini-pro", "flash", "pro"]:
-             return "gemini-2.5-pro" if "pro" in name_lower else "gemini-2.5-flash"
+             return "gemini-3.1-pro-preview" if "pro" in name_lower else "gemini-3.1-pro-preview"
             
         return model_name
 
@@ -116,9 +116,9 @@ class GeminiClient:
              estimated_tokens = sum(len(str(p)) for p in prompt) / 4
 
         if task_complexity == "high" or estimated_tokens > 10000:
-             return "gemini-2.0-pro-exp-02-05"
+             return "gemini-3.1-pro-preview"
         
-        return "gemini-2.0-flash-001"
+        return "gemini-3-flash-preview"
 
     def generate_content(
         self, 
@@ -174,16 +174,14 @@ class GeminiClient:
         processed_tools = []
         
         # 1. Google Search / Grounding (Jan 2026 Standard)
-        # Use GoogleSearchRetrieval for broader dynamic grounding
+        # Use Vertex AI Search Data Store for consistent enterprise grounding
         if use_google_search:
-            # Check if dynamic_retrieval_config is passed in generation_params
-            dynamic_threshold = (generation_params or {}).get("dynamic_threshold", 0.3)
+            datastore_id = os.environ.get("VERTEX_SEARCH_DATASTORE_ID", "projects/1096509611056/locations/global/collections/default_collection/dataStores/brainweave-discovery")
             processed_tools.append(
                 types.Tool(
-                    google_search_retrieval=types.GoogleSearchRetrieval(
-                        dynamic_retrieval_config=types.DynamicRetrievalConfig(
-                            mode=types.DynamicRetrievalConfig.Mode.DYNAMIC,
-                            dynamic_threshold=dynamic_threshold,
+                    retrieval=types.Retrieval(
+                        vertex_ai_search=types.VertexAISearch(
+                            datastore=datastore_id
                         )
                     )
                 )
@@ -261,11 +259,10 @@ class GeminiClient:
 
         # Resilient Fallback Chain
         # Stage 1: Primary Model
-        # Stage 2: Gemini 2.5 Flash (GA)
-        # Stage 3: Gemini 2.0 Flash (Stable)
-        # Stage 4: Gemini 1.5 Flash (Legacy)
+        # Stage 2: Gemini 3 Flash Preview
+        # Stage 3: Gemini 2.5 Flash Lite
         
-        fallback_models = [model, "gemini-2.0-flash-001", "gemini-1.5-flash-002"]
+        fallback_models = [model, "gemini-3-flash-preview", "gemini-2.5-flash-lite"]
         # Remove duplicates while preserving order
         fallback_models = list(dict.fromkeys(fallback_models))
         
@@ -881,12 +878,29 @@ class GeminiClient:
         generation_config: Optional[Dict[str, Any]] = None,
         previous_interaction_id: Optional[str] = None,
         background: bool = False,
+        use_google_search: bool = False,
         **kwargs
     ) -> Any:
         if not self.client:
             raise Exception("GeminiClient not initialized.")
             
         normalized_model = self._normalize_model_name(model)
+        
+        if use_google_search:
+            if not tools:
+                tools = []
+            
+            # Deep Research requires Vertex AI Data Store for grounding
+            datastore_id = os.environ.get("VERTEX_SEARCH_DATASTORE_ID", "projects/1096509611056/locations/global/collections/default_collection/dataStores/brainweave-discovery")
+            tools.append(
+                types.Tool(
+                    retrieval=types.Retrieval(
+                        vertex_ai_search=types.VertexAISearch(
+                            datastore=datastore_id
+                        )
+                    )
+                )
+            )
         
         # Frontier Deep Research Agent (Jan 2026 standard)
         if "research" in normalized_model.lower() or (isinstance(prompt, str) and "research" in prompt.lower()[:50]):

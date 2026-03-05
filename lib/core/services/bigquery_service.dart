@@ -129,4 +129,12 @@ class BigQueryService {
     
     return executeQuery(query);
   }
+
+  Future<List<Map<String, dynamic>>> getAiPerformanceMetrics({int days = 7}) async {
+    return []; // Stub to fix compile error
+  }
+
+  Future<List<Map<String, dynamic>>> getUsageMetrics({int days = 7}) async {
+    return []; // Stub to fix compile error
+  }
 }

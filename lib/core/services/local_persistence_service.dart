@@ -152,6 +152,18 @@ class LocalPersistenceService {
         if (j['attachment'] != null && (j['attachment'] as String).length > 100000) {
           j['attachment'] = null; // Don't persist huge images
         }
+        if (j['audioAttachment'] != null && (j['audioAttachment'] as String).length > 100000) {
+          j['audioAttachment'] = null; // Don't persist huge audio
+        }
+        if (j['artifacts'] != null && j['artifacts'] is List) {
+          final artifacts = j['artifacts'] as List;
+          for (var i = 0; i < artifacts.length; i++) {
+            final artifact = artifacts[i];
+            if (artifact is Map && artifact['content'] != null && (artifact['content'] as String).length > 100000) {
+                artifact['content'] = '[Media Content Trimmed for Local Storage]';
+            }
+          }
+        }
         return j;
       }).toList();
 

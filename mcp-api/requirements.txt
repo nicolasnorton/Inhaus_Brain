@@ -2,5 +2,7 @@ flask>=3.0
 flask-cors>=4.0.0
 google-cloud-spanner>=3.40
 google-cloud-aiplatform>=1.50
+google-cloud-pubsub>=2.20
+google-auth>=2.20
 vertexai>=1.0
 gunicorn>=21.2

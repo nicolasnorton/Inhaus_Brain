@@ -61,6 +61,12 @@ class FeatureFlags {
   static bool get enableStitch =>
       _overrides['enableStitch'] ?? AppConfig.enableStitch;
 
+  // ── Creative Campaign Canvas (Weavy-style) ────────────────────────────────
+  /// Controls visibility of the Designer Canvas mode in Campaigns.
+  /// When false, no creative nodes or Designer Mode buttons appear.
+  static bool get enableDesignerCanvasMode =>
+      _overrides['enableDesignerCanvasMode'] ?? false;
+
   // ── BrainWeave ────────────────────────────────────────────────────────────
   /// Controls visibility of the BrainWeave workspace tab and 6R pipeline.
   static bool get brainweaveEnabled =>

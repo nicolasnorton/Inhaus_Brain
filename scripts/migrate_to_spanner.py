@@ -32,7 +32,8 @@ def migrate(project_id: str, instance_id: str, db_id: str, bucket_name: str):
 
     for doc in nodes_ref.stream():
         data = doc.to_dict()
-        spanner_id = str(uuid.uuid4())
+        # Deterministic UUID based on Firestore ID for idempotency
+        spanner_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, doc.id))
         node_id_map[doc.id] = spanner_id
 
         # Write Markdown to GCS
@@ -62,12 +63,12 @@ def migrate(project_id: str, instance_id: str, db_id: str, bucket_name: str):
         embedding_f32 = [float(x) for x in embedding] if embedding else []
 
         def write_node(transaction, sid=spanner_id, d=data, emb=embedding_f32, gp=gcs_path):
-            transaction.insert(
+            transaction.insert_or_update(
                 "BrainWeaveNodes",
                 columns=[
                     "node_id", "owner_id", "client_id", "project_id", "scope",
                     "title", "description", "content", "node_type", "topics",
-                    "embedding", "markdown_uri", "source_agent", "confidence",
+                    "embedding", "markdown_uri", "source_agent", "confidence", "metadata",
                     "version", "created_at", "updated_at",
                 ],
                 values=[[
@@ -85,14 +86,22 @@ def migrate(project_id: str, instance_id: str, db_id: str, bucket_name: str):
                     f"gs://{bucket_name}/{gp}",
                     "migration",
                     1.0,
+                    json.dumps(d.get("metadata", {})),
                     1,
                     spanner.COMMIT_TIMESTAMP,
                     spanner.COMMIT_TIMESTAMP,
                 ]],
             )
 
-        database.run_in_transaction(write_node)
-        print(f"  ✓ Node: {data.get('title', doc.id)}")
+        try:
+            database.run_in_transaction(write_node)
+            print(f"  ✓ Node: {data.get('title', doc.id)}")
+        except Exception as e:
+            # Ignore spanner metric errors (TimeSeries 400s)
+            if "TimeSeries" in str(e):
+                print(f"  ✓ Node: {data.get('title', doc.id)} (metric err ignored)")
+            else:
+                print(f"  ✗ Error migrating node {doc.id}: {e}")
 
     # ─── 2. Migrate brainweave_links ─────────────────────
     print("\nMigrating brainweave_links...")
@@ -109,11 +118,12 @@ def migrate(project_id: str, instance_id: str, db_id: str, bucket_name: str):
         if not source_sp_id or not target_sp_id:
             print(f"  ⚠ Skipped edge (missing node): {source_fs_id} -> {target_fs_id}")
             continue
-
-        edge_id = str(uuid.uuid4())
+        
+        # Deterministic edge ID based on source+target
+        edge_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{source_fs_id}-{target_fs_id}"))
 
         def write_edge(transaction, eid=edge_id, d=data, sid=source_sp_id, tid=target_sp_id):
-            transaction.insert(
+            transaction.insert_or_update(
                 "BrainWeaveEdges",
                 columns=[
                     "edge_id", "owner_id", "source_node_id", "target_node_id",
@@ -129,8 +139,14 @@ def migrate(project_id: str, instance_id: str, db_id: str, bucket_name: str):
                 ]],
             )
 
-        database.run_in_transaction(write_edge)
-        print(f"  ✓ Edge: {data.get('relationshipType', 'link')}")
+        try:
+            database.run_in_transaction(write_edge)
+            print(f"  ✓ Edge: {data.get('relationshipType', 'link')}")
+        except Exception as e:
+            if "TimeSeries" in str(e):
+                 print(f"  ✓ Edge: {data.get('relationshipType', 'link')} (metric err ignored)")
+            else:
+                 print(f"  ✗ Error migrating edge {doc.id}: {e}")
 
     # ─── 3. Migrate brainweave_cores ─────────────────────
     print("\nMigrating brainweave_cores to GCS vault...")

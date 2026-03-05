@@ -105,7 +105,7 @@ The {len(messages)} messages below were compressed to save context window space.
 def generate_abstractive_summary(
     messages: List[Dict[str, Any]],
     gemini_client: Any,
-    model: str = 'gemini-2.5-flash',
+    model: str = 'gemini-3-flash-preview',
 ) -> str:
     """
     Generate a high-quality abstractive summary using an LLM.

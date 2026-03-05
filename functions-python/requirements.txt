@@ -5,3 +5,6 @@ functions-framework
 google-genai>=1.0.0
 google-cloud-texttospeech>=2.16.0
 google-cloud-bigquery
+google-cloud-discoveryengine
+google-cloud-spanner
+google-cloud-firestore

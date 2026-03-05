@@ -25,6 +25,7 @@ CREATE TABLE BrainWeaveNodes (
   -- Metadata
   source_agent  STRING(128),
   confidence    FLOAT64 DEFAULT 1.0,
+  metadata      JSON,
   version       INT64   DEFAULT 1,
   created_at    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),
   updated_at    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),

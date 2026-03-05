@@ -38,12 +38,15 @@ The Copilot is your AI assistant for running the platform. Instead of clicking t
 *   **Create Apps**: "Build a new research app for Competitor Analysis".
 
 ### 4. 📚 BrainWeave Knowledge Graph (The "Shared Mind")
-Inhaus Brain's Knowledge Module (BrainWeave) is designed for agency-level intelligence with enterprise security. It acts as the **"Shared Mind"** for all AI agents on the platform.
-*   **Auto-Retrieval (Always On)**: Before any agent answers your question, they automatically query the BrainWeave graph. This ensures all agents are grounded in your agency's past learnings, style guides, and documentation.
-*   **Auto-Ingestion Loop**: When an agent provides a high-quality answer, the system automatically creates a new "node" in BrainWeave. The more you use the platform, the smarter it gets.
-*   **Semantic Caching**: The system remembers complex searches. Repeat questions are nearly instantaneous.
-*   **Google Drive Integration**: Select files directly from your Google Drive for instant ingestion.
-*   **PII Scrubbing**: Before data is processed, names, emails, and phone numbers are automatically masked for privacy compliance.
+Inhaus Brain's Knowledge Module (BrainWeave) is the agency's primary RAG (Retrieval-Augmented Generation) engine.
+*   **BrainWeave 2.0 (Spanner & Vertex AI)**: The core graph has been upgraded to **Google Cloud Spanner**, enabling multi-billion node scalability and complex property graph queries.
+*   **Agency-Wide Visibility**: Super Admins can toggle between their personal graph and a global **Agency View**, allowing them to manage knowledge across all client portfolios.
+*   **Knowledge Promotion & Sharing**: Promoting insights from a personal workspace to **CLIENT** or **AGENCY** scope. This triggers aPub/Sub event for cross-team collaboration.
+*   **6R Auto-Reweave Pipeline**: When knowledge is shared, a background **Cloud Run Job** automatically re-evaluates (6R) the surrounding context to ensure the shared mind remains consistent and high-quality.
+*   **Performance & Cost Dashboard**: Real-time monitoring of graph growth (nodes/edges) and estimated operational costs, visible directly in the workspace.
+*   **Vertex AI Search Grounding**: All agents are now grounded via an enterprise Vertex AI Search Data Store. High-value data extracted by agents is automatically synced to the GCP index.
+*   **Media & Asset Integration**: BrainWeave now tracks generated media. When Brian creates an image or video, an **Asset Node** is automatically created in the graph with its source URL.
+*   **3D Explorer**: An interactive 3D graph interface with advanced analysis tools including **Mermaid Export** and **Community Clustering**.
 
 ### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.

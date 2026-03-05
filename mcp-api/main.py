@@ -3,7 +3,9 @@ BrainWeave 2.0 MCP API — Cloud Run Service
 Exposes 8 MCP tool endpoints backed by Cloud Spanner Graph (GQL).
 Called from the Flutter client via HTTP.
 """
+import time
 import json
+import logging
 import os
 import uuid
 from datetime import datetime
@@ -11,6 +13,9 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import spanner
+from google.cloud import pubsub_v1
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 import vertexai
 from vertexai.generative_models import GenerativeModel
@@ -30,6 +35,8 @@ spanner_client = spanner.Client(project=PROJECT)
 database = spanner_client.instance(INSTANCE).database(DB)
 gemini = GenerativeModel(MODEL_ID)
 embed_model = TextEmbeddingModel.from_pretrained(EMBED_ID)
+publisher = pubsub_v1.PublisherClient()
+PROMOTION_TOPIC = f"projects/{PROJECT}/topics/brainweave-promotions"
 
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
@@ -46,61 +53,81 @@ def _authed_owner(req) -> str:
     return req.headers.get("X-Owner-Id", "dev-user")
 
 
+def _is_superadmin(req) -> bool:
+    """Check if the request comes from a superadmin by verifying Firebase ID token claims."""
+    auth_header = req.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return False
+    token = auth_header[7:]
+    try:
+        decoded = id_token.verify_firebase_token(token, google_requests.Request(), audience=PROJECT)
+        return decoded.get("superadmin", False) is True or decoded.get("role") == "superAdmin"
+    except Exception as e:
+        app.logger.warning(f"Superadmin check failed: {e}")
+        return False
+
+
 # ─── Tool 1: brainweave_graph_query ──────────────────────────────────────────
 
 @app.route("/brainweave_graph_query", methods=["POST"])
 def graph_query():
     """Semantic vector search + optional GQL subgraph expansion."""
-    body = request.get_json()
-    query = body.get("query", "")
-    scope = body.get("scope")
-    limit = body.get("limit", 5)
-    owner_id = _authed_owner(request)
+    try:
+        body = request.get_json()
+        query = body.get("query", "")
+        scope = body.get("scope")
+        limit = body.get("limit", 5)
+        owner_id = _authed_owner(request)
 
-    if not query:
-        return jsonify({"error": "query is required"}), 400
+        if not query:
+            return jsonify({"error": "query is required"}), 400
 
-    # ANN vector search
-    embedding = _get_embedding(query)
+        # ANN vector search
+        embedding = _get_embedding(query)
 
-    sql = """
-        SELECT node_id, title, description, node_type, topics, scope, confidence
-        FROM BrainWeaveNodes
-        WHERE owner_id = @owner_id
-    """
-    params = {"owner_id": owner_id}
-    param_types = {"owner_id": spanner.param_types.STRING}
+        sql = """
+            SELECT node_id, title, description, node_type, topics, scope, confidence, metadata
+            FROM BrainWeaveNodes
+            WHERE owner_id = @owner_id
+        """
+        params = {"owner_id": owner_id}
+        param_types = {"owner_id": spanner.param_types.STRING}
 
-    if scope:
-        sql += " AND scope = @scope"
-        params["scope"] = scope
-        param_types["scope"] = spanner.param_types.STRING
+        if scope:
+            sql += " AND scope = @scope"
+            params["scope"] = scope
+            param_types["scope"] = spanner.param_types.STRING
 
-    sql += """
-        ORDER BY COSINE_DISTANCE(embedding, @query_embedding)
-        LIMIT @limit
-    """
-    params["query_embedding"] = embedding
-    params["limit"] = limit
-    param_types["query_embedding"] = spanner.param_types.Array(spanner.param_types.FLOAT32)
-    param_types["limit"] = spanner.param_types.INT64
+        sql += """
+            ORDER BY COSINE_DISTANCE(embedding, @query_embedding)
+            LIMIT @limit
+        """
+        params["query_embedding"] = embedding
+        params["limit"] = limit
+        param_types["query_embedding"] = spanner.param_types.Array(spanner.param_types.FLOAT32)
+        param_types["limit"] = spanner.param_types.INT64
 
-    with database.snapshot() as snapshot:
-        results = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
+        with database.snapshot() as snapshot:
+            results = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
 
-    nodes = []
-    for row in results:
-        nodes.append({
-            "node_id": row[0],
-            "title": row[1],
-            "description": row[2],
-            "node_type": row[3],
-            "topics": list(row[4]) if row[4] else [],
-            "scope": row[5],
-            "confidence": row[6],
-        })
+        nodes = []
+        for row in results:
+            nodes.append({
+                "node_id": row[0],
+                "title": row[1],
+                "description": row[2],
+                "node_type": row[3],
+                "topics": list(row[4]) if row[4] else [],
+                "scope": row[5],
+                "confidence": row[6],
+                "metadata": row[7],
+            })
 
-    return jsonify({"results": nodes, "count": len(nodes)})
+        return jsonify({"results": nodes, "count": len(nodes)})
+    except Exception as e:
+        import traceback
+        app.logger.error(f"Error in graph_query: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 # ─── Tool 2: brainweave_impact ───────────────────────────────────────────────
@@ -232,7 +259,7 @@ def context():
     # Fetch node
     with database.snapshot() as snapshot:
         node_rows = list(snapshot.execute_sql(
-            "SELECT node_id, title, description, content, node_type, topics, scope, confidence "
+            "SELECT node_id, title, description, content, node_type, topics, scope, confidence, metadata "
             "FROM BrainWeaveNodes WHERE node_id = @nid AND owner_id = @oid",
             params={"nid": node_id, "oid": owner_id},
             param_types={
@@ -250,6 +277,7 @@ def context():
         "content": row[3], "node_type": row[4],
         "topics": list(row[5]) if row[5] else [],
         "scope": row[6], "confidence": row[7],
+        "metadata": row[8],
     }
 
     # Incoming edges
@@ -318,13 +346,13 @@ def create():
             columns=[
                 "node_id", "owner_id", "client_id", "scope",
                 "title", "description", "content", "node_type",
-                "topics", "embedding", "source_agent", "confidence",
+                "topics", "embedding", "source_agent", "confidence", "metadata",
                 "created_at", "updated_at",
             ],
             values=[[
                 node_id, owner_id, client_id, scope,
                 title, description, content, node_type,
-                topics, embedding, body.get("source_agent", "mcp_api"), 1.0,
+                topics, embedding, body.get("source_agent", "mcp_api"), 1.0, json.dumps(body.get("metadata", {})),
                 spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
             ]],
         )
@@ -480,10 +508,11 @@ def detect_changes():
 
 @app.route("/brainweave_promote", methods=["POST"])
 def promote():
-    """Propose a node for promotion to AGENCY scope."""
+    """Propose a node for promotion to CLIENT or AGENCY scope."""
     body = request.get_json()
     node_id = body.get("node_id")
     reason = body.get("reason", "")
+    target_scope = body.get("target_scope", "AGENCY")
     owner_id = _authed_owner(request)
 
     if not node_id:
@@ -492,6 +521,7 @@ def promote():
     promotion_id = str(uuid.uuid4())
 
     def write_txn(transaction):
+        # Write promotion record
         transaction.insert(
             "PendingPromotions",
             columns=[
@@ -503,9 +533,29 @@ def promote():
                 reason, "PENDING", spanner.COMMIT_TIMESTAMP,
             ]],
         )
+        # Update the node's scope directly
+        transaction.update(
+            "BrainWeaveNodes",
+            columns=["node_id", "scope", "updated_at"],
+            values=[[node_id, target_scope, spanner.COMMIT_TIMESTAMP]],
+        )
 
     database.run_in_transaction(write_txn)
-    return jsonify({"promotion_id": promotion_id, "status": "PENDING"})
+
+    # Fire-and-forget Pub/Sub notification for reweave + notifications
+    try:
+        message_data = json.dumps({
+            "node_id": node_id,
+            "requested_by": owner_id,
+            "target_scope": target_scope,
+            "promotion_id": promotion_id,
+        }).encode("utf-8")
+        publisher.publish(PROMOTION_TOPIC, data=message_data)
+        app.logger.info(f"Published promotion event for node {node_id}")
+    except Exception as e:
+        app.logger.warning(f"Pub/Sub publish failed (non-fatal): {e}")
+
+    return jsonify({"promotion_id": promotion_id, "status": "PENDING", "target_scope": target_scope})
 
 
 # ─── GraphRAG endpoint ──────────────────────────────────────────────────────
@@ -572,6 +622,161 @@ def graphrag():
         "answer": response.text,
         "sources": [{"node_id": s[0], "title": s[1]} for s in seeds],
     })
+
+
+# ─── Graph Explorer Data (V2) ────────────────────────────────────────────────
+
+@app.route("/brainweave_graph_data", methods=["POST"])
+def get_graph_data():
+    """Returns all nodes and edges for the graph explorer view."""
+    try:
+        owner_id = _authed_owner(request)
+        
+        # 1. Fetch nodes
+        with database.snapshot() as snapshot:
+            node_results = list(snapshot.execute_sql(
+                "SELECT node_id, title, description, content, node_type, topics, scope, confidence, metadata "
+                "FROM BrainWeaveNodes WHERE owner_id = @oid",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))
+            
+        nodes = []
+        for r in node_results:
+            nodes.append({
+                "node_id": r[0],
+                "title": r[1],
+                "description": r[2],
+                "content": r[3],
+                "node_type": r[4],
+                "topics": list(r[5]) if r[5] else [],
+                "scope": r[6],
+                "confidence": r[7],
+                "metadata": r[8] if r[8] else {},
+            })
+            
+        # 2. Fetch edges
+        with database.snapshot() as snapshot:
+            edge_results = list(snapshot.execute_sql(
+                "SELECT edge_id, source_node_id, target_node_id, relationship_type "
+                "FROM BrainWeaveEdges WHERE owner_id = @oid",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))
+            
+        edges = []
+        for r in edge_results:
+            edges.append({
+                "edge_id": r[0],
+                "source_node_id": r[1],
+                "target_node_id": r[2],
+                "relationship_type": r[3],
+            })
+            
+        return jsonify({
+            "nodes": nodes,
+            "edges": edges,
+            "count_nodes": len(nodes),
+            "count_edges": len(edges)
+        })
+    except Exception as e:
+        app.logger.error(f"Error in get_graph_data: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Agency Graph (Superadmin Only) ──────────────────────────────────────────
+
+@app.route("/brainweave_agency_graph", methods=["POST"])
+def agency_graph():
+    """Full agency-wide graph view. Requires superadmin."""
+    if not _is_superadmin(request):
+        return jsonify({"error": "Superadmin access required"}), 403
+
+    try:
+        with database.snapshot() as snapshot:
+            node_results = list(snapshot.execute_sql(
+                "SELECT node_id, title, description, content, node_type, topics, scope, "
+                "confidence, metadata, owner_id "
+                "FROM BrainWeaveNodes WHERE scope IN ('CLIENT', 'AGENCY')"
+            ))
+
+        nodes = []
+        for r in node_results:
+            nodes.append({
+                "node_id": r[0], "title": r[1], "description": r[2],
+                "content": r[3], "node_type": r[4],
+                "topics": list(r[5]) if r[5] else [],
+                "scope": r[6], "confidence": r[7],
+                "metadata": r[8] if r[8] else {},
+                "owner_id": r[9],
+            })
+
+        with database.snapshot() as snapshot:
+            edge_results = list(snapshot.execute_sql(
+                "SELECT e.edge_id, e.source_node_id, e.target_node_id, e.relationship_type "
+                "FROM BrainWeaveEdges e "
+                "JOIN BrainWeaveNodes n1 ON e.source_node_id = n1.node_id "
+                "JOIN BrainWeaveNodes n2 ON e.target_node_id = n2.node_id "
+                "WHERE n1.scope IN ('CLIENT', 'AGENCY') OR n2.scope IN ('CLIENT', 'AGENCY')"
+            ))
+
+        edges = []
+        for r in edge_results:
+            edges.append({
+                "edge_id": r[0], "source_node_id": r[1],
+                "target_node_id": r[2], "relationship_type": r[3],
+            })
+
+        return jsonify({"nodes": nodes, "edges": edges,
+                        "count_nodes": len(nodes), "count_edges": len(edges)})
+    except Exception as e:
+        app.logger.error(f"Agency graph error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Stats ───────────────────────────────────────────────────────────────────
+
+@app.route("/brainweave_stats", methods=["POST"])
+def stats():
+    """Return node/edge counts + estimated cost for the authenticated user."""
+    owner_id = _authed_owner(request)
+    try:
+        with database.snapshot() as snapshot:
+            node_count = list(snapshot.execute_sql(
+                "SELECT COUNT(*) FROM BrainWeaveNodes WHERE owner_id = @oid",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))[0][0]
+
+        with database.snapshot() as snapshot:
+            edge_count = list(snapshot.execute_sql(
+                "SELECT COUNT(*) FROM BrainWeaveEdges WHERE owner_id = @oid",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))[0][0]
+
+        with database.snapshot() as snapshot:
+            # Count nodes created today
+            daily_count = list(snapshot.execute_sql(
+                "SELECT COUNT(*) FROM BrainWeaveNodes "
+                "WHERE owner_id = @oid AND created_at >= TIMESTAMP_TRUNC(CURRENT_TIMESTAMP(), DAY)",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))[0][0]
+
+        # Rough cost estimate:
+        # Spanner: ~$0.001/10K reads, Embedding: ~$0.0001/call, Gemini: ~$0.0025/call
+        est_cost = round(daily_count * 0.003, 4)
+
+        return jsonify({
+            "node_count": node_count,
+            "edge_count": edge_count,
+            "daily_interactions": daily_count,
+            "est_cost_usd": est_cost,
+        })
+    except Exception as e:
+        app.logger.error(f"Stats error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # ─── Health ──────────────────────────────────────────────────────────────────

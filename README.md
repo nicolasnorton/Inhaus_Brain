@@ -37,14 +37,15 @@ The Inhaus Brain features a team of 11+ specialized agents, each with a custom m
 - **Auto-Handoffs (A2A)**: "Agent-to-Agent" protocols where Research outputs automatically prime the Creative agent.
 - **Proposal Specialist (New)**: Bilingual agent capable of generating structured, service-mapped client proposals. Now supports high-fidelity **PDF Document** (Portrait) and **Slide Deck** (Landscape) generation with dynamic branding integration.
 
-### 📈 Marketing Intelligence & Knowledge Graph (BrainWeave)
-A comprehensive cortex-compatible data warehouse and knowledge graph built right into BrainWeave:
-- **Shared Mind (Auto-Retrieval & Ingestion)**: Brian and all specialized agents now autonomously query the BrainWeave knowledge graph _before_ answering any prompt, ensuring all responses are grounded in your agency's accumulated intelligence. Significant agent outputs are automatically ingested back into the graph, creating a continuous learning loop.
-- **BunkerDB Replacement**: High-performance, low-latency BigQuery star schema replacing legacy third-party tools.
-- **Cross-Platform Ingestion pipelines**: Automated incremental loads for Meta Ads, TikTok Marketing API v2, GA4, LinkedIn, and Google Ads.
-- **Natural Language to SQL**: Users can ask natural language questions ("Why did ROAS drop this week?") and the engine autonomously queries the data warehouse.
-- **GenUI Dashboards**: `MarketingIntelligencePanel` and live `AdPerformanceCards` render directly into the chat stream.
-- **Executive C-Suite Insights**: Specialized agents parse cross-platform trends and deliver real-time ROI reports.
+### 📈 Marketing Intelligence & Knowledge Graph (BrainWeave 2.0)
+A comprehensive cortex-compatible data warehouse and knowledge graph built for massive scale:
+- **Spanner-Powered Graph**: Migrated from legacy Firestore to **Google Cloud Spanner** for high-performance relationship mapping and `PROPERTY GRAPH` support.
+- **Agency-Wide Graph View**: Super Admin capability to visualize and manage the collective intelligence of the entire agency in a single view.
+- **6R Auto-Reweave Pipeline**: Asynchronous background re-processing of knowledge nodes when shared or promoted, ensuring high-fidelity retrieval.
+- **Collaboration & Promotion**: Multi-user scope management (PRIVATE → CLIENT → AGENCY) with automatic Firestore notifications.
+- **Performance Dashboard**: Real-time stats on node density, edge connectivity, and estimated GCP operational costs.
+- **Vertex AI Search Integration**: Integrated enterprise Data Stores for grounding AI agents. High-value research and searches are automatically ingested into an authoritative index.
+- **3D Graph Explorer**: A new premium visualization engine for exploring atomic nodes, MOCs, and media assets in a reactive 3D space. Includes **Mermaid.js** export and **Louvain Clustering** analysis.
 
 ### 💼 Services Catalog & Profitability Management (New)
 A comprehensive service portfolio management system designed for agency operations:
