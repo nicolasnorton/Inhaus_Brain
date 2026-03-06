@@ -18,6 +18,7 @@ import 'package:inhaus_brain/core/tools/data_tools.dart';
 import 'package:inhaus_brain/core/tools/research_tools.dart';
 import 'package:inhaus_brain/core/tools/director_tools.dart';
 import 'package:inhaus_brain/core/mcp/tools/stitch_tools.dart';
+import 'package:inhaus_brain/core/mcp/tools/figma_tools.dart';
 import 'package:inhaus_brain/core/config/feature_flags.dart';
 import 'package:inhaus_brain/core/auth/secret_vault_service.dart';
 
@@ -56,6 +57,14 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     StitchBuildSiteTool(ref),
   ] : <AgentTool>[];
   
+  // Figma Tools (M3)
+  final figmaTools = FeatureFlags.enableFigmaIntegration ? [
+    FigmaGetFileTool(ref),
+    FigmaExportNodesTool(ref),
+    FigmaListProjectsTool(ref),
+    FigmaPostCommentTool(ref),
+  ] : <AgentTool>[];
+
   // UCP Tools
   final ucpService = ref.watch(ucpServiceProvider);
   final ucpTools = [
@@ -78,6 +87,7 @@ final assistantToolRegistryProvider = Provider<List<AgentTool>>((ref) {
     ...marketingTools,
     ...generationTools,
     ...stitchTools,
+    ...figmaTools,
     ...researchTools,
     ...ucpTools,
     DirectorTool(),

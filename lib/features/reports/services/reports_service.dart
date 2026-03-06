@@ -64,7 +64,11 @@ class ReportsService {
     // 1. Gather Data (Deep Research or Standard Search)
     if (useDeepResearch) {
         final researchPrompt = "Deep Research Task: $prompt\n\nObjective: Gather comprehensive data for a $title report.";
-        final interaction = await AIProxyService.startResearch(prompt: researchPrompt);
+        final config = AIModelConfig.geminiResearch; // Define config here
+        final interaction = await AIProxyService.startResearch(
+          prompt: researchPrompt,
+          config: config,
+        );
         final id = interaction['interactionId'];
         
         // Poll until done

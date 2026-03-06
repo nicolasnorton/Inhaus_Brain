@@ -75,6 +75,15 @@ enum WorkflowNodeType {
   imageGeneration,
   videoGeneration,
   brainweavePipeline,
+  // Creative Campaign Canvas nodes (M1)
+  creativeImageGen,
+  creativeInpaintOutpaint,
+  creativeControlNet,
+  creativeRelightProduct,
+  creativeVideoLipsync,
+  creativeCompositingLayers,
+  creativeStitchDesign,  // M2 — Google Stitch integration node
+  creativeFigmaSync,     // M3 — Figma import/export node
 }
 
 enum PipelineStepType { sequential, parallel, loop }

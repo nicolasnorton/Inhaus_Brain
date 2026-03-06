@@ -57,7 +57,7 @@ python-docx>=1.0.0  # DOCX text extraction
 |----------|----------|-------------|
 | `GOOGLE_API_KEY` | Dev only | AI Studio key for local testing |
 | `MASTER_DELETE_KEY` | Yes | Master key for soft-deleting packages |
-| `PROPOSALS_MODEL` | No | Override model (default: `gemini-2.5-flash`) |
+| `PROPOSALS_MODEL` | No | Override model (default: `gemini-3-flash-preview`) |
 
 In production, Vertex AI uses ADC automatically — no API key needed.
 

@@ -58,7 +58,7 @@ def _get_client() -> genai.Client:
 
 
 # Default model — matches Inhaus_Brain's routing preference
-_DEFAULT_MODEL = os.environ.get("PROPOSALS_MODEL", "gemini-2.5-flash")
+_DEFAULT_MODEL = os.environ.get("PROPOSALS_MODEL", "gemini-3-flash-preview")
 
 # ──────────────────────────────────────────────────────────────────────
 # Shared helpers

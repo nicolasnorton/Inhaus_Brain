@@ -23,6 +23,7 @@ class BrainWeaveNode {
   final double confidence;     // Extraction confidence score
   final int version;           // Version counter
   final String scope;          // PRIVATE | CLIENT | AGENCY
+  final Map<String, dynamic>? metadata;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -43,6 +44,7 @@ class BrainWeaveNode {
     this.confidence = 1.0,
     this.version = 1,
     this.scope = 'PRIVATE',
+    this.metadata,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -68,6 +70,7 @@ class BrainWeaveNode {
       confidence: (json['confidence'] as num?)?.toDouble() ?? 1.0,
       version: json['version'] as int? ?? 1,
       scope: json['scope'] ?? 'PRIVATE',
+      metadata: json['metadata'] as Map<String, dynamic>?,
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -89,6 +92,7 @@ class BrainWeaveNode {
       'confidence': confidence,
       'version': version,
       'scope': scope,
+      if (metadata != null) 'metadata': metadata,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };

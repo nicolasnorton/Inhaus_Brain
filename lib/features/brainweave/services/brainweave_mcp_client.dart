@@ -28,7 +28,6 @@ class BrainWeaveMcpClient {
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
-      'X-Owner-Id': _auth.currentUser?.uid ?? 'dev-user',
     };
   }
 
@@ -118,6 +117,7 @@ class BrainWeaveMcpClient {
     String scope = 'PRIVATE',
     String? clientId,
     String? sourceAgent,
+    Map<String, dynamic>? metadata,
   }) async {
     return await _post('brainweave_create', {
       'title': title,
@@ -128,6 +128,7 @@ class BrainWeaveMcpClient {
       'scope': scope,
       if (clientId != null) 'client_id': clientId,
       if (sourceAgent != null) 'source_agent': sourceAgent,
+      if (metadata != null) 'metadata': metadata,
     });
   }
 
@@ -154,14 +155,16 @@ class BrainWeaveMcpClient {
 
   // ─── Tool 8: promote (scope elevation) ────────────────────────────────────
 
-  /// Propose a node for promotion to AGENCY scope.
+  /// Propose a node for promotion to CLIENT or AGENCY scope.
   Future<Map<String, dynamic>> promote({
     required String nodeId,
     String reason = '',
+    String targetScope = 'AGENCY',
   }) async {
     return await _post('brainweave_promote', {
       'node_id': nodeId,
       'reason': reason,
+      'target_scope': targetScope,
     });
   }
 
@@ -174,6 +177,7 @@ class BrainWeaveMcpClient {
     });
   }
 
+
   // ─── BrainWeave 2.1 Upgrades ──────────────────────────────────────────────
   
   /// Calculates NetworkX eigenvector centrality and community detection.
@@ -185,6 +189,42 @@ class BrainWeaveMcpClient {
   Future<Map<String, dynamic>> wikiGenerate({required String nodeId}) async {
     return await _post('brainweave_wiki', {
       'node_id': nodeId,
+
+  // ─── Graph Data (V2) ──────────────────────────────────────────────────────
+
+  /// Fetch all nodes and edges for the graph explorer.
+  Future<Map<String, dynamic>> getGraphData() async {
+    return await _post('brainweave_graph_data', {});
+  }
+
+  // ─── Agency Graph (Superadmin Only) ───────────────────────────────────────
+
+  /// Fetch agency-wide graph data (CLIENT + AGENCY scope nodes). Requires superadmin.
+  Future<Map<String, dynamic>> getAgencyGraphData() async {
+    return await _post('brainweave_agency_graph', {});
+  }
+
+  // ─── Stats ────────────────────────────────────────────────────────────────
+
+  /// Get graph stats: node/edge counts, daily interactions, estimated cost.
+  Future<Map<String, dynamic>> getStats() async {
+    return await _post('brainweave_stats', {});
+  }
+
+  // ─── Security (Superadmin Only) ──────────────────────────────────────────
+
+  /// Get security status dashboard data. Requires superadmin.
+  Future<Map<String, dynamic>> getSecurityStatus() async {
+    return await _post('brainweave_security_status', {});
+  }
+
+  /// Approve a pending PRIVATE → CLIENT promotion. Requires superadmin.
+  Future<Map<String, dynamic>> approvePromotion({
+    required String promotionId,
+  }) async {
+    return await _post('brainweave_approve_promotion', {
+      'promotion_id': promotionId,
+
     });
   }
 }

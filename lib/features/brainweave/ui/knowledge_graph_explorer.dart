@@ -5,9 +5,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_environment.dart';
+import '../services/brainweave_mcp_client.dart';
 import '../models/brainweave_link.dart';
 import '../models/brainweave_node.dart';
 import '../services/graph_analysis_service.dart';
@@ -107,7 +111,8 @@ class _GraphEdge {
 // ─── Main Explorer Widget ───────────────────────────────────────────────────
 
 class KnowledgeGraphExplorer extends ConsumerStatefulWidget {
-  const KnowledgeGraphExplorer({super.key});
+  final bool agencyMode;
+  const KnowledgeGraphExplorer({super.key, this.agencyMode = false});
 
   @override
   ConsumerState<KnowledgeGraphExplorer> createState() =>
@@ -122,6 +127,7 @@ class _KnowledgeGraphExplorerState
   List<_GraphEdge> _edges = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  String? _error; // Added for error handling
 
   // ── View State ──
   _GraphNode? _selectedNode;
@@ -169,64 +175,142 @@ class _KnowledgeGraphExplorerState
 
   // ── Data Loading ──────────────────────────────────────────────────────────
 
+  BrainWeaveNodeType _parseType(String typeString) {
+    switch (typeString.toLowerCase()) {
+      case 'moc':
+        return BrainWeaveNodeType.moc;
+      case 'topic':
+        return BrainWeaveNodeType.topic;
+      case 'atomic':
+      default:
+        return BrainWeaveNodeType.atomic;
+    }
+  }
+
   Future<void> _loadGraphData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      final db = FirebaseFirestore.instance;
-
-      // Load nodes
-      final nodesSnap = await db
-          .collection('brainweave_nodes')
-          .where('ownerId', isEqualTo: _userId)
-          .orderBy('updatedAt', descending: true)
-          .limit(200)
-          .get();
-
       final rnd = Random(42);
       final centerX = 500.0;
       final centerY = 400.0;
 
-      _nodes = nodesSnap.docs.map((doc) {
-        final node = BrainWeaveNode.fromJson(
-            doc.data(), doc.id);
-        final angle = rnd.nextDouble() * 2 * pi;
-        final dist = 100 + rnd.nextDouble() * 300;
-        final r = node.type == BrainWeaveNodeType.moc
-            ? 14.0
-            : node.type == BrainWeaveNodeType.topic
-                ? 10.0
-                : 5.0;
-        return _GraphNode(
-          data: node,
-          x: centerX + cos(angle) * dist,
-          y: centerY + sin(angle) * dist,
-          radius: r,
-        );
-      }).toList();
+      if (AppConfig.brainweaveV2Enabled) {
+        // ── BrainWeave 2.0: Spanner (via MCP API) ──
+        final mcp = BrainWeaveMcpClient();
+        final result = widget.agencyMode
+            ? await mcp.getAgencyGraphData()
+            : await mcp.getGraphData();
+        
+        final nodesData = List<Map<String, dynamic>>.from(result['nodes'] ?? []);
+        final edgesData = List<Map<String, dynamic>>.from(result['edges'] ?? []);
 
-      // Load links
-      final linksSnap = await db
-          .collection('brainweave_links')
-          .where('ownerId', isEqualTo: _userId)
-          .limit(500)
-          .get();
+        final List<_GraphNode> nodes = [];
+        final nodeMap = <String, _GraphNode>{};
 
-      final nodeMap = {for (var n in _nodes) n.data.id: n};
+        for (final n in nodesData) {
+          final bwNode = BrainWeaveNode(
+            id: n['node_id'],
+            clientId: '', projectId: '', ownerId: _userId,
+            title: n['title'] ?? '',
+            description: n['description'] ?? '',
+            content: n['content'] ?? '',
+            type: _parseType(n['node_type']),
+            topics: List<String>.from(n['topics'] ?? []),
+            metadata: Map<String, dynamic>.from(n['metadata'] ?? {}),
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
 
-      _edges = linksSnap.docs.map((doc) {
-        final link = BrainWeaveLink.fromJson(
-            doc.data(), doc.id);
-        final edge = _GraphEdge(
-            sourceId: link.sourceNodeId,
-            targetId: link.targetNodeId,
-            label: link.relationshipType);
-        edge.source = nodeMap[link.sourceNodeId];
-        edge.target = nodeMap[link.targetNodeId];
-        return edge;
-      }).toList();
+          final angle = rnd.nextDouble() * 2 * pi;
+          final dist = 100 + rnd.nextDouble() * 300;
+          final r = bwNode.type == BrainWeaveNodeType.moc
+              ? 14.0
+              : bwNode.type == BrainWeaveNodeType.topic
+                  ? 10.0
+                  : 5.0;
 
-      // Also infer edges from shared-topic relationships (client-side)
-      // This ensures edges appear even if pipeline hasn't generated links yet
+          final node = _GraphNode(
+            data: bwNode,
+            x: centerX + cos(angle) * dist,
+            y: centerY + sin(angle) * dist,
+            radius: r,
+          );
+          nodes.add(node);
+          nodeMap[bwNode.id] = node;
+        }
+
+        final List<_GraphEdge> edges = [];
+        for (final e in edgesData) {
+          if (nodeMap.containsKey(e['source_node_id']) &&
+              nodeMap.containsKey(e['target_node_id'])) {
+            final edge = _GraphEdge(
+              sourceId: e['source_node_id'],
+              targetId: e['target_node_id'],
+              label: e['relationship_type'] ?? 'link',
+            );
+            edge.source = nodeMap[e['source_node_id']];
+            edge.target = nodeMap[e['target_node_id']];
+            edges.add(edge);
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _nodes = nodes;
+            _edges = edges;
+            _isLoading = false;
+          });
+        }
+      } else {
+        // ── BrainWeave 1.x: Firestore (Legacy) ──
+        final db = FirebaseFirestore.instance;
+        final nodesSnap = await db
+            .collection('brainweave_nodes')
+            .where('ownerId', isEqualTo: _userId)
+            .get();
+
+        _nodes = nodesSnap.docs.map((doc) {
+          final node = BrainWeaveNode.fromJson(doc.data(), doc.id);
+          final angle = rnd.nextDouble() * 2 * pi;
+          final dist = 100 + rnd.nextDouble() * 300;
+          final r = node.type == BrainWeaveNodeType.moc
+              ? 14.0
+              : node.type == BrainWeaveNodeType.topic
+                  ? 10.0
+                  : 5.0;
+          return _GraphNode(
+            data: node,
+            x: centerX + cos(angle) * dist,
+            y: centerY + sin(angle) * dist,
+            radius: r,
+          );
+        }).toList();
+
+        final linksSnap = await db
+            .collection('brainweave_links')
+            .where('ownerId', isEqualTo: _userId)
+            .get();
+
+        final nodeMap = {for (var n in _nodes) n.data.id: n};
+
+        _edges = linksSnap.docs.map((doc) {
+          final data = doc.data();
+          final edge = _GraphEdge(
+              sourceId: data['sourceNodeId'],
+              targetId: data['targetNodeId'],
+              label: data['relationshipType']);
+          edge.source = nodeMap[data['sourceNodeId']];
+          edge.target = nodeMap[data['targetNodeId']];
+          return edge;
+        }).where((e) => e.source != null && e.target != null).toList();
+      }
+
+      // Shared topic inference & UI refinements (Shared between V1/V2)
+      final nodeMapCommon = {for (var n in _nodes) n.data.id: n};
       final topicIndex = <String, Set<String>>{};
       for (var node in _nodes) {
         for (var topic in node.data.topics) {
@@ -248,15 +332,15 @@ class _KnowledgeGraphExplorerState
                   sourceId: ids[i],
                   targetId: ids[j],
                   label: 'shared_topic:${entry.key}');
-              edge.source = nodeMap[ids[i]];
-              edge.target = nodeMap[ids[j]];
+              edge.source = nodeMapCommon[ids[i]];
+              edge.target = nodeMapCommon[ids[j]];
               _edges.add(edge);
             }
           }
         }
       }
 
-      // ── Dynamic node sizing based on connection degree ──
+      // Dynamic sizing
       final degreeMap = <String, int>{};
       for (var edge in _edges) {
         degreeMap[edge.sourceId] = (degreeMap[edge.sourceId] ?? 0) + 1;
@@ -264,33 +348,21 @@ class _KnowledgeGraphExplorerState
       }
       for (var node in _nodes) {
         final degree = degreeMap[node.data.id] ?? 0;
-        // Base radius by type + boost by connections
-        final baseRadius = node.data.type == BrainWeaveNodeType.moc
-            ? 14.0
-            : node.data.type == BrainWeaveNodeType.topic
-                ? 10.0
-                : 5.0;
+        final baseRadius = node.data.type == BrainWeaveNodeType.moc ? 14.0 
+            : node.data.type == BrainWeaveNodeType.topic ? 10.0 : 5.0;
         node.radius = baseRadius + (degree * 1.2).clamp(0, 12);
       }
 
-      debugPrint('KnowledgeGraphExplorer: ${_nodes.length} nodes, ${_edges.length} edges');
-
-      // ── Cluster detection & coloring ──
-      _assignClusterColors(nodeMap);
-
-      // ── Graph health report ──
-      _computeHealthReport();
-
-      // Set initial pan to center
-      if (_nodes.isNotEmpty) {
-        _panOffset = Offset(-centerX + 400, -centerY + 300);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _physicsController.repeat();
       }
-
-      setState(() => _isLoading = false);
-      _physicsController.repeat();
     } catch (e) {
-      debugPrint('KnowledgeGraphExplorer: Error loading graph: $e');
-      setState(() => _isLoading = false);
+      debugPrint('KnowledgeGraphExplorer: Error loading: $e');
+      if (mounted) setState(() {
+        _isLoading = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -915,6 +987,52 @@ class _KnowledgeGraphExplorerState
                         const SizedBox(width: 6),
                         _analysisButton('🧩', 'Clusters', 'clusters'),
                         const Spacer(),
+                        // Mermaid export
+                        _iconBtn(Icons.schema_outlined, () {
+                          final buf = StringBuffer('graph LR\n');
+                          final nodeIds = <String, String>{};
+                          for (int i = 0; i < _nodes.length; i++) {
+                            final nid = 'N$i';
+                            nodeIds[_nodes[i].data.id] = nid;
+                            final label = _nodes[i].data.title.replaceAll('"', "'");
+                            buf.writeln('  $nid["$label"]');
+                          }
+                          for (final e in _edges) {
+                            final s = nodeIds[e.source?.data.id];
+                            final t = nodeIds[e.target?.data.id];
+                            if (s != null && t != null) {
+                              buf.writeln('  $s --> $t');
+                            }
+                          }
+                          Clipboard.setData(ClipboardData(text: buf.toString()));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Mermaid graph copied to clipboard')),
+                          );
+                        }),
+                        const SizedBox(width: 4),
+                        // Cluster highlight via MCP
+                        _iconBtn(Icons.hub_outlined, () async {
+                          try {
+                            final mcp = BrainWeaveMcpClient();
+                            final clusters = await mcp.cluster();
+                            final colorMap = <String, Color>{};
+                            for (int ci = 0; ci < clusters.length; ci++) {
+                              final color = _kClusterColors[ci % _kClusterColors.length];
+                              final clusterNodes = List<Map<String, dynamic>>.from(clusters[ci]['nodes'] ?? []);
+                              for (final cn in clusterNodes) {
+                                colorMap[cn['node_id']] = color;
+                              }
+                            }
+                            setState(() {
+                              for (final n in _nodes) {
+                                n.clusterColor = colorMap[n.data.id] ?? _kNodeAtomic;
+                              }
+                            });
+                          } catch (e) {
+                            debugPrint('Cluster highlight failed: $e');
+                          }
+                        }),
+                        const SizedBox(width: 4),
                         // Zoom controls
                         _iconBtn(Icons.add, () => setState(() => _scale = (_scale * 1.3).clamp(0.2, 4.0))),
                         const SizedBox(width: 4),
@@ -1183,6 +1301,83 @@ class _KnowledgeGraphExplorerState
                   child: const Text('Open note'),
                 ),
               ),
+              if (node.data.metadata != null && (node.data.metadata!['url'] != null || node.data.metadata!['pdfUrl'] != null)) ...[
+                 const SizedBox(height: 8),
+                 SizedBox(
+                   width: double.infinity,
+                   child: OutlinedButton.icon(
+                     onPressed: () {
+                         final url = node.data.metadata!['url'] ?? node.data.metadata!['pdfUrl'];
+                         if (url != null && url.toString().isNotEmpty) {
+                             launchUrl(Uri.parse(url.toString()));
+                         }
+                     },
+                     icon: const Icon(Icons.open_in_new, size: 14, color: _kTextCream),
+                     label: const Text('View Source Media', style: TextStyle(color: _kTextCream)),
+                     style: OutlinedButton.styleFrom(
+                       side: const BorderSide(color: _kSidebarBorder),
+                       padding: const EdgeInsets.symmetric(vertical: 8),
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                       textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                     ),
+                   ),
+                 ),
+              ],
+              // ── Promote Buttons ──
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        try {
+                          final mcp = BrainWeaveMcpClient();
+                          await mcp.promote(nodeId: node.data.id, targetScope: 'CLIENT');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Promoted to CLIENT scope')),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint('Promote failed: $e');
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: _kAccentGold),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Promote to CLIENT', style: TextStyle(color: _kAccentGold, fontSize: 10)),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        try {
+                          final mcp = BrainWeaveMcpClient();
+                          await mcp.promote(nodeId: node.data.id, targetScope: 'AGENCY');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Shared with Agency')),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint('Share failed: $e');
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: _kAccentPurple),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Share with Agency', style: TextStyle(color: _kAccentPurple, fontSize: 10)),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -1320,6 +1515,30 @@ class _KnowledgeGraphExplorerState
                           ),
                         ),
                         const SizedBox(height: 32),
+
+                        // Asset URL Button
+                        if (note.metadata != null && (note.metadata!['url'] != null || note.metadata!['pdfUrl'] != null)) ...[
+                           SizedBox(
+                             width: double.infinity,
+                             child: OutlinedButton.icon(
+                               onPressed: () {
+                                   final url = note.metadata!['url'] ?? note.metadata!['pdfUrl'];
+                                   if (url != null && url.toString().isNotEmpty) {
+                                       launchUrl(Uri.parse(url.toString()));
+                                   }
+                               },
+                               icon: const Icon(Icons.open_in_new, size: 16, color: _kTextCream),
+                               label: const Text('View Source Media', style: TextStyle(color: _kTextCream)),
+                               style: OutlinedButton.styleFrom(
+                                 side: const BorderSide(color: _kSidebarBorder),
+                                 padding: const EdgeInsets.symmetric(vertical: 12),
+                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                 textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                               ),
+                             ),
+                           ),
+                           const SizedBox(height: 32),
+                        ],
 
                         // Related notes
                         if (related.isNotEmpty) ...[
@@ -1569,6 +1788,35 @@ class _GraphPainter extends CustomPainter {
           ..strokeWidth = 2;
         canvas.drawCircle(
             Offset(node.x, node.y), node.radius + 3, ringPaint);
+      }
+      
+      // ── Asset Icon Drawing ──
+      // If the node type is 'asset' or 'research', try to draw an indicator icon
+      if (node.data.type == BrainWeaveNodeType.asset || (node.data.type == BrainWeaveNodeType.atomic && node.data.topics.contains('research'))) {
+         final isVideo = node.data.topics.contains('video') || (node.data.metadata != null && node.data.metadata!['assetType'] == 'video');
+         final isImage = node.data.topics.contains('image') || (node.data.metadata != null && node.data.metadata!['assetType'] == 'image');
+         final isPdf = node.data.topics.contains('report') || (node.data.metadata != null && node.data.metadata!['pdfUrl'] != null);
+         
+         String iconText = '';
+         if (isVideo) iconText = '▶️';
+         else if (isImage) iconText = '🖼️';
+         else if (isPdf) iconText = '📄';
+         
+         if (iconText.isNotEmpty) {
+           final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
+              textAlign: TextAlign.center,
+              fontSize: node.radius * 0.9,
+           ))
+              ..pushStyle(ui.TextStyle(color: Colors.white.withValues(alpha: isDimmed ? 0.3 : 0.85)))
+              ..addText(iconText);
+           final paragraph = builder.build()
+              ..layout(ui.ParagraphConstraints(width: node.radius * 2));
+              
+           canvas.drawParagraph(
+              paragraph,
+              Offset(node.x - node.radius, node.y - paragraph.height / 2),
+           );
+         }
       }
 
       // ── Labels ──

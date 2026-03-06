@@ -530,8 +530,8 @@ exports.proxyVertexAI = functions.https.onRequest((req, res) => {
             let modelVariations = [modelId];
 
             if (modelId.includes('flash')) {
-                // Try stable 2.5 Flash variants
-                modelVariations = ['gemini-3-flash-preview', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+                // Try stable 3.x Flash and 2.5 Lite variants
+                modelVariations = ['gemini-3-flash-preview', 'gemini-3.1-pro-preview', 'gemini-2.5-flash-lite'];
             } else if (modelId.includes('pro')) {
                 modelVariations = ['gemini-3.1-pro-preview', 'gemini-2.5-pro'];
             }

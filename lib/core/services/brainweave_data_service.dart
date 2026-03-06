@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:inhaus_brain/core/services/bigquery_service.dart';
 import 'package:inhaus_brain/core/services/ai_proxy_service.dart';
+import 'package:inhaus_brain/core/tokens/llm_provider.dart';
 
 /// Wraps BigQuery + Gemini-in-BigQuery capabilities.
 /// Reuses Firebase/Vertex AI patterns.
 class BrainWeaveDataService {
   final BigQueryService _bqService = BigQueryService();
-  final AIProxyService _aiProxy = AIProxyService();
 
   /// Natural Language to SQL and execution in one go.
   /// Translates a natural language question into BigQuery SQL and runs it.
@@ -21,12 +21,17 @@ class BrainWeaveDataService {
     ''';
 
     try {
-      final sqlResponse = await _aiProxy.generateContent(
+      final sqlResponse = await AIProxyService.generateContent(
         prompt: schemaContext,
-        modelName: 'gemini-2.5-flash',
+        config: AIModelConfig(
+          provider: AIProvider.gemini,
+          modelId: 'gemini-3.1-pro-preview',
+          temperature: 0.1,
+          maxTokens: 1024,
+        ),
       );
       
-      final rawSql = sqlResponse;
+      final rawSql = sqlResponse['text']?.toString() ?? sqlResponse.toString();
       final cleanSql = rawSql.replaceAll('```sql', '').replaceAll('```', '').trim();
 
       // 2. Execute against BQ via proxy

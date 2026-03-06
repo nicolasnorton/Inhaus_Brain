@@ -7,6 +7,8 @@ import '../../connectors/models/connected_account_model.dart';
 import '../models/knowledge_source.dart';
 import 'knowledge_api_service.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../../core/services/ai_proxy_service.dart';
+import 'package:uuid/uuid.dart';
 
 class KnowledgeIngestionService {
   final KnowledgeApiService _knowledgeApi;
@@ -207,6 +209,101 @@ $taskSummary
         
         await Future.delayed(delay);
       }
+    }
+  }
+
+  Future<void> ingestSearchGrounding(String query, String responseText, List<String> citations) async {
+    try {
+      debugPrint('Autonomous Ingestion: Processing Search Grounding for "$query"...');
+      
+      final content = """
+Query: $query
+
+Synthesized Answer:
+$responseText
+
+Source Citations:
+${citations.map((c) => "- $c").join('\n')}
+""";
+
+      await _knowledgeApi.createDocumentFromText(
+        datasetId: 'research-intelligence',
+        name: 'Search: ${query.length > 50 ? query.substring(0, 50) + '...' : query}',
+        text: content,
+        chunkSize: _calculateChunkSize(KnowledgeSourceType.text, content),
+      );
+      
+      // Auto-ingest into Vertex AI Search Data Store
+      try {
+        await AIProxyService.ingestKnowledge(
+          documentId: const Uuid().v4(),
+          title: 'Search: ${query.length > 50 ? query.substring(0, 50) + '...' : query}',
+          content: content,
+          mimeType: 'text/markdown',
+        );
+        debugPrint('✅ Vertex AI Sync Complete for Search Grounding');
+      } catch (ingestError) {
+        debugPrint('⚠️ Vertex AI Sync Failed for Search Grounding: ${_safeError(ingestError)}');
+      }
+      
+      debugPrint('✅ Search Grounding Ingestion Complete');
+    } catch (e) {
+      debugPrint('⚠️ Search Grounding Ingestion Failed: ${_safeError(e)}');
+    }
+  }
+
+  Future<void> ingestDeepResearch(dynamic report) async {
+    try {
+      // report is loosely typed here to avoid circular dependencies if needed, 
+      // but assuming it has a title and outputs
+      final title = report.title;
+      debugPrint('Autonomous Ingestion: Processing Deep Research "$title"...');
+      
+      String reportContent = '';
+      if (report.outputs != null && report.outputs.isNotEmpty) {
+         // Try to parse the primary output JSON
+         final firstOutput = report.outputs.first.content;
+         if (firstOutput != null) {
+            try {
+               final Map<String, dynamic> data = jsonDecode(firstOutput);
+               reportContent = _flattenJson(data);
+            } catch (_) {
+               reportContent = firstOutput; // Fallback to raw text
+            }
+         }
+      }
+
+      final content = """
+Deep Research Report: $title
+Generated: ${DateTime.now().toIso8601String()}
+
+Content:
+$reportContent
+""";
+
+      await _knowledgeApi.createDocumentFromText(
+        datasetId: 'research-intelligence',
+        name: 'Research: $title',
+        text: content,
+        chunkSize: _calculateChunkSize(KnowledgeSourceType.text, content),
+      );
+      
+      // Auto-ingest into Vertex AI Search Data Store
+      try {
+        await AIProxyService.ingestKnowledge(
+          documentId: const Uuid().v4(),
+          title: 'Research: $title',
+          content: content,
+          mimeType: 'text/markdown',
+        );
+        debugPrint('✅ Vertex AI Sync Complete for Deep Research');
+      } catch (ingestError) {
+        debugPrint('⚠️ Vertex AI Sync Failed for Deep Research: ${_safeError(ingestError)}');
+      }
+      
+      debugPrint('✅ Deep Research Ingestion Complete');
+    } catch (e) {
+      debugPrint('⚠️ Deep Research Ingestion Failed: ${_safeError(e)}');
     }
   }
 

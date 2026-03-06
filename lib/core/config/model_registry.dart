@@ -65,10 +65,10 @@ class ModelRegistry {
     ModelTier.flashLite: 'gemini-2.5-flash-lite',
   };
 
-  // ── Gemini 2.5 Stable Fallback ─────────────────────────────
+  // ── Gemini Stable Fallback ─────────────────────────────
   static const _geminiLegacy = {
-    ModelTier.pro: 'gemini-2.5-pro',
-    ModelTier.flash: 'gemini-2.5-flash',
+    ModelTier.pro: 'gemini-3.1-pro-preview',
+    ModelTier.flash: 'gemini-3-flash-preview',
     ModelTier.flashLite: 'gemini-2.5-flash-lite',
   };
 

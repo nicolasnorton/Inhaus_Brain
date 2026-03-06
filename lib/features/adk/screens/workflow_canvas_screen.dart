@@ -6,6 +6,7 @@ import 'package:inhaus_brain/l10n/app_localizations.dart';
 import 'package:uuid/uuid.dart';
 import 'package:inhaus_brain/features/adk/widgets/node_configuration_sheet.dart';
 import '../../../core/adk/models/pipeline_models.dart';
+import '../../../core/config/feature_flags.dart';
 import '../providers/pipeline_provider.dart';
 import '../../chat/models/chat_models.dart';
 import '../../workspace/models/app_models.dart';
@@ -284,6 +285,22 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
                       const Divider(color: Colors.white10, height: 32),
                       _buildCategoryHeader("BRAINWEAVE"),
                       _buildTool(FontAwesomeIcons.brain, "6R Pipeline", WorkflowNodeType.brainweavePipeline),
+                      // Creative Campaign Canvas nodes (gated)
+                      if (FeatureFlags.enableDesignerCanvasMode) ...[
+                        const Divider(color: Colors.white10, height: 32),
+                        _buildCategoryHeader("CREATIVE"),
+                        _buildTool(FontAwesomeIcons.wandMagicSparkles, "Image Gen", WorkflowNodeType.creativeImageGen),
+                        _buildTool(FontAwesomeIcons.paintbrush, "Inpaint", WorkflowNodeType.creativeInpaintOutpaint),
+                        _buildTool(FontAwesomeIcons.objectGroup, "ControlNet", WorkflowNodeType.creativeControlNet),
+                        _buildTool(FontAwesomeIcons.lightbulb, "Relight", WorkflowNodeType.creativeRelightProduct),
+                        _buildTool(FontAwesomeIcons.video, "Video Gen", WorkflowNodeType.creativeVideoLipsync),
+                        _buildTool(FontAwesomeIcons.layerGroup, "Composite", WorkflowNodeType.creativeCompositingLayers),
+                        const Divider(color: Colors.white10, height: 24),
+                        _buildCategoryHeader("INTEGRATIONS"),
+                        _buildTool(FontAwesomeIcons.google, "Stitch", WorkflowNodeType.creativeStitchDesign),
+                        if (FeatureFlags.enableFigmaIntegration)
+                          _buildTool(FontAwesomeIcons.figma, "Figma", WorkflowNodeType.creativeFigmaSync),
+                      ],
                     ],
                   ),
                 ),
@@ -787,6 +804,15 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.imageGeneration: return FontAwesomeIcons.image;
       case WorkflowNodeType.videoGeneration: return FontAwesomeIcons.video;
       case WorkflowNodeType.brainweavePipeline: return FontAwesomeIcons.brain;
+      // Creative Campaign Canvas nodes
+      case WorkflowNodeType.creativeImageGen: return FontAwesomeIcons.wandMagicSparkles;
+      case WorkflowNodeType.creativeInpaintOutpaint: return FontAwesomeIcons.paintbrush;
+      case WorkflowNodeType.creativeControlNet: return FontAwesomeIcons.objectGroup;
+      case WorkflowNodeType.creativeRelightProduct: return FontAwesomeIcons.lightbulb;
+      case WorkflowNodeType.creativeVideoLipsync: return FontAwesomeIcons.video;
+      case WorkflowNodeType.creativeCompositingLayers: return FontAwesomeIcons.layerGroup;
+      case WorkflowNodeType.creativeStitchDesign: return FontAwesomeIcons.google;
+      case WorkflowNodeType.creativeFigmaSync: return FontAwesomeIcons.figma;
     }
   }
 
@@ -831,6 +857,23 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return Colors.redAccent;
       case WorkflowNodeType.brainweavePipeline:
         return const Color(0xFF6C3DE8);
+      // Creative Campaign Canvas nodes
+      case WorkflowNodeType.creativeImageGen:
+        return const Color(0xFF9C1AFF);
+      case WorkflowNodeType.creativeInpaintOutpaint:
+        return const Color(0xFFDB2777);
+      case WorkflowNodeType.creativeControlNet:
+        return const Color(0xFF0EA5E9);
+      case WorkflowNodeType.creativeRelightProduct:
+        return const Color(0xFFEA580C);
+      case WorkflowNodeType.creativeVideoLipsync:
+        return const Color(0xFF7C3AED);
+      case WorkflowNodeType.creativeCompositingLayers:
+        return const Color(0xFF059669);
+      case WorkflowNodeType.creativeStitchDesign:
+        return const Color(0xFF1A73E8);
+      case WorkflowNodeType.creativeFigmaSync:
+        return const Color(0xFF0ACF83);
     }
   }
 

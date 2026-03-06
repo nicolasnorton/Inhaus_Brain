@@ -38,12 +38,15 @@ The Copilot is your AI assistant for running the platform. Instead of clicking t
 *   **Create Apps**: "Build a new research app for Competitor Analysis".
 
 ### 4. 📚 BrainWeave Knowledge Graph (The "Shared Mind")
-Inhaus Brain's Knowledge Module (BrainWeave) is designed for agency-level intelligence with enterprise security. It acts as the **"Shared Mind"** for all AI agents on the platform.
-*   **Auto-Retrieval (Always On)**: Before any agent answers your question, they automatically query the BrainWeave graph. This ensures all agents are grounded in your agency's past learnings, style guides, and documentation.
-*   **Auto-Ingestion Loop**: When an agent provides a high-quality answer, the system automatically creates a new "node" in BrainWeave. The more you use the platform, the smarter it gets.
-*   **Semantic Caching**: The system remembers complex searches. Repeat questions are nearly instantaneous.
-*   **Google Drive Integration**: Select files directly from your Google Drive for instant ingestion.
-*   **PII Scrubbing**: Before data is processed, names, emails, and phone numbers are automatically masked for privacy compliance.
+Inhaus Brain's Knowledge Module (BrainWeave) is the agency's primary RAG (Retrieval-Augmented Generation) engine.
+*   **BrainWeave 2.0 (Spanner & Vertex AI)**: The core graph has been upgraded to **Google Cloud Spanner**, enabling multi-billion node scalability and complex property graph queries.
+*   **Agency-Wide Visibility**: Super Admins can toggle between their personal graph and a global **Agency View**, allowing them to manage knowledge across all client portfolios.
+*   **Knowledge Promotion & Sharing**: Promoting insights from a personal workspace to **CLIENT** or **AGENCY** scope. This triggers aPub/Sub event for cross-team collaboration.
+*   **6R Auto-Reweave Pipeline**: When knowledge is shared, a background **Cloud Run Job** automatically re-evaluates (6R) the surrounding context to ensure the shared mind remains consistent and high-quality.
+*   **Performance & Cost Dashboard**: Real-time monitoring of graph growth (nodes/edges) and estimated operational costs, visible directly in the workspace.
+*   **Vertex AI Search Grounding**: All agents are now grounded via an enterprise Vertex AI Search Data Store. High-value data extracted by agents is automatically synced to the GCP index.
+*   **Media & Asset Integration**: BrainWeave now tracks generated media. When Brian creates an image or video, an **Asset Node** is automatically created in the graph with its source URL.
+*   **3D Explorer**: An interactive 3D graph interface with advanced analysis tools including **Mermaid Export** and **Community Clustering**.
 
 ### 5. 🚀 Publish Dashboard (Deployment)
 This is where you turn your workflows into real applications. You can publish them as standalone **Web Apps**, integrate them into other systems via **API**, or embed them directly onto your own website using a **Chat Widget**.
@@ -199,10 +202,42 @@ Additional roles like **Designer**, **Ad Manager**, and **Social Media Manager**
 ---
 
 ## 🛡️ Production & Security
-Inhaus Brain is built with enterprise-grade safety:
-*   **Role-Based Security**: Access is strictly enforced via Firebase Security Rules at the database level and Firebase Auth Custom Claims for fast, secure permission checking.
+Inhaus Brain is built with enterprise-grade safety across authentication, data access, encryption, and monitoring.
+
+### Authentication & Authorization
+*   **JWT-Only Authentication**: All MCP API endpoints require a valid Firebase ID token in the `Authorization: Bearer` header. There are **zero fallback paths** — unauthenticated requests are rejected with `401 Unauthorized`.
 *   **Custom Claims Sync**: Cloud Functions automatically sync user roles from Firestore to Firebase Auth tokens, enabling instant RBAC validation without additional database reads.
+*   **Superadmin Gates**: Critical operations (promotion approval, security status, agency-wide graph access) are gated behind `superadmin` or `role: superAdmin` custom claims verified server-side.
 *   **UI Masking**: Navigation and action buttons are automatically hidden based on the active user's role (e.g., Client Users cannot see Debug, Knowledge, or Admin tools).
+
+### Knowledge Graph Security (BrainWeave)
+*   **Spanner Fine-Grained Access Control (FGAC)**: Three database-level roles enforce least-privilege access:
+    *   `brainweave_reader` — SELECT only on all tables.
+    *   `brainweave_writer` — Full CRUD on nodes/edges, limited writes on promotions.
+    *   `brainweave_superadmin` — Unrestricted access across all BrainWeave tables.
+*   **Dedicated Service Accounts**: Each workload (MCP API, Indexer, Reweave, Export) runs under its own GCP service account with minimal IAM bindings (`roles/spanner.databaseUser` or `roles/spanner.databaseReader`).
+*   **Owner-Scoped Queries**: All graph queries are automatically filtered by `owner_id` (extracted from the verified JWT). Cross-user data leaks are structurally impossible at the query level.
+*   **Scope Enforcement**: Edge traversals in `brainweave_context` enforce visibility rules — only `CLIENT` and `AGENCY` scoped nodes are returned for shared queries.
+
+### Encryption
+*   **Customer-Managed Encryption Keys (CMEK)**: A Cloud KMS key ring (`brainweave-keyring`) and crypto key (`brainweave-cmek-key`) are provisioned via Terraform with 90-day automatic rotation. Spanner currently uses Google-managed encryption with CMEK migration ready.
+*   **TLS Everywhere**: All API communication uses HTTPS/TLS. Cloud Run enforces TLS termination at the edge.
+
+### API Protections
+*   **Rate Limiting**: A thread-safe concurrency limiter caps all endpoints at 100 concurrent requests, preventing abuse and DoS attacks.
+*   **Input Validation**: All inputs are validated — UUIDs checked via regex, scopes restricted to `PRIVATE|CLIENT|AGENCY`, text fields sanitized and length-capped (title: 200 chars, description: 2000 chars, content: 50K chars).
+*   **GQL Injection Prevention**: All Spanner Graph queries use parameterized bindings — no string interpolation of user inputs into GQL.
+*   **Traceback Suppression**: Internal Python tracebacks are never exposed to clients; all errors return generic safe messages.
+
+### Promotion & Sharing Workflow
+*   **Approval-Gated Promotions**: Promoting a node from `PRIVATE` → `CLIENT` scope creates a `PendingPromotions` record with `PENDING_APPROVAL` status. A superadmin must explicitly approve via `/brainweave_approve_promotion` before the scope change takes effect.
+*   **Structured Audit Logging**: All security-relevant actions (`promote`, `approve_promotion`, `reject`, etc.) are logged as structured JSON entries to Cloud Logging with actor, target, and timestamp metadata.
+
+### Monitoring & Dashboards
+*   **Security Status Dashboard**: Superadmins see a real-time Security Status panel in the BrainWeave workspace showing: encryption type, FGAC status, total nodes/users, recent promotions (24h), pending approvals, and rate limit configuration.
+*   **Cloud Monitoring**: GCP Monitoring API is enabled for alerting on anomalous patterns.
+
+### Content Safety
 *   **Automatic Redaction**: Sensitive data like emails and phone numbers are automatically hidden from AI models to protect privacy.
 *   **Cultural Guardrails**: The system is tuned for LatAm and Ecuadorian cultural sensitivity, ensuring professional and inclusive communication.
 *   **Validated Outputs**: Every AI response passes through an Orchestrator audit before being finalized.

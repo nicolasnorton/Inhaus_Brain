@@ -9,6 +9,7 @@ import '../creative/providers/creative_provider.dart';
 import '../clients/providers/client_provider.dart';
 import '../../core/widgets/ai_status_badge.dart';
 import 'package:inhaus_brain/features/knowledge/providers/knowledge_provider.dart';
+import '../../core/config/feature_flags.dart';
 
 class CampaignDetailScreen extends ConsumerWidget {
   final String campaignId;
@@ -314,6 +315,27 @@ class CampaignDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+          // Designer Mode (Weavy-style Canvas) — gated behind feature flag
+          if (FeatureFlags.enableDesignerCanvasMode) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => context.push('/campaigns/${campaign.id}/designer-canvas'),
+                icon: const Icon(Icons.dashboard_customize, color: Colors.white),
+                label: const Text('Designer Mode (Weavy-style Canvas)'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF9C1AFF).withValues(alpha: 0.25),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Color(0xFF9C1AFF)),
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           // REPORTS LM TRIGGER
           SizedBox(
