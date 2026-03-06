@@ -29,6 +29,7 @@ import '../../adk/providers/pipeline_provider.dart';
 import '../../knowledge/providers/knowledge_provider.dart';
 import '../services/skill_discovery_service.dart';
 import '../../../core/services/telemetry_service.dart';
+import '../../../core/tools/tool_executor.dart';
 
 class ChatNotifier extends StateNotifier<ChatSession?> {
   final Ref ref;
@@ -414,10 +415,15 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getCopywriterPrompt();
 
-    final aiRes = await EdgeAIService.generateText(
-      masterPrompt.isNotEmpty
+    final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Copywriting Agent. $masterPrompt. User Request: $userPrompt"
-        : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.",
+        : "You are a Copywriting Agent. Write engaging text for: $userPrompt. Tone: Professional yet bold.";
+
+    // 2.5 PreToolUse Context Injection (BrainWeave 2.1)
+    final enrichedInstruction = await ref.read(toolExecutorProvider).injectGraphContextIfNeeded(systemInstruction, userPrompt);
+
+    final aiRes = await EdgeAIService.generateText(
+      enrichedInstruction,
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -459,14 +465,20 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getDeveloperPrompt();
 
-    final aiRes = await EdgeAIService.generateText(
-      masterPrompt.isNotEmpty
+    final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Developer Agent. $masterPrompt. User Request: $userPrompt"
-        : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.",
+        : "You are a Developer Agent. Generate Flutter code for: $userPrompt. Return ONLY valid Dart code wrapped in ```dart blocks.";
+
+    // 2.5 PreToolUse Context Injection (BrainWeave 2.1)
+    final enrichedInstruction = await ref.read(toolExecutorProvider).injectGraphContextIfNeeded(systemInstruction, userPrompt);
+
+    final aiRes = await EdgeAIService.generateText(
+      enrichedInstruction,
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     final parsedA2ui = _extractA2uiPayload(aiRes.text);
@@ -582,17 +594,20 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     final systemPrompts = ref.read(systemPromptsProvider);
     final masterPrompt = await systemPrompts.getResearchPrompt();
     
-    // We pass the user prompt directly. The model will search if needed because we enable the tool.
+    // 2. Build the System Prompt
     final systemInstruction = masterPrompt.isNotEmpty
         ? "You are a Research Agent. $masterPrompt. User Context: $userPrompt"
         : "You are a Research Agent. Research the following: '$userPrompt'. Provide a strategic recommendation.";
+
+    // 2.5 PreToolUse Context Injection (BrainWeave 2.1)
+    final enrichedInstruction = await ref.read(toolExecutorProvider).injectGraphContextIfNeeded(systemInstruction, userPrompt);
 
     // 3. AI Generation Grounded in Google Search
     // We force enable Google Search for the Research Agent
     final researchConfig = config?.copyWith(useGoogleSearch: true) ?? AIModelConfig.geminiResearch;
 
     final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+      enrichedInstruction,
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
@@ -730,12 +745,16 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         ? "You are a Creative Agent. $masterPrompt. \n[HISTORY]:\n$history\n\nUser Context: $userPrompt"
         : "You are a Creative Agent. Suggest a visual direction for: $userPrompt.";
 
+    // 2.5 PreToolUse Context Injection (BrainWeave 2.1)
+    final enrichedInstruction = await ref.read(toolExecutorProvider).injectGraphContextIfNeeded(systemInstruction, userPrompt);
+
     final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+      enrichedInstruction,
       context: context,
       memoryContext: memoryContext,
       apiKey: apiKey,
       gemmaKey: gemmaKey,
+      ref: ref,
     );
 
     final parsedA2ui = _extractA2uiPayload(aiRes.text);

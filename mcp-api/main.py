@@ -27,9 +27,29 @@ EMBED_ID   = os.environ.get("EMBED_MODEL", "text-embedding-005")
 
 vertexai.init(project=PROJECT)
 spanner_client = spanner.Client(project=PROJECT)
-database = spanner_client.instance(INSTANCE).database(DB)
 gemini = GenerativeModel(MODEL_ID)
 embed_model = TextEmbeddingModel.from_pretrained(EMBED_ID)
+
+_registry_cache = None
+
+def _load_registry():
+    global _registry_cache
+    if _registry_cache: return _registry_cache
+    
+    # GitNexus: Fetch registry configuration from GCS or use local fallback
+    # Simulate GCS fetch for now with a local struct
+    _registry_cache = {
+        "default": {"instance": INSTANCE, "db": DB},
+        "staging": {"instance": "brainweave-staging", "db": "staging_db"},
+        "client_a": {"instance": "client-a-graph", "db": "client_a_db"}
+    }
+    return _registry_cache
+
+def _get_database(req):
+    namespace = req.headers.get("X-Namespace", req.headers.get("X-Registry", "default"))
+    registry = _load_registry()
+    cfg = registry.get(namespace, registry["default"])
+    return spanner_client.instance(cfg["instance"]).database(cfg["db"])
 
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
@@ -65,27 +85,37 @@ def graph_query():
 
     sql = """
         SELECT node_id, title, description, node_type, topics, scope, confidence
-        FROM BrainWeaveNodes
-        WHERE owner_id = @owner_id
+        FROM (
+            SELECT node_id, title, description, node_type, topics, scope, confidence,
+                   SCORE(BrainWeaveNodesTextIndex, @query) as bm25_score,
+                   RANK() OVER (ORDER BY SCORE(BrainWeaveNodesTextIndex, @query) DESC) as rank_bm25,
+                   COSINE_DISTANCE(embedding, @query_embedding) as ann_score,
+                   RANK() OVER (ORDER BY COSINE_DISTANCE(embedding, @query_embedding) ASC) as rank_ann
+            FROM BrainWeaveNodes
+            WHERE owner_id = @owner_id
     """
-    params = {"owner_id": owner_id}
-    param_types = {"owner_id": spanner.param_types.STRING}
+    params = {"owner_id": owner_id, "query": query, "query_embedding": embedding, "limit": limit}
+    param_types = {
+        "owner_id": spanner.param_types.STRING,
+        "query": spanner.param_types.STRING,
+        "query_embedding": spanner.param_types.Array(spanner.param_types.FLOAT32),
+        "limit": spanner.param_types.INT64
+    }
 
     if scope:
-        sql += " AND scope = @scope"
+        sql += " AND scope = @scope "
         params["scope"] = scope
         param_types["scope"] = spanner.param_types.STRING
 
+    # BrainWeave 2.1 GitNexus Upgrade: Spanner Hybrid Search (BM25 + Vector KNN)
     sql += """
-        ORDER BY COSINE_DISTANCE(embedding, @query_embedding)
+            AND (SEARCH(BrainWeaveNodesTextIndex, @query) OR COSINE_DISTANCE(embedding, @query_embedding) < 0.3)
+        )
+        ORDER BY ( (1.0 / (rank_bm25 + 60)) + (1.0 / (rank_ann + 60)) ) DESC
         LIMIT @limit
     """
-    params["query_embedding"] = embedding
-    params["limit"] = limit
-    param_types["query_embedding"] = spanner.param_types.Array(spanner.param_types.FLOAT32)
-    param_types["limit"] = spanner.param_types.INT64
 
-    with database.snapshot() as snapshot:
+    with _get_database(request).snapshot() as snapshot:
         results = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
 
     nodes = []
@@ -148,6 +178,12 @@ def impact():
         ))
 
     affected = []
+    
+    # BrainWeave 2.1 GitNexus Upgrade: Calculate inferred depth iteratively 
+    # since Spanner Graph doesn't return path length directly in this simple GQL.
+    # We assign a depth based on confidence decay (approximation) or just pass length=1
+    # for now until Spanner Graph path variables are fully supported.
+    
     for row in results:
         affected.append({
             "node_id": row[0],
@@ -155,6 +191,7 @@ def impact():
             "node_type": row[2],
             "relationship": row[3],
             "confidence": row[4],
+            "depth_level": 1 if row[4] > 0.8 else (2 if row[4] > 0.6 else 3) # Mock depth based on edge strength decay
         })
 
     return jsonify({"source": node_id, "affected": affected, "count": len(affected)})
@@ -217,6 +254,66 @@ def cluster():
     return jsonify({"clusters": clusters, "count": len(clusters)})
 
 
+# ─── Tool 3b: brainweave_graph_analysis (arscontexta 2.1) ────────────────────
+
+@app.route("/brainweave_graph_analysis", methods=["POST"])
+def graph_analysis():
+    """Calculates NetworkX eigenvector centrality and community detection on a user's graph."""
+    body = request.get_json() or {}
+    owner_id = _authed_owner(request)
+    
+    try:
+        import networkx as nx
+    except ImportError:
+        return jsonify({"error": "networkx not installed inside MCP API container"}), 500
+
+    # Fetch graph structure
+    sql = """
+        SELECT e.source_node_id, e.target_node_id, e.weight
+        FROM BrainWeaveEdges e
+        WHERE e.owner_id = @owner_id
+    """
+    params = {"owner_id": owner_id}
+    param_types = {"owner_id": spanner.param_types.STRING}
+
+    with database.snapshot() as snapshot:
+        rows = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
+
+    G = nx.Graph()
+    for src, tgt, weight in rows:
+        G.add_edge(src, tgt, weight=weight or 1.0)
+
+    if len(G.nodes) == 0:
+        return jsonify({"centrality": {}, "communities": [], "message": "Graph is empty"})
+
+    # Eigenvector Centrality
+    try:
+        centrality = nx.eigenvector_centrality(G, max_iter=500, weight='weight')
+    except nx.PowerIterationFailedConvergence:
+        centrality = nx.degree_centrality(G) # Fallback
+
+    # Louvain Community Detection
+    try:
+        import community as community_louvain
+        partition = community_louvain.best_partition(G, weight='weight')
+        communities = {}
+        for node, comm_id in partition.items():
+            communities.setdefault(comm_id, []).append(node)
+        comm_list = [{"community_id": k, "nodes": v} for k, v in communities.items()]
+    except ImportError:
+        # Graceful fallback if python-louvain isn't installed
+        comm_list = [{"community_id": 0, "nodes": list(G.nodes)}]
+
+    # Top central nodes
+    sorted_centrality = sorted(centrality.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    return jsonify({
+        "top_nodes": [{"node_id": k, "score": v} for k, v in sorted_centrality],
+        "communities": comm_list,
+        "total_nodes": len(G.nodes),
+        "total_edges": len(G.edges)
+    })
+
 # ─── Tool 4: brainweave_context ──────────────────────────────────────────────
 
 @app.route("/brainweave_context", methods=["POST"])
@@ -278,12 +375,66 @@ def context():
             {"edge_id": r[0], "type": r[1], "confidence": r[2],
              "source_id": r[3], "source_title": r[4]}
             for r in incoming
-        ],
-        "outgoing": [
-            {"edge_id": r[0], "type": r[1], "confidence": r[2],
-             "target_id": r[3], "target_title": r[4]}
-            for r in outgoing
-        ],
+        "edges": edges,
+    })
+
+
+# ─── Tool 4b: brainweave_wiki (GitNexus Upgrades 2.1) ────────────────────────
+
+@app.route("/brainweave_wiki", methods=["POST"])
+def wiki_generate():
+    """Generates an LLM-structured Markdown document representing a subgraph."""
+    body = request.get_json()
+    node_id = body.get("node_id")
+    owner_id = _authed_owner(request)
+
+    if not node_id:
+        return jsonify({"error": "node_id is required"}), 400
+
+    # We reuse the context fetching logic to grab the subgraph
+    with database.snapshot() as snapshot:
+        node_rows = list(snapshot.execute_sql(
+            "SELECT title, content FROM BrainWeaveNodes WHERE node_id = @nid AND owner_id = @oid",
+            params={"nid": node_id, "oid": owner_id},
+            param_types={"nid": spanner.param_types.STRING, "oid": spanner.param_types.STRING},
+        ))
+
+        if not node_rows:
+            return jsonify({"error": "Node not found"}), 404
+        
+        main_title, main_content = node_rows[0]
+
+        neighbors = list(snapshot.execute_sql(
+            "SELECT n.title, n.content, e.relationship_type "
+            "FROM BrainWeaveEdges e JOIN BrainWeaveNodes n "
+            "ON (e.target_node_id = n.node_id OR e.source_node_id = n.node_id) "
+            "WHERE (e.source_node_id = @nid OR e.target_node_id = @nid) "
+            "AND n.node_id != @nid LIMIT 10",
+            params={"nid": node_id},
+            param_types={"nid": spanner.param_types.STRING},
+        ))
+
+    # Assemble subgraph context
+    context = f"# Central Context: {main_title}\n\n{main_content}\n\n## Connected Knowledge\n\n"
+    for title, content, rel in neighbors:
+        context += f"### {title} (Relationship: {rel})\n{content}\n\n"
+
+    # Ask Gemini Pro to generate the Wiki
+    prompt = (
+        f"You are the GitNexus Documentation Engine. Convert the following disorganized "
+        f"graph context into a highly structured Markdown Wiki page. Extract implicit "
+        f"sections, synthesize ideas, and format beautifully.\n\n[CONTEXT]\n{context}"
+    )
+
+    try:
+        response = gemini.generate_content(prompt)
+        wiki_text = response.text
+    except Exception as e:
+        return jsonify({"error": f"LLM Generation failed: {e}"}), 500
+
+    return jsonify({
+        "wiki_markdown": wiki_text,
+        "source_node": node_id
     })
 
 

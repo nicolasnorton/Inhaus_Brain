@@ -1,10 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 /// Central HTTP client for the BrainWeave 2.0 MCP API (Cloud Run).
 /// Wraps all 8 MCP tools + GraphRAG endpoint.
+final brainweaveMcpClientProvider = Provider<BrainWeaveMcpClient>((ref) {
+  return BrainWeaveMcpClient();
+});
+
 class BrainWeaveMcpClient {
   // TODO: Replace with your actual Cloud Run URL after deployment
   static const _baseUrl = String.fromEnvironment(
@@ -166,6 +171,20 @@ class BrainWeaveMcpClient {
   Future<Map<String, dynamic>> graphRag({required String query}) async {
     return await _post('brainweave_graphrag', {
       'query': query,
+    });
+  }
+
+  // ─── BrainWeave 2.1 Upgrades ──────────────────────────────────────────────
+  
+  /// Calculates NetworkX eigenvector centrality and community detection.
+  Future<Map<String, dynamic>> graphAnalysis() async {
+    return await _post('brainweave_graph_analysis', {});
+  }
+
+  /// Generates an LLM-structured Markdown document representing a subgraph.
+  Future<Map<String, dynamic>> wikiGenerate({required String nodeId}) async {
+    return await _post('brainweave_wiki', {
+      'node_id': nodeId,
     });
   }
 }

@@ -18,6 +18,8 @@ CREATE TABLE BrainWeaveNodes (
   node_type     STRING(32)  NOT NULL,
   topics        ARRAY<STRING(256)>,
   markdown_uri  STRING(1024),
+  title_tokens    TOKENLIST AS (TOKENIZE_FULLTEXT(title)) HIDDEN,
+  content_tokens  TOKENLIST AS (TOKENIZE_FULLTEXT(content)) HIDDEN,
 
   -- Vector
   embedding     ARRAY<FLOAT32>,
@@ -92,3 +94,7 @@ CREATE TABLE PendingPromotions (
   status        STRING(16) DEFAULT 'PENDING',
   created_at    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),
 ) PRIMARY KEY (promotion_id);
+
+-- ─── Full-Text Search (BM25) ────────────────────────────
+CREATE SEARCH INDEX BrainWeaveNodesTextIndex
+  ON BrainWeaveNodes(title_tokens, content_tokens);

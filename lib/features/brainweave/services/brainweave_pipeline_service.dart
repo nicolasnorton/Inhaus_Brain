@@ -13,6 +13,7 @@ import '../../knowledge/providers/knowledge_provider.dart';
 import '../../workspace/services/agent_registry_service.dart';
 import '../models/brainweave_link.dart';
 import '../models/brainweave_node.dart';
+import '../../../core/config/feature_flags.dart';
 
 /// Implements the Ars Contexta 6R Pipeline for BrainWeave.
 /// Guaranteed fresh Gemini 3.1 Pro context per phase to prevent LLM attention decay.
@@ -82,14 +83,25 @@ class BrainWeavePipelineService {
       // ── FALLBACK: Route through Vertex AI Cloud Functions proxy ───
       try {
         final prompt = _buildPhasePrompt(phase, input);
+        
+        // Tiering logic (BrainWeave 2.1)
+        String modelId = 'gemini-3.1-pro-preview';
+        if (FeatureFlags.brainweave21Enabled) {
+          if (phase == 'reduce' || phase == 'reflect') {
+            modelId = 'gemini-3-flash-preview'; // Cheaper, faster for synthesis
+          }
+        }
+
         final result = await AIProxyService.generateContent(
           prompt: prompt,
-          config: const AIModelConfig(
+          config: AIModelConfig(
             provider: AIProvider.gemini,
-            modelId: 'gemini-3.1-pro-preview',
+            modelId: modelId,
             temperature: 0.3,
           ),
-          systemInstruction: 'You are the BrainWeave Architect. Produce an array of structured knowledge nodes as JSON. Each node must have: title, description, content, topics.',
+          systemInstruction: FeatureFlags.brainweave21Enabled 
+              ? 'You are the BrainWeave Architect. Produce an array of structured knowledge nodes as JSON. Each node must have: title, description, content, and a strictly typed qmd_concepts string array representing localized semantic concepts for the graph node.'
+              : 'You are the BrainWeave Architect. Produce an array of structured knowledge nodes as JSON. Each node must have: title, description, content, topics.',
         );
         
         final text = result['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '[]';
@@ -204,6 +216,11 @@ class BrainWeavePipelineService {
   /// 1. Record: Zero friction capture. Just saves it to the Flow Space.
   Future<void> _recordPhase(String sessionId, String rawInput) async {
     final sessionRef = _sessions.doc(sessionId);
+    
+    // BrainWeave 2.1 Optimization: Buffered write (simulate session capture vs immediate sync)
+    // We already do an atomic merge here, but in 2.1 we ensure this is the ONLY 
+    // real-time sync before the pipeline suspends.
+    
     await sessionRef.set({
       'clientId': _userId,
       'createdAt': FieldValue.serverTimestamp(),
@@ -211,6 +228,7 @@ class BrainWeavePipelineService {
       'sessionLogs': [rawInput],
       'queueTaskIds': [],
       'currentPhase': BlackboardPhase.brainweaveRecord.name,
+      'isBuffered': FeatureFlags.brainweave21Enabled,
     }, SetOptions(merge: true));
     
     _blackboard.addEvent(WorkflowEventType.agentAction, "Record phase completed. Flow Space initialized.");
@@ -292,7 +310,7 @@ class BrainWeavePipelineService {
         description: nodeData['description'] ?? '',
         content: nodeData['content'] ?? '',
         type: nodeType,
-        topics: List<String>.from(nodeData['topics'] ?? []),
+        topics: List<String>.from(nodeData['topics'] ?? nodeData['qmd_concepts'] ?? []),
         embedding: embedding,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

@@ -66,6 +66,10 @@ class FeatureFlags {
   static bool get brainweaveEnabled =>
       _overrides['brainweave_enabled'] ?? true;
 
+  /// Controls BrainWeave 2.1 Upgrades (Subagents, Concept Matching, Wiki, Hybrid Search)
+  static bool get brainweave21Enabled =>
+      _overrides['brainweave21_enabled'] ?? false;
+
   /// When true, PicoClaw prefers Gemma on-device over cloud Gemini.
   /// Default false — cloud is primary for demo reliability.
   static bool get useEdgeFallback =>

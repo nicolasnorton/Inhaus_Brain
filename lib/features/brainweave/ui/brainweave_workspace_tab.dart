@@ -491,7 +491,7 @@ class _BrainWeaveWorkspaceTabState
                   Expanded(
                     child: Text(
                       AppConfig.brainweaveV2Enabled
-                          ? 'BrainWeave 2.0 — Spanner Graph'
+                          ? 'BrainWeave 2.1 — Spanner Graph'
                           : 'BrainWeave 1.x — Firestore',
                       style: TextStyle(
                         color: AppConfig.brainweaveV2Enabled
