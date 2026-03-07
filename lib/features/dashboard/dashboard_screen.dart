@@ -247,30 +247,49 @@ class DashboardScreen extends ConsumerWidget {
     final isSelected = _calculateSelectedIndex(context, ref) == index;
     final color = isSelected 
         ? Theme.of(context).primaryColor 
-        : (Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54);
+        : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87);
     
     return Semantics(
       label: 'Navigate to $label',
       selected: isSelected,
       button: true,
-      child: InkWell(
-        onTap: () => _onItemTapped(index, context, ref),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
-          width: double.infinity,
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 11, // Slightly smaller to fit
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: isSelected ? BoxDecoration(
+          color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).primaryColor.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.05),
+              blurRadius: 8,
+              spreadRadius: 1,
+            )
+          ],
+        ) : null,
+        child: InkWell(
+          onTap: () => _onItemTapped(index, context, ref),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 4.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                children: [
+                  Icon(icon, color: color, size: 22),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -517,27 +536,49 @@ class DashboardHome extends ConsumerWidget {
     required String label,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 24, color: Theme.of(context).primaryColor),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+    final color = Theme.of(context).primaryColor;
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+             color: Colors.black.withValues(alpha: 0.1),
+             blurRadius: 10,
+             offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 28, color: color),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ),
       ),
