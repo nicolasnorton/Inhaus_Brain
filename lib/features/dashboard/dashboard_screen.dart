@@ -246,9 +246,13 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, WidgetRef ref) {
     final isSelected = _calculateSelectedIndex(context, ref) == index;
-    final color = isSelected 
-        ? Theme.of(context).primaryColor 
-        : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final activeTextColor = isDark ? Colors.white : Colors.black87;
+    final inactiveTextColor = isDark ? Colors.white54 : Colors.black54;
+    
+    final activeBgColor = isDark ? const Color(0xFF2C2C2E) : Colors.black.withValues(alpha: 0.05);
+    final inactiveBgColor = Colors.transparent;
     
     return Semantics(
       label: 'Navigate to $label',
@@ -256,57 +260,29 @@ class DashboardScreen extends ConsumerWidget {
       button: true,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isSelected
-                      ? [
-                          color.withValues(alpha: 0.2),
-                          color.withValues(alpha: 0.05),
-                        ]
-                      : [
-                          (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.05),
-                          (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.01),
-                        ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected 
-                      ? color.withValues(alpha: 0.4) 
-                      : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.08),
-                  width: 1,
-                ),
-              ),
-              child: InkWell(
-                onTap: () => _onItemTapped(index, context, ref),
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 4.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: Column(
-                      children: [
-                        Icon(icon, color: color, size: 22),
-                        const SizedBox(height: 6),
-                        Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 10,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          ),
-                        ),
-                      ],
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSelected ? activeBgColor : inactiveBgColor,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: InkWell(
+            onTap: () => _onItemTapped(index, context, ref),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+              child: Row(
+                children: [
+                  Icon(icon, color: isSelected ? activeTextColor : inactiveTextColor, size: 18),
+                  const SizedBox(width: 16),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? activeTextColor : inactiveTextColor,
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -557,97 +533,45 @@ class DashboardHome extends ConsumerWidget {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor = Theme.of(context).primaryColor;
+    final cardColor = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF2C2C2E) : Colors.black.withValues(alpha: 0.1);
     
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF161B28).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.4),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.6),
-                isDark ? Colors.white.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.2),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 24,
-                spreadRadius: -4,
-              ),
-              // Inner glow effect
-              BoxShadow(
-                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5),
-                blurRadius: 10,
-                spreadRadius: 0,
-                blurStyle: BlurStyle.inner,
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(20),
-              highlightColor: accentColor.withValues(alpha: 0.15),
-              splashColor: accentColor.withValues(alpha: 0.25),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            accentColor.withValues(alpha: 0.3),
-                            accentColor.withValues(alpha: 0.1),
-                          ],
-                        ),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: accentColor.withValues(alpha: 0.4),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: accentColor.withValues(alpha: 0.25),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                          )
-                        ],
-                      ),
-                      child: Icon(icon, size: 32, color: accentColor),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 15, 
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white.withValues(alpha: 0.95) : Colors.black87,
-                        letterSpacing: 0.3,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: borderColor,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          highlightColor: accentColor.withValues(alpha: 0.05),
+          splashColor: accentColor.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 32, color: isDark ? Colors.white70 : Colors.black87),
+                const SizedBox(height: 20),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              ],
             ),
           ),
         ),
