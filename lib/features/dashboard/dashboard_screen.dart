@@ -259,19 +259,27 @@ class DashboardScreen extends ConsumerWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+            filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
             child: Container(
               decoration: BoxDecoration(
-                color: isSelected 
-                    ? color.withValues(alpha: 0.15) 
-                    : (Theme.of(context).brightness == Brightness.dark 
-                        ? Colors.white.withValues(alpha: 0.02) 
-                        : Colors.white.withValues(alpha: 0.3)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isSelected
+                      ? [
+                          color.withValues(alpha: 0.2),
+                          color.withValues(alpha: 0.05),
+                        ]
+                      : [
+                          (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                          (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.01),
+                        ],
+                ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected 
-                      ? color.withValues(alpha: 0.3) 
-                      : Colors.white.withValues(alpha: 0.05),
+                      ? color.withValues(alpha: 0.4) 
+                      : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.08),
                   width: 1,
                 ),
               ),
@@ -553,9 +561,10 @@ class DashboardHome extends ConsumerWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+        filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
         child: Container(
           decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161B28).withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.4),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -566,15 +575,22 @@ class DashboardHome extends ConsumerWidget {
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
+              color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 20,
-                spreadRadius: -5,
-              )
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 24,
+                spreadRadius: -4,
+              ),
+              // Inner glow effect
+              BoxShadow(
+                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white.withValues(alpha: 0.5),
+                blurRadius: 10,
+                spreadRadius: 0,
+                blurStyle: BlurStyle.inner,
+              ),
             ],
           ),
           child: Material(
@@ -582,41 +598,48 @@ class DashboardHome extends ConsumerWidget {
             child: InkWell(
               onTap: onTap,
               borderRadius: BorderRadius.circular(20),
-              highlightColor: accentColor.withValues(alpha: 0.1),
-              splashColor: accentColor.withValues(alpha: 0.2),
+              highlightColor: accentColor.withValues(alpha: 0.15),
+              splashColor: accentColor.withValues(alpha: 0.25),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.15),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            accentColor.withValues(alpha: 0.3),
+                            accentColor.withValues(alpha: 0.1),
+                          ],
+                        ),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: accentColor.withValues(alpha: 0.3),
-                          width: 1,
+                          color: accentColor.withValues(alpha: 0.4),
+                          width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: accentColor.withValues(alpha: 0.2),
-                            blurRadius: 10,
+                            color: accentColor.withValues(alpha: 0.25),
+                            blurRadius: 12,
                             spreadRadius: 2,
                           )
                         ],
                       ),
-                      child: Icon(icon, size: 30, color: accentColor),
+                      child: Icon(icon, size: 32, color: accentColor),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 14, 
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
-                        letterSpacing: 0.5,
+                        fontSize: 15, 
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white.withValues(alpha: 0.95) : Colors.black87,
+                        letterSpacing: 0.3,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 1,
