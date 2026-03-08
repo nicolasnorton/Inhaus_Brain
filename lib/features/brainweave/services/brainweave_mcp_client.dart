@@ -189,7 +189,8 @@ class BrainWeaveMcpClient {
   Future<Map<String, dynamic>> wikiGenerate({required String nodeId}) async {
     return await _post('brainweave_wiki', {
       'node_id': nodeId,
-
+    });
+  }
   // ─── Graph Data (V2) ──────────────────────────────────────────────────────
 
   /// Fetch all nodes and edges for the graph explorer.
