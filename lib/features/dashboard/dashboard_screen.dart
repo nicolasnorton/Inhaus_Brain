@@ -431,66 +431,77 @@ class DashboardHome extends ConsumerWidget {
                           icon: FontAwesomeIcons.usersViewfinder,
                           label: AppLocalizations.of(context)!.navClients,
                           onTap: () => context.go('/clients'),
+                          imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.bullhorn,
                           label: AppLocalizations.of(context)!.navCampaigns,
                           onTap: () => context.go('/campaigns'),
+                          imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.palette,
                           label: 'Designer Canvas',
                           onTap: () => context.go('/creative-canvas'),
+                          imageUrl: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
-                          icon: FontAwesomeIcons.building, // Added
+                          icon: FontAwesomeIcons.building,
                           label: "Agency",
                           onTap: () => context.go('/agency'),
+                          imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.chartLine,
                           label: AppLocalizations.of(context)!.navAnalytics,
                           onTap: () => context.go('/analytics'),
+                          imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.diagramProject,
                           label: AppLocalizations.of(context)!.navWorkflows,
                           onTap: () => context.go('/workflows'),
+                          imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.rocket,
                           label: AppLocalizations.of(context)!.navPublish,
                           onTap: () => context.go('/publish'),
+                          imageUrl: 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.book,
                           label: AppLocalizations.of(context)!.navKnowledge,
                           onTap: () => context.go('/knowledge'),
+                          imageUrl: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.gear,
                           label: AppLocalizations.of(context)!.navSettings,
                           onTap: () => context.go('/settings'),
+                          imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.clipboardList,
                           label: "Reports",
                           onTap: () => context.go('/reports'),
+                          imageUrl: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.wandMagicSparkles,
                           label: "Composer",
                           onTap: () => context.go('/composer'),
+                          imageUrl: 'https://images.unsplash.com/photo-1536329583941-14287ec6fc4e?w=400&q=80',
                         ),
                         if (FeatureFlags.brainweaveEnabled)
                           _buildNavCard(
@@ -498,18 +509,21 @@ class DashboardHome extends ConsumerWidget {
                             icon: FontAwesomeIcons.brain,
                             label: "BrainWeave",
                             onTap: () => context.go('/brainweave'),
+                            imageUrl: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&q=80',
                           ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.bug,
                           label: AppLocalizations.of(context)!.navDebug,
                           onTap: () => context.go('/debug'),
+                          imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
                           icon: FontAwesomeIcons.userShield,
                           label: "Admin",
                           onTap: () => context.go('/admin'),
+                          imageUrl: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&q=80',
                         ),
                       ],
                     ],
@@ -530,6 +544,7 @@ class DashboardHome extends ConsumerWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    String? imageUrl,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accentColor = Theme.of(context).primaryColor;
@@ -537,6 +552,7 @@ class DashboardHome extends ConsumerWidget {
     final borderColor = isDark ? const Color(0xFF2C2C2E) : Colors.black.withValues(alpha: 0.1);
     
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -552,27 +568,54 @@ class DashboardHome extends ConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           highlightColor: accentColor.withValues(alpha: 0.05),
           splashColor: accentColor.withValues(alpha: 0.1),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 32, color: isDark ? Colors.white70 : Colors.black87),
-                const SizedBox(height: 20),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14, 
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background image
+              if (imageUrl != null)
+                Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                 ),
-              ],
-            ),
+              // Dark gradient overlay
+              if (imageUrl != null)
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.7),
+                      ],
+                    ),
+                  ),
+                ),
+              // Icon + Label
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(icon, size: 28, color: Colors.white.withValues(alpha: 0.9)),
+                    const SizedBox(height: 10),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 14, 
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.left,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
