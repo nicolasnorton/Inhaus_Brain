@@ -81,6 +81,12 @@ class FeatureFlags {
   static bool get brainweave21Enabled =>
       _overrides['brainweave21_enabled'] ?? false;
 
+  /// Controls BrainWeave GSD + ECC Upgrades (Planning/Verify, Instincts,
+  /// Wave Execution, Atomic Snapshots, Model Routing, Brownfield Mapping).
+  /// Default false — toggle via Firestore `staging_config/feature_flags`.
+  static bool get brainweaveGsdEccEnabled =>
+      _overrides['brainweave_gsd_ecc_enabled'] ?? false;
+
   /// When true, PicoClaw prefers Gemma on-device over cloud Gemini.
   /// Default false — cloud is primary for demo reliability.
   static bool get useEdgeFallback =>

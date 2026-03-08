@@ -227,4 +227,71 @@ class BrainWeaveMcpClient {
 
     });
   }
+
+  // ═══════════════════════════════════════════════════════════
+  // GSD + ECC Upgrade Tools (require brainweave_gsd_ecc_enabled)
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── F1: GSD Planning / Verification ──────────────────────────────────────
+
+  /// Generate an XML task spec with acceptance criteria from requirements.
+  Future<Map<String, dynamic>> planPhase({
+    required String requirements,
+    String context = '',
+    int phaseNumber = 1,
+  }) async {
+    return await _post('brainweave_plan_phase', {
+      'requirements': requirements,
+      'context': context,
+      'phase_number': phaseNumber,
+    });
+  }
+
+  /// Validate a plan XML against requirements. Returns pass/fail + gaps.
+  Future<Map<String, dynamic>> verifyRequirements({
+    required String planXml,
+    required String requirements,
+  }) async {
+    return await _post('brainweave_verify_requirements', {
+      'plan_xml': planXml,
+      'requirements': requirements,
+    });
+  }
+
+  /// Run quality checks on agent output before commit.
+  Future<Map<String, dynamic>> qualityGate({
+    required String output,
+    List<String> acceptanceCriteria = const [],
+    String taskName = 'unknown',
+  }) async {
+    return await _post('brainweave_quality_gate', {
+      'output': output,
+      'acceptance_criteria': acceptanceCriteria,
+      'task_name': taskName,
+    });
+  }
+
+  // ─── F2: Persistent Context + Instincts ───────────────────────────────────
+
+  /// Load GSD-style minimal context (PROJECT.md, STATE.md, etc.)
+  Future<Map<String, dynamic>> loadMinimalContext() async {
+    return await _post('brainweave_load_minimal_context', {});
+  }
+
+  /// Get learned instincts with confidence scores.
+  Future<Map<String, dynamic>> instinctStatus() async {
+    return await _post('brainweave_instinct_status', {});
+  }
+
+  /// Cluster related instincts into skills.
+  Future<Map<String, dynamic>> evolve() async {
+    return await _post('brainweave_evolve', {});
+  }
+
+  // ─── F6: Brownfield Mapping ───────────────────────────────────────────────
+
+  /// Map the knowledge base: architecture, patterns, conventions, gaps.
+  Future<Map<String, dynamic>> mapKnowledgeBase() async {
+    return await _post('brainweave_map_knowledge_base', {});
+  }
 }

@@ -482,3 +482,214 @@ class GraphRagTool extends AgentTool {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// BrainWeave GSD + ECC Upgrade Tools (behind brainweave_gsd_ecc_enabled)
+// ═══════════════════════════════════════════════════════════
+
+/// GSD Plan Phase: Generate XML task spec with acceptance criteria
+class PlanPhaseTool extends AgentTool {
+  PlanPhaseTool()
+      : super(
+          name: 'brainweave_plan_phase',
+          description: 'Generate a structured XML task specification with acceptance criteria '
+              'from requirements and context. GSD Discuss→Plan pattern.',
+          inputSchema: {
+            'requirements': {
+              'type': 'string',
+              'description': 'The requirements to plan for.',
+            },
+            'context': {
+              'type': 'string',
+              'description': 'Optional context (e.g. from CONTEXT.md).',
+            },
+            'phaseNumber': {
+              'type': 'integer',
+              'description': 'Phase number in the roadmap (default 1).',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final requirements = parameters['requirements'] as String?;
+    if (requirements == null || requirements.isEmpty) {
+      return ToolResult.failure('Missing requirements parameter');
+    }
+    try {
+      final result = await _mcpClient.planPhase(
+        requirements: requirements,
+        context: parameters['context'] as String? ?? '',
+        phaseNumber: parameters['phaseNumber'] as int? ?? 1,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Plan phase failed: $e');
+    }
+  }
+}
+
+/// GSD Verify: Validate plan against requirements
+class VerifyRequirementsTool extends AgentTool {
+  VerifyRequirementsTool()
+      : super(
+          name: 'brainweave_verify_requirements',
+          description: 'Validate an XML task plan against requirements. '
+              'Returns pass/fail with gap analysis.',
+          inputSchema: {
+            'planXml': {
+              'type': 'string',
+              'description': 'The XML plan to verify.',
+            },
+            'requirements': {
+              'type': 'string',
+              'description': 'The requirements to verify against.',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final planXml = parameters['planXml'] as String?;
+    final requirements = parameters['requirements'] as String?;
+    if (planXml == null || requirements == null) {
+      return ToolResult.failure('Missing planXml or requirements');
+    }
+    try {
+      final result = await _mcpClient.verifyRequirements(
+        planXml: planXml,
+        requirements: requirements,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Verify requirements failed: $e');
+    }
+  }
+}
+
+/// ECC Quality Gate: Check agent output before commit
+class QualityGateTool extends AgentTool {
+  QualityGateTool()
+      : super(
+          name: 'brainweave_quality_gate',
+          description: 'Run quality checks on agent output against acceptance criteria. '
+              'Returns pass/fail with score and recommendations.',
+          inputSchema: {
+            'output': {
+              'type': 'string',
+              'description': 'The agent output to evaluate.',
+            },
+            'acceptanceCriteria': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': 'List of criteria to check against.',
+            },
+            'taskName': {
+              'type': 'string',
+              'description': 'Name of the task being evaluated.',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final output = parameters['output'] as String?;
+    if (output == null || output.isEmpty) {
+      return ToolResult.failure('Missing output parameter');
+    }
+    try {
+      final result = await _mcpClient.qualityGate(
+        output: output,
+        acceptanceCriteria: (parameters['acceptanceCriteria'] as List?)?.cast<String>() ?? [],
+        taskName: parameters['taskName'] as String? ?? 'unknown',
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Quality gate failed: $e');
+    }
+  }
+}
+
+/// GSD: Load minimal context (PROJECT.md, STATE.md, etc.)
+class LoadMinimalContextTool extends AgentTool {
+  LoadMinimalContextTool()
+      : super(
+          name: 'brainweave_load_minimal_context',
+          description: 'Load GSD-style persistent context files (PROJECT.md, '
+              'REQUIREMENTS.md, STATE.md, CONTEXT.md) from the knowledge graph.',
+          inputSchema: {},
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.loadMinimalContext();
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Load context failed: $e');
+    }
+  }
+}
+
+/// ECC: Show learned instincts with confidence
+class InstinctStatusTool extends AgentTool {
+  InstinctStatusTool()
+      : super(
+          name: 'brainweave_instinct_status',
+          description: 'Show learned instincts grouped by category with confidence scores. '
+              'Part of the ECC continuous learning system.',
+          inputSchema: {},
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.instinctStatus();
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Instinct status failed: $e');
+    }
+  }
+}
+
+/// ECC: Evolve instincts into skills
+class EvolveTool extends AgentTool {
+  EvolveTool()
+      : super(
+          name: 'brainweave_evolve',
+          description: 'Cluster related instincts into reusable skills. '
+              'Uses Gemini to identify patterns and create skill nodes.',
+          inputSchema: {},
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.evolve();
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Evolve failed: $e');
+    }
+  }
+}
+
+/// GSD Brownfield Mapping: Map existing knowledge base
+class MapKnowledgeBaseTool extends AgentTool {
+  MapKnowledgeBaseTool()
+      : super(
+          name: 'brainweave_map_knowledge_base',
+          description: 'Analyze and map the existing knowledge base. '
+              'Produces architecture, patterns, conventions, gaps, and recommendations.',
+          inputSchema: {},
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.mapKnowledgeBase();
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Knowledge base mapping failed: $e');
+    }
+  }
+}

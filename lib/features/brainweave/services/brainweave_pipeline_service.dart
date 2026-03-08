@@ -436,6 +436,118 @@ class BrainWeavePipelineService {
       return [];
     }
   }
+
+  // ═══════════════════════════════════════════════════════════
+  // GSD + ECC Upgrade: Wave Execution + Quick Mode (F3, F5)
+  // ═══════════════════════════════════════════════════════════
+
+  /// GSD Wave Execution: Run multiple subagents in parallel batches.
+  /// Each wave contains independent tasks that can execute concurrently.
+  /// Only active when brainweaveGsdEccEnabled is true.
+  Future<List<Map<String, dynamic>>> executeWave({
+    required String sessionId,
+    required List<Map<String, dynamic>> tasks,
+    int maxConcurrency = 3,
+  }) async {
+    if (!FeatureFlags.brainweaveGsdEccEnabled) {
+      debugPrint('BrainWeavePipeline: Wave execution requires GSD+ECC flag');
+      return [];
+    }
+
+    debugPrint('BrainWeavePipeline: Executing wave with ${tasks.length} tasks (max $maxConcurrency concurrent)');
+    final results = <Map<String, dynamic>>[];
+
+    // Process in batches of maxConcurrency
+    for (var i = 0; i < tasks.length; i += maxConcurrency) {
+      final batch = tasks.sublist(
+        i,
+        (i + maxConcurrency > tasks.length) ? tasks.length : i + maxConcurrency,
+      );
+
+      final futures = batch.map((task) async {
+        try {
+          final response = await _callGoEngine(
+            sessionId: sessionId,
+            phase: task['phase'] as String? ?? 'reduce',
+            input: task['input'] as String? ?? '',
+          );
+          return {'task': task['name'] ?? 'unnamed', 'status': 'success', 'output': response};
+        } catch (e) {
+          return {'task': task['name'] ?? 'unnamed', 'status': 'error', 'error': e.toString()};
+        }
+      });
+
+      final batchResults = await Future.wait(futures);
+      results.addAll(batchResults);
+
+      _blackboard.addEvent(
+        WorkflowEventType.agentAction,
+        'Wave batch ${(i ~/ maxConcurrency) + 1} completed: ${batchResults.length} tasks',
+      );
+    }
+
+    return results;
+  }
+
+  /// GSD Multi-Plan: Decompose complex input into parallel tasks.
+  Future<List<Map<String, dynamic>>> multiPlan(String rawInput) async {
+    if (!FeatureFlags.brainweaveGsdEccEnabled) {
+      return [{'phase': 'reduce', 'input': rawInput, 'name': 'single_task'}];
+    }
+
+    try {
+      final result = await AIProxyService.generateContent(
+        prompt: 'Decompose this input into 2-4 independent tasks that can be processed in parallel. '
+            'Return a JSON array of objects with "name", "phase" (reduce/reflect), and "input" fields.\n\n'
+            'Input: $rawInput',
+        config: AIModelConfig(
+          provider: AIProvider.gemini,
+          modelId: FeatureFlags.fastModel,
+          temperature: 0.2,
+        ),
+      );
+      final text = result['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '[]';
+      return List<Map<String, dynamic>>.from(_parseJsonArray(text));
+    } catch (e) {
+      debugPrint('BrainWeavePipeline: Multi-plan decomposition failed: $e');
+      return [{'phase': 'reduce', 'input': rawInput, 'name': 'fallback_single'}];
+    }
+  }
+
+  /// Quick Mode (F5): Abbreviated pipeline — skip Reflect, use fast model.
+  Future<void> runQuickPipeline(String sessionId, String rawInput) async {
+    if (!FeatureFlags.brainweaveGsdEccEnabled) {
+      return runPipeline(sessionId, rawInput);
+    }
+
+    debugPrint('BrainWeavePipeline: Quick Mode — abbreviated 4-phase pipeline');
+    await _getArchitectPrompt();
+
+    // PHASE 1: RECORD
+    _blackboard.transitionTo(BlackboardPhase.brainweaveRecord);
+    await _recordPhase(sessionId, rawInput);
+
+    // PHASE 2: REDUCE (uses fast model via FeatureFlags.fastModel)
+    _blackboard.transitionTo(BlackboardPhase.brainweaveReduce);
+    final insights = await _reducePhase(sessionId, rawInput);
+
+    // SKIP REFLECT — go directly to REWEAVE
+
+    // PHASE 4: REWEAVE (auto-approve in quick mode)
+    _blackboard.transitionTo(BlackboardPhase.brainweaveReweave);
+    _blackboard.updateAgentStatus('BrainWeave Architect', AgentStatus.working);
+    final architectPrompt = await _getArchitectPrompt();
+    await _reweavePhase(insights, architectPrompt);
+
+    // PHASE 5: VERIFY
+    _blackboard.transitionTo(BlackboardPhase.brainweaveVerify);
+    await _verifyPhase(sessionId, architectPrompt);
+
+    // Done — skip Rethink in quick mode
+    _blackboard.transitionTo(BlackboardPhase.idle);
+    _blackboard.updateAgentStatus('BrainWeave Architect', AgentStatus.idle);
+    _blackboard.addEvent(WorkflowEventType.agentFinished, 'BrainWeave Quick Pipeline Complete.');
+  }
 }
 
 final brainWeavePipelineServiceProvider = Provider<BrainWeavePipelineService>((ref) {

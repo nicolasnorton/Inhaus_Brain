@@ -67,6 +67,10 @@ class AppConfig {
   /// When true:  uses Cloud Spanner Graph + Cloud Run MCP API (v2.0)
   static bool brainweaveV2Enabled = false;
 
+  /// BrainWeave GSD + ECC Upgrades — always off by default.
+  /// Activated via Firestore Remote Config only.
+  static bool brainweaveGsdEccEnabled = false;
+
   // ── Display ────────────────────────────────────────
   static String get environmentLabel => isStaging ? 'STAGING' : 'PRODUCTION';
 }

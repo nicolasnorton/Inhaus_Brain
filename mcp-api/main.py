@@ -40,6 +40,9 @@ gemini = GenerativeModel(MODEL_ID)
 embed_model = TextEmbeddingModel.from_pretrained(EMBED_ID)
 publisher = pubsub_v1.PublisherClient()
 PROMOTION_TOPIC = f"projects/{PROJECT}/topics/brainweave-promotions"
+GSD_ECC_ENABLED = os.environ.get("GSD_ECC_ENABLED", "false").lower() == "true"
+FAST_MODEL_ID = os.environ.get("FAST_MODEL", "gemini-3-flash")
+fast_gemini = GenerativeModel(FAST_MODEL_ID)
 
 # ─── Security Constants ──────────────────────────────────────────────────────
 _MAX_CONCURRENT = 100
@@ -1185,11 +1188,547 @@ def security_status():
         return _safe_error()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# GSD + ECC UPGRADE ENDPOINTS (behind GSD_ECC_ENABLED feature flag)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _gsd_ecc_guard():
+    """Return error response if GSD+ECC feature is disabled, else None."""
+    if not GSD_ECC_ENABLED:
+        return jsonify({"error": "GSD+ECC features not enabled", "flag": "GSD_ECC_ENABLED"}), 404
+    return None
+
+
+# ─── F1: GSD Planning / Verification Layer ───────────────────────────────────
+
+@app.route("/brainweave_plan_phase", methods=["POST"])
+@rate_limited
+def plan_phase():
+    """GSD Plan Phase — Takes raw requirements + context, produces XML task spec
+    with acceptance criteria. ECC quality-gate pattern."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        body = request.get_json()
+        owner_id = _authed_owner(request)
+        requirements = _sanitize_text(body.get("requirements", ""), 10000, "requirements")
+        context = _sanitize_text(body.get("context", ""), 10000, "context")
+        phase_num = int(body.get("phase_number", 1))
+
+        if not requirements:
+            return jsonify({"error": "requirements is required"}), 400
+
+        prompt = f"""You are the BrainWeave GSD Planning Engine.
+
+Given these requirements and context, produce an XML task specification with:
+1. Atomic task breakdown (each task small enough for a single agent context window)
+2. Acceptance criteria for each task
+3. Verification steps
+4. Dependencies between tasks
+
+Requirements:
+{requirements}
+
+Context:
+{context}
+
+Phase: {phase_num}
+
+Return ONLY valid XML with this structure:
+<plan phase="{phase_num}">
+  <task id="1" type="auto">
+    <name>Task name</name>
+    <files>Affected files</files>
+    <action>Detailed implementation steps</action>
+    <acceptance_criteria>
+      <criterion>Specific testable criterion</criterion>
+    </acceptance_criteria>
+    <verify>Verification command or check</verify>
+    <done>Definition of done</done>
+    <depends_on></depends_on>
+  </task>
+</plan>"""
+
+        response = gemini.generate_content(prompt)
+        plan_xml = response.text.strip()
+
+        _audit_log("gsd_plan_phase", owner_id, phase=phase_num)
+        return jsonify({
+            "plan_xml": plan_xml,
+            "phase": phase_num,
+            "owner_id": owner_id,
+            "status": "planned",
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"plan_phase error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
+@app.route("/brainweave_verify_requirements", methods=["POST"])
+@rate_limited
+def verify_requirements():
+    """GSD Verify — Validates a plan XML against requirements, returns pass/fail + gaps."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        body = request.get_json()
+        owner_id = _authed_owner(request)
+        plan_xml = _sanitize_text(body.get("plan_xml", ""), 20000, "plan_xml")
+        requirements = _sanitize_text(body.get("requirements", ""), 10000, "requirements")
+
+        if not plan_xml or not requirements:
+            return jsonify({"error": "plan_xml and requirements are required"}), 400
+
+        prompt = f"""You are the BrainWeave Verification Engine.
+
+Compare this plan against the requirements and determine:
+1. Which requirements are fully covered
+2. Which requirements have gaps
+3. Overall pass/fail status
+4. Suggested fixes for any gaps
+
+Plan:
+{plan_xml}
+
+Requirements:
+{requirements}
+
+Return JSON:
+{{
+  "status": "pass" or "fail",
+  "covered": ["requirement 1", ...],
+  "gaps": [{{
+    "requirement": "...",
+    "gap_description": "...",
+    "suggested_fix": "..."
+  }}],
+  "confidence": 0.0-1.0
+}}"""
+
+        response = gemini.generate_content(prompt)
+        result_text = response.text.strip()
+        try:
+            result = json.loads(result_text.replace("```json", "").replace("```", "").strip())
+        except json.JSONDecodeError:
+            result = {"status": "error", "raw": result_text}
+
+        _audit_log("gsd_verify_requirements", owner_id)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"verify_requirements error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
+@app.route("/brainweave_quality_gate", methods=["POST"])
+@rate_limited
+def quality_gate():
+    """ECC Quality Gate — Runs quality checks on agent output before commit."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        body = request.get_json()
+        owner_id = _authed_owner(request)
+        output = _sanitize_text(body.get("output", ""), 20000, "output")
+        acceptance_criteria = body.get("acceptance_criteria", [])
+        task_name = body.get("task_name", "unknown")
+
+        if not output:
+            return jsonify({"error": "output is required"}), 400
+
+        criteria_text = "\n".join(f"- {c}" for c in acceptance_criteria) if acceptance_criteria else "No explicit criteria provided."
+
+        prompt = f"""You are the BrainWeave Quality Gate.
+
+Evaluate this agent output against the acceptance criteria.
+Check for: completeness, correctness, security issues, code quality.
+
+Task: {task_name}
+
+Output:
+{output}
+
+Acceptance Criteria:
+{criteria_text}
+
+Return JSON:
+{{
+  "passed": true/false,
+  "score": 0.0-1.0,
+  "criteria_results": [{{
+    "criterion": "...",
+    "met": true/false,
+    "note": "..."
+  }}],
+  "security_flags": ["any security concerns"],
+  "recommendation": "approve" or "revise" or "reject"
+}}"""
+
+        response = gemini.generate_content(prompt)
+        result_text = response.text.strip()
+        try:
+            result = json.loads(result_text.replace("```json", "").replace("```", "").strip())
+        except json.JSONDecodeError:
+            result = {"passed": False, "raw": result_text}
+
+        _audit_log("gsd_quality_gate", owner_id, task=task_name, passed=result.get("passed", False))
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"quality_gate error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
+# ─── F2: Persistent Context + ECC Instinct-Based Memory ─────────────────────
+
+@app.route("/brainweave_load_minimal_context", methods=["POST"])
+@rate_limited
+def load_minimal_context():
+    """Load GSD-style minimal context: PROJECT.md + STATE.md + latest CONTEXT.md
+    from the user's knowledge graph."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        owner_id = _authed_owner(request)
+
+        # Query nodes that serve as persistent context files
+        context_types = ["PROJECT", "REQUIREMENTS", "STATE", "CONTEXT"]
+        context_docs = {}
+
+        for ctx_type in context_types:
+            with database.snapshot() as snapshot:
+                rows = list(snapshot.execute_sql(
+                    "SELECT title, content, updated_at FROM BrainWeaveNodes "
+                    "WHERE owner_id = @oid AND node_type = 'context_file' "
+                    "AND title = @title ORDER BY updated_at DESC LIMIT 1",
+                    params={"oid": owner_id, "title": f"{ctx_type}.md"},
+                    param_types={
+                        "oid": spanner.param_types.STRING,
+                        "title": spanner.param_types.STRING,
+                    },
+                ))
+            if rows:
+                context_docs[ctx_type] = {
+                    "title": rows[0][0],
+                    "content": rows[0][1],
+                    "updated_at": str(rows[0][2]),
+                }
+            else:
+                context_docs[ctx_type] = {"title": f"{ctx_type}.md", "content": "", "status": "not_created"}
+
+        return jsonify({"context": context_docs, "owner_id": owner_id})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"load_minimal_context error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
+@app.route("/brainweave_instinct_status", methods=["POST"])
+@rate_limited
+def instinct_status():
+    """ECC Instinct Status — Returns learned instincts with confidence scores."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        owner_id = _authed_owner(request)
+
+        # Instincts are stored as nodes with type 'instinct'
+        with database.snapshot() as snapshot:
+            rows = list(snapshot.execute_sql(
+                "SELECT node_id, title, description, confidence, topics, metadata, updated_at "
+                "FROM BrainWeaveNodes "
+                "WHERE owner_id = @oid AND node_type = 'instinct' "
+                "ORDER BY confidence DESC LIMIT 50",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))
+
+        instincts = []
+        categories = {}
+        for row in rows:
+            inst = {
+                "id": row[0],
+                "pattern": row[1],
+                "description": row[2],
+                "confidence": row[3],
+                "categories": list(row[4]) if row[4] else [],
+                "metadata": row[5],
+                "last_reinforced": str(row[6]),
+            }
+            instincts.append(inst)
+            for cat in inst["categories"]:
+                categories.setdefault(cat, []).append(inst["pattern"])
+
+        return jsonify({
+            "instincts": instincts,
+            "count": len(instincts),
+            "categories": categories,
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"instinct_status error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
+@app.route("/brainweave_evolve", methods=["POST"])
+@rate_limited
+def evolve():
+    """ECC Evolve — Cluster related instincts into skills using Gemini."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        body = request.get_json() or {}
+        owner_id = _authed_owner(request)
+
+        # Fetch all instincts
+        with database.snapshot() as snapshot:
+            rows = list(snapshot.execute_sql(
+                "SELECT node_id, title, description, topics FROM BrainWeaveNodes "
+                "WHERE owner_id = @oid AND node_type = 'instinct' "
+                "ORDER BY confidence DESC LIMIT 100",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))
+
+        if not rows:
+            return jsonify({"message": "No instincts found to evolve.", "skills_created": 0})
+
+        instinct_text = "\n".join(
+            f"- {r[1]}: {r[2]} (topics: {', '.join(list(r[3]) if r[3] else [])})"
+            for r in rows
+        )
+
+        prompt = f"""You are the BrainWeave Evolution Engine.
+
+Analyze these learned instincts and cluster them into coherent skills.
+Each skill should represent a reusable workflow or pattern.
+
+Instincts:
+{instinct_text}
+
+Return JSON:
+{{
+  "skills": [{{
+    "name": "skill name",
+    "description": "what this skill does",
+    "instinct_ids": ["id1", "id2"],
+    "workflow_steps": ["step 1", "step 2"],
+    "confidence": 0.0-1.0
+  }}]
+}}"""
+
+        response = gemini.generate_content(prompt)
+        result_text = response.text.strip()
+        try:
+            result = json.loads(result_text.replace("```json", "").replace("```", "").strip())
+        except json.JSONDecodeError:
+            result = {"skills": [], "raw": result_text}
+
+        # Create skill nodes in the graph
+        skills_created = 0
+        for skill in result.get("skills", []):
+            skill_id = str(uuid.uuid4())
+            try:
+                def write_skill(transaction, sid=skill_id, s=skill):
+                    transaction.insert(
+                        "BrainWeaveNodes",
+                        columns=[
+                            "node_id", "owner_id", "scope", "title", "description",
+                            "content", "node_type", "topics", "confidence",
+                            "source_agent", "metadata", "created_at", "updated_at",
+                        ],
+                        values=[[
+                            sid, owner_id, "PRIVATE", s["name"], s["description"],
+                            json.dumps(s.get("workflow_steps", [])), "skill",
+                            [], s.get("confidence", 0.8),
+                            "evolve_engine", json.dumps({"instinct_ids": s.get("instinct_ids", [])}),
+                            spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
+                        ]],
+                    )
+                database.run_in_transaction(write_skill)
+                skills_created += 1
+            except Exception as e:
+                app.logger.warning(f"Failed to create skill node: {e}")
+
+        _audit_log("gsd_evolve", owner_id, skills_created=skills_created)
+        return jsonify({"skills": result.get("skills", []), "skills_created": skills_created})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"evolve error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
+# ─── F4: Pre/Post-Tool Hooks (AgentShield-style) ────────────────────────────
+
+def _pre_tool_hook(action: str, owner_id: str, body: dict) -> dict | None:
+    """AgentShield-style pre-tool validation. Returns error dict if blocked, None if ok."""
+    if not GSD_ECC_ENABLED:
+        return None
+
+    # Content safety: block obvious injection patterns
+    for field in ["title", "description", "content"]:
+        val = body.get(field, "")
+        if val and any(pattern in val.lower() for pattern in [
+            "<script", "javascript:", "onclick=", "onerror=",
+            "DROP TABLE", "DELETE FROM", "; --",
+        ]):
+            _audit_log("agent_shield_blocked", owner_id, action=action, field=field,
+                       reason="Potential injection detected")
+            return {"blocked": True, "reason": f"Content safety violation in {field}"}
+
+    return None
+
+
+def _post_tool_hook(action: str, owner_id: str, result: dict):
+    """Post-tool hook: create versioned snapshot after write operations."""
+    if not GSD_ECC_ENABLED:
+        return
+
+    try:
+        snapshot_id = str(uuid.uuid4())
+        def write_snapshot(transaction):
+            transaction.insert(
+                "BrainWeaveNodes",
+                columns=[
+                    "node_id", "owner_id", "scope", "title", "description",
+                    "content", "node_type", "topics", "confidence",
+                    "source_agent", "metadata", "created_at", "updated_at",
+                ],
+                values=[[
+                    snapshot_id, owner_id, "PRIVATE",
+                    f"Snapshot: {action}",
+                    f"Automated snapshot after {action}",
+                    json.dumps(result)[:_MAX_CONTENT_LEN],
+                    "snapshot", ["gsd", "audit"],
+                    1.0, "agent_shield",
+                    json.dumps({"action": action, "timestamp": datetime.utcnow().isoformat()}),
+                    spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
+                ]],
+            )
+        database.run_in_transaction(write_snapshot)
+    except Exception as e:
+        app.logger.warning(f"Post-tool snapshot failed (non-fatal): {e}")
+
+
+# ─── F5: Model Tier Routing ─────────────────────────────────────────────────
+
+def _get_model_for_task(complexity: str = "normal"):
+    """Route to appropriate model tier based on task complexity.
+    Only active when GSD+ECC is enabled; otherwise always uses default model."""
+    if not GSD_ECC_ENABLED:
+        return gemini
+    if complexity in ("low", "quick", "fast"):
+        return fast_gemini
+    return gemini  # default: pro model for normal/high complexity
+
+
+# ─── F6: Brownfield Mapping ──────────────────────────────────────────────────
+
+@app.route("/brainweave_map_knowledge_base", methods=["POST"])
+@rate_limited
+def map_knowledge_base():
+    """GSD Brownfield Mapping — Parallel analysis of vault contents,
+    produces architecture/pattern/convention map."""
+    guard = _gsd_ecc_guard()
+    if guard: return guard
+    try:
+        owner_id = _authed_owner(request)
+
+        # Fetch all nodes for the owner (up to 200)
+        with database.snapshot() as snapshot:
+            nodes = list(snapshot.execute_sql(
+                "SELECT node_id, title, node_type, topics, description "
+                "FROM BrainWeaveNodes WHERE owner_id = @oid "
+                "ORDER BY updated_at DESC LIMIT 200",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))
+
+        if not nodes:
+            return jsonify({"message": "No knowledge base found.", "map": {}})
+
+        # Fetch edges for structure analysis
+        with database.snapshot() as snapshot:
+            edges = list(snapshot.execute_sql(
+                "SELECT source_node_id, target_node_id, relationship_type, weight "
+                "FROM BrainWeaveEdges WHERE owner_id = @oid LIMIT 500",
+                params={"oid": owner_id},
+                param_types={"oid": spanner.param_types.STRING},
+            ))
+
+        node_summary = "\n".join(
+            f"- [{r[2]}] {r[1]}: {r[4][:100] if r[4] else 'No description'} (topics: {', '.join(list(r[3]) if r[3] else [])})"
+            for r in nodes[:50]  # Sample for Gemini context window
+        )
+
+        edge_summary = f"{len(edges)} edges connecting {len(nodes)} nodes"
+
+        prompt = f"""You are the BrainWeave Brownfield Mapping Engine.
+
+Analyze this knowledge base and produce a comprehensive map:
+
+Nodes ({len(nodes)} total):
+{node_summary}
+
+Graph Structure: {edge_summary}
+
+Return JSON:
+{{
+  "architecture": {{
+    "primary_domains": ["domain1", "domain2"],
+    "knowledge_clusters": [{{
+      "name": "cluster name",
+      "node_count": 5,
+      "key_topics": ["topic1"]
+    }}],
+    "maturity_level": "nascent|growing|mature"
+  }},
+  "patterns": [{{
+    "name": "pattern name",
+    "description": "what this pattern is",
+    "frequency": "high|medium|low"
+  }}],
+  "conventions": [{{
+    "convention": "naming convention or structural pattern",
+    "adherence": "consistent|partial|inconsistent"
+  }}],
+  "gaps": ["area lacking coverage"],
+  "recommendations": ["suggested improvement"]
+}}"""
+
+        response = gemini.generate_content(prompt)
+        result_text = response.text.strip()
+        try:
+            result = json.loads(result_text.replace("```json", "").replace("```", "").strip())
+        except json.JSONDecodeError:
+            result = {"raw": result_text}
+
+        _audit_log("gsd_map_knowledge_base", owner_id, node_count=len(nodes))
+        return jsonify({"map": result, "node_count": len(nodes), "edge_count": len(edges)})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"map_knowledge_base error: {e}\n{tb_module.format_exc()}")
+        return _safe_error()
+
+
 # ─── Health ──────────────────────────────────────────────────────────────────
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "healthy", "service": "brainweave-mcp-api", "version": "2.1-hardened"}), 200
+    return jsonify({
+        "status": "healthy",
+        "service": "brainweave-mcp-api",
+        "version": "2.1-gsd-ecc",
+        "gsd_ecc_enabled": GSD_ECC_ENABLED,
+    }), 200
 
 
 if __name__ == "__main__":
