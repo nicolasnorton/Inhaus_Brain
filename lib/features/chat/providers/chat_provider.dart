@@ -1109,6 +1109,8 @@ class _A2uiParseResult {
 _A2uiParseResult _extractA2uiPayload(String text) {
   Map<String, dynamic>? uiPayload;
   String cleanText = text;
+  List<String> agentThoughts = [];
+  
   final a2uiRegex = RegExp(r'```json\s*---a2ui_JSON---\s*(\{.*?\})\s*```', dotAll: true, caseSensitive: false);
   final matches = a2uiRegex.allMatches(text);
   
@@ -1139,6 +1141,39 @@ _A2uiParseResult _extractA2uiPayload(String text) {
     cleanText = text.replaceAll(a2uiRegex, '').trim();
     debugPrint('ChatProvider: Intercepted A2UI data. Cleaned text length: ${cleanText.length}');
   }
+
+  // Parse loose JSON lines (Agent Thoughts / Metadata Leakage)
+  final buf = StringBuffer();
+  for (final line in cleanText.split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith('{"type":') && (trimmed.contains('"beginRendering"') || trimmed.contains('"surfaceUpdate"'))) {
+      agentThoughts.add(trimmed);
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map<String, dynamic>) {
+          uiPayload ??= {};
+          if (decoded['data'] != null) {
+              uiPayload!.addAll(Map<String, dynamic>.from(decoded['data']));
+              if (decoded['type'] == 'beginRendering' && decoded['data']['component'] != null) {
+                  uiPayload!['type'] = decoded['data']['component'];
+              }
+          } else {
+              uiPayload!.addAll(decoded);
+          }
+        }
+      } catch (_) {}
+    } else {
+      buf.writeln(line);
+    }
+  }
+  
+  cleanText = buf.toString().trim();
+  
+  if (agentThoughts.isNotEmpty) {
+    uiPayload ??= {};
+    uiPayload!['agentThoughts'] = agentThoughts;
+  }
+
   return _A2uiParseResult(cleanText, uiPayload);
 }
 
