@@ -593,26 +593,28 @@ class DashboardHome extends ConsumerWidget {
                   ),
                 ),
               // Icon + Label
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(icon, size: 28, color: Colors.white.withValues(alpha: 0.9)),
-                    const SizedBox(height: 10),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 28, color: Colors.white.withValues(alpha: 0.9)),
+                      const SizedBox(height: 12),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 14, 
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      textAlign: TextAlign.left,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
