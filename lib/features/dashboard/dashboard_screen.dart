@@ -453,7 +453,7 @@ class DashboardHome extends ConsumerWidget {
                           icon: FontAwesomeIcons.gear,
                           label: AppLocalizations.of(context)!.navSettings,
                           onTap: () => context.go('/settings'),
-                          imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&q=80',
+                          imageUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&q=80',
                         ),
                         _buildNavCard(
                           context,
@@ -555,7 +555,7 @@ class DashboardHome extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: borderColor,
           width: 1,
@@ -565,7 +565,7 @@ class DashboardHome extends ConsumerWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           highlightColor: accentColor.withValues(alpha: 0.05),
           splashColor: accentColor.withValues(alpha: 0.1),
           child: Stack(
@@ -578,19 +578,10 @@ class DashboardHome extends ConsumerWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                 ),
-              // Dark gradient overlay
+              // Dark overlay
               if (imageUrl != null)
                 Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.3),
-                        Colors.black.withValues(alpha: 0.7),
-                      ],
-                    ),
-                  ),
+                  color: Colors.black.withValues(alpha: 0.55),
                 ),
               // Icon + Label
               Center(
@@ -600,13 +591,13 @@ class DashboardHome extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(icon, size: 28, color: Colors.white.withValues(alpha: 0.9)),
-                      const SizedBox(height: 12),
+                      Icon(icon, size: 24, color: Colors.white),
+                      const SizedBox(height: 8),
                       Text(
                         label,
                         style: const TextStyle(
-                          fontSize: 14, 
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13, 
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                         textAlign: TextAlign.center,
