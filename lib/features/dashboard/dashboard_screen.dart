@@ -157,10 +157,10 @@ class DashboardScreen extends ConsumerWidget {
                         _buildNavItem(context, 6, FontAwesomeIcons.book, AppLocalizations.of(context)!.navKnowledge, ref), // Enabled for all
                         _buildNavItem(context, 10, FontAwesomeIcons.clipboardList, "Reports", ref),
                         _buildNavItem(context, 11, FontAwesomeIcons.building, "Agency", ref),
-                        if (!isClient) _buildNavItem(context, 12, FontAwesomeIcons.wandMagicSparkles, "Composer", ref),
+                        _buildNavItem(context, 12, FontAwesomeIcons.wandMagicSparkles, "Composer", ref),
                         if (FeatureFlags.brainweaveEnabled) _buildNavItem(context, 13, FontAwesomeIcons.brain, "BrainWeave", ref),
                         _buildNavItem(context, 7, FontAwesomeIcons.gear, AppLocalizations.of(context)!.navSettings, ref),
-                        if (!isClient) _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
+                        _buildNavItem(context, 8, FontAwesomeIcons.bug, AppLocalizations.of(context)!.navDebug, ref),
                         _buildNavItem(context, 9, FontAwesomeIcons.userShield, 'Admin', ref), // Enabled for all
                         const SizedBox(height: 20),
                       ],
@@ -357,7 +357,7 @@ class DashboardHome extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            AppLocalizations.of(context)!.welcomeBack(displayName),
+            AppLocalizations.of(context)!.welcomeBack(displayName.toUpperCase()),
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
