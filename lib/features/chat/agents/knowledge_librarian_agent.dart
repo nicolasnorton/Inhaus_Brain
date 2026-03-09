@@ -22,6 +22,10 @@ class KnowledgeLibrarianAgent extends BaseAgent {
   @override
   List<AgentTool> get tools => [
         QueryBrainWeaveTool(),
+        MeetingSyncTool(),
+        AnnotateTool(),
+        FeedbackTool(),
+        GetExternalDocTool(),
         GetNodeContextTool(),
         CreateAtomicNodeTool(),
         PromoteNodeTool(),

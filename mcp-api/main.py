@@ -40,7 +40,8 @@ gemini = GenerativeModel(MODEL_ID)
 embed_model = TextEmbeddingModel.from_pretrained(EMBED_ID)
 publisher = pubsub_v1.PublisherClient()
 PROMOTION_TOPIC = f"projects/{PROJECT}/topics/brainweave-promotions"
-GSD_ECC_ENABLED = os.environ.get("GSD_ECC_ENABLED", "false").lower() == "true"
+GSD_ECC_ENABLED = os.environ.get("GSD_ECC_ENABLED", "true").lower() == "true"
+CONTEXT_HUB_ENABLED = os.environ.get("CONTEXT_HUB_ENABLED", "true").lower() == "true"
 FAST_MODEL_ID = os.environ.get("FAST_MODEL", "gemini-3-flash")
 fast_gemini = GenerativeModel(FAST_MODEL_ID)
 
@@ -509,13 +510,36 @@ def context():
             param_types={"nid": spanner.param_types.STRING, "oid": spanner.param_types.STRING},
         ))
 
+    # Annotations (Context-Hub)
+    annotations = []
+    if CONTEXT_HUB_ENABLED:
+        with database.snapshot() as snapshot:
+            ann_rows = list(snapshot.execute_sql(
+                "SELECT annotation_id, text, created_at, owner_id "
+                "FROM BrainWeaveAnnotations WHERE node_id = @nid "
+                "ORDER BY created_at ASC",
+                params={"nid": node_id},
+                param_types={"nid": spanner.param_types.STRING},
+            ))
+            for r in ann_rows:
+                annotations.append({
+                    "annotation_id": r[0], "text": r[1], 
+                    "created_at": str(r[2]), "owner_id": r[3]
+                })
+
     return jsonify({
         "node": node,
         "incoming": [
             {"edge_id": r[0], "type": r[1], "confidence": r[2],
              "source_id": r[3], "source_title": r[4]}
             for r in incoming
-        "edges": edges,
+        ],
+        "outgoing": [
+            {"edge_id": r[0], "type": r[1], "confidence": r[2],
+             "target_id": r[3], "target_title": r[4]}
+            for r in outgoing
+        ],
+        "annotations": annotations,
     })
 
 
@@ -928,6 +952,7 @@ def get_graph_data():
     try:
         owner_id = _authed_owner(request)
         
+        database = _get_database(request)
         # 1. Fetch nodes
         with database.snapshot() as snapshot:
             node_results = list(snapshot.execute_sql(
@@ -990,6 +1015,7 @@ def agency_graph():
         return jsonify({"error": "Superadmin access required"}), 403
 
     try:
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             node_results = list(snapshot.execute_sql(
                 "SELECT node_id, title, description, content, node_type, topics, scope, "
@@ -1039,6 +1065,7 @@ def stats():
     """Return node/edge counts + estimated cost for the authenticated user."""
     owner_id = _authed_owner(request)
     try:
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             node_count = list(snapshot.execute_sql(
                 "SELECT COUNT(*) FROM BrainWeaveNodes WHERE owner_id = @oid",
@@ -1093,6 +1120,7 @@ def approve_promotion():
     _validate_uuid(promotion_id, "promotion_id")
 
     approver_id = _authed_owner(request)
+    database = _get_database(request)
 
     # Fetch the pending promotion
     with database.snapshot() as snapshot:
@@ -1718,6 +1746,334 @@ Return JSON:
         app.logger.error(f"map_knowledge_base error: {e}\n{tb_module.format_exc()}")
         return _safe_error()
 
+
+# ─── Context-Hub: Meeting Sync ───────────────────────────────────────────────
+
+EXTRACTION_PROMPT_MEETING = """
+You are the BrainWeave Context-Hub Meeting Analyzer.
+Extract structured knowledge from the provided meeting transcript.
+Identify decisions, action items, core claims, and implicit topics.
+
+Return valid JSON:
+{{
+  "nodes": [
+    {{
+      "title": "Clear title for the concept/decision",
+      "description": "Short summary",
+      "content": "Full extracted context",
+      "node_type": "decision",
+      "topics": ["topic1"]
+    }}
+  ],
+  "edges": [
+    {{
+      "source_title": "Title of node from above",
+      "target_title": "Title of another node from above",
+      "relationship_type": "relates_to",
+      "weight": 1.0
+    }}
+  ]
+}}
+
+Transcript:
+---
+{transcript}
+---
+"""
+
+@app.route("/brainweave_meeting_sync", methods=["POST"])
+@rate_limited
+def meeting_sync():
+    """Ingest Zoom/Meet transcripts via Vertex AI and create atomic nodes."""
+    if not CONTEXT_HUB_ENABLED:
+        return jsonify({"error": "Context-Hub upgrades are disabled"}), 403
+
+    body = request.get_json()
+    transcript = body.get("transcript", "")
+    owner_id = _authed_owner(request)
+    client_id = body.get("client_id")
+    scope = body.get("scope", "PRIVATE")
+
+    if not transcript:
+        return jsonify({"error": "transcript is required"}), 400
+
+    try:
+        # 1. Ask Gemini to extract JSON
+        response = gemini.generate_content(
+            EXTRACTION_PROMPT_MEETING.format(transcript=transcript[:50000])
+        )
+        text = response.text.strip()
+        if text.startswith("```json"): text = text[7:]
+        if text.endswith("```"): text = text[:-3]
+        extracted = json.loads(text)
+
+        nodes_data = extracted.get("nodes", [])
+        edges_data = extracted.get("edges", [])
+
+        if not nodes_data:
+            return jsonify({"status": "ok", "nodes_created": 0, "edges_created": 0})
+
+        # 2. Assign IDs and pre-calculate embeddings
+        node_map = {}
+        processed_nodes = []
+        for n in nodes_data:
+            node_id = str(uuid.uuid4())
+            title = _sanitize_text(n.get("title", "Untitled"), _MAX_TITLE_LEN, "title")
+            desc = _sanitize_text(n.get("description", ""), _MAX_DESC_LEN, "desc")
+            content = _sanitize_text(n.get("content", ""), _MAX_CONTENT_LEN, "content")
+            
+            node_map[title] = node_id
+            
+            embed_text = f"{title} {desc} {content[:500]}"
+            embedding = _get_embedding(embed_text)
+
+            processed_nodes.append({
+                "id": node_id,
+                "title": title,
+                "desc": desc,
+                "content": content,
+                "type": n.get("node_type", "atomic"),
+                "topics": n.get("topics", []),
+                "embedding": embedding
+            })
+
+        # 3. Write to Spanner in a transaction
+        def write_txn(transaction):
+            for p in processed_nodes:
+                transaction.insert(
+                    "BrainWeaveNodes",
+                    columns=[
+                        "node_id", "owner_id", "client_id", "scope",
+                        "title", "description", "content", "node_type",
+                        "topics", "embedding", "source_agent", "confidence",
+                        "created_at", "updated_at",
+                    ],
+                    values=[[
+                        p["id"], owner_id, client_id, scope,
+                        p["title"], p["desc"], p["content"], p["type"],
+                        p["topics"], p["embedding"], "meeting_sync_tool", 1.0,
+                        spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
+                    ]],
+                )
+            
+            # Edges
+            for e in edges_data:
+                src_id = node_map.get(e.get("source_title"))
+                tgt_id = node_map.get(e.get("target_title"))
+                if src_id and tgt_id and src_id != tgt_id:
+                    transaction.insert(
+                        "BrainWeaveEdges",
+                        columns=[
+                            "edge_id", "owner_id", "source_node_id",
+                            "target_node_id", "relationship_type",
+                            "weight", "confidence", "created_at",
+                        ],
+                        values=[[
+                            str(uuid.uuid4()), owner_id, src_id, tgt_id,
+                            e.get("relationship_type", "relates_to"), e.get("weight", 1.0), 1.0,
+                            spanner.COMMIT_TIMESTAMP,
+                        ]],
+                    )
+
+        database.run_in_transaction(write_txn)
+
+        return jsonify({"status": "ok", "nodes_created": len(processed_nodes), "edges_created": len(edges_data)})
+    except Exception as e:
+        app.logger.error(f"Meeting Sync error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Context-Hub: Annotations ────────────────────────────────────────────────
+
+@app.route("/brainweave_annotate", methods=["POST"])
+@rate_limited
+def annotate():
+    """Appends an annotation to a specific node."""
+    if not CONTEXT_HUB_ENABLED:
+        return jsonify({"error": "Context-Hub is disabled"}), 403
+
+    body = request.get_json()
+    node_id = body.get("node_id")
+    text = body.get("text")
+    owner_id = _authed_owner(request)
+
+    if not node_id or not text:
+        return jsonify({"error": "node_id and text are required"}), 400
+
+    annotation_id = str(uuid.uuid4())
+
+    def write_txn(transaction):
+        transaction.insert(
+            "BrainWeaveAnnotations",
+            columns=["annotation_id", "node_id", "owner_id", "text", "created_at"],
+            values=[[annotation_id, node_id, owner_id, text, spanner.COMMIT_TIMESTAMP]],
+        )
+    try:
+        database.run_in_transaction(write_txn)
+        return jsonify({"status": "ok", "annotation_id": annotation_id})
+    except Exception as e:
+        app.logger.error(f"Annotate error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ─── Context-Hub: Feedback ───────────────────────────────────────────────────
+
+@app.route("/brainweave_feedback", methods=["POST"])
+@rate_limited
+def feedback():
+    """Up/down votes a node or annotation."""
+    if not CONTEXT_HUB_ENABLED:
+        return jsonify({"error": "Context-Hub is disabled"}), 403
+
+    body = request.get_json()
+    target_id = body.get("target_id")
+    vote = body.get("vote")
+    owner_id = _authed_owner(request)
+
+    if not target_id or vote not in (1, -1):
+        return jsonify({"error": "target_id requested and vote must be 1 or -1"}), 400
+
+    feedback_id = str(uuid.uuid4())
+
+    def write_txn(transaction):
+        transaction.insert(
+            "BrainWeaveFeedbacks",
+            columns=["feedback_id", "target_id", "owner_id", "vote", "created_at"],
+            values=[[feedback_id, target_id, owner_id, vote, spanner.COMMIT_TIMESTAMP]],
+        )
+    try:
+        database.run_in_transaction(write_txn)
+        return jsonify({"status": "ok", "feedback_id": feedback_id})
+    except Exception as e:
+        app.logger.error(f"Feedback error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ─── Context-Hub: Versioned External Docs ──────────────────────────────────────
+
+import requests
+
+@app.route("/brainweave_get_external_doc", methods=["POST"])
+@rate_limited
+def get_external_doc():
+    """Fetches an external Markdown document and stores it as a versioned node."""
+    if not CONTEXT_HUB_ENABLED:
+        return jsonify({"error": "Context-Hub is disabled"}), 403
+
+    body = request.get_json()
+    url = body.get("url")
+    owner_id = _authed_owner(request)
+
+    if not url:
+        return jsonify({"error": "url is required"}), 400
+
+    try:
+        # Fetch the doc
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        content = resp.text
+
+        node_id = str(uuid.uuid4())
+        title = url.split("/")[-1] or "External Document"
+        desc = f"Imported from {url}"
+        
+        embed_text = f"{title} {desc} {content[:500]}"
+        embedding = _get_embedding(embed_text)
+
+        def write_txn(transaction):
+            transaction.insert(
+                "BrainWeaveNodes",
+                columns=[
+                    "node_id", "owner_id", "title", "description", "content", 
+                    "node_type", "topics", "embedding", "source_agent", "confidence",
+                    "created_at", "updated_at", "metadata"
+                ],
+                values=[[
+                    node_id, owner_id, title[:_MAX_TITLE_LEN], desc[:_MAX_DESC_LEN], 
+                    content[:_MAX_CONTENT_LEN], "external_doc", ["imported", "external"],
+                    embedding, "external_doc_tool", 1.0, spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
+                    json.dumps({"url": url, "version": 1})
+                ]],
+            )
+
+        database.run_in_transaction(write_txn)
+        return jsonify({"status": "ok", "node_id": node_id, "snippet": content[:1000]})
+    except Exception as e:
+        app.logger.error(f"Get external doc error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ─── Context-Hub: Instinct / Evolution Layer ───────────────────────────────────
+
+@app.route("/brainweave_context_hub_instincts", methods=["POST"])
+@rate_limited
+def context_hub_instincts():
+    """Returns current highly voted gaps, unresolved contradictions, and new instincts."""
+    if not CONTEXT_HUB_ENABLED:
+        return jsonify({"error": "Context-Hub is disabled"}), 403
+
+    # In a full setup, this queries Spanner for feedback scores or reads from Pub/Sub
+    # For now, we simulate fetching aggregated instincts.
+    with database.snapshot() as snapshot:
+        # Get target_ids with net negative votes as "gaps"
+        negative = list(snapshot.execute_sql(
+            "SELECT target_id, SUM(vote) "
+            "FROM BrainWeaveFeedbacks "
+            "GROUP BY target_id HAVING SUM(vote) < 0"
+        ))
+        
+        # Get highly positive elements as "instincts"
+        positive = list(snapshot.execute_sql(
+            "SELECT target_id, SUM(vote) "
+            "FROM BrainWeaveFeedbacks "
+            "GROUP BY target_id HAVING SUM(vote) >= 5"
+        ))
+
+    return jsonify({
+        "status": "ok",
+        "gaps": [{"target_id": r[0], "score": r[1]} for r in negative],
+        "strong_instincts": [{"target_id": r[0], "score": r[1]} for r in positive],
+    })
+
+@app.route("/brainweave_evolve", methods=["POST"])
+@rate_limited
+def context_hub_evolve():
+    """Proposes an evolutionary change based on feedback/gaps."""
+    if not CONTEXT_HUB_ENABLED:
+        return jsonify({"error": "Context-Hub is disabled"}), 403
+        
+    body = request.get_json()
+    proposal = body.get("proposal", "")
+    target_id = body.get("target_id")
+    owner_id = _authed_owner(request)
+
+    if not proposal:
+         return jsonify({"error": "Proposal is required"}), 400
+
+    new_node_id = str(uuid.uuid4())
+    embed_text = f"Evolution Proposal: {proposal}"
+    embedding = _get_embedding(embed_text)
+    
+    def write_txn(transaction):
+        # Insert a new rule / methodology node
+        transaction.insert(
+            "BrainWeaveNodes",
+            columns=[
+                "node_id", "owner_id", "title", "description", "content", 
+                "node_type", "topics", "embedding", "source_agent", "confidence",
+                "created_at", "updated_at", "metadata"
+            ],
+            values=[[
+                new_node_id, owner_id, "Evolution Proposal", proposal[:_MAX_DESC_LEN], 
+                proposal[:_MAX_CONTENT_LEN], "moc", ["evolution", "system"],
+                embedding, "ceo_agent", 1.0, spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
+                json.dumps({"target_id": target_id, "status": "proposed"})
+            ]],
+        )
+        
+    try:
+        database.run_in_transaction(write_txn)
+        return jsonify({"status": "ok", "evolution_node_id": new_node_id})
+    except Exception as e:
+        app.logger.error(f"Evolve error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ─── Health ──────────────────────────────────────────────────────────────────
 

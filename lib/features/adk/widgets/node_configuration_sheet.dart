@@ -119,15 +119,6 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
       case WorkflowNodeType.parameterExtractor: return FontAwesomeIcons.magnifyingGlass;
       case WorkflowNodeType.note: return FontAwesomeIcons.noteSticky;
       case WorkflowNodeType.brainweavePipeline: return FontAwesomeIcons.brain;
-      case WorkflowNodeType.creativeFigmaSync:
-      case WorkflowNodeType.creativeImageGen:
-      case WorkflowNodeType.creativeInpaintOutpaint:
-      case WorkflowNodeType.creativeControlNet:
-      case WorkflowNodeType.creativeRelightProduct:
-      case WorkflowNodeType.creativeVideoLipsync:
-      case WorkflowNodeType.creativeCompositingLayers:
-      case WorkflowNodeType.creativeStitchDesign:
-        return FontAwesomeIcons.palette;
       default: return FontAwesomeIcons.circle;
     }
   }
@@ -220,15 +211,6 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
         return const Center(child: Text("Video Generation Config (Coming Soon)"));
       case WorkflowNodeType.brainweavePipeline:
         return _buildBrainWeaveConfig(step);
-      case WorkflowNodeType.creativeFigmaSync:
-      case WorkflowNodeType.creativeImageGen:
-      case WorkflowNodeType.creativeInpaintOutpaint:
-      case WorkflowNodeType.creativeControlNet:
-      case WorkflowNodeType.creativeRelightProduct:
-      case WorkflowNodeType.creativeVideoLipsync:
-      case WorkflowNodeType.creativeCompositingLayers:
-      case WorkflowNodeType.creativeStitchDesign:
-        return const Center(child: Text("Creative Node Config (Coming Soon)"));
     }
   }
 

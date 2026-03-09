@@ -99,3 +99,27 @@ CREATE TABLE PendingPromotions (
 -- ─── Full-Text Search (BM25) ────────────────────────────
 CREATE SEARCH INDEX BrainWeaveNodesTextIndex
   ON BrainWeaveNodes(title_tokens, content_tokens);
+
+-- ─── Context-Hub: Annotations ───────────────────────────
+CREATE TABLE BrainWeaveAnnotations (
+  annotation_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()),
+  node_id       STRING(36) NOT NULL,
+  owner_id      STRING(128) NOT NULL,
+  text          STRING(MAX) NOT NULL,
+  created_at    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),
+
+  CONSTRAINT FK_Annotation_Node FOREIGN KEY (node_id) REFERENCES BrainWeaveNodes(node_id),
+) PRIMARY KEY (annotation_id);
+
+CREATE INDEX AnnotationsByNode ON BrainWeaveAnnotations(node_id);
+
+-- ─── Context-Hub: Feedback ──────────────────────────────
+CREATE TABLE BrainWeaveFeedbacks (
+  feedback_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()),
+  target_id   STRING(36) NOT NULL, -- Can be node_id or annotation_id
+  owner_id    STRING(128) NOT NULL,
+  vote        INT64 NOT NULL, -- 1 for upvote, -1 for downvote
+  created_at  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),
+) PRIMARY KEY (feedback_id);
+
+CREATE INDEX FeedbacksByTarget ON BrainWeaveFeedbacks(target_id);

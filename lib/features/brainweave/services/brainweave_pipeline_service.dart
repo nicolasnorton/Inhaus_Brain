@@ -14,6 +14,8 @@ import '../../workspace/services/agent_registry_service.dart';
 import '../models/brainweave_link.dart';
 import '../models/brainweave_node.dart';
 import '../../../core/config/feature_flags.dart';
+import '../../../core/config/app_environment.dart';
+import 'brainweave_mcp_client.dart';
 
 /// Implements the Ars Contexta 6R Pipeline for BrainWeave.
 /// Guaranteed fresh Gemini 3.1 Pro context per phase to prevent LLM attention decay.
@@ -134,9 +136,27 @@ class BrainWeavePipelineService {
     debugPrint('BrainWeavePipeline: Starting 6R Pipeline for session $sessionId');
     final architectPrompt = await _getArchitectPrompt();
 
+    // Context-Hub Research-First Workflow
+    String enrichedInput = rawInput;
+    if (FeatureFlags.brainweaveContextHubEnabled) {
+       _blackboard.addEvent(WorkflowEventType.agentAction, "Executing Research-First context retrieval...");
+       try {
+         final mcpClient = BrainWeaveMcpClient();
+         final searchResults = await mcpClient.graphQuery(query: rawInput, limit: 3);
+         if (searchResults.isNotEmpty) {
+           enrichedInput += "\n\n[CONTEXT-HUB KNOWLEDGE]\n";
+           for (var r in searchResults) {
+             enrichedInput += "- ${r['title']}: ${r['description']}\n";
+           }
+         }
+       } catch (e) {
+         debugPrint("BrainWeavePipeline: Research-First query failed: $e");
+       }
+    }
+
     // PHASE 1: RECORD
     _blackboard.transitionTo(BlackboardPhase.brainweaveRecord);
-    await _recordPhase(sessionId, rawInput);
+    await _recordPhase(sessionId, enrichedInput);
 
     // PHASE 2: REDUCE
     _blackboard.transitionTo(BlackboardPhase.brainweaveReduce);
@@ -254,6 +274,31 @@ class BrainWeavePipelineService {
       input: insights.join('\n'),
     );
     
+    // CEO-Agent Contradiction Check
+    if (FeatureFlags.brainweaveContextHubEnabled) {
+      _blackboard.addEvent(WorkflowEventType.agentAction, "CEO-Agent analyzing for contradictions & refactors...");
+      final prompt = "You are the BrainWeave CEO Agent. Analyze the following reflections for contradictions against our stored context. If found, suggest a refactor plan to resolve it. If none, reply OK.\n\n${insights.join('\n')}";
+      try {
+        final ceoResponse = await AIProxyService.generateContent(
+          prompt: prompt,
+          config: AIModelConfig(
+            provider: AIProvider.gemini,
+            modelId: FeatureFlags.fastModel,
+          ),
+        );
+        final text = ceoResponse['candidates']?[0]?['content']?['parts']?[0]?['text'] ?? '';
+        if (text.isNotEmpty && !text.toUpperCase().contains('OK')) {
+           _blackboard.addEvent(WorkflowEventType.humanFeedbackNeeded, "CEO-Agent suggests refactor: $text");
+           // Log it to session
+           await _sessions.doc(sessionId).update({
+             'sessionLogs': FieldValue.arrayUnion(['CEO-Agent Refactor Suggestion: $text']),
+           });
+        }
+      } catch (e) {
+        debugPrint("BrainWeavePipeline: CEO-Agent check failed: $e");
+      }
+    }
+
     final output = response['output'] as String;
     return _parseJsonArray(output);
   }

@@ -693,3 +693,157 @@ class MapKnowledgeBaseTool extends AgentTool {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+// BrainWeave Context-Hub Upgrades Tools
+// ═══════════════════════════════════════════════════════════
+
+/// Context-Hub: Meeting Sync
+class MeetingSyncTool extends AgentTool {
+  MeetingSyncTool()
+      : super(
+          name: 'brainweave_meeting_sync',
+          description: 'Extract decisions, claims, action items, and topic nodes '
+              'from a meeting transcript (Zoom, Meet, etc.) into the knowledge graph.',
+          inputSchema: {
+            'transcript': {
+              'type': 'string',
+              'description': 'The full text transcript of the meeting.',
+            },
+            'clientId': {
+              'type': 'string',
+              'description': 'Optional. Link knowledge to a specific client profile.',
+            },
+            'scope': {
+              'type': 'string',
+              'description': 'Scope of the generated nodes. Defaults to PRIVATE.',
+              'enum': ['PRIVATE', 'CLIENT', 'AGENCY']
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final transcript = parameters['transcript'] as String?;
+    if (transcript == null || transcript.isEmpty) {
+      return ToolResult.failure('Missing transcript parameter');
+    }
+
+    try {
+      final result = await _mcpClient.meetingSync(
+        transcript: transcript,
+        clientId: parameters['clientId'] as String?,
+        scope: parameters['scope'] as String?,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Meeting sync failed: $e');
+    }
+  }
+}
+
+/// Context-Hub: Annotate
+class AnnotateTool extends AgentTool {
+  AnnotateTool()
+      : super(
+          name: 'brainweave_annotate',
+          description: 'Append an annotation or context note to an existing knowledge node.',
+          inputSchema: {
+            'nodeId': {
+              'type': 'string',
+              'description': 'The ID of the node to annotate.',
+            },
+            'text': {
+              'type': 'string',
+              'description': 'The annotation text to add.',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final nodeId = parameters['nodeId'] as String?;
+    final text = parameters['text'] as String?;
+    
+    if (nodeId == null || text == null) {
+      return ToolResult.failure('Missing nodeId or text');
+    }
+
+    try {
+      final result = await _mcpClient.annotate(nodeId: nodeId, text: text);
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Annotation failed: $e');
+    }
+  }
+}
+
+/// Context-Hub: Feedback
+class FeedbackTool extends AgentTool {
+  FeedbackTool()
+      : super(
+          name: 'brainweave_feedback',
+          description: 'Upvote or downvote a node or annotation to provide feedback '
+              'to the Evolution loop. Use 1 for upvote, -1 for downvote.',
+          inputSchema: {
+            'targetId': {
+              'type': 'string',
+              'description': 'The ID of the node or annotation to provide feedback on.',
+            },
+            'vote': {
+              'type': 'integer',
+              'description': '1 for upvote, -1 for downvote.',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final targetId = parameters['targetId'] as String?;
+    final vote = parameters['vote'] as int?;
+    
+    if (targetId == null || vote == null || (vote != 1 && vote != -1)) {
+      return ToolResult.failure('Valid targetId and vote (1 or -1) required');
+    }
+
+    try {
+      final result = await _mcpClient.feedback(targetId: targetId, vote: vote);
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Feedback failed: $e');
+    }
+  }
+}
+
+/// Context-Hub: Get External Doc
+class GetExternalDocTool extends AgentTool {
+  GetExternalDocTool()
+      : super(
+          name: 'brainweave_get_external_doc',
+          description: 'Fetch an external Markdown document via URL and store it as a versioned node '
+              'in the BrainWeave graph.',
+          inputSchema: {
+            'url': {
+              'type': 'string',
+              'description': 'The full HTTP/HTTPS URL of the Markdown document.',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final url = parameters['url'] as String?;
+    if (url == null || url.isEmpty) {
+      return ToolResult.failure('Missing url parameter');
+    }
+
+    try {
+      final result = await _mcpClient.getExternalDoc(url: url);
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Get external doc failed: $e');
+    }
+  }
+}
+
+

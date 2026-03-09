@@ -8,3 +8,4 @@ google-cloud-bigquery
 google-cloud-discoveryengine
 google-cloud-spanner
 google-cloud-firestore
+google-cloud-aiplatform

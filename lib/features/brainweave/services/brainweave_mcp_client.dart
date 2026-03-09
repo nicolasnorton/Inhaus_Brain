@@ -230,6 +230,54 @@ class BrainWeaveMcpClient {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // Context-Hub Upgrade Tools (require brainweave_context_hub_enabled)
+  // ═══════════════════════════════════════════════════════════
+
+  /// Extract structured knowledge from a meeting transcript.
+  Future<Map<String, dynamic>> meetingSync({
+    required String transcript,
+    String? clientId,
+    String? scope,
+  }) async {
+    return await _post('brainweave_meeting_sync', {
+      'transcript': transcript,
+      if (clientId != null) 'client_id': clientId,
+      if (scope != null) 'scope': scope,
+    });
+  }
+
+  /// Appends an annotation to a specific node.
+  Future<Map<String, dynamic>> annotate({
+    required String nodeId,
+    required String text,
+  }) async {
+    return await _post('brainweave_annotate', {
+      'node_id': nodeId,
+      'text': text,
+    });
+  }
+
+  /// Up/down votes a node or annotation.
+  Future<Map<String, dynamic>> feedback({
+    required String targetId,
+    required int vote,
+  }) async {
+    return await _post('brainweave_feedback', {
+      'target_id': targetId,
+      'vote': vote,
+    });
+  }
+
+  /// Fetches an external Markdown document and stores it as a versioned node.
+  Future<Map<String, dynamic>> getExternalDoc({
+    required String url,
+  }) async {
+    return await _post('brainweave_get_external_doc', {
+      'url': url,
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // GSD + ECC Upgrade Tools (require brainweave_gsd_ecc_enabled)
   // ═══════════════════════════════════════════════════════════
 

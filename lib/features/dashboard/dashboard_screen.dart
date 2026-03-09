@@ -246,45 +246,42 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, WidgetRef ref) {
     final isSelected = _calculateSelectedIndex(context, ref) == index;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isSelected 
+        ? Theme.of(context).primaryColor 
+        : (Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54);
     
-    final activeTextColor = isDark ? Colors.white : Colors.black87;
-    final inactiveTextColor = isDark ? Colors.white54 : Colors.black54;
-    
-    final activeBgColor = isDark ? const Color(0xFF2C2C2E) : Colors.black.withValues(alpha: 0.05);
-    final inactiveBgColor = Colors.transparent;
-    
+    // In wide mode (width 250), we show row instead of column to look like the production screenshot
     return Semantics(
       label: 'Navigate to $label',
       selected: isSelected,
       button: true,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: InkWell(
+        onTap: () => _onItemTapped(index, context, ref),
         child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+          width: double.infinity,
           decoration: BoxDecoration(
-            color: isSelected ? activeBgColor : inactiveBgColor,
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? Theme.of(context).primaryColor.withValues(alpha: 0.1) : Colors.transparent,
+            border: isSelected ? Border(
+              left: BorderSide(
+                color: Theme.of(context).primaryColor,
+                width: 3,
+              )
+            ) : null,
           ),
-          child: InkWell(
-            onTap: () => _onItemTapped(index, context, ref),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-              child: Row(
-                children: [
-                  Icon(icon, color: isSelected ? activeTextColor : inactiveTextColor, size: 18),
-                  const SizedBox(width: 16),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: isSelected ? activeTextColor : inactiveTextColor,
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ],
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 16),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

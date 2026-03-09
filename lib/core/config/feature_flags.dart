@@ -79,13 +79,18 @@ class FeatureFlags {
 
   /// Controls BrainWeave 2.1 Upgrades (Subagents, Concept Matching, Wiki, Hybrid Search)
   static bool get brainweave21Enabled =>
-      _overrides['brainweave21_enabled'] ?? false;
+      _overrides['brainweave21_enabled'] ?? true;
 
   /// Controls BrainWeave GSD + ECC Upgrades (Planning/Verify, Instincts,
   /// Wave Execution, Atomic Snapshots, Model Routing, Brownfield Mapping).
-  /// Default false — toggle via Firestore `staging_config/feature_flags`.
+  /// Default true.
   static bool get brainweaveGsdEccEnabled =>
-      _overrides['brainweave_gsd_ecc_enabled'] ?? false;
+      _overrides['brainweave_gsd_ecc_enabled'] ?? true;
+
+  /// Controls BrainWeave Context-Hub Upgrades (Meeting Sync, Annotations, External Docs, Evolution).
+  /// Default true.
+  static bool get brainweaveContextHubEnabled =>
+      _overrides['brainweave_context_hub_enabled'] ?? true;
 
   /// When true, PicoClaw prefers Gemma on-device over cloud Gemini.
   /// Default false — cloud is primary for demo reliability.
