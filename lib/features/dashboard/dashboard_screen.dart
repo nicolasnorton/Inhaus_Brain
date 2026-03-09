@@ -42,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
                   // Desktop Sidebar
                   if (!isMobile)
                     Container(
-                      width: 80,
+                      width: 250,
                       color: Theme.of(context).brightness == Brightness.light 
                           ? Colors.black.withValues(alpha: 0.03) 
                           : Theme.of(context).cardColor.withValues(alpha: 0.3),
@@ -357,7 +357,7 @@ class DashboardHome extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            AppLocalizations.of(context)!.welcomeBack(displayName.toUpperCase()),
+            AppLocalizations.of(context)!.welcomeBack(displayName),
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -555,17 +555,13 @@ class DashboardHome extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: borderColor,
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           highlightColor: accentColor.withValues(alpha: 0.05),
           splashColor: accentColor.withValues(alpha: 0.1),
           child: Stack(
