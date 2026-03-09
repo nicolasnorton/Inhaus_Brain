@@ -810,6 +810,7 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       case WorkflowNodeType.creativeVideoLipsync: return FontAwesomeIcons.video;
       case WorkflowNodeType.creativeCompositingLayers: return FontAwesomeIcons.layerGroup;
       case WorkflowNodeType.creativeStitchDesign: return FontAwesomeIcons.google;
+      case WorkflowNodeType.creativeFigmaSync: return FontAwesomeIcons.figma;
     }
   }
 
@@ -869,6 +870,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         return const Color(0xFF059669);
       case WorkflowNodeType.creativeStitchDesign:
         return const Color(0xFF1A73E8);
+      case WorkflowNodeType.creativeFigmaSync:
+        return const Color(0xFFF24E1E); // Figma orange-ish red
     }
   }
 
