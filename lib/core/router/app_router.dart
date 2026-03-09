@@ -24,7 +24,7 @@ import '../../features/onboarding/providers/onboarding_provider.dart';
 import '../../features/auth/auth_screen.dart';
 import '../../features/creative/creative_studio_screen.dart';
 import '../../features/clients/screens/client_list_screen.dart';
-import '../../features/clients/screens/client_create_screen.dart';
+import '../../features/clients/screens/client_intake_chat_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
 import '../../features/clients/screens/client_projects_screen.dart'; // Added
 import '../../features/clients/screens/client_tasks_screen.dart';    // Added
@@ -197,7 +197,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'new',
-                builder: (context, state) => const ClientCreateScreen(),
+                builder: (context, state) => const ClientIntakeChatScreen(),
               ),
               ShellRoute(
                 builder: (context, state, child) {
