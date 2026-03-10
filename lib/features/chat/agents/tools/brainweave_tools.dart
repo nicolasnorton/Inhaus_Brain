@@ -846,4 +846,33 @@ class GetExternalDocTool extends AgentTool {
   }
 }
 
+/// GitNexus: Generate Wiki from subgraph
+class WikiGenerateTool extends AgentTool {
+  WikiGenerateTool()
+      : super(
+          name: 'brainweave_wiki',
+          description: 'Transforms a disorganized subgraph around a specific node into a highly structured '
+              'Markdown Wiki page. Useful for consolidating knowledge into a single document.',
+          inputSchema: {
+            'nodeId': {
+              'type': 'string',
+              'description': 'The exact ID of the central node for the wiki generation.',
+            }
+          },
+        );
 
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final nodeId = parameters['nodeId'] as String?;
+    if (nodeId == null || nodeId.isEmpty) {
+      return ToolResult.failure('Missing nodeId parameter');
+    }
+
+    try {
+      final result = await _mcpClient.wikiGenerate(nodeId: nodeId);
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Wiki generation failed: $e');
+    }
+  }
+}

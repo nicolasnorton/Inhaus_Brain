@@ -26,6 +26,7 @@ CREATE TABLE BrainWeaveNodes (
 
   -- Metadata
   source_agent  STRING(128),
+  provenance    STRING(MAX), -- BrainWeave 2.1: Track origin (CLI, UI, Agent, Meeting)
   confidence    FLOAT64 DEFAULT 1.0,
   metadata      JSON,
   version       INT64   DEFAULT 1,
@@ -106,6 +107,7 @@ CREATE TABLE BrainWeaveAnnotations (
   node_id       STRING(36) NOT NULL,
   owner_id      STRING(128) NOT NULL,
   text          STRING(MAX) NOT NULL,
+  provenance    STRING(1024), -- e.g. 'Human Review', 'Contradiction Detector'
   created_at    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true),
 
   CONSTRAINT FK_Annotation_Node FOREIGN KEY (node_id) REFERENCES BrainWeaveNodes(node_id),

@@ -28,6 +28,7 @@ class ResearchAgent extends BaseAgent {
         GetExternalDocTool(),
         GetNodeContextTool(),
         CreateAtomicNodeTool(),
+        WikiGenerateTool(),
       ];
 
   @override

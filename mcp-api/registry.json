@@ -1,0 +1,17 @@
+{
+  "default": {
+    "instance": "brainweave-graph",
+    "db": "brainweave",
+    "description": "Primary Agency Brain"
+  },
+  "staging": {
+    "instance": "brainweave-staging",
+    "db": "staging_db",
+    "description": "Internal Staging Knowledge"
+  },
+  "client_a": {
+    "instance": "client-a-graph",
+    "db": "client_a_db",
+    "description": "Isolated Knowledge for Client A"
+  }
+}

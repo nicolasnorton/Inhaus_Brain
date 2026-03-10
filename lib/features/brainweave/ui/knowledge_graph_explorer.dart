@@ -22,14 +22,14 @@ const _kGraphBg       = Color(0xFF0F1117);
 const _kSidebarBg     = Color(0xFF13151C);
 const _kSidebarBorder = Color(0xFF2A2D3A);
 const _kAccentPurple  = Color(0xFF7C3AED);
-const _kAccentGold    = Color(0xFFD4A574);
+const _kAccentGold    = Color(0xFFFBBF24);
 const _kAccentGreen   = Color(0xFF10B981);
 const _kAccentAmber   = Color(0xFFF59E0B);
 const _kTextCream     = Color(0xFFE5DDD0);
 const _kTextMuted     = Color(0xFF8B8D97);
-const _kNodeMoc       = Color(0xFFD4A574);
-const _kNodeTopic     = Color(0xFFF59E0B);
-const _kNodeAtomic    = Color(0xFF6B7280);
+const _kNodeMoc       = Color(0xFFF59E0B); // Vibrant Amber
+const _kNodeTopic     = Color(0xFF3B82F6); // Blue
+const _kNodeAtomic    = Color(0xFF6B7280); // Gray fallback
 const _kEdgeColor     = Color(0xFF2A2D3A);
 
 // Cluster color palette (8 distinct hues for connected components)
@@ -93,10 +93,10 @@ class _GraphEdge {
 
   /// Opacity based on relationship type
   double get opacity {
-    if (label.startsWith('shared_topic:')) return 0.35;
-    if (label == 'extends' || label == 'supports') return 0.8;
-    if (label == 'contradicts') return 0.9;
-    return 0.5;
+    if (label.startsWith('shared_topic:')) return 0.25;
+    if (label == 'extends' || label == 'supports') return 0.6;
+    if (label == 'contradicts') return 0.7;
+    return 0.35;
   }
 
   /// Color based on relationship type
@@ -228,10 +228,10 @@ class _KnowledgeGraphExplorerState
           final angle = rnd.nextDouble() * 2 * pi;
           final dist = 100 + rnd.nextDouble() * 300;
           final r = bwNode.type == BrainWeaveNodeType.moc
-              ? 14.0
+              ? 6.0
               : bwNode.type == BrainWeaveNodeType.topic
-                  ? 10.0
-                  : 5.0;
+                  ? 4.0
+                  : 2.5;
 
           final node = _GraphNode(
             data: bwNode,
@@ -979,13 +979,13 @@ class _KnowledgeGraphExplorerState
                     right: 12,
                     child: Row(
                       children: [
-                        _analysisButton('🔺', 'Triangles', 'triangles'),
+                        _analysisButton('🔺', 'Triangles', 'triangles', const Color(0xFFEF4444)),
                         const SizedBox(width: 6),
-                        _analysisButton('🌉', 'Bridges', 'bridges'),
+                        _analysisButton('🌉', 'Bridges', 'bridges', const Color(0xFF3B82F6)),
                         const SizedBox(width: 6),
-                        _analysisButton('🎯', 'Hubs', 'hubs'),
+                        _analysisButton('🎯', 'Hubs', 'hubs', const Color(0xFFEF4444)),
                         const SizedBox(width: 6),
-                        _analysisButton('🧩', 'Clusters', 'clusters'),
+                        _analysisButton('🧩', 'Clusters', 'clusters', const Color(0xFF10B981)),
                         const Spacer(),
                         // Mermaid export
                         _iconBtn(Icons.schema_outlined, () {
@@ -1117,7 +1117,7 @@ class _KnowledgeGraphExplorerState
   }
   // ── Helper Widgets ─────────────────────────────────────────────────────────
 
-  Widget _analysisButton(String emoji, String label, String type) {
+  Widget _analysisButton(String emoji, String label, String type, Color activeColor) {
     final isActive = _activeAnalysis == type;
     return InkWell(
       onTap: () => _runAnalysis(type),
@@ -1126,22 +1126,22 @@ class _KnowledgeGraphExplorerState
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isActive
-              ? _kAccentPurple.withValues(alpha: 0.25)
+              ? activeColor.withValues(alpha: 0.15)
               : _kSidebarBg.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? _kAccentPurple : _kSidebarBorder,
+            color: isActive ? activeColor.withValues(alpha: 0.5) : _kSidebarBorder,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(emoji, style: const TextStyle(fontSize: 13)),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: isActive ? _kAccentPurple : _kTextMuted,
+                color: isActive ? activeColor : _kTextMuted,
                 fontSize: 11,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -1269,6 +1269,18 @@ class _KnowledgeGraphExplorerState
                   ),
                 ],
               ),
+              if (node.data.metadata?['provenance'] != null || node.data.metadata?['source_agent'] != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    if (node.data.metadata?['provenance'] != null)
+                      _miniTag(node.data.metadata!['provenance'].toString(), _kTextMuted),
+                    const SizedBox(width: 4),
+                    if (node.data.metadata?['source_agent'] != null)
+                      _miniTag(node.data.metadata!['source_agent'].toString(), _kAccentPurple.withValues(alpha: 0.7)),
+                  ],
+                ),
+              ],
               const SizedBox(height: 10),
               Text(
                 node.data.description.isNotEmpty
@@ -1593,6 +1605,21 @@ class _KnowledgeGraphExplorerState
     );
   }
 
+  Widget _miniTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   Widget _tag(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1669,7 +1696,7 @@ class _GraphPainter extends CustomPainter {
         final dimFactor = hasHighlights ? 0.08 : 1.0;
         paint = Paint()
           ..color = edge.edgeColor.withValues(alpha: edge.opacity * dimFactor)
-          ..strokeWidth = isSelectedEdge ? 1.5 : 0.6
+          ..strokeWidth = isSelectedEdge ? 1.5 : 0.35
           ..style = PaintingStyle.stroke;
       }
 
@@ -1731,16 +1758,20 @@ class _GraphPainter extends CustomPainter {
 
       // ── Analysis highlight glow ──
       if (isHighlighted && activeAnalysis != null) {
-        final glowColor = activeAnalysis == 'bridges'
-            ? _kAccentAmber
-            : activeAnalysis == 'hubs'
-                ? _kAccentGreen
-                : _kAccentPurple;
+        final Color glowColor;
+        switch (activeAnalysis) {
+          case 'triangles': glowColor = const Color(0xFFEF4444); break; // Red
+          case 'bridges':   glowColor = const Color(0xFF3B82F6); break; // Blue
+          case 'hubs':      glowColor = const Color(0xFFF97316); break; // Orange
+          case 'clusters':  glowColor = const Color(0xFF10B981); break; // Green
+          default:          glowColor = _kAccentPurple;
+        }
+
         final glowPaint = Paint()
-          ..color = glowColor.withValues(alpha: 0.25)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+          ..color = glowColor.withValues(alpha: 0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
         canvas.drawCircle(
-            Offset(node.x, node.y), node.radius + 8, glowPaint);
+            Offset(node.x, node.y), node.radius + 6, glowPaint);
       }
 
       // Glow for selected
@@ -1790,34 +1821,9 @@ class _GraphPainter extends CustomPainter {
             Offset(node.x, node.y), node.radius + 3, ringPaint);
       }
       
-      // ── Asset Icon Drawing ──
-      // If the node type is 'asset' or 'research', try to draw an indicator icon
-      if (node.data.type == BrainWeaveNodeType.asset || (node.data.type == BrainWeaveNodeType.atomic && node.data.topics.contains('research'))) {
-         final isVideo = node.data.topics.contains('video') || (node.data.metadata != null && node.data.metadata!['assetType'] == 'video');
-         final isImage = node.data.topics.contains('image') || (node.data.metadata != null && node.data.metadata!['assetType'] == 'image');
-         final isPdf = node.data.topics.contains('report') || (node.data.metadata != null && node.data.metadata!['pdfUrl'] != null);
-         
-         String iconText = '';
-         if (isVideo) iconText = '▶️';
-         else if (isImage) iconText = '🖼️';
-         else if (isPdf) iconText = '📄';
-         
-         if (iconText.isNotEmpty) {
-           final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
-              textAlign: TextAlign.center,
-              fontSize: node.radius * 0.9,
-           ))
-              ..pushStyle(ui.TextStyle(color: Colors.white.withValues(alpha: isDimmed ? 0.3 : 0.85)))
-              ..addText(iconText);
-           final paragraph = builder.build()
-              ..layout(ui.ParagraphConstraints(width: node.radius * 2));
-              
-           canvas.drawParagraph(
-              paragraph,
-              Offset(node.x - node.radius, node.y - paragraph.height / 2),
-           );
-         }
-      }
+      // ── Asset Icon Drawing (Disabled for clean aesthetic) ──
+      // Clean UI requires pure circles.
+
 
       // ── Labels ──
       // Show labels for: MOCs (always), selected, hovered, connected,

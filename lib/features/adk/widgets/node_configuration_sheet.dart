@@ -212,15 +212,179 @@ class _NodeConfigurationSheetState extends ConsumerState<NodeConfigurationSheet>
       case WorkflowNodeType.brainweavePipeline:
         return _buildBrainWeaveConfig(step);
       case WorkflowNodeType.creativeImageGen:
+        return _buildTextToImageConfig(step);
       case WorkflowNodeType.creativeInpaintOutpaint:
       case WorkflowNodeType.creativeControlNet:
       case WorkflowNodeType.creativeRelightProduct:
-      case WorkflowNodeType.creativeVideoLipsync:
       case WorkflowNodeType.creativeCompositingLayers:
+        return _buildImageEditConfig(step);
+      case WorkflowNodeType.creativeVideoLipsync:
+        return _buildTextToVideoConfig(step);
       case WorkflowNodeType.creativeStitchDesign:
       case WorkflowNodeType.creativeFigmaSync:
-        return const Center(child: Text("Creative Node Config (Coming Soon)"));
+        return _buildStitchDesignConfig(step);
     }
+  }
+
+  // --- Creative Builders ---
+  
+  Widget _buildPremiumDescriptionCard(String title, String description) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(FontAwesomeIcons.wandMagicSparkles, size: 12, color: Color(0xFF7C3AED)),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 11, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(description, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10, height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutputVariableCard(String name, String type, String desc) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.output_rounded, size: 10, color: Colors.blueAccent),
+              const SizedBox(width: 8),
+              Text(name, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+              const SizedBox(width: 8),
+              Text(type, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(desc, style: const TextStyle(color: Colors.white24, fontSize: 9)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextToImageConfig(PipelineStep step) {
+    final model = step.config['model'] ?? 'imagen-3.0-fast';
+    final prompt = step.config['prompt'] ?? '{{sys.prompt}}';
+    final aspectRatio = step.config['aspect_ratio'] ?? '1:1';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPremiumDescriptionCard("IMAGE GENERATION", "High-fidelity generation using Google's Imagen 3, specific Flux variants, or SDXL based on your requirements."),
+        const SizedBox(height: 16),
+        _buildSubtitle("MODEL ROUTING"),
+        _buildDropdown(["imagen-3.0-fast", "imagen-3.0-high-fidelity", "flux-1-schnell", "sdxl-turbo"], model, (val) {
+          _updateStep(step.id, config: {...step.config, 'model': val});
+        }),
+        const SizedBox(height: 16),
+        _buildSubtitle("PROMPT VARIABLE / TEXT"),
+        _buildTextArea(prompt, (val) {
+          _updateStep(step.id, config: {...step.config, 'prompt': val});
+        }, "e.g. {{sys.prompt}}"),
+        const SizedBox(height: 16),
+        _buildSubtitle("ASPECT RATIO"),
+        _buildDropdown(["1:1", "16:9", "9:16", "4:3", "3:4"], aspectRatio, (val) {
+          _updateStep(step.id, config: {...step.config, 'aspect_ratio': val});
+        }),
+        const SizedBox(height: 20),
+        _buildSubtitle("OUTPUT VARIABLES"),
+        _buildOutputVariableCard("imageUrl", "string", "Public URL of the newly generated image asset."),
+      ],
+    );
+  }
+
+  Widget _buildTextToVideoConfig(PipelineStep step) {
+    final model = step.config['model'] ?? 'veo-3.0';
+    final prompt = step.config['prompt'] ?? '{{sys.prompt}}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPremiumDescriptionCard("VIDEO GENERATION", "State of the art video generation natively integrated. Use Veo 3 or Kling for motion."),
+        const SizedBox(height: 16),
+        _buildSubtitle("MODEL ROUTING"),
+        _buildDropdown(["veo-3.0", "kling-v1"], model, (val) {
+          _updateStep(step.id, config: {...step.config, 'model': val});
+        }),
+        const SizedBox(height: 16),
+        _buildSubtitle("PROMPT DEFINITION"),
+        _buildTextArea(prompt, (val) {
+          _updateStep(step.id, config: {...step.config, 'prompt': val});
+        }),
+        const SizedBox(height: 20),
+        _buildSubtitle("OUTPUT VARIABLES"),
+        _buildOutputVariableCard("videoUrl", "string", "Public URL of the generated video asset."),
+      ],
+    );
+  }
+
+  Widget _buildImageEditConfig(PipelineStep step) {
+    final mode = step.config['mode'] ?? 'inpaint';
+    final sourceImage = step.config['source_image'] ?? '{{imageVar}}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPremiumDescriptionCard("IMAGE EDITING", "Perform advanced image manipulation using masks, outpainting bounds, or background subjects."),
+        const SizedBox(height: 16),
+        _buildSubtitle("EDIT MODE"),
+        _buildDropdown(["inpaint", "outpaint", "remove_bg", "relight"], mode, (val) {
+          _updateStep(step.id, config: {...step.config, 'mode': val});
+        }),
+        const SizedBox(height: 16),
+        _buildSubtitle("SOURCE IMAGE (URL)"),
+        _buildTextField(sourceImage, (val) {
+          _updateStep(step.id, config: {...step.config, 'source_image': val});
+        }),
+        const SizedBox(height: 20),
+        _buildSubtitle("OUTPUT VARIABLES"),
+        _buildOutputVariableCard("editedImageUrl", "string", "URL of the edited composite."),
+      ],
+    );
+  }
+
+  Widget _buildStitchDesignConfig(PipelineStep step) {
+    final project = step.config['project'] ?? 'baco-austro-ui';
+    final instruction = step.config['instruction'] ?? 'Update the hero text to match the new campaign guidelines.';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPremiumDescriptionCard("STITCH MCP INTEGRATION", "Connects to the local design MCP to generate and edit frontend screens natively in React via code."),
+        const SizedBox(height: 16),
+        _buildSubtitle("PROJECT CONTEXT"),
+        _buildDropdown(["baco-austro-ui", "brain-dashboard", "legacy-v1-app"], project, (val) {
+          _updateStep(step.id, config: {...step.config, 'project': val});
+        }),
+        const SizedBox(height: 16),
+        _buildSubtitle("DESIGN PROMPT"),
+        _buildTextArea(instruction, (val) {
+          _updateStep(step.id, config: {...step.config, 'instruction': val});
+        }, "e.g. Generate a marketing screen..."),
+        const SizedBox(height: 20),
+        _buildSubtitle("OUTPUT VARIABLES"),
+        _buildOutputVariableCard("screenUrl", "string", "Preview link to the generated Stitch component."),
+      ],
+    );
   }
 
   Widget _buildBrainWeaveConfig(PipelineStep step) {

@@ -11,6 +11,9 @@ final brainweaveMcpClientProvider = Provider<BrainWeaveMcpClient>((ref) {
 });
 
 class BrainWeaveMcpClient {
+  static const bool walkthroughFullFixesEnabled = true; // Enabled for this branch
+  static const bool finalWalkthroughFixesEnabled = true; // Final fixes flag
+
   // TODO: Replace with your actual Cloud Run URL after deployment
   static const _baseUrl = String.fromEnvironment(
     'BRAINWEAVE_MCP_URL',
@@ -117,6 +120,7 @@ class BrainWeaveMcpClient {
     String scope = 'PRIVATE',
     String? clientId,
     String? sourceAgent,
+    String? provenance,
     Map<String, dynamic>? metadata,
   }) async {
     return await _post('brainweave_create', {
@@ -128,6 +132,7 @@ class BrainWeaveMcpClient {
       'scope': scope,
       if (clientId != null) 'client_id': clientId,
       if (sourceAgent != null) 'source_agent': sourceAgent,
+      if (provenance != null) 'provenance': provenance,
       if (metadata != null) 'metadata': metadata,
     });
   }

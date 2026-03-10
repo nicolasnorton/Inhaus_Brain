@@ -140,6 +140,58 @@ resource "google_storage_notification" "vault_notify" {
   ]
 }
 
+# ─── Contradiction Detector (Nightly Job) ──────────────────
+resource "google_cloud_run_v2_job" "contradiction_detector" {
+  name     = "brainweave-contradiction-detector"
+  location = var.region
+
+  template {
+    template {
+      service_account = google_service_account.brainweave_reweave.email
+      containers {
+        image = "${var.region}-docker.pkg.dev/${var.project_id}/brainweave/contradiction-detector:latest"
+        env {
+          name  = "GCP_PROJECT"
+          value = var.project_id
+        }
+        env {
+          name  = "SPANNER_INSTANCE"
+          value = google_spanner_instance.brainweave.name
+        }
+        env {
+          name  = "SPANNER_DB"
+          value = google_spanner_database.brainweave_db.name
+        }
+      }
+    }
+  }
+
+  depends_on = [google_project_service.run]
+}
+
+resource "google_cloud_scheduler_job" "nightly_contradiction_check" {
+  name             = "brainweave-nightly-contradiction-check"
+  description      = "Triggers the BrainWeave contradiction detector job nightly"
+  schedule         = "0 2 * * *" # 2 AM daily
+  time_zone        = "UTC"
+  attempt_deadline = "320s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.contradiction_detector.name}:run"
+
+    oauth_token {
+      service_account_email = google_service_account.brainweave_reweave.email
+    }
+  }
+
+  depends_on = [google_cloud_run_v2_job.contradiction_detector]
+}
+
 # ─── Artifact Registry (Docker images) ────────────────────
 resource "google_artifact_registry_repository" "brainweave" {
   location      = var.region

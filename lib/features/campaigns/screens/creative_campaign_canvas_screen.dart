@@ -33,7 +33,11 @@ class _CreativeCampaignCanvasScreenState
 
     // Once a template is selected, show the canvas
     if (!_showTemplatePicker && _selectedTemplate != null) {
-      return WorkflowCanvasScreen(pipelineId: null);
+      final templateFactory = CampaignWeavyTemplates.all[_selectedTemplate!];
+      return WorkflowCanvasScreen(
+        pipelineId: null,
+        initialSteps: templateFactory != null ? templateFactory() : null,
+      );
     }
 
     // Template picker
@@ -90,6 +94,7 @@ class _CreativeCampaignCanvasScreenState
                             '7-node chain: Moodboard → BrainWeave → ImageGen → Inpaint → Video → Composite → Approval',
                         color: const Color(0xFF9C1AFF),
                         templateKey: 'Default Campaign Workflow',
+                        imageUrl: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&q=80',
                       ),
                       _buildTemplateCard(
                         icon: FontAwesomeIcons.lightbulb,
@@ -98,6 +103,7 @@ class _CreativeCampaignCanvasScreenState
                             'Upload product → Studio & Dramatic lighting → Side-by-side composite',
                         color: const Color(0xFFEA580C),
                         templateKey: 'Hero Product Relight',
+                        imageUrl: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=600&q=80',
                       ),
                       _buildTemplateCard(
                         icon: FontAwesomeIcons.hashtag,
@@ -106,6 +112,7 @@ class _CreativeCampaignCanvasScreenState
                             'One prompt → 3 formats: Stories (9:16), Feed (1:1), Portrait (4:5)',
                         color: const Color(0xFFDB2777),
                         templateKey: 'Social Media Variations',
+                        imageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80',
                       ),
                       _buildTemplateCard(
                         icon: FontAwesomeIcons.video,
@@ -114,6 +121,7 @@ class _CreativeCampaignCanvasScreenState
                             'ImageGen → Video with narration → Text overlay → Stitch landing page',
                         color: const Color(0xFF7C3AED),
                         templateKey: 'Video Ad with Lip-sync',
+                        imageUrl: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=600&q=80',
                       ),
                       _buildTemplateCard(
                         icon: FontAwesomeIcons.rotate,
@@ -122,6 +130,7 @@ class _CreativeCampaignCanvasScreenState
                             'Upload reference → 4 ControlNet angles (front, 45°, side, back) → Grid composite',
                         color: const Color(0xFF0EA5E9),
                         templateKey: 'Multi-Angle 360°',
+                        imageUrl: 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=600&q=80',
                       ),
                       _buildTemplateCard(
                         icon: FontAwesomeIcons.plus,
@@ -129,6 +138,7 @@ class _CreativeCampaignCanvasScreenState
                         description: 'Start from scratch with an empty workflow.',
                         color: Colors.white24,
                         templateKey: '_blank',
+                        imageUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600&q=80',
                       ),
                     ],
                   ),
@@ -147,6 +157,7 @@ class _CreativeCampaignCanvasScreenState
     required String description,
     required Color color,
     required String templateKey,
+    String? imageUrl,
   }) {
     final isSelected = _selectedTemplate == templateKey;
     return GestureDetector(
@@ -159,42 +170,66 @@ class _CreativeCampaignCanvasScreenState
           _showTemplatePicker = false;
         });
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: isSelected
-              ? color.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.05),
+          color: isSelected ? color.withValues(alpha: 0.1) : const Color(0xFF1C1C1E),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? color : Colors.white.withValues(alpha: 0.1),
             width: isSelected ? 2 : 1,
           ),
+          image: imageUrl != null ? DecorationImage(
+            image: NetworkImage(imageUrl),
+            fit: BoxFit.cover,
+          ) : null,
         ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Row(
-              children: [
-                FaIcon(icon, color: color, size: 18),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(title,
+            if (imageUrl != null)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.4),
+                      Colors.black.withValues(alpha: 0.9),
+                    ],
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   Container(
+                     padding: const EdgeInsets.all(8),
+                     decoration: BoxDecoration(
+                       color: color.withValues(alpha: 0.2),
+                       borderRadius: BorderRadius.circular(8),
+                       border: Border.all(color: color.withValues(alpha: 0.3)),
+                     ),
+                     child: FaIcon(icon, color: color, size: 16),
+                   ),
+                  const Spacer(),
+                  Text(title,
                       style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 14)),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(description,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 11),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
-            Text(description,
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

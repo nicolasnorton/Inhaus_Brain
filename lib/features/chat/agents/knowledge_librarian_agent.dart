@@ -29,6 +29,7 @@ class KnowledgeLibrarianAgent extends BaseAgent {
         GetNodeContextTool(),
         CreateAtomicNodeTool(),
         PromoteNodeTool(),
+        WikiGenerateTool(),
       ];
 
   @override

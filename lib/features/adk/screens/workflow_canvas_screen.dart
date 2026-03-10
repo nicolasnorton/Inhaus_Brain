@@ -25,8 +25,9 @@ import '../../../core/globals.dart';
 
 class WorkflowCanvasScreen extends ConsumerStatefulWidget {
   final String? pipelineId; // Optional: Launch with existing pipeline
+  final List<PipelineStep>? initialSteps; // Optional: Launch with a pre-built template
 
-  const WorkflowCanvasScreen({super.key, this.pipelineId});
+  const WorkflowCanvasScreen({super.key, this.pipelineId, this.initialSteps});
 
   @override
   ConsumerState<WorkflowCanvasScreen> createState() => _WorkflowCanvasScreenState();
@@ -74,6 +75,14 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
       } else {
         _steps = [];
       }
+    } else if (widget.initialSteps != null) {
+      // Load from template preset
+      _steps = widget.initialSteps!.map((s) => s.copyWith(
+        dependencies: List.from(s.dependencies),
+        uiPosition: s.uiPosition != null ? Map<String, double>.from(s.uiPosition!) : null,
+        config: Map<String, dynamic>.from(s.config),
+        inputMappings: Map<String, String>.from(s.inputMappings),
+      )).toList();
     } else {
       _steps = [];
     }
@@ -452,8 +461,8 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
         label: '${step.nodeType.name} node: ${step.instruction.isEmpty ? 'Unconfigured' : step.instruction}',
         selected: isSelected,
         child: Container(
-          width: 160,
-          height: 90,
+          width: 200,
+          height: step.config.containsKey('thumbnailUrl') ? 130 : 90,
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
@@ -461,7 +470,10 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
               color: isSelected ? Theme.of(context).primaryColor : Theme.of(context).dividerColor,
               width: isSelected ? 2 : 1
             ),
-            boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 8, offset: const Offset(0, 4))],
+            boxShadow: [
+              if (isSelected) BoxShadow(color: _getNodeColor(step.nodeType).withValues(alpha: 0.3), blurRadius: 15, spreadRadius: 2),
+              BoxShadow(color: Colors.black45, blurRadius: 8, offset: const Offset(0, 4))
+            ],
           ),
           child: Column(
             children: [
@@ -531,12 +543,67 @@ class _WorkflowCanvasScreenState extends ConsumerState<WorkflowCanvasScreen> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(10),
-                  child: Text(
-                    step.instruction.isEmpty ? "Config: ${step.config.keys.length} params" : step.instruction, 
-                    maxLines: 3, 
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 10)
-                  ),
+                  child: step.config.containsKey('thumbnailUrl')
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  image: DecorationImage(
+                                    image: NetworkImage(step.config['thumbnailUrl']),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.1),
+                                        _getNodeColor(step.nodeType).withValues(alpha: 0.4),
+                                      ],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.6),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: Colors.white24, width: 0.5),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.play_arrow, color: Colors.white, size: 10),
+                                          const SizedBox(width: 4),
+                                          const Text("Run to generate", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              step.instruction.isEmpty ? "Config: ${step.config.keys.length} params" : step.instruction, 
+                              maxLines: 1, 
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.8), fontSize: 9)
+                            ),
+                          ],
+                        )
+                      : Text(
+                          step.instruction.isEmpty ? "Config: ${step.config.keys.length} params" : step.instruction, 
+                          maxLines: 3, 
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6), fontSize: 10)
+                        ),
                 ),
               ),
             ],

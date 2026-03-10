@@ -44,6 +44,8 @@ GSD_ECC_ENABLED = os.environ.get("GSD_ECC_ENABLED", "true").lower() == "true"
 CONTEXT_HUB_ENABLED = os.environ.get("CONTEXT_HUB_ENABLED", "true").lower() == "true"
 FAST_MODEL_ID = os.environ.get("FAST_MODEL", "gemini-3-flash")
 fast_gemini = GenerativeModel(FAST_MODEL_ID)
+WALKTHROUGH_FULL_FIXES_ENABLED = os.environ.get("WALKTHROUGH_FULL_FIXES_ENABLED", "false").lower() == "true"
+WALKTHROUGH_FINAL_FIXES_ENABLED = os.environ.get("WALKTHROUGH_FINAL_FIXES_ENABLED", "false").lower() == "true"
 
 # ─── Security Constants ──────────────────────────────────────────────────────
 _MAX_CONCURRENT = 100
@@ -93,11 +95,32 @@ def _validate_scope(scope: str):
 
 
 def _sanitize_text(text: str, max_len: int, name: str = "text") -> str:
-    """Truncate text to max_len characters."""
-    if text and len(text) > max_len:
+    """Truncate text to max_len characters and apply Privacy Shield redaction."""
+    if not text: return ""
+    
+    # BrainWeave 2.1: Privacy Shield - Basic PII Redaction
+    if WALKTHROUGH_FULL_FIXES_ENABLED or WALKTHROUGH_FINAL_FIXES_ENABLED:
+        # Simple regex for email/phone - in production this would use DLP API
+        text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL_REDACTED]', text)
+        text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE_REDACTED]', text)
+
+    # BrainWeave 2.1 Final Fixes: LatAm Cultural Safety Filter
+    if WALKTHROUGH_FINAL_FIXES_ENABLED:
+        prompt = f"""You are an enterprise cultural safety filter for Inhaus Brain, an Ecuadorian/LatAm agency.
+Review the following text and rewrite it to ensure it strictly adheres to LatAm enterprise cultural alignment, tone, and safety guidelines. Keep the core meaning intact but adjust idioms, tone, or sensitive cultural phrasing to be fully acceptable for a premium LatAm corporate environment. If it is already safe, just return the exact text.
+Text to review:
+{text}"""
+        try:
+            res = gemini.generate_content(prompt)
+            if res and res.text:
+                text = res.text.strip()
+        except Exception as e:
+            app.logger.warning(f"Cultural safety filter failed: {e}")
+
+    if len(text) > max_len:
         app.logger.warning(f"{name} truncated from {len(text)} to {max_len} chars")
         return text[:max_len]
-    return text or ""
+    return text
 
 
 def _safe_error(msg: str = "Internal server error", code: int = 500):
@@ -125,13 +148,17 @@ def _load_registry():
     global _registry_cache
     if _registry_cache: return _registry_cache
     
-    # GitNexus: Fetch registry configuration from GCS or use local fallback
-    # Simulate GCS fetch for now with a local struct
-    _registry_cache = {
-        "default": {"instance": INSTANCE, "db": DB},
-        "staging": {"instance": "brainweave-staging", "db": "staging_db"},
-        "client_a": {"instance": "client-a-graph", "db": "client_a_db"}
-    }
+    # BrainWeave 2.1: Load from local JSON (synced from GCS or provided via config)
+    reg_path = os.path.join(os.path.dirname(__file__), "registry.json")
+    if os.path.exists(reg_path):
+        try:
+            with open(reg_path, 'r') as f:
+                _registry_cache = json.load(f)
+        except Exception as e:
+            app.logger.warning(f"Failed to load registry.json: {e}")
+            _registry_cache = {"default": {"instance": INSTANCE, "db": DB}}
+    else:
+        _registry_cache = {"default": {"instance": INSTANCE, "db": DB}}
     return _registry_cache
 
 def _get_database(req):
@@ -401,6 +428,73 @@ def graph_analysis():
     body = request.get_json() or {}
     owner_id = _authed_owner(request)
     
+    # BrainWeave 2.1 Final Fixes: Pure Spanner GQL engine (No Python Dependencies)
+    if WALKTHROUGH_FINAL_FIXES_ENABLED:
+        database = _get_database(request)
+        try:
+            # 1. Degree Centrality (Approximating Hub Impact via direct GQL)
+            centrality_gql = """
+                GRAPH BrainWeaveGraph
+                MATCH (n)
+                WHERE n.owner_id = @owner_id OR n.scope IN ('CLIENT', 'AGENCY')
+                OPTIONAL MATCH (n)-[e]->(m)
+                RETURN n.node_id, COUNT(e) as degree
+                ORDER BY degree DESC
+                LIMIT 20
+            """
+            
+            # 2. Community Detection / Clustering (Pure GQL - Connected components approximation)
+            clustering_gql = """
+                GRAPH BrainWeaveGraph
+                MATCH (n)
+                WHERE n.owner_id = @owner_id OR n.scope IN ('CLIENT', 'AGENCY')
+                OPTIONAL MATCH (n)-[e]->(m)
+                RETURN n.node_id, ARRAY_AGG(m.node_id) as cluster
+            """
+            
+            params = {"owner_id": owner_id}
+            param_types = {"owner_id": spanner.param_types.STRING}
+
+            with database.snapshot() as snapshot:
+                centrality_rows = list(snapshot.execute_sql(centrality_gql, params=params, param_types=param_types))
+                cluster_rows = list(snapshot.execute_sql(clustering_gql, params=params, param_types=param_types))
+                
+                # Fetch totals for metadata
+                nodes_count_gql = "SELECT COUNT(*) FROM BrainWeaveNodes WHERE owner_id = @owner_id OR scope IN ('CLIENT', 'AGENCY')"
+                edges_count_gql = "SELECT COUNT(*) FROM BrainWeaveEdges"
+                total_nodes = list(snapshot.execute_sql(nodes_count_gql, params=params, param_types=param_types))[0][0]
+                total_edges = list(snapshot.execute_sql(edges_count_gql))[0][0]
+
+            # Parse centrality
+            top_nodes = [{"node_id": r[0], "score": float(r[1])} for r in centrality_rows if r[0] is not None]
+
+            # Parse dummy GQL clustering (treat nodes with similar neighbors as clusters)
+            clusters_map = {}
+            for r in cluster_rows:
+                n_id = r[0]
+                neighbors = set(r[1]) if r[1] and r[1][0] is not None else set()
+                comm_key = hash(frozenset(neighbors))
+                clusters_map.setdefault(comm_key, []).append(n_id)
+
+            comm_list = []
+            for i, (k, nodes) in enumerate(clusters_map.items()):
+                if nodes and None not in nodes:
+                    comm_list.append({"community_id": i, "nodes": nodes})
+            
+            # Sort communities by size descending
+            comm_list.sort(key=lambda c: len(c["nodes"]), reverse=True)
+
+            return jsonify({
+                "top_nodes": top_nodes,
+                "communities": comm_list,
+                "total_nodes": total_nodes,
+                "total_edges": total_edges,
+                "engine": "Pure Spanner GQL"
+            })
+        except Exception as e:
+            app.logger.error(f"GQL Analysis failed: {e}")
+            return jsonify({"error": str(e)}), 500
+
     try:
         import networkx as nx
     except ImportError:
@@ -415,6 +509,7 @@ def graph_analysis():
     params = {"owner_id": owner_id}
     param_types = {"owner_id": spanner.param_types.STRING}
 
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         rows = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
 
@@ -443,8 +538,31 @@ def graph_analysis():
         # Graceful fallback if python-louvain isn't installed
         comm_list = [{"community_id": 0, "nodes": list(G.nodes)}]
 
-    # Top central nodes
-    sorted_centrality = sorted(centrality.items(), key=lambda x: x[1], reverse=True)[:10]
+    # BrainWeave 2.1: Native Spanner GQL Analysis (if enabled)
+    if WALKTHROUGH_FULL_FIXES_ENABLED:
+        gql = """
+            GRAPH BrainWeaveGraph
+            MATCH (n)
+            OPTIONAL MATCH (n)-[e]->(m)
+            RETURN n.node_id, COUNT(e) as degree
+            ORDER BY degree DESC
+            LIMIT 10
+        """
+        with database.snapshot() as snapshot:
+            gql_results = list(snapshot.execute_sql(gql))
+        
+        # Merge GQL degrees as a baseline for centrality
+        gql_centrality = [{"node_id": r[0], "score": float(r[1])} for r in gql_results]
+        
+        return jsonify({
+            "top_nodes": gql_centrality,
+            "communities": comm_list, # Still using Louvain for community detection
+            "total_nodes": len(G.nodes),
+            "total_edges": len(G.edges),
+            "engine": "Spanner GQL + NetworkX"
+        })
+
+    sorted_centrality = sorted(centrality.items(), key=lambda item: item[1], reverse=True)[:20]
 
     return jsonify({
         "top_nodes": [{"node_id": k, "score": v} for k, v in sorted_centrality],
@@ -513,9 +631,10 @@ def context():
     # Annotations (Context-Hub)
     annotations = []
     if CONTEXT_HUB_ENABLED:
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             ann_rows = list(snapshot.execute_sql(
-                "SELECT annotation_id, text, created_at, owner_id "
+                "SELECT annotation_id, text, created_at, owner_id, provenance "
                 "FROM BrainWeaveAnnotations WHERE node_id = @nid "
                 "ORDER BY created_at ASC",
                 params={"nid": node_id},
@@ -524,7 +643,8 @@ def context():
             for r in ann_rows:
                 annotations.append({
                     "annotation_id": r[0], "text": r[1], 
-                    "created_at": str(r[2]), "owner_id": r[3]
+                    "created_at": str(r[2]), "owner_id": r[3],
+                    "provenance": r[4] if len(r) > 4 else "Legacy"
                 })
 
     return jsonify({
@@ -548,6 +668,8 @@ def context():
 @app.route("/brainweave_wiki", methods=["POST"])
 def wiki_generate():
     """Generates an LLM-structured Markdown document representing a subgraph."""
+    if not (CONTEXT_HUB_ENABLED or WALKTHROUGH_FULL_FIXES_ENABLED):
+        return jsonify({"error": "Wiki features not enabled"}), 404
     body = request.get_json()
     node_id = body.get("node_id")
     owner_id = _authed_owner(request)
@@ -587,7 +709,9 @@ def wiki_generate():
     prompt = (
         f"You are the GitNexus Documentation Engine. Convert the following disorganized "
         f"graph context into a highly structured Markdown Wiki page. Extract implicit "
-        f"sections, synthesize ideas, and format beautifully.\n\n[CONTEXT]\n{context}"
+        f"sections, synthesize ideas, and format beautifully.\n\n"
+        f"Focus on technical precision and organizational clarity.\n\n"
+        f"[CONTEXT]\n{context}"
     )
 
     try:
@@ -629,19 +753,31 @@ def create():
 
     node_id = str(uuid.uuid4())
 
+    # BrainWeave 2.1: Cultural Safety Filter (ECC Integration)
+    if WALKTHROUGH_FULL_FIXES_ENABLED:
+        cultural_prompt = f"Review this content for cultural alignment with Ecuadorian/LatAm enterprise standards. REDACT or REPHRASE anything inappropriate. CONTENT: {content[:2000]}"
+        try:
+            safety_resp = fast_gemini.generate_content(cultural_prompt)
+            content = safety_resp.text
+        except Exception as e:
+            app.logger.warning(f"Cultural Safety filter failed: {e}")
+
+    database = _get_database(request)
     def write_txn(transaction):
         transaction.insert(
             "BrainWeaveNodes",
             columns=[
                 "node_id", "owner_id", "client_id", "scope",
                 "title", "description", "content", "node_type",
-                "topics", "embedding", "source_agent", "confidence", "metadata",
+                "topics", "embedding", "source_agent", "provenance", "confidence", "metadata",
                 "created_at", "updated_at",
             ],
             values=[[
                 node_id, owner_id, client_id, scope,
                 title, description, content, node_type,
-                topics, embedding, body.get("source_agent", "mcp_api"), 1.0, json.dumps(body.get("metadata", {})),
+                topics, embedding, body.get("source_agent", "mcp_api"), 
+                body.get("provenance", "Manual Entry"),
+                1.0, json.dumps(body.get("metadata", {})),
                 spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
             ]],
         )
@@ -1537,6 +1673,9 @@ def evolve():
 Analyze these learned instincts and cluster them into coherent skills.
 Each skill should represent a reusable workflow or pattern.
 
+**CONTRADICTION RESOLUTION:**
+If you detect any contradictions, conflicting instructions, or mutually exclusive patterns among the provided instincts, you MUST explicitly resolve the conflict. Prioritize the most secure, stable, or recently observed pattern that aligns with enterprise best practices.
+
 Instincts:
 {instinct_text}
 
@@ -1594,6 +1733,41 @@ Return JSON:
 
 
 # ─── F4: Pre/Post-Tool Hooks (AgentShield-style) ────────────────────────────
+
+@app.route("/brainweave_annotate", methods=["POST"])
+@rate_limited
+def annotate():
+    """Context-Hub: Add an annotation to a node (Timeline-based)."""
+    if not (CONTEXT_HUB_ENABLED or WALKTHROUGH_FULL_FIXES_ENABLED):
+        return jsonify({"error": "Context-Hub features not enabled"}), 404
+    try:
+        body = request.get_json()
+        node_id = body.get("node_id")
+        text = _sanitize_text(body.get("text", ""), _MAX_DESC_LEN, "annotation")
+        provenance = body.get("provenance", "BrainWeave UI")
+        owner_id = _authed_owner(request)
+
+        if not node_id or not text:
+            return jsonify({"error": "node_id and text are required"}), 400
+        _validate_uuid(node_id, "node_id")
+
+        annotation_id = str(uuid.uuid4())
+        database = _get_database(request)
+
+        def write_ann(transaction):
+            transaction.insert(
+                "BrainWeaveAnnotations",
+                columns=["annotation_id", "node_id", "owner_id", "text", "provenance", "created_at"],
+                values=[[annotation_id, node_id, owner_id, text, provenance, spanner.COMMIT_TIMESTAMP]]
+            )
+        
+        database.run_in_transaction(write_ann)
+        _audit_log("annotate", owner_id, node_id=node_id, annotation_id=annotation_id)
+        
+        return jsonify({"annotation_id": annotation_id, "status": "created"})
+    except Exception as e:
+        app.logger.error(f"Error in annotate: {e}")
+        return _safe_error()
 
 def _pre_tool_hook(action: str, owner_id: str, body: dict) -> dict | None:
     """AgentShield-style pre-tool validation. Returns error dict if blocked, None if ok."""
