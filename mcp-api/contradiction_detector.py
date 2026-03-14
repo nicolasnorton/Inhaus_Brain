@@ -14,26 +14,34 @@ MODEL_ID = os.environ.get("GEMINI_MODEL", "gemini-3.1-pro")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def detect_contradictions():
+def detect_contradictions(owner_id: str):
+    """Run contradiction detection for a specific owner. Requires owner_id to prevent cross-tenant access."""
+    if not owner_id:
+        raise ValueError("owner_id is required to scope contradiction detection")
+
     vertexai.init(project=PROJECT)
     spanner_client = spanner.Client(project=PROJECT)
     database = spanner_client.instance(INSTANCE).database(DB)
     gemini = GenerativeModel(MODEL_ID)
 
-    logger.info("Starting BrainWeave Contradiction Detection Job")
+    logger.info(f"Starting BrainWeave Contradiction Detection Job for owner {owner_id}")
 
-    # Fetch all edges that might imply contradictions or are new
+    # Fetch edges for a specific owner only (prevents cross-tenant data leakage)
     sql = """
         SELECT e.edge_id, n1.node_id, n1.title, n1.content, n2.node_id, n2.title, n2.content
         FROM BrainWeaveEdges e
         JOIN BrainWeaveNodes n1 ON e.source_node_id = n1.node_id
         JOIN BrainWeaveNodes n2 ON e.target_node_id = n2.node_id
-        WHERE n1.owner_id = n2.owner_id
-        LIMIT 1000
+        WHERE n1.owner_id = @owner_id AND n2.owner_id = @owner_id
+        LIMIT 100
     """
 
     with database.snapshot() as snapshot:
-        rows = list(snapshot.execute_sql(sql))
+        rows = list(snapshot.execute_sql(
+            sql,
+            params={"owner_id": owner_id},
+            param_types={"owner_id": spanner.param_types.STRING}
+        ))
 
     for row in rows:
         edge_id, id1, t1, c1, id2, t2, c2 = row
@@ -73,4 +81,8 @@ def detect_contradictions():
     logger.info("Contradiction detection complete")
 
 if __name__ == "__main__":
-    detect_contradictions()
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python contradiction_detector.py <owner_id>")
+        sys.exit(1)
+    detect_contradictions(owner_id=sys.argv[1])
