@@ -27,9 +27,14 @@ const _kAccentGreen   = Color(0xFF10B981);
 const _kAccentAmber   = Color(0xFFF59E0B);
 const _kTextCream     = Color(0xFFE5DDD0);
 const _kTextMuted     = Color(0xFF8B8D97);
-const _kNodeMoc       = Color(0xFFF59E0B); // Vibrant Amber
-const _kNodeTopic     = Color(0xFF3B82F6); // Blue
-const _kNodeAtomic    = Color(0xFF6B7280); // Gray fallback
+const _kNodeMoc          = Color(0xFFF59E0B); // Vibrant Amber
+const _kNodeTopic        = Color(0xFF3B82F6); // Blue
+const _kNodeAtomic       = Color(0xFF6B7280); // Gray fallback
+// BW3.0 Evolution node colors
+const _kNodeDeviceAction = Color(0xFF06B6D4); // Cyan — device/extension actions
+const _kNodeCreative     = Color(0xFFEC4899); // Pink — creative flow output
+const _kNodeSkill        = Color(0xFF10B981); // Emerald — evolved skills
+const _kNodeMemex        = Color(0xFF8B5CF6); // Violet — archived memories
 const _kEdgeColor     = Color(0xFF2A2D3A);
 
 // Cluster color palette (8 distinct hues for connected components)
@@ -75,6 +80,14 @@ class _GraphNode {
         return _kNodeMoc;
       case BrainWeaveNodeType.topic:
         return _kNodeTopic;
+      case BrainWeaveNodeType.deviceAction:
+        return _kNodeDeviceAction;
+      case BrainWeaveNodeType.creative:
+        return _kNodeCreative;
+      case BrainWeaveNodeType.skill:
+        return _kNodeSkill;
+      case BrainWeaveNodeType.memex:
+        return _kNodeMemex;
       case BrainWeaveNodeType.atomic:
       default:
         return _kNodeAtomic;
@@ -182,6 +195,24 @@ class _KnowledgeGraphExplorerState
         return BrainWeaveNodeType.moc;
       case 'topic':
         return BrainWeaveNodeType.topic;
+      case 'device_action':
+        return BrainWeaveNodeType.deviceAction;
+      case 'creative':
+        return BrainWeaveNodeType.creative;
+      case 'skill':
+        return BrainWeaveNodeType.skill;
+      case 'memex':
+        return BrainWeaveNodeType.memex;
+      case 'campaign':
+        return BrainWeaveNodeType.campaign;
+      case 'client':
+        return BrainWeaveNodeType.client;
+      case 'insight':
+        return BrainWeaveNodeType.insight;
+      case 'asset':
+        return BrainWeaveNodeType.asset;
+      case 'trend':
+        return BrainWeaveNodeType.trend;
       case 'atomic':
       default:
         return BrainWeaveNodeType.atomic;
@@ -918,7 +949,7 @@ class _KnowledgeGraphExplorerState
               setState(() {
                 final oldScale = _scale;
                 _scale = (_scale - event.scrollDelta.dy * 0.001)
-                    .clamp(0.2, 4.0);
+                    .clamp(0.05, 5.0);
                 // Zoom towards cursor
                 final ratio = _scale / oldScale;
                 _panOffset = event.localPosition -
@@ -1055,9 +1086,9 @@ class _KnowledgeGraphExplorerState
                         }),
                         const SizedBox(width: 4),
                         // Zoom controls
-                        _iconBtn(Icons.add, () => setState(() => _scale = (_scale * 1.3).clamp(0.2, 4.0))),
+                        _iconBtn(Icons.add, () => setState(() => _scale = (_scale * 1.3).clamp(0.05, 5.0))),
                         const SizedBox(width: 4),
-                        _iconBtn(Icons.remove, () => setState(() => _scale = (_scale / 1.3).clamp(0.2, 4.0))),
+                        _iconBtn(Icons.remove, () => setState(() => _scale = (_scale / 1.3).clamp(0.05, 5.0))),
                         const SizedBox(width: 4),
                         _iconBtn(Icons.center_focus_strong, () {
                           setState(() {
