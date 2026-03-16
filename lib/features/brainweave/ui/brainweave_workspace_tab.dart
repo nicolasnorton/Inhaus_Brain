@@ -480,50 +480,38 @@ class _BrainWeaveWorkspaceTabState
             _DemoBanner(pulseAnimation: _pulseAnimation),
             const SizedBox(height: 12),
 
-            // ── BrainWeave 2.0 Debug Toggle ─────────────────────────────────
+            // ── BrainWeave Status Indicator ─────────────────────────────────
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: AppConfig.brainweaveV2Enabled
-                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.05),
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppConfig.brainweaveV2Enabled
-                      ? const Color(0xFF10B981).withValues(alpha: 0.4)
-                      : Colors.white.withValues(alpha: 0.1),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.4),
                 ),
               ),
-              child: Row(
+              child: const Row(
                 children: [
                   Icon(
-                    AppConfig.brainweaveV2Enabled
-                        ? Icons.cloud_done_rounded
-                        : Icons.cloud_off_rounded,
-                    color: AppConfig.brainweaveV2Enabled
-                        ? const Color(0xFF10B981)
-                        : Colors.white38,
+                    Icons.cloud_done_rounded,
+                    color: Color(0xFF10B981),
                     size: 18,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      AppConfig.brainweaveV2Enabled
-                          ? 'BrainWeave 2.1 — Spanner Graph'
-                          : 'BrainWeave 1.x — Firestore',
+                      'BrainWeave 3.0 — Spanner Graph + arscontexta',
                       style: TextStyle(
-                        color: AppConfig.brainweaveV2Enabled
-                            ? const Color(0xFF10B981)
-                            : Colors.white38,
+                        color: Color(0xFF10B981),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  Switch(
-                    value: AppConfig.brainweaveV2Enabled,
-                    activeColor: const Color(0xFF10B981),
-                    onChanged: (v) => setState(() => AppConfig.brainweaveV2Enabled = v),
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFF10B981),
+                    size: 18,
                   ),
                 ],
               ),
@@ -647,7 +635,7 @@ class _DemoBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Living Knowledge System  ·  Feb 27 Board Demo',
+                    'Living Knowledge System',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 14,

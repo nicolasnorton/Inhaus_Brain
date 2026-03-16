@@ -65,7 +65,7 @@ class AppConfig {
   /// BrainWeave 2.1 — Cloud Spanner Graph + MCP API backend
   /// When false: uses Firestore + client-side cosine similarity (v1)
   /// When true:  uses Cloud Spanner Graph + Cloud Run MCP API (v2.0)
-  static bool brainweaveV2Enabled = false;
+  static bool brainweaveV2Enabled = true;
 
   /// BrainWeave GSD + ECC Upgrades — always off by default.
   /// Activated via Firestore Remote Config only.
