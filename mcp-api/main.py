@@ -173,8 +173,35 @@ def _get_database(req):
 
 def _get_embedding(text: str) -> list[float]:
     """Generate embedding vector for text."""
-    result = embed_model.get_embeddings([text[:2000]])
-    return result[0].values if result else []
+    try:
+        from vertexai.language_models import TextEmbeddingInput
+        # Attempt to get 3072 dimensions directly
+        inputs = [TextEmbeddingInput(text[:2000], task_type="RETRIEVAL_QUERY")]
+        try:
+            result = embed_model.get_embeddings(inputs, output_dimensionality=3072)
+            if result and len(result[0].values) == 3072:
+                return result[0].values
+        except Exception:
+            app.logger.info("Direct 3072-dim request failed, falling back to standard.")
+
+        # Standard call (often returns 768)
+        result = embed_model.get_embeddings([text[:2000]])
+        vals = result[0].values if result else []
+        
+        # Resilient padding to match Spanner's 3072-dimension requirement
+        if vals and len(vals) < 3072:
+            app.logger.warning(f"Padding vector from {len(vals)} to 3072")
+            vals = vals + [0.0] * (3072 - len(vals))
+        
+        return vals
+    except Exception as e:
+        app.logger.error(f"Embedding error: {e}")
+        # Final fallback to standard call
+        try:
+            result = embed_model.get_embeddings([text[:2000]])
+            return result[0].values if result else []
+        except Exception:
+            return []
 
 
 def _verify_token(req):
@@ -241,20 +268,18 @@ def graph_query():
         embedding = _get_embedding(query)
 
         sql = """
-            SELECT node_id, title, description, node_type, topics, scope, confidence, metadata
+            SELECT node_id, title, description, node_type, topics, scope, confidence, metadata, score
             FROM (
                 SELECT node_id, title, description, node_type, topics, scope, confidence, metadata,
-                       SCORE(BrainWeaveNodesTextIndex, @query) as bm25_score,
-                       RANK() OVER (ORDER BY SCORE(BrainWeaveNodesTextIndex, @query) DESC) as rank_bm25,
-                       COSINE_DISTANCE(embedding, @query_embedding) as ann_score,
-                       RANK() OVER (ORDER BY COSINE_DISTANCE(embedding, @query_embedding) ASC) as rank_ann
+                       (CASE WHEN ARRAY_LENGTH(embedding) = ARRAY_LENGTH(@query_embedding) THEN 1 - COSINE_DISTANCE(embedding, @query_embedding) ELSE 0 END) as score
                 FROM BrainWeaveNodes
                 WHERE owner_id = @owner_id
+            )
+            WHERE score > 0.3
         """
-        params = {"owner_id": owner_id, "query": query, "query_embedding": embedding, "limit": limit}
+        params = {"owner_id": owner_id, "query_embedding": embedding, "limit": limit}
         param_types = {
             "owner_id": spanner.param_types.STRING,
-            "query": spanner.param_types.STRING,
             "query_embedding": spanner.param_types.Array(spanner.param_types.FLOAT32),
             "limit": spanner.param_types.INT64
         }
@@ -265,16 +290,30 @@ def graph_query():
             params["scope"] = scope
             param_types["scope"] = spanner.param_types.STRING
 
-        # BrainWeave 2.1 GitNexus Upgrade: Spanner Hybrid Search (BM25 + Vector KNN)
-        sql += """
-                AND (SEARCH(BrainWeaveNodesTextIndex, @query) OR COSINE_DISTANCE(embedding, @query_embedding) < 0.3)
-            )
-            ORDER BY ( (1.0 / (rank_bm25 + 60)) + (1.0 / (rank_ann + 60)) ) DESC
-            LIMIT @limit
-        """
+        sql += " ORDER BY score DESC LIMIT @limit "
 
         with _get_database(request).snapshot() as snapshot:
             results = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
+
+        # Keyword fallback when vector search returns empty (dimension mismatch)
+        if not results:
+            app.logger.info("Vector search returned empty, falling back to keyword search")
+            kw_sql = """
+                SELECT node_id, title, description, node_type, topics, scope, confidence, metadata
+                FROM BrainWeaveNodes
+                WHERE owner_id = @owner_id
+                  AND (LOWER(title) LIKE @kw OR LOWER(description) LIKE @kw OR LOWER(content) LIKE @kw)
+                LIMIT @limit
+            """
+            kw = f"%{query.lower()}%"
+            kw_params = {"owner_id": owner_id, "kw": kw, "limit": limit}
+            kw_param_types = {
+                "owner_id": spanner.param_types.STRING,
+                "kw": spanner.param_types.STRING,
+                "limit": spanner.param_types.INT64
+            }
+            with _get_database(request).snapshot() as snapshot:
+                results = list(snapshot.execute_sql(kw_sql, params=kw_params, param_types=kw_param_types))
 
         nodes = []
         for row in results:
@@ -328,6 +367,7 @@ def impact():
         LIMIT 50
     """
 
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         results = list(snapshot.execute_sql(
             gql,
@@ -384,6 +424,7 @@ def cluster():
     params = {"owner_id": owner_id}
     param_types = {"owner_id": spanner.param_types.STRING}
 
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         rows = list(snapshot.execute_sql(sql, params=params, param_types=param_types))
 
@@ -424,6 +465,7 @@ def cluster():
 # ─── Tool 3b: brainweave_graph_analysis (arscontexta 2.1) ────────────────────
 
 @app.route("/brainweave_graph_analysis", methods=["POST"])
+@rate_limited
 def graph_analysis():
     """Calculates NetworkX eigenvector centrality and community detection on a user's graph."""
     body = request.get_json() or {}
@@ -586,6 +628,7 @@ def context():
         return jsonify({"error": "node_id is required"}), 400
 
     # Fetch node
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         node_rows = list(snapshot.execute_sql(
             "SELECT node_id, title, description, content, node_type, topics, scope, confidence, metadata "
@@ -610,6 +653,7 @@ def context():
     }
 
     # Incoming edges (ACL: only edges where the source node belongs to same owner or is shared)
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         incoming = list(snapshot.execute_sql(
             "SELECT e.edge_id, e.relationship_type, e.confidence, n.node_id, n.title "
@@ -620,6 +664,7 @@ def context():
         ))
 
     # Outgoing edges (ACL: only edges where the target node belongs to same owner or is shared)
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         outgoing = list(snapshot.execute_sql(
             "SELECT e.edge_id, e.relationship_type, e.confidence, n.node_id, n.title "
@@ -679,6 +724,7 @@ def wiki_generate():
         return jsonify({"error": "node_id is required"}), 400
 
     # We reuse the context fetching logic to grab the subgraph
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         node_rows = list(snapshot.execute_sql(
             "SELECT title, content FROM BrainWeaveNodes WHERE node_id = @nid AND owner_id = @oid",
@@ -783,15 +829,17 @@ def create():
             ]],
         )
 
+    database = _get_database(request)
     database.run_in_transaction(write_txn)
 
     # Auto-link: find similar nodes via ANN
     try:
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             similar = list(snapshot.execute_sql(
                 "SELECT node_id, title FROM BrainWeaveNodes "
                 "WHERE owner_id = @oid AND node_id != @nid "
-                "ORDER BY COSINE_DISTANCE(embedding, @emb) LIMIT 3",
+                "ORDER BY (CASE WHEN ARRAY_LENGTH(embedding) = 3072 THEN COSINE_DISTANCE(embedding, @emb) ELSE 1.0 END) LIMIT 3",
                 params={
                     "oid": owner_id, "nid": node_id, "emb": embedding,
                 },
@@ -820,6 +868,7 @@ def create():
                     ]],
                 )
 
+            database = _get_database(request)
             database.run_in_transaction(link_txn)
 
     except Exception as e:
@@ -842,6 +891,7 @@ def reweave():
         return jsonify({"error": "node_id is required"}), 400
 
     # Get source node
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         source = list(snapshot.execute_sql(
             "SELECT title, content FROM BrainWeaveNodes WHERE node_id = @nid",
@@ -855,6 +905,7 @@ def reweave():
     source_title, source_content = source[0]
 
     # Get connected neighbors
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         neighbors = list(snapshot.execute_sql(
             "SELECT n.node_id, n.title, n.description "
@@ -887,6 +938,7 @@ def reweave():
                     values=[[target_id, new_desc, spanner.COMMIT_TIMESTAMP]],
                 )
 
+            database = _get_database(request)
             database.run_in_transaction(update_txn)
             updated.append({"node_id": nid, "title": ntitle, "updated": True})
         else:
@@ -908,6 +960,7 @@ def detect_changes():
     if not since:
         return jsonify({"error": "since (ISO timestamp) is required"}), 400
 
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         results = list(snapshot.execute_sql(
             "SELECT node_id, title, node_type, scope, updated_at "
@@ -952,6 +1005,7 @@ def promote():
     _validate_scope(target_scope)
 
     # Check current scope to determine if approval is needed
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         current = list(snapshot.execute_sql(
             "SELECT scope FROM BrainWeaveNodes WHERE node_id = @nid AND owner_id = @oid",
@@ -988,6 +1042,7 @@ def promote():
                 values=[[node_id, target_scope, spanner.COMMIT_TIMESTAMP]],
             )
 
+    database = _get_database(request)
     database.run_in_transaction(write_txn)
     _audit_log("promote", owner_id, node_id=node_id, target_scope=target_scope,
                promotion_id=promotion_id, status=status, needs_approval=needs_approval)
@@ -1025,11 +1080,12 @@ def graphrag():
     # Step 1: ANN vector search for seed nodes
     embedding = _get_embedding(query)
 
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         seeds = list(snapshot.execute_sql(
             "SELECT node_id, title, description, content "
             "FROM BrainWeaveNodes WHERE owner_id = @oid "
-            "ORDER BY COSINE_DISTANCE(embedding, @emb) LIMIT 5",
+            "ORDER BY (CASE WHEN ARRAY_LENGTH(embedding) = 3072 THEN COSINE_DISTANCE(embedding, @emb) ELSE 1.0 END) LIMIT 5",
             params={"oid": owner_id, "emb": embedding},
             param_types={
                 "oid": spanner.param_types.STRING,
@@ -1047,6 +1103,7 @@ def graphrag():
     for seed in seeds:
         expanded_context.append(f"## {seed[1]}\n{seed[2]}\n{seed[3][:300]}")
 
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         for sid in seed_ids:
             neighbors = list(snapshot.execute_sql(
@@ -1286,6 +1343,7 @@ def approve_promotion():
             values=[[node_id, "CLIENT", spanner.COMMIT_TIMESTAMP]],
         )
 
+    database = _get_database(request)
     database.run_in_transaction(approve_txn)
     _audit_log("approve_promotion", approver_id, promotion_id=promotion_id,
                node_id=node_id, original_requester=requested_by)
@@ -1316,22 +1374,26 @@ def security_status():
 
     try:
         # Recent promotions (last 24h)
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             recent_promotes = list(snapshot.execute_sql(
                 "SELECT COUNT(*) FROM PendingPromotions "
                 "WHERE created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)"
             ))[0][0]
 
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             pending_approvals = list(snapshot.execute_sql(
                 "SELECT COUNT(*) FROM PendingPromotions WHERE status = 'PENDING_APPROVAL'"
             ))[0][0]
 
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             total_nodes = list(snapshot.execute_sql(
                 "SELECT COUNT(*) FROM BrainWeaveNodes"
             ))[0][0]
 
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             total_users = list(snapshot.execute_sql(
                 "SELECT COUNT(DISTINCT owner_id) FROM BrainWeaveNodes"
@@ -1565,6 +1627,7 @@ def load_minimal_context():
         context_docs = {}
 
         for ctx_type in context_types:
+            database = _get_database(request)
             with database.snapshot() as snapshot:
                 rows = list(snapshot.execute_sql(
                     "SELECT title, content, updated_at FROM BrainWeaveNodes "
@@ -1603,6 +1666,7 @@ def instinct_status():
         owner_id = _authed_owner(request)
 
         # Instincts are stored as nodes with type 'instinct'
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             rows = list(snapshot.execute_sql(
                 "SELECT node_id, title, description, confidence, topics, metadata, updated_at "
@@ -1652,6 +1716,7 @@ def evolve():
         owner_id = _authed_owner(request)
 
         # Fetch all instincts
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             rows = list(snapshot.execute_sql(
                 "SELECT node_id, title, description, topics FROM BrainWeaveNodes "
@@ -1719,6 +1784,7 @@ Return JSON:
                             spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
                         ]],
                     )
+                database = _get_database(request)
                 database.run_in_transaction(write_skill)
                 skills_created += 1
             except Exception as e:
@@ -1765,6 +1831,7 @@ def annotate():
                 vals.append(agent_id[:128])
             transaction.insert("BrainWeaveAnnotations", columns=cols, values=[vals])
         
+        database = _get_database(request)
         database.run_in_transaction(write_ann)
         _audit_log("annotate", owner_id, node_id=node_id, annotation_id=annotation_id)
         
@@ -1841,6 +1908,7 @@ def _post_tool_hook(action: str, owner_id: str, result: dict):
                     spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
                 ]],
             )
+        database = _get_database(request)
         database.run_in_transaction(write_snapshot)
     except Exception as e:
         app.logger.warning(f"Post-tool snapshot failed (non-fatal): {e}")
@@ -1871,6 +1939,7 @@ def map_knowledge_base():
         owner_id = _authed_owner(request)
 
         # Fetch all nodes for the owner (up to 200)
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             nodes = list(snapshot.execute_sql(
                 "SELECT node_id, title, node_type, topics, description "
@@ -1884,6 +1953,7 @@ def map_knowledge_base():
             return jsonify({"message": "No knowledge base found.", "map": {}})
 
         # Fetch edges for structure analysis
+        database = _get_database(request)
         with database.snapshot() as snapshot:
             edges = list(snapshot.execute_sql(
                 "SELECT source_node_id, target_node_id, relationship_type, weight "
@@ -2076,6 +2146,7 @@ def meeting_sync():
                         ]],
                     )
 
+        database = _get_database(request)
         database.run_in_transaction(write_txn)
 
         return jsonify({"status": "ok", "nodes_created": len(processed_nodes), "edges_created": len(edges_data)})
@@ -2083,38 +2154,6 @@ def meeting_sync():
         app.logger.error(f"Meeting Sync error: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-# ─── Context-Hub: Annotations ────────────────────────────────────────────────
-
-@app.route("/brainweave_annotate", methods=["POST"])
-@rate_limited
-def annotate():
-    """Appends an annotation to a specific node."""
-    if not CONTEXT_HUB_ENABLED:
-        return jsonify({"error": "Context-Hub is disabled"}), 403
-
-    body = request.get_json()
-    node_id = body.get("node_id")
-    text = body.get("text")
-    owner_id = _authed_owner(request)
-
-    if not node_id or not text:
-        return jsonify({"error": "node_id and text are required"}), 400
-
-    annotation_id = str(uuid.uuid4())
-
-    def write_txn(transaction):
-        transaction.insert(
-            "BrainWeaveAnnotations",
-            columns=["annotation_id", "node_id", "owner_id", "text", "created_at"],
-            values=[[annotation_id, node_id, owner_id, text, spanner.COMMIT_TIMESTAMP]],
-        )
-    try:
-        database.run_in_transaction(write_txn)
-        return jsonify({"status": "ok", "annotation_id": annotation_id})
-    except Exception as e:
-        app.logger.error(f"Annotate error: {e}")
-        return jsonify({"error": str(e)}), 500
 
 # ─── Context-Hub: Feedback ───────────────────────────────────────────────────
 
@@ -2142,6 +2181,7 @@ def feedback():
             values=[[feedback_id, target_id, owner_id, vote, spanner.COMMIT_TIMESTAMP]],
         )
     try:
+        database = _get_database(request)
         database.run_in_transaction(write_txn)
         return jsonify({"status": "ok", "feedback_id": feedback_id})
     except Exception as e:
@@ -2195,6 +2235,7 @@ def get_external_doc():
                 ]],
             )
 
+        database = _get_database(request)
         database.run_in_transaction(write_txn)
         return jsonify({"status": "ok", "node_id": node_id, "snippet": content[:1000]})
     except Exception as e:
@@ -2212,6 +2253,7 @@ def context_hub_instincts():
 
     # In a full setup, this queries Spanner for feedback scores or reads from Pub/Sub
     # For now, we simulate fetching aggregated instincts.
+    database = _get_database(request)
     with database.snapshot() as snapshot:
         # Get target_ids with net negative votes as "gaps"
         negative = list(snapshot.execute_sql(
@@ -2233,48 +2275,6 @@ def context_hub_instincts():
         "strong_instincts": [{"target_id": r[0], "score": r[1]} for r in positive],
     })
 
-@app.route("/brainweave_evolve", methods=["POST"])
-@rate_limited
-def context_hub_evolve():
-    """Proposes an evolutionary change based on feedback/gaps."""
-    if not CONTEXT_HUB_ENABLED:
-        return jsonify({"error": "Context-Hub is disabled"}), 403
-        
-    body = request.get_json()
-    proposal = body.get("proposal", "")
-    target_id = body.get("target_id")
-    owner_id = _authed_owner(request)
-
-    if not proposal:
-         return jsonify({"error": "Proposal is required"}), 400
-
-    new_node_id = str(uuid.uuid4())
-    embed_text = f"Evolution Proposal: {proposal}"
-    embedding = _get_embedding(embed_text)
-    
-    def write_txn(transaction):
-        # Insert a new rule / methodology node
-        transaction.insert(
-            "BrainWeaveNodes",
-            columns=[
-                "node_id", "owner_id", "title", "description", "content", 
-                "node_type", "topics", "embedding", "source_agent", "confidence",
-                "created_at", "updated_at", "metadata"
-            ],
-            values=[[
-                new_node_id, owner_id, "Evolution Proposal", proposal[:_MAX_DESC_LEN], 
-                proposal[:_MAX_CONTENT_LEN], "moc", ["evolution", "system"],
-                embedding, "ceo_agent", 1.0, spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
-                json.dumps({"target_id": target_id, "status": "proposed"})
-            ]],
-        )
-        
-    try:
-        database.run_in_transaction(write_txn)
-        return jsonify({"status": "ok", "evolution_node_id": new_node_id})
-    except Exception as e:
-        app.logger.error(f"Evolve error: {e}")
-        return jsonify({"error": str(e)}), 500
 
 # ─── Health ──────────────────────────────────────────────────────────────────
 

@@ -74,7 +74,15 @@ exports.brainweavePostToolUseValidate = onDocumentUpdated(
     'brainweave_sessions/{sessionId}',
     async (event) => {
         const sessionId = event.params.sessionId;
+        const beforeData = event.data?.before?.data() ?? {};
         const afterData = event.data?.after?.data() ?? {};
+
+        // Guard: If the only change was our validation write, skip to prevent infinite loop
+        const beforeLogs = (beforeData.sessionLogs ?? []).length;
+        const afterLogs = (afterData.sessionLogs ?? []).length;
+        if (afterData._lastValidatedAt && beforeData._lastValidatedAt === afterData._lastValidatedAt) {
+            return; // Already validated in a previous invocation
+        }
 
         const missingPrimitives = KERNEL_PRIMITIVES.filter(
             (p) => !(p in afterData)
@@ -86,7 +94,7 @@ exports.brainweavePostToolUseValidate = onDocumentUpdated(
             try {
                 await db.collection('brainweave_sessions').doc(sessionId).update({
                     sessionLogs: FieldValue.arrayUnion(warning),
-                    updatedAt: FieldValue.serverTimestamp(),
+                    _lastValidatedAt: FieldValue.serverTimestamp(),
                 });
             } catch (err) {
                 console.error('[PostToolUse-Validate] Could not append validation warning:', err);
