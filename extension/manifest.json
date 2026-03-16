@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "InhausBrain Extension",
+  "version": "1.0.1",
+  "description": "Exposes WebMCP tools for live browser/device control directly from InhausBrain.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "desktopCapture",
+    "storage",
+    "debugger",
+    "tabs",
+    "sidePanel",
+    "identity",
+    "identity.email",
+    "offscreen",
+    "tabCapture"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "oauth2": {
+    "client_id": "1096509611056-vj2mmrttjvb8vh9mueqfk5g9689pes45.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "side_panel": {
+    "default_path": "auth.html"
+  },
+  "action": {
+    "default_title": "Open InhausBrain Sandbox",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "https://*.inhauscorp.com/*",
+      "https://*.web.app/*",
+      "https://*.firebaseapp.com/*"
+    ]
+  }
+}

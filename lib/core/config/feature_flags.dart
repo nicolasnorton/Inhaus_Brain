@@ -115,4 +115,16 @@ class FeatureFlags {
   /// Check any flag by name (for dynamic/future flags)
   static bool isEnabled(String flagName, {bool defaultValue = false}) =>
       _overrides[flagName] ?? defaultValue;
+
+  // ── BrainWeave 3.0 Evolution (arscontexta + GitNexus) ─────────────────────
+  /// Master flag for BrainWeave 3.0 evolution features.
+  /// Controls: BrainWeaveSkills table, BrainWeaveMemex, self-healing,
+  /// context compaction, CreativeFlow, Gemini safety harness.
+  /// Default: false. Compile-time: --dart-define=BRAINWEAVE_3_0_EVOLUTION_ENABLED=true
+  static const _bw30CompileTime = bool.fromEnvironment(
+    'BRAINWEAVE_3_0_EVOLUTION_ENABLED',
+    defaultValue: false,
+  );
+  static bool get brainweave30EvolutionEnabled =>
+      _overrides['brainweave_3_0_evolution_enabled'] ?? _bw30CompileTime;
 }
