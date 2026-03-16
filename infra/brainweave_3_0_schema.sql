@@ -6,7 +6,7 @@
 -- 1. Evolve BrainWeaveAnnotations: add agent provenance + voting
 --    (existing columns: annotation_id, node_id, owner_id, text, provenance, created_at)
 ALTER TABLE BrainWeaveAnnotations ADD COLUMN agent_id STRING(128);
-ALTER TABLE BrainWeaveAnnotations ADD COLUMN vote_score INT64 DEFAULT 0;
+ALTER TABLE BrainWeaveAnnotations ADD COLUMN vote_score INT64 DEFAULT (0);
 
 -- 2. BrainWeaveSkills — dedicated skill table (evolution of GitNexus clustering)
 --    Skills are promoted instinct clusters with executability + safety scoring.
