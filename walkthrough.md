@@ -113,3 +113,25 @@ flowchart LR
 - **Data Grids**: `syncfusion_flutter_datagrid`
 - **Graphs**: `graphview`
 - **Carousels**: `carousel_slider`
+
+## BrainWeave 3.0: Agent Skills Evolution
+
+The BrainWeave 3.0 update radically enhances the `arscontexta` and `GitNexus` architectures with 4 key pillars, safely gated behind the `brainweave_3_0_agent_skills_enabled` feature flag.
+
+### 1. 4-Layer Execution Cycle
+Instead of a single text generation pass, the **Brian Orchestrator** now uses:
+- **GSD Plan**: Generates an XML task specification with precise acceptance criteria representing one of 5 design patterns (Wrapper, Generator, Reviewer, Inversion, Pipeline).
+- **Quality Gate**: Verifies output against the requirements before backward connection via the `verify_requirements` tool.
+
+### 2. Intelligent Audience Research (6R Integration)
+The 6R flow now automatically executes a Pre-Reduce research step natively using frameworks like:
+- **Deep Customer Research**
+- **Creative Testing**
+- **Content Optimization**
+If an audience or research intent is detected, it retrieves frameworks via `graph_query` and appends them to the `reduce` phase prompts.
+
+### 3. Dynamic Specialist Roles
+Using `brainweave_load_agent_personality`, the Brian orchestrator dynamically loads customized missions, rulesets, and deliverables from the Graph (e.g. SEO, Design, Video roles) to reconfigure an agent's context mid-session without hardcoding new classes.
+
+### 4. Advanced Security Scanning
+New skills and execution patterns are now scanned nightly by a Cloud Scheduler job (`brainweave-skill-scanner-nightly`) pinging the `brainweave_skill_scan_job` MCP endpoint to detect Exfiltration or Prompt Injection patterns in the graph before they can be used in pipelines.

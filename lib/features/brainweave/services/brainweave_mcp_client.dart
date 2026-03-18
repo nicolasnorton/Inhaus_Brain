@@ -348,4 +348,71 @@ class BrainWeaveMcpClient {
   Future<Map<String, dynamic>> mapKnowledgeBase() async {
     return await _post('brainweave_map_knowledge_base', {});
   }
+
+  // ═══════════════════════════════════════════════════════════
+  // BrainWeave 3.0 Agent Skills Evolution (require brainweave_3_0_agent_skills_enabled)
+  // ═══════════════════════════════════════════════════════════
+
+  /// Dynamically loads personality and workflow for a specialist agent.
+  Future<Map<String, dynamic>> loadAgentPersonality({
+    required String roleName,
+  }) async {
+    return await _post('brainweave_load_agent_personality', {
+      'role_name': roleName,
+    });
+  }
+
+  /// Triggers the security scanner job for new skills (admin/scheduler use).
+  Future<Map<String, dynamic>> triggerSkillScan() async {
+    return await _post('brainweave_skill_scan_job', {});
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // BrainWeave 3.0 Evolution Tools (behind brainweave_3_0_evolution_enabled)
+  // ═══════════════════════════════════════════════════════════
+
+  /// BW3.0: Recall long-term memories from Memex ordered by priority.
+  Future<Map<String, dynamic>> memexRecall({
+    String? query,
+    int limit = 10,
+  }) async {
+    return await _post('brainweave_memex_recall', {
+      if (query != null) 'query': query,
+      'limit': limit,
+    });
+  }
+
+  /// BW3.0: Archive a node to long-term Memex memory.
+  Future<Map<String, dynamic>> memexArchive({
+    required String nodeId,
+    double recallPriority = 0.5,
+  }) async {
+    return await _post('brainweave_memex_archive', {
+      'node_id': nodeId,
+      'recall_priority': recallPriority,
+    });
+  }
+
+  /// BW3.0: Self-heal contradictions across knowledge nodes.
+  Future<Map<String, dynamic>> selfHeal() async {
+    return await _post('brainweave_self_heal', {});
+  }
+
+  /// BW3.0: Compact working memory by archiving old nodes to Memex.
+  Future<Map<String, dynamic>> compactContext() async {
+    return await _post('brainweave_compact_context', {});
+  }
+
+  /// BW3.0: CreativeFlow — generate creative output grounded in the graph.
+  Future<Map<String, dynamic>> creativeFlow({
+    required String brief,
+    String type = 'concept',
+    String? clientId,
+  }) async {
+    return await _post('brainweave_creative_flow', {
+      'brief': brief,
+      'type': type,
+      if (clientId != null) 'client_id': clientId,
+    });
+  }
 }

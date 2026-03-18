@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum BrainWeaveNodeType { atomic, moc, topic, campaign, client, insight, asset, trend }
+enum BrainWeaveNodeType { atomic, moc, topic, campaign, client, insight, asset, trend, skill }
 
 /// Represents the User's Knowledge Graph in the Weave Space.
 class BrainWeaveNode {

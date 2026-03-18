@@ -16,10 +16,55 @@ INSTANCE = os.environ.get("SPANNER_INSTANCE", "brainweave-graph")
 DB       = os.environ.get("SPANNER_DB", "brainweave")
 MODEL_ID = os.environ.get("GEMINI_MODEL", "gemini-3.1-pro")
 
+# BW3.0 Evolution flag
+BW30_ENABLED = os.environ.get("BRAINWEAVE_3_0_EVOLUTION_ENABLED", "true").lower() == "true"
+
 vertexai.init(project=PROJECT)
 spanner_client = spanner.Client(project=PROJECT)
 database = spanner_client.instance(INSTANCE).database(DB)
 gemini = GenerativeModel(MODEL_ID)
+
+
+def self_heal_check(source_id: str, source_title: str, source_content: str, neighbors: list) -> int:
+    """BW3.0: Detect and fix contradictions among neighbors before reweave.
+    Returns the number of fixes applied."""
+    try:
+        summaries = "\n".join(
+            f"- [{n[0][:8]}] {n[1]}: {n[2][:150]}" for n in neighbors
+        )
+        prompt = (
+            f"Source node '{source_title}': {source_content[:500]}\n\n"
+            f"Connected nodes:\n{summaries}\n\n"
+            "Identify any contradictions between the source and connected nodes. "
+            "Return JSON: {\"fixes\": [{\"node_id\": \"...\", \"updated_description\": \"...\"}]}"
+        )
+        response = gemini.generate_content(prompt)
+        text = response.text.strip()
+        if text.startswith("```json"): text = text[7:]
+        if text.endswith("```"): text = text[:-3]
+        result = json.loads(text)
+
+        fixes = 0
+        for fix in result.get("fixes", []):
+            fix_id = fix.get("node_id")
+            new_desc = fix.get("updated_description")
+            if fix_id and new_desc:
+                try:
+                    def fix_txn(transaction, nid=fix_id, desc=new_desc[:2048]):
+                        transaction.update(
+                            "BrainWeaveNodes",
+                            columns=["node_id", "description", "updated_at"],
+                            values=[[nid, desc, spanner.COMMIT_TIMESTAMP]],
+                        )
+                    database.run_in_transaction(fix_txn)
+                    fixes += 1
+                    print(f"  Self-heal fix applied to {fix_id}")
+                except Exception as e:
+                    print(f"  Self-heal fix failed for {fix_id}: {e}")
+        return fixes
+    except Exception as e:
+        print(f"  Self-heal check error (non-fatal): {e}")
+        return 0
 
 
 def reweave_node(node_id: str):
@@ -49,6 +94,12 @@ def reweave_node(node_id: str):
             params={"nid": node_id},
             param_types={"nid": spanner.param_types.STRING},
         ))
+
+    # BW3.0: Self-healing contradiction detection phase
+    if BW30_ENABLED and neighbors:
+        print(f"  BW3.0: Running self-heal check across {len(neighbors)} neighbors...")
+        heal_fixes = self_heal_check(node_id, source_title, source_content, neighbors)
+        print(f"  BW3.0: Self-heal applied {heal_fixes} fixes.")
 
     updated_count = 0
     for nid, ntitle, ndesc in neighbors:

@@ -158,9 +158,30 @@ class BrainWeavePipelineService {
     _blackboard.transitionTo(BlackboardPhase.brainweaveRecord);
     await _recordPhase(sessionId, enrichedInput);
 
+    // Context-Hub 3.0 Agent Skills Audience Research Workflow
+    String researchEnhancedInput = rawInput;
+    if (FeatureFlags.brainweave30AgentSkillsEnabled) {
+      if (rawInput.toLowerCase().contains('research') || rawInput.toLowerCase().contains('audience') || rawInput.toLowerCase().contains('competitor')) {
+        _blackboard.transitionTo(BlackboardPhase.brainweaveResearch);
+        _blackboard.addEvent(WorkflowEventType.agentAction, "Executing Deep Customer Research Framework...");
+        try {
+          final mcpClient = BrainWeaveMcpClient();
+          final searchResults = await mcpClient.graphQuery(query: 'audience research $rawInput', limit: 5);
+          if (searchResults.isNotEmpty) {
+            researchEnhancedInput += "\n\n[AUDIENCE RESEARCH SKILLS FRAMEWORK]\n";
+            for (var r in searchResults) {
+              researchEnhancedInput += "- ${r['title']}: ${r['content'] ?? r['description']}\n";
+            }
+          }
+        } catch (e) {
+          debugPrint("BrainWeavePipeline: Audience Research query failed: $e");
+        }
+      }
+    }
+
     // PHASE 2: REDUCE
     _blackboard.transitionTo(BlackboardPhase.brainweaveReduce);
-    final insights = await _reducePhase(sessionId, rawInput);
+    final insights = await _reducePhase(sessionId, researchEnhancedInput);
 
     // PHASE 3: REFLECT
     _blackboard.transitionTo(BlackboardPhase.brainweaveReflect);

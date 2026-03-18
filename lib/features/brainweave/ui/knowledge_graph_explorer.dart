@@ -30,6 +30,8 @@ const _kTextMuted     = Color(0xFF8B8D97);
 const _kNodeMoc       = Color(0xFFF59E0B); // Vibrant Amber
 const _kNodeTopic     = Color(0xFF3B82F6); // Blue
 const _kNodeAtomic    = Color(0xFF6B7280); // Gray fallback
+const _kNodeSkill     = Color(0xFFEC4899); // Pink for skills
+const _kNodeFlagged   = Color(0xFFEF4444); // Red for security flagged
 const _kEdgeColor     = Color(0xFF2A2D3A);
 
 // Cluster color palette (8 distinct hues for connected components)
@@ -66,6 +68,11 @@ class _GraphNode {
         isHovered = false;
 
   Color get color {
+    // Red override for flagged nodes
+    if (data.metadata?['security_flagged'] == true) {
+      return _kNodeFlagged;
+    }
+
     // Use cluster color if available for atomic nodes
     if (clusterColor != null && data.type == BrainWeaveNodeType.atomic) {
       return clusterColor!;
@@ -75,6 +82,8 @@ class _GraphNode {
         return _kNodeMoc;
       case BrainWeaveNodeType.topic:
         return _kNodeTopic;
+      case BrainWeaveNodeType.skill:
+        return _kNodeSkill;
       case BrainWeaveNodeType.atomic:
       default:
         return _kNodeAtomic;
@@ -181,6 +190,8 @@ class _KnowledgeGraphExplorerState
         return BrainWeaveNodeType.moc;
       case 'topic':
         return BrainWeaveNodeType.topic;
+      case 'skill':
+        return BrainWeaveNodeType.skill;
       case 'atomic':
       default:
         return BrainWeaveNodeType.atomic;
@@ -231,7 +242,9 @@ class _KnowledgeGraphExplorerState
               ? 6.0
               : bwNode.type == BrainWeaveNodeType.topic
                   ? 4.0
-                  : 2.5;
+                  : bwNode.type == BrainWeaveNodeType.skill
+                      ? 5.0
+                      : 2.5;
 
           final node = _GraphNode(
             data: bwNode,

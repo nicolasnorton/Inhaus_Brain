@@ -480,55 +480,7 @@ class _BrainWeaveWorkspaceTabState
             _DemoBanner(pulseAnimation: _pulseAnimation),
             const SizedBox(height: 12),
 
-            // ── BrainWeave 2.0 Debug Toggle ─────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppConfig.brainweaveV2Enabled
-                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppConfig.brainweaveV2Enabled
-                      ? const Color(0xFF10B981).withValues(alpha: 0.4)
-                      : Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    AppConfig.brainweaveV2Enabled
-                        ? Icons.cloud_done_rounded
-                        : Icons.cloud_off_rounded,
-                    color: AppConfig.brainweaveV2Enabled
-                        ? const Color(0xFF10B981)
-                        : Colors.white38,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      AppConfig.brainweaveV2Enabled
-                          ? 'BrainWeave 2.1 — Spanner Graph'
-                          : 'BrainWeave 1.x — Firestore',
-                      style: TextStyle(
-                        color: AppConfig.brainweaveV2Enabled
-                            ? const Color(0xFF10B981)
-                            : Colors.white38,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Switch(
-                    value: AppConfig.brainweaveV2Enabled,
-                    activeColor: const Color(0xFF10B981),
-                    onChanged: (v) => setState(() => AppConfig.brainweaveV2Enabled = v),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
 
             // ── Load Sample Clients ──────────────────────────────────────────
             _SampleClientsCard(onLoad: _loadSampleClients),
@@ -637,7 +589,7 @@ class _DemoBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'BrainWeave',
+                    'BrainWeave 3.0',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -647,7 +599,7 @@ class _DemoBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Living Knowledge System  ·  Feb 27 Board Demo',
+                    'Living Knowledge System  ·  Unified Agent Skills',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 14,
@@ -657,7 +609,7 @@ class _DemoBanner extends StatelessWidget {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    children: ['Record', 'Reduce', 'Reflect', 'Reweave', 'Verify', 'Rethink']
+                    children: ['Record', 'Research', 'Reduce', 'Reflect', 'Reweave', 'Verify', 'Rethink']
                         .map((label) => Chip(
                               label: Text(label,
                                   style: const TextStyle(fontSize: 10, color: Colors.white)),
@@ -731,17 +683,18 @@ class _PipelineStatusBar extends StatelessWidget {
   });
 
   static const _phases = [
-    'Record', 'Reduce', 'Reflect', 'Reweave', 'Verify', 'Rethink',
+    'Record', 'Research', 'Reduce', 'Reflect', 'Reweave', 'Verify', 'Rethink',
   ];
 
   static const _phaseMap = {
     BlackboardPhase.brainweaveRecord:   0,
-    BlackboardPhase.brainweaveReduce:   1,
-    BlackboardPhase.brainweaveReflect:  2,
-    BlackboardPhase.brainweaveReweave:  3,
-    BlackboardPhase.brainweaveVerify:   4,
-    BlackboardPhase.brainweaveRethink:  5,
-    BlackboardPhase.reviewPending:      3, // stuck at Reweave or Rethink
+    BlackboardPhase.brainweaveResearch: 1,
+    BlackboardPhase.brainweaveReduce:   2,
+    BlackboardPhase.brainweaveReflect:  3,
+    BlackboardPhase.brainweaveReweave:  4,
+    BlackboardPhase.brainweaveVerify:   5,
+    BlackboardPhase.brainweaveRethink:  6,
+    BlackboardPhase.reviewPending:      4, // stuck at Reweave or Rethink
   };
 
   @override

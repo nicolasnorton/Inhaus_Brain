@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InhausBrain Assistant</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <img src="icons/icon48.png" alt="Brain Icon">
+            <h1>Brian</h1>
+        </div>
+        <button class="settings-btn" id="settingsBtn" title="Settings">⋮</button>
+    </header>
+
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="toggle-row">
+            <span>Agent Capabilities</span>
+            <label class="switch">
+                <input type="checkbox" id="agentToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+            Allow BrainWeave to access tabs and screen context.
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <!-- Initial Greeting -->
+        <div class="message bot">
+            <div class="bot-name">Brian</div>
+            <div class="message-content">
+                How can I help you today?
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <div class="input-box">
+            <textarea id="chatInput" placeholder="Ask Brian to analyze this page..." rows="1"></textarea>
+            <button class="send-btn" id="sendBtn" aria-label="Send">
+                <!-- Up arrow SVG -->
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 4l-8 8h5v8h6v-8h5z" />
+                </svg>
+            </button>
+        </div>
+        <div style="font-size: 10px; color: var(--text-secondary); text-align: center; margin-top: 8px;">
+            Brian is AI and can make mistakes.
+        </div>
+    </div>
+    
+    <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -42,7 +42,8 @@ echo -e "${GREEN}✓ API keys loaded${NC}"
 echo -e "\n${YELLOW}[1/3] Building Flutter web (staging)...${NC}"
 flutter build web --release \
   --dart-define=GEMINI_API_KEY="$GEMINI_API_KEY" \
-  --dart-define=ENVIRONMENT=staging
+  --dart-define=ENVIRONMENT=staging \
+  --dart-define=BRAINWEAVE_3_0_AGENT_SKILLS_ENABLED=true
 
 echo -e "${GREEN}✓ Build complete${NC}"
 

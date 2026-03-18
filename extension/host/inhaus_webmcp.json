@@ -1,0 +1,9 @@
+{
+  "name": "com.inhausbrain.webmcp",
+  "description": "InhausBrain WebMCP Native Messaging Host",
+  "path": "/Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain/cli/inhaus-cli",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://plhgbccpdmocofebdkngpijigabakpck/"
+  ]
+}

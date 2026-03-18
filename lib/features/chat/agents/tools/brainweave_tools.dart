@@ -876,3 +876,200 @@ class WikiGenerateTool extends AgentTool {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+// BrainWeave 3.0 Agent Skills Evolution Tools
+// ═══════════════════════════════════════════════════════════
+
+/// BW3.0: Load specialist agent personality and workflow from the graph
+class LoadAgentPersonalityTool extends AgentTool {
+  LoadAgentPersonalityTool()
+      : super(
+          name: 'brainweave_load_agent_personality',
+          description: 'Dynamically loads personality, mission, rules, and deliverables '
+              'for a specialist agent (e.g., SEO, Design, Video) to configure them before execution.',
+          inputSchema: {
+            'roleName': {
+              'type': 'string',
+              'description': 'The name of the specialist role to load (e.g., seo_agent, design_agent).',
+            }
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final roleName = parameters['roleName'] as String?;
+    if (roleName == null || roleName.isEmpty) {
+      return ToolResult.failure('Missing roleName parameter');
+    }
+
+    try {
+      final result = await _mcpClient.loadAgentPersonality(roleName: roleName);
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Personality loading failed: $e');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BrainWeave 3.0 Evolution Tools (behind brainweave_3_0_evolution_enabled)
+// ═══════════════════════════════════════════════════════════
+
+/// BW3.0: Recall long-term memories from Memex
+class MemexRecallTool extends AgentTool {
+  MemexRecallTool()
+      : super(
+          name: 'brainweave_memex_recall',
+          description: 'Recall long-term memories from the Memex archive. '
+              'Returns compacted summaries ordered by recall priority. '
+              'Part of the arscontexta evergreen + GitNexus incremental memory system.',
+          inputSchema: {
+            'query': {
+              'type': 'string',
+              'description': 'Optional. Natural language query to filter memories by relevance.',
+            },
+            'limit': {
+              'type': 'integer',
+              'description': 'Maximum memories to return (default 10).',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.memexRecall(
+        query: parameters['query'] as String?,
+        limit: parameters['limit'] as int? ?? 10,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Memex recall failed: $e');
+    }
+  }
+}
+
+/// BW3.0: Archive a node to long-term Memex memory
+class MemexArchiveTool extends AgentTool {
+  MemexArchiveTool()
+      : super(
+          name: 'brainweave_memex_archive',
+          description: 'Archive a knowledge node to long-term Memex memory. '
+              'Creates a compacted summary with full archive URI for later recall.',
+          inputSchema: {
+            'nodeId': {
+              'type': 'string',
+              'description': 'The ID of the node to archive.',
+            },
+            'recallPriority': {
+              'type': 'number',
+              'description': 'Priority for future recall (0.0-1.0, default 0.5).',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final nodeId = parameters['nodeId'] as String?;
+    if (nodeId == null || nodeId.isEmpty) {
+      return ToolResult.failure('Missing nodeId parameter');
+    }
+    try {
+      final result = await _mcpClient.memexArchive(
+        nodeId: nodeId,
+        recallPriority: (parameters['recallPriority'] as num?)?.toDouble() ?? 0.5,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Memex archive failed: $e');
+    }
+  }
+}
+
+/// BW3.0: Self-heal contradictions across knowledge nodes
+class SelfHealTool extends AgentTool {
+  SelfHealTool()
+      : super(
+          name: 'brainweave_self_heal',
+          description: 'Detect and resolve contradictions across knowledge nodes. '
+              'Uses GitNexus impact analysis + arscontexta reweave pipeline.',
+          inputSchema: {},
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.selfHeal();
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Self-heal failed: $e');
+    }
+  }
+}
+
+/// BW3.0: Compact working memory by archiving old nodes to Memex
+class CompactContextTool extends AgentTool {
+  CompactContextTool()
+      : super(
+          name: 'brainweave_compact_context',
+          description: 'Compress working memory by archiving old/low-confidence nodes to Memex. '
+              'Keeps the active knowledge graph lean while preserving full history.',
+          inputSchema: {},
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    try {
+      final result = await _mcpClient.compactContext();
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('Context compaction failed: $e');
+    }
+  }
+}
+
+/// BW3.0: CreativeFlow — generate creative output grounded in the graph
+class CreativeFlowTool extends AgentTool {
+  CreativeFlowTool()
+      : super(
+          name: 'brainweave_creative_flow',
+          description: 'Generate creative output (concepts, copy, visual direction) '
+              'grounded in the BrainWeave knowledge graph. Output automatically '
+              'becomes a graph node with provenance annotations.',
+          inputSchema: {
+            'brief': {
+              'type': 'string',
+              'description': 'The creative brief describing what to produce.',
+            },
+            'type': {
+              'type': 'string',
+              'description': 'Type of creative output: concept, copy, visual_direction.',
+              'enum': ['concept', 'copy', 'visual_direction'],
+            },
+            'clientId': {
+              'type': 'string',
+              'description': 'Optional. Link output to a specific client profile.',
+            },
+          },
+        );
+
+  @override
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
+    final brief = parameters['brief'] as String?;
+    if (brief == null || brief.isEmpty) {
+      return ToolResult.failure('Missing brief parameter');
+    }
+    try {
+      final result = await _mcpClient.creativeFlow(
+        brief: brief,
+        type: parameters['type'] as String? ?? 'concept',
+        clientId: parameters['clientId'] as String?,
+      );
+      return ToolResult.success(result);
+    } catch (e) {
+      return ToolResult.failure('CreativeFlow failed: $e');
+    }
+  }
+}
+

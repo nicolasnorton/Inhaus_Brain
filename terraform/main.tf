@@ -328,3 +328,26 @@ output "bigquery_dataset" {
   value       = google_bigquery_dataset.analytics.dataset_id
   description = "BigQuery dataset for analytics"
 }
+
+# ===========================
+# BrainWeave 3.0 Agent Skills Evolution 
+# ===========================
+resource "google_cloud_scheduler_job" "brainweave_skill_scanner" {
+  name             = "brainweave-skill-scanner-nightly"
+  description      = "Nightly job to scan new BrainWeave skill nodes for security risks"
+  schedule         = "0 2 * * *" # Every day at 2:00 AM
+  time_zone        = "America/New_York"
+  attempt_deadline = "300s"
+
+  http_target {
+    http_method = "POST"
+    uri         = "${google_cloud_run_service.backend.status[0].url}/brainweave_skill_scan_job"
+    
+    # Needs real authentication for production, placeholder for now
+    headers = {
+      "Content-Type"  = "application/json"
+      "Authorization" = "Bearer ${var.project_id}-scheduler"
+    }
+  }
+}
+
