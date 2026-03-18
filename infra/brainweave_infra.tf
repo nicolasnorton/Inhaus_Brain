@@ -69,7 +69,7 @@ resource "google_spanner_database" "brainweave_db" {
   name     = "brainweave"
 
   ddl = [
-    "CREATE TABLE BrainWeaveNodes (node_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()), owner_id STRING(128) NOT NULL, client_id STRING(128), project_id STRING(128), scope STRING(16) NOT NULL, title STRING(512) NOT NULL, description STRING(2048), content STRING(MAX), node_type STRING(32) NOT NULL, topics ARRAY<STRING(256)>, markdown_uri STRING(1024), embedding ARRAY<FLOAT32>, source_agent STRING(128), confidence FLOAT64, version INT64, created_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true), updated_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true)) PRIMARY KEY (node_id)",
+    "CREATE TABLE BrainWeaveNodes (node_id STRING(36) NOT NULL DEFAULT (GENERATE_UUID()), owner_id STRING(128) NOT NULL, client_id STRING(128), project_id STRING(128), scope STRING(16) NOT NULL, title STRING(512) NOT NULL, description STRING(2048), content STRING(MAX), node_type STRING(32) NOT NULL, topics ARRAY<STRING(256)>, markdown_uri STRING(1024), embedding ARRAY<FLOAT32>, source_agent STRING(128), confidence FLOAT64, version INT64, bounding_box JSON, created_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true), updated_at TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp = true)) PRIMARY KEY (node_id)",
 
     "CREATE INDEX NodesByOwner ON BrainWeaveNodes(owner_id, scope)",
     "CREATE INDEX NodesByClient ON BrainWeaveNodes(client_id, scope)",

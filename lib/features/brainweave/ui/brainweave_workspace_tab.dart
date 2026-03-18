@@ -16,6 +16,7 @@ import '../services/brainweave_storage_service.dart';
 import '../services/brainweave_stats_service.dart';
 import '../services/brainweave_mcp_client.dart';
 import 'knowledge_graph_explorer.dart';
+import 'brainweave_file_upload.dart';
 
 // ─── Colors & Style Constants ────────────────────────────────────────────────
 
@@ -510,6 +511,16 @@ class _BrainWeaveWorkspaceTabState
               isRunning:   _isRunning,
               onSubmit:    _runPipeline,
             ),
+            const SizedBox(height: 16),
+
+            // ── PDF Parser Evolution: File Upload ─────────────────────────────
+            if (FeatureFlags.brainweavePdfParserEvolutionEnabled)
+              BrainWeaveFileUploadButton(
+                onUploadComplete: () {
+                  // Refresh stats after upload
+                  setState(() {});
+                },
+              ),
             const SizedBox(height: 24),
 
             // ── Query Field (NL Fallback) ─────────────────────────────────────

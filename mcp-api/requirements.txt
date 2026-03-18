@@ -6,3 +6,4 @@ google-cloud-pubsub>=2.20
 google-auth>=2.20
 vertexai>=1.0
 gunicorn>=21.2
+PyMuPDF>=1.25.0

@@ -2429,6 +2429,191 @@ Return JSON strictly:
         "flagged": flagged_count
     })
 
+# ═══════════════════════════════════════════════════════════
+# BrainWeave PDF Parser Evolution (behind feature flag)
+# ═══════════════════════════════════════════════════════════
+
+PDF_PARSER_EVOLUTION_ENABLED = os.environ.get("BRAINWEAVE_PDF_PARSER_EVOLUTION_ENABLED", "false").lower() == "true"
+
+@app.route("/brainweave_pdf_ingest", methods=["POST"])
+@rate_limited
+def pdf_ingest():
+    """Ingest a PDF: parse → extract elements → create BrainWeave nodes with bounding boxes.
+    
+    Requires BRAINWEAVE_PDF_PARSER_EVOLUTION_ENABLED=true.
+    Accepts base64-encoded PDF + metadata, returns created node IDs.
+    """
+    if not PDF_PARSER_EVOLUTION_ENABLED:
+        return jsonify({"error": "PDF parser evolution is not enabled. Set BRAINWEAVE_PDF_PARSER_EVOLUTION_ENABLED=true"}), 403
+
+    try:
+        import base64
+        from brainweave_pdf_parser import BrainWeavePdfParser
+
+        body = request.get_json()
+        owner_id = _authed_owner(request)
+
+        pdf_base64 = body.get("pdf_base64", "")
+        filename = _sanitize_text(body.get("filename", "document.pdf"), 256, "filename")
+        scope = body.get("scope", "PRIVATE")
+        _validate_scope(scope)
+        client_id = body.get("client_id")
+
+        if not pdf_base64:
+            return jsonify({"error": "pdf_base64 is required"}), 400
+
+        # Decode PDF
+        try:
+            pdf_bytes = base64.b64decode(pdf_base64)
+        except Exception:
+            return jsonify({"error": "Invalid base64 encoding"}), 400
+
+        # Size guard (50MB max)
+        if len(pdf_bytes) > 50 * 1024 * 1024:
+            return jsonify({"error": "PDF exceeds 50MB limit"}), 400
+
+        # Parse PDF
+        parser = BrainWeavePdfParser(gemini_model_id=FAST_MODEL_ID)
+        result = parser.parse(pdf_bytes, filename)
+
+        if not result.elements:
+            return jsonify({"error": "No content extracted from PDF"}), 400
+
+        # Create nodes from extracted sections
+        database = _get_database(request)
+        created_nodes = []
+
+        # Group elements into logical sections (by headings)
+        sections = _group_elements_into_sections(result.elements)
+
+        for section in sections:
+            node_id = str(uuid.uuid4())
+            title = section["title"]
+            content = section["content"]
+            bounding_boxes = section["bounding_boxes"]
+
+            # Generate embedding
+            embed_text = f"{title} {content[:500]}"
+            embedding = _get_embedding(embed_text)
+
+            # Build bounding_box JSON
+            bbox_json = json.dumps(bounding_boxes)
+
+            def write_node(transaction, nid=node_id, t=title, c=content, 
+                          emb=embedding, bb=bbox_json, oid=owner_id, 
+                          cid=client_id, sc=scope, fn=filename):
+                transaction.insert(
+                    "BrainWeaveNodes",
+                    columns=[
+                        "node_id", "owner_id", "client_id", "scope",
+                        "title", "description", "content", "node_type",
+                        "topics", "embedding", "source_agent", "confidence",
+                        "bounding_box", "metadata",
+                        "created_at", "updated_at",
+                    ],
+                    values=[[
+                        nid, oid, cid, sc,
+                        t, f"Extracted from {fn}", c, "atomic",
+                        [], emb, "pdf_parser", 0.95,
+                        bb, json.dumps({"source_file": fn, "parser": "brainweave_pdf_parser"}),
+                        spanner.COMMIT_TIMESTAMP, spanner.COMMIT_TIMESTAMP,
+                    ]],
+                )
+
+            database.run_in_transaction(write_node)
+
+            # Auto-link to similar nodes
+            try:
+                with database.snapshot() as snapshot:
+                    similar = list(snapshot.execute_sql(
+                        "SELECT node_id, title FROM BrainWeaveNodes "
+                        "WHERE owner_id = @oid AND node_id != @nid "
+                        "ORDER BY COSINE_DISTANCE(embedding, @emb) LIMIT 3",
+                        params={"oid": owner_id, "nid": node_id, "emb": embedding},
+                        param_types={
+                            "oid": spanner.param_types.STRING,
+                            "nid": spanner.param_types.STRING,
+                            "emb": spanner.param_types.Array(spanner.param_types.FLOAT32),
+                        },
+                    ))
+
+                for sim_row in similar:
+                    edge_id = str(uuid.uuid4())
+                    def write_edge(transaction, eid=edge_id, oid=owner_id,
+                                  src=node_id, tgt=sim_row[0]):
+                        transaction.insert(
+                            "BrainWeaveEdges",
+                            columns=[
+                                "edge_id", "owner_id", "source_node_id",
+                                "target_node_id", "relationship_type",
+                                "weight", "confidence", "created_at",
+                            ],
+                            values=[[
+                                eid, oid, src, tgt,
+                                "extracted_from_same_document", 0.7, 0.8,
+                                spanner.COMMIT_TIMESTAMP,
+                            ]],
+                        )
+                    database.run_in_transaction(write_edge)
+            except Exception as link_err:
+                app.logger.warning(f"Auto-link failed for {node_id}: {link_err}")
+
+            created_nodes.append({"node_id": node_id, "title": title})
+
+        _audit_log("pdf_ingest", owner_id, filename=filename, 
+                   nodes_created=len(created_nodes))
+
+        return jsonify({
+            "status": "ok",
+            "filename": filename,
+            "nodes_created": len(created_nodes),
+            "nodes": created_nodes,
+            "stats": result.stats,
+        })
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"PDF ingest error: {e}\n{tb_module.format_exc()}")
+        return _safe_error("PDF ingestion failed")
+
+
+def _group_elements_into_sections(elements) -> list:
+    """Group PDF elements into logical sections based on headings."""
+    sections = []
+    current_section = {"title": "Document Content", "content": "", "bounding_boxes": []}
+
+    for elem in elements:
+        if elem.element_type == "heading" and current_section["content"].strip():
+            # Save current section and start new one
+            sections.append(current_section)
+            current_section = {
+                "title": elem.text[:512],
+                "content": "",
+                "bounding_boxes": [elem.bbox.to_dict()],
+            }
+        else:
+            if elem.element_type == "heading":
+                current_section["title"] = elem.text[:512]
+            current_section["content"] += elem.text + "\n\n"
+            current_section["bounding_boxes"].append(elem.bbox.to_dict())
+
+    # Don't forget the last section
+    if current_section["content"].strip():
+        sections.append(current_section)
+
+    # If no sections were created (no headings), create one from all content
+    if not sections:
+        all_text = "\n\n".join(e.text for e in elements if e.text.strip())
+        all_bboxes = [e.bbox.to_dict() for e in elements]
+        sections.append({
+            "title": elements[0].text[:512] if elements else "Untitled Document",
+            "content": all_text,
+            "bounding_boxes": all_bboxes,
+        })
+
+    return sections
+
 
 # ─── Health ──────────────────────────────────────────────────────────────────
 
@@ -2437,9 +2622,10 @@ def health():
     return jsonify({
         "status": "healthy",
         "service": "brainweave-mcp-api",
-        "version": "3.0-ars-git-evolution",
+        "version": "3.0-ars-git-evolution-pdf",
         "gsd_ecc_enabled": GSD_ECC_ENABLED,
         "brainweave_3_0_enabled": BRAINWEAVE_3_0_EVOLUTION_ENABLED,
+        "pdf_parser_evolution_enabled": PDF_PARSER_EVOLUTION_ENABLED,
     }), 200
 
 
@@ -2874,3 +3060,4 @@ Return JSON:
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+

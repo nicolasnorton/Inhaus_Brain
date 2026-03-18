@@ -238,6 +238,19 @@ class BrainWeaveMcpClient {
   // Context-Hub Upgrade Tools (require brainweave_context_hub_enabled)
   // ═══════════════════════════════════════════════════════════
 
+  /// BW3.0: CreativeFlow — generate creative output grounded in the graph.
+  Future<Map<String, dynamic>> creativeFlow({
+    required String brief,
+    String type = 'concept',
+    String? clientId,
+  }) async {
+    return await _post('brainweave_creative_flow', {
+      'brief': brief,
+      'type': type,
+      if (clientId != null) 'client_id': clientId,
+    });
+  }
+
   /// Extract structured knowledge from a meeting transcript.
   Future<Map<String, dynamic>> meetingSync({
     required String transcript,
@@ -413,6 +426,27 @@ class BrainWeaveMcpClient {
       'brief': brief,
       'type': type,
       if (clientId != null) 'client_id': clientId,
+    });
+  }
+
+  // BrainWeave PDF Parser Evolution
+  // (behind brainweave_pdf_parser_evolution_enabled)
+  // ═══════════════════════════════════════════════════════════
+
+  /// Ingest a PDF file via the hybrid PDF parser.
+  /// Parses the PDF, extracts elements with bounding boxes,
+  /// and creates BrainWeaveNodes in Spanner.
+  Future<Map<String, dynamic>> pdfIngest({
+    required String base64Pdf,
+    required String filename,
+    String? clientId,
+    String scope = 'PRIVATE',
+  }) async {
+    return await _post('brainweave_pdf_ingest', {
+      'pdf_base64': base64Pdf,
+      'filename': filename,
+      if (clientId != null) 'client_id': clientId,
+      'scope': scope,
     });
   }
 }

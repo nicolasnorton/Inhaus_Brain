@@ -25,6 +25,9 @@ class BrainWeaveNode {
   final String scope;          // PRIVATE | CLIENT | AGENCY
   final Map<String, dynamic>? metadata;
 
+  // ── PDF Parser Evolution fields ────────────────────
+  final Map<String, dynamic>? boundingBox; // PDF bounding box data (x, y, width, height, page)
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -45,6 +48,7 @@ class BrainWeaveNode {
     this.version = 1,
     this.scope = 'PRIVATE',
     this.metadata,
+    this.boundingBox,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -71,6 +75,8 @@ class BrainWeaveNode {
       version: json['version'] as int? ?? 1,
       scope: json['scope'] ?? 'PRIVATE',
       metadata: json['metadata'] as Map<String, dynamic>?,
+      boundingBox: json['boundingBox'] as Map<String, dynamic>? ??
+          json['bounding_box'] as Map<String, dynamic>?,
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -93,6 +99,7 @@ class BrainWeaveNode {
       'version': version,
       'scope': scope,
       if (metadata != null) 'metadata': metadata,
+      if (boundingBox != null) 'boundingBox': boundingBox,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
