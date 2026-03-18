@@ -115,4 +115,15 @@ class FeatureFlags {
   /// Check any flag by name (for dynamic/future flags)
   static bool isEnabled(String flagName, {bool defaultValue = false}) =>
       _overrides[flagName] ?? defaultValue;
+
+  // ── BrainWeave PDF Parser Evolution ─────────────────────────────────────
+  /// Controls hybrid PDF parsing, bounding-box extraction, and universal
+  /// file upload across the app.
+  /// Default: false. Compile-time: --dart-define=BRAINWEAVE_PDF_PARSER_EVOLUTION_ENABLED=true
+  static const _bwPdfParserCompileTime = bool.fromEnvironment(
+    'BRAINWEAVE_PDF_PARSER_EVOLUTION_ENABLED',
+    defaultValue: false,
+  );
+  static bool get brainweavePdfParserEvolutionEnabled =>
+      _overrides['brainweave_pdf_parser_evolution_enabled'] ?? _bwPdfParserCompileTime;
 }
