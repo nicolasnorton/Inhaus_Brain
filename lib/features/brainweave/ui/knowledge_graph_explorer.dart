@@ -1127,7 +1127,7 @@ class _KnowledgeGraphExplorerState
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _legendItem('MOC', _kNodeMoc, Icons.sitemap),
+                          _legendItem('MOC', _kNodeMoc, Icons.account_tree),
                           const SizedBox(width: 12),
                           _legendItem('Topic', _kNodeTopic, Icons.folder),
                           const SizedBox(width: 12),
