@@ -416,18 +416,7 @@ class BrainWeaveMcpClient {
     return await _post('brainweave_compact_context', {});
   }
 
-  /// BW3.0: CreativeFlow — generate creative output grounded in the graph.
-  Future<Map<String, dynamic>> creativeFlow({
-    required String brief,
-    String type = 'concept',
-    String? clientId,
-  }) async {
-    return await _post('brainweave_creative_flow', {
-      'brief': brief,
-      'type': type,
-      if (clientId != null) 'client_id': clientId,
-    });
-  }
+
 
   // BrainWeave PDF Parser Evolution
   // (behind brainweave_pdf_parser_evolution_enabled)
