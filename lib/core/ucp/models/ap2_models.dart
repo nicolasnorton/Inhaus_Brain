@@ -45,9 +45,9 @@ class AgentCard {
   final String agentId;
   final String name;
   final String description;
-  final List<UCPBinding> supportedBindings;
+  final List<UCPBinding> supportedBindings; // Optional in base A2A, but specific to UCP
   final List<String> supportedCapabilities; // IDs of capabilities
-  final String publicKeyId;
+  final String publicKey;
   final String signature; // Self-signed or signed by a CA
 
   AgentCard({
@@ -56,7 +56,30 @@ class AgentCard {
     required this.description,
     required this.supportedBindings,
     required this.supportedCapabilities,
-    required this.publicKeyId,
+    required this.publicKey,
     required this.signature,
   });
+
+  Map<String, dynamic> toJson() => {
+    'agent_id': agentId,
+    'name': name,
+    'description': description,
+    'capabilities': supportedCapabilities,
+    'public_key': publicKey,
+    'signature': signature,
+    // Custom extensions can be placed in an ext manifest or inline
+    'ucp_bindings': supportedBindings.map((b) => b.toString()).toList(),
+  };
+
+  factory AgentCard.fromJson(Map<String, dynamic> json) {
+    return AgentCard(
+      agentId: json['agent_id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      supportedCapabilities: List<String>.from(json['capabilities'] ?? []),
+      publicKey: json['public_key'] ?? '',
+      signature: json['signature'] ?? '',
+      supportedBindings: [], // Parsed separately based on bindings
+    );
+  }
 }

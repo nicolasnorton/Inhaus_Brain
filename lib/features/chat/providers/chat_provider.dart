@@ -1111,6 +1111,34 @@ _A2uiParseResult _extractA2uiPayload(String text) {
   String cleanText = text;
   List<String> agentThoughts = [];
   
+  // 1. AG-UI Protocol Support (Agent-User Interaction System)
+  // If the agent backend returns standard SSE formatted events, accumulate the text delta.
+  if (text.contains('data: {"type":')) {
+    final buf = StringBuffer();
+    bool isAgUi = false;
+    for (final line in text.split('\\n')) {
+      if (line.trim().startsWith('data: ')) {
+        final jsonStr = line.replaceFirst('data: ', '').trim();
+        try {
+          final decoded = jsonDecode(jsonStr);
+          if (decoded['type'] != null) {
+            isAgUi = true;
+            if (decoded['type'] == 'TEXT_MESSAGE_CONTENT' && decoded['delta'] != null) {
+              buf.write(decoded['delta']);
+            } else if (decoded['type'] == 'TOOL_CALL_START') {
+              uiPayload ??= {};
+              uiPayload!['running_tool'] = decoded['toolCallName'];
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    if (isAgUi && buf.isNotEmpty) {
+      cleanText = buf.toString().trim();
+      text = cleanText; // Update text for A2UI block extraction if nested
+    }
+  }
+  
   final a2uiRegex = RegExp(r'```json\s*---a2ui_JSON---\s*(\{.*?\})\s*```', dotAll: true, caseSensitive: false);
   final matches = a2uiRegex.allMatches(text);
   

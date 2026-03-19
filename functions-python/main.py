@@ -19,6 +19,9 @@ from proposals_functions import tune_proforma, import_packages, proposals_chat
 # BigQuery Integration
 from bigquery_proxy import bigqueryProxy
 
+# A2A Protocol Service
+from a2a_discovery import agent_card
+
 # Initialize global managers (note: these might reset on cold starts, strict statelessness preferred usually)
 # but for simple caching, we can keep them.
 # However, DialogueManager is designed to be instantiated per request or handle statelessness.
@@ -1802,6 +1805,69 @@ def notify_promotion(event, context):
         "created_at": datetime.utcnow(),
     })
     print(f"Notification created for promotion {promotion_id} -> {target_scope}")
+
+@https_fn.on_request(secrets=["GOOGLE_API_KEY"], memory=options.MemoryOption.GB_1, timeout_sec=300, invoker="public", cors=options.CorsOptions(cors_origins="*", cors_methods=["GET", "POST", "OPTIONS"]))
+def generate_content_stream(req: https_fn.Request) -> https_fn.Response:
+    """
+    AG-UI Compatible SSE Streaming Endpoint.
+    Acts as middleware parsing standard Gemini responses into AG-UI discrete events.
+    """
+    if req.method != "POST":
+        return https_fn.Response("Method Not Allowed", status=405)
+
+    uid, auth_error = _verify_auth(req)
+    if auth_error:
+        return https_fn.Response(auth_error, status=401)
+
+    try:
+        data = req.get_json()
+        if not data:
+            return https_fn.Response("Missing JSON body", status=400)
+
+        # Extract parameters
+        model_name = data.get("model", "gemini-3.1-pro-preview")
+        prompt = data.get("prompt")
+        config = data.get("config", {})
+        system_instruction = data.get("systemInstruction", "")
+        tools = data.get("tools")
+        
+        # We will use the existing GeminiClient to generate a stream
+        # However, for the AG-UI integration, we'll format the generator:
+        def sse_generator():
+            yield f'data: {json.dumps({"type": "RUN_STARTED"})}\\n\\n'
+            
+            client = GeminiClient()
+            # If the client supports generate_content_stream natively we could wrap it
+            # But here we simulate the stream chunks for textual response
+            # Note: actual streaming requires client.generate_content_stream
+            try:
+                # We'll do a basic implementation bridging standard Gemini responses to AG-UI events
+                response = client.generate_content(
+                    model_name=model_name,
+                    prompt=prompt,
+                    generation_config=config,
+                    system_instruction=system_instruction,
+                    tools=tools
+                )
+                
+                result_text = response.text if hasattr(response, 'text') else str(response)
+                
+                # Chunk it out to simulate streaming (AG-UI TEXT_MESSAGE_CONTENT)
+                chunk_size = 20
+                for i in range(0, len(result_text), chunk_size):
+                    chunk = result_text[i:i+chunk_size]
+                    yield f'data: {json.dumps({"type": "TEXT_MESSAGE_CONTENT", "delta": chunk})}\\n\\n'
+                
+            except Exception as inner_e:
+                yield f'data: {json.dumps({"type": "ERROR", "message": str(inner_e)})}\\n\\n'
+                
+            yield f'data: {json.dumps({"type": "RUN_FINISHED"})}\\n\\n'
+
+        return https_fn.Response(sse_generator(), mimetype="text/event-stream")
+
+    except Exception as e:
+        print(f"Error in generate_content_stream: {str(e)}")
+        return https_fn.Response(json.dumps({"error": str(e)}), status=500, headers={"Content-Type": "application/json"})
 
 def export_graph_stats(request=None):
     """HTTP-triggered Cloud Function for scheduled Spanner-to-BigQuery export."""

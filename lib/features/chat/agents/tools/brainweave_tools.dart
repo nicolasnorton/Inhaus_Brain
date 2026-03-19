@@ -932,39 +932,6 @@ class MemexRecallTool extends AgentTool {
             'limit': {
               'type': 'integer',
               'description': 'Maximum memories to return (default 10).',
-=======
-
-// ═══════════════════════════════════════════════════════════
-// BrainWeave PDF Parser Evolution Tools
-// (behind brainweave_pdf_parser_evolution_enabled)
-// ═══════════════════════════════════════════════════════════
-
-/// Agent tool for ingesting PDF documents into the BrainWeave knowledge graph.
-/// Uses the hybrid PDF parser with XY-Cut++ reading order, bounding boxes,
-/// and optional Vertex AI fallback for complex pages.
-class PdfIngestTool extends AgentTool {
-  PdfIngestTool()
-      : super(
-          name: 'brainweave_pdf_ingest',
-          description:
-              'Ingest a PDF document into BrainWeave. Extracts text, tables, '
-              'images with bounding boxes and creates knowledge graph nodes. '
-              'Requires base64-encoded PDF content.',
-          inputSchema: {
-            'pdf_base64': {
-              'type': 'string',
-              'description': 'Base64-encoded PDF file content.',
-            },
-            'filename': {
-              'type': 'string',
-              'description': 'Original filename of the PDF.',
-            },
-            'scope': {
-              'type': 'string',
-              'description':
-                  'Scope for created nodes. PRIVATE (default), CLIENT, or AGENCY.',
-              'enum': ['PRIVATE', 'CLIENT', 'AGENCY'],
-
             },
           },
         );
