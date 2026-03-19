@@ -676,7 +676,7 @@ class BrainWeavePdfParser:
 
         return PdfParseResult(
             filename=filename,
-            page_count=doc.page_count if hasattr(doc, 'page_count') else stats["total_pages"],
+            page_count=stats["total_pages"],
             elements=all_elements,
             markdown=markdown,
             structured_json=structured_json,

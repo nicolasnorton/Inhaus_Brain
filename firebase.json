@@ -5,10 +5,13 @@
             "public": "build/web",
             "ignore": [
                 "firebase.json",
-                "**/.*",
                 "**/node_modules/**"
             ],
             "rewrites": [
+                {
+                    "source": "/.well-known/**",
+                    "destination": "/.well-known/agent-card.json"
+                },
                 {
                     "source": "**",
                     "destination": "/index.html"
@@ -49,10 +52,13 @@
             "public": "build/web",
             "ignore": [
                 "firebase.json",
-                "**/.*",
                 "**/node_modules/**"
             ],
             "rewrites": [
+                {
+                    "source": "/.well-known/**",
+                    "destination": "/.well-known/agent-card.json"
+                },
                 {
                     "source": "**",
                     "destination": "/index.html"
