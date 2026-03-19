@@ -159,6 +159,7 @@ class _KnowledgeGraphExplorerState
   late AnimationController _physicsController;
   int _cooldown = 0; // frames of low-energy before pausing
   static const _maxCooldown = 120;
+  double _alpha = 1.0; // Cooling factor for simulated annealing
 
   // ── Drag ──
   _GraphNode? _dragNode;
@@ -366,8 +367,12 @@ class _KnowledgeGraphExplorerState
         node.radius = baseRadius + (degree * 1.2).clamp(0, 12);
       }
 
+      _assignClusterColors(nodeMapCommon);
+
       if (mounted) {
         setState(() => _isLoading = false);
+        _alpha = 1.0;
+        _cooldown = 0;
         _physicsController.repeat();
       }
     } catch (e) {
@@ -486,18 +491,33 @@ class _KnowledgeGraphExplorerState
     if (_nodes.isEmpty) return;
 
     double totalKineticEnergy = 0;
+    
+    // Decay alpha (cooling factor)
+    _alpha *= 0.98;
+    
+    // If graph is cold enough, stop physics entirely to save CPU/battery
+    if (_alpha < 0.005) {
+      _physicsController.stop();
+      return;
+    }
 
-    // Repulsion (all pairs)
+    // Repulsion (all pairs) - O(N^2) but only active while warm
     for (int i = 0; i < _nodes.length; i++) {
       for (int j = i + 1; j < _nodes.length; j++) {
         final a = _nodes[i];
         final b = _nodes[j];
         double dx = b.x - a.x;
         double dy = b.y - a.y;
-        double dist = sqrt(dx * dx + dy * dy).clamp(1, double.infinity);
-        double force = 5000 / (dist * dist);
+        double distSq = dx * dx + dy * dy;
+        
+        // Skip repulsion if nodes are too far apart to save CPU
+        if (distSq > 90000) continue; // 300px radius
+        
+        double dist = sqrt(distSq).clamp(1.0, double.infinity);
+        double force = (5000 / distSq) * _alpha;
         double fx = (dx / dist) * force;
         double fy = (dy / dist) * force;
+        
         if (!a.isDragging) {
           a.vx -= fx;
           a.vy -= fy;
@@ -516,8 +536,8 @@ class _KnowledgeGraphExplorerState
       final b = edge.target!;
       double dx = b.x - a.x;
       double dy = b.y - a.y;
-      double dist = sqrt(dx * dx + dy * dy).clamp(1, double.infinity);
-      double force = (dist - 120) * 0.01;
+      double dist = sqrt(dx * dx + dy * dy).clamp(1.0, double.infinity);
+      double force = (dist - 120) * 0.01 * _alpha;
       double fx = (dx / dist) * force;
       double fy = (dy / dist) * force;
       if (!a.isDragging) {
@@ -536,22 +556,24 @@ class _KnowledgeGraphExplorerState
       if (node.isDragging) continue;
       double dx = cx - node.x;
       double dy = cy - node.y;
-      node.vx += dx * 0.0005;
-      node.vy += dy * 0.0005;
+      node.vx += dx * 0.0005 * _alpha;
+      node.vy += dy * 0.0005 * _alpha;
     }
 
     // Apply velocity with damping
     for (var node in _nodes) {
       if (node.isDragging) continue;
-      node.vx *= 0.85;
-      node.vy *= 0.85;
+      // Damping increases as alpha decreases
+      double damping = 0.85 - (1.0 - _alpha) * 0.1;
+      node.vx *= damping;
+      node.vy *= damping;
       node.x += node.vx;
       node.y += node.vy;
       totalKineticEnergy += node.vx * node.vx + node.vy * node.vy;
     }
 
-    // Cooldown detection
-    if (totalKineticEnergy < 0.1) {
+    // Cooldown detection based on kinetic energy
+    if (totalKineticEnergy < 0.5) {
       _cooldown++;
       if (_cooldown > _maxCooldown) {
         _physicsController.stop();
@@ -566,6 +588,7 @@ class _KnowledgeGraphExplorerState
 
   void _ensurePhysicsRunning() {
     if (!_physicsController.isAnimating) {
+      _alpha = 0.2; // Small bump in energy, not a full restart
       _cooldown = 0;
       _physicsController.repeat();
     }
@@ -1090,6 +1113,32 @@ class _KnowledgeGraphExplorerState
                       ),
                     ),
 
+                  // ── UI Legend (bottom-left) ──
+                  Positioned(
+                    bottom: 16,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _kSidebarBg.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _kSidebarBorder),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _legendItem('MOC', _kNodeMoc, Icons.sitemap),
+                          const SizedBox(width: 12),
+                          _legendItem('Topic', _kNodeTopic, Icons.folder),
+                          const SizedBox(width: 12),
+                          _legendItem('Skill', _kNodeSkill, Icons.build),
+                          const SizedBox(width: 12),
+                          _legendItem('Atomic', _kNodeAtomic, Icons.article),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   // ── Hover Tooltip (description) ──
                   if (_hoveredNode != null && _selectedNode == null)
                     Positioned(
@@ -1197,6 +1246,17 @@ class _KnowledgeGraphExplorerState
               )),
         ],
       ),
+    );
+  }
+
+  Widget _legendItem(String label, Color color, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(color: _kTextCream, fontSize: 11)),
+      ],
     );
   }
 
