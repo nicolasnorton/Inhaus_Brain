@@ -159,7 +159,7 @@ class UCPService {
   Future<bool> verifyAgentCard(AgentCard card) async {
     // Agent-to-Agent Endpoint Discovery (/.well-known/agent-card.json)
     try {
-      final wellKnownUrl = 'https://${card.id}.agent.internal/.well-known/agent-card.json'; 
+      final wellKnownUrl = 'https://${Uri.encodeComponent(card.agentId)}.agent.internal/.well-known/agent-card.json'; 
       final response = await http.get(Uri.parse(wellKnownUrl)).timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         final remoteCard = jsonDecode(response.body);
