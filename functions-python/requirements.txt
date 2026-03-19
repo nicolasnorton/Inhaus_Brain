@@ -9,3 +9,5 @@ google-cloud-discoveryengine
 google-cloud-spanner
 google-cloud-firestore
 google-cloud-aiplatform
+ag-ui-adk>=0.1.0
+fastapi>=0.100.0

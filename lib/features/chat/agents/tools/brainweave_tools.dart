@@ -1105,10 +1105,42 @@ class CreativeFlowTool extends AgentTool {
     }
   }
 }
+// ═══════════════════════════════════════════════════════════
+// BrainWeave PDF Parser Evolution Tools
+// (behind brainweave_pdf_parser_evolution_enabled)
+// ═══════════════════════════════════════════════════════════
+
+/// Agent tool for ingesting PDF documents into the BrainWeave knowledge graph.
+/// Uses the hybrid PDF parser with XY-Cut++ reading order, bounding boxes,
+/// and optional Vertex AI fallback for complex pages.
+class PdfIngestTool extends AgentTool {
+  PdfIngestTool()
+      : super(
+          name: 'brainweave_pdf_ingest',
+          description:
+              'Ingest a PDF document into BrainWeave. Extracts text, tables, '
+              'images with bounding boxes and creates knowledge graph nodes. '
+              'Requires base64-encoded PDF content.',
+          inputSchema: {
+            'pdf_base64': {
+              'type': 'string',
+              'description': 'Base64-encoded PDF file content.',
+            },
+            'filename': {
+              'type': 'string',
+              'description': 'Original filename of the PDF.',
+            },
+            'scope': {
+              'type': 'string',
+              'description':
+                  'Scope for created nodes. PRIVATE (default), CLIENT, or AGENCY.',
+              'enum': ['PRIVATE', 'CLIENT', 'AGENCY'],
+            },
+          },
+        );
 
   @override
-  Future<ToolResult> execute(Map<String, dynamic> parameters,
-      {dynamic ref}) async {
+  Future<ToolResult> execute(Map<String, dynamic> parameters, {dynamic ref}) async {
     final pdfBase64 = parameters['pdf_base64'] as String?;
     final filename = parameters['filename'] as String? ?? 'document.pdf';
     final scope = parameters['scope'] as String? ?? 'PRIVATE';
@@ -1126,7 +1158,6 @@ class CreativeFlowTool extends AgentTool {
       return ToolResult.success(result);
     } catch (e) {
       return ToolResult.failure('PDF ingestion failed: $e');
-
     }
   }
 }
