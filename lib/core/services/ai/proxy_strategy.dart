@@ -10,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_strategy.dart';
 import 'ai_generation_request.dart';
 import '../ai_proxy_service.dart';
-import '../../tokens/llm_provider.dart';
 
 class ProxyStrategy extends AIStrategy {
   static final _logger = Logger();
@@ -83,54 +82,57 @@ class ProxyStrategy extends AIStrategy {
 
     stopwatch.stop();
 
-    // Parse proxy response
-    String text = 'No proxy content.';
+    // Parse proxy response — extract text, function calls, and thinking separately
+    String text = '';
+    final functionCalls = <FunctionCallRequest>[];
+    final thinkingBuffer = StringBuffer();
+
     final candidates = proxyRes['candidates'] as List?;
     if (candidates != null && candidates.isNotEmpty) {
       final content = candidates.first['content'];
       final parts = content?['parts'] as List?;
       if (parts != null && parts.isNotEmpty) {
-        final buffer = StringBuffer();
+        final textBuffer = StringBuffer();
         for (var part in parts) {
           if (part is Map) {
             if (part.containsKey('thought')) {
-              // Thoughts are internal model reasoning — do NOT render to the user.
-              _logger.d('Proxy: [Thought suppressed] ${(part['thought'] as String).length} chars');
+              // Capture thinking for debugging — NOT rendered to user
+              thinkingBuffer.write(part['thought']);
+              _logger.d('Proxy: [Thought] ${(part['thought'] as String).length} chars');
             }
             if (part.containsKey('text')) {
-              buffer.write(part['text']);
-            }
-            if (part.containsKey('call')) {
-              // Function call from model (Python proxy format)
-              _logger.d('Proxy: Detected function call part: ${part['call']}');
-              buffer.write(jsonEncode({'call': part['call']}));
+              textBuffer.write(part['text']);
             }
             if (part.containsKey('functionCall')) {
-              // Native Gemini function call format
-              _logger.d('Proxy: Detected native functionCall part: ${part['functionCall']}');
-              buffer.write(jsonEncode({'functionCall': part['functionCall']}));
+              // Native Gemini function call — extract as structured data
+              final fc = part['functionCall'] as Map<String, dynamic>;
+              functionCalls.add(FunctionCallRequest.fromJson(fc));
+              _logger.d('Proxy: Extracted functionCall: ${fc['name']}');
+            }
+            if (part.containsKey('call')) {
+              // Python proxy format function call
+              final fc = part['call'] as Map<String, dynamic>;
+              functionCalls.add(FunctionCallRequest.fromJson(fc));
+              _logger.d('Proxy: Extracted call: ${fc['function_name'] ?? fc['name']}');
             }
             if (part.containsKey('executable_adunit')) {
-              buffer.write(jsonEncode(part));
+              textBuffer.write(jsonEncode(part));
             }
             if (part.containsKey('executable_code')) {
-              // Handle code execution results from Gemini
               final code = part['executable_code'];
               if (code is Map) {
-                buffer.writeln('\n```${code['language'] ?? ''}\n${code['code'] ?? ''}\n```\n');
+                textBuffer.writeln('\n```${code['language'] ?? ''}\n${code['code'] ?? ''}\n```\n');
               }
             }
             if (part.containsKey('inlineData')) {
-              // Handle Nano Banana inline images
               final mime = part['inlineData']['mimeType'];
               final data = part['inlineData']['data'];
-              buffer.writeln('\n![Generated Image](data:$mime;base64,$data)\n');
+              textBuffer.writeln('\n![Generated Image](data:$mime;base64,$data)\n');
             }
           }
         }
-        text = buffer.toString();
-        if (text.isEmpty && parts.isNotEmpty) {
-           // Fallback if parts didn't match known keys but content exists
+        text = textBuffer.toString();
+        if (text.isEmpty && functionCalls.isEmpty && parts.isNotEmpty) {
            if (parts.first is Map && parts.first.containsKey('inlineData')) {
               final mime = parts.first['inlineData']['mimeType'];
               final data = parts.first['inlineData']['data'];
@@ -143,30 +145,32 @@ class ProxyStrategy extends AIStrategy {
     } else if (proxyRes['custom_type'] == 'interaction_result') {
       final outputs = proxyRes['outputs'] as List?;
       if (outputs != null && outputs.isNotEmpty) {
-        final buffer = StringBuffer();
+        final textBuffer = StringBuffer();
         for (var output in outputs) {
           if (output is Map) {
             if (output['type'] == 'thought') {
-              // Thoughts are internal model reasoning — do NOT render to the user.
               final thought = output['thought'] ?? '';
               final summary = output['summary'] ?? '';
-              _logger.d('Proxy: [Thought suppressed] ${(thought as String).length + (summary as String).length} chars');
+              thinkingBuffer.write('$thought\n$summary');
             } else if (output['type'] == 'text') {
-              buffer.write(output['text'] ?? '');
+              textBuffer.write(output['text'] ?? '');
             } else if (output['type'] == 'function_call') {
-              buffer.writeln('\n`[Tool Call: ${output['call']?['function_name']}]`');
+              final call = output['call'] as Map<String, dynamic>?;
+              if (call != null) {
+                functionCalls.add(FunctionCallRequest.fromJson(call));
+              }
             }
           }
         }
-        text = buffer.toString();
+        text = textBuffer.toString();
       }
     } else if (proxyRes['error'] != null) {
       text = 'Proxy Error: ${proxyRes['error']}';
     }
 
-    // DEBUG: If we STILL have 'No proxy content.', dump the whole response
-    if (text == 'No proxy content.') {
-      _logger.w('Proxy: Failed to parse valid content. Raw response: $proxyRes');
+    // If no text AND no function calls, dump raw response for debugging
+    if (text.isEmpty && functionCalls.isEmpty) {
+      _logger.w('Proxy: No parseable content. Raw response: $proxyRes');
       text = jsonEncode(proxyRes);
     }
 
@@ -181,6 +185,8 @@ class ProxyStrategy extends AIStrategy {
       strategyUsed: name,
       latency: stopwatch.elapsed,
       confidence: 1.0,
+      functionCalls: functionCalls,
+      thinkingContent: thinkingBuffer.isEmpty ? null : thinkingBuffer.toString(),
     );
   }
 

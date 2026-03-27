@@ -74,6 +74,32 @@ class AIGenerationRequest {
       imageBytes != null || audioBytes != null || videoBytes != null || pdfBytes != null;
 }
 
+/// A structured function call request from the LLM.
+///
+/// When a model responds with a function call instead of text,
+/// this captures the tool name and arguments for execution by [AgentExecutor].
+class FunctionCallRequest {
+  final String name;
+  final Map<String, dynamic> arguments;
+
+  const FunctionCallRequest({
+    required this.name,
+    this.arguments = const {},
+  });
+
+  factory FunctionCallRequest.fromJson(Map<String, dynamic> json) {
+    return FunctionCallRequest(
+      name: json['name'] as String? ?? json['function_name'] as String? ?? '',
+      arguments: Map<String, dynamic>.from(json['args'] ?? json['arguments'] ?? {}),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'name': name, 'args': arguments};
+
+  @override
+  String toString() => 'FunctionCall($name, $arguments)';
+}
+
 /// Unified result from any AI generation strategy.
 class AIGenerationResult {
   final String text;
@@ -83,6 +109,13 @@ class AIGenerationResult {
   final List<String> sourceCitations;
   final Duration? latency;
 
+  /// Function calls requested by the model. If non-empty, the model
+  /// wants tool execution before producing a final text response.
+  final List<FunctionCallRequest> functionCalls;
+
+  /// Internal chain-of-thought reasoning (suppressed from user, available for debugging).
+  final String? thinkingContent;
+
   const AIGenerationResult({
     required this.text,
     required this.modelUsed,
@@ -90,7 +123,12 @@ class AIGenerationResult {
     this.confidence = 1.0,
     this.sourceCitations = const [],
     this.latency,
+    this.functionCalls = const [],
+    this.thinkingContent,
   });
+
+  /// True if the model is requesting tool execution rather than giving a final answer.
+  bool get hasFunctionCalls => functionCalls.isNotEmpty;
 
   AIGenerationResult copyWith({
     String? text,
@@ -99,6 +137,8 @@ class AIGenerationResult {
     double? confidence,
     List<String>? sourceCitations,
     Duration? latency,
+    List<FunctionCallRequest>? functionCalls,
+    String? thinkingContent,
   }) {
     return AIGenerationResult(
       text: text ?? this.text,
@@ -107,9 +147,8 @@ class AIGenerationResult {
       confidence: confidence ?? this.confidence,
       sourceCitations: sourceCitations ?? this.sourceCitations,
       latency: latency ?? this.latency,
+      functionCalls: functionCalls ?? this.functionCalls,
+      thinkingContent: thinkingContent ?? this.thinkingContent,
     );
   }
-
-  /// Convert to legacy EdgeAIResult for backward compat.
-  /// (Will be removed once EdgeAIService is fully migrated.)
 }

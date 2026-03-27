@@ -12,13 +12,17 @@ import 'base_agent.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/services/ai_proxy_service.dart';
 import '../../../core/architecture/blackboard.dart';
+import '../../../core/mcp/agent_tool.dart';
 
 /// Helper to reduce boilerplate
 import 'package:inhaus_brain/features/copilot/data/copilot_repository.dart';
 import 'package:inhaus_brain/features/copilot/presentation/copilot_view.dart';
 import 'package:ag_ui/ag_ui.dart';
+import 'agent_executor.dart';
 
-/// Helper to reduce boilerplate
+/// Helper to reduce boilerplate — now routes through [AgentExecutor] for
+/// ReAct tool-calling when tools are available, with CopilotKit and
+/// legacy EdgeAI as fallback paths.
 Future<String> _simpleExecute({
   required String agentName,
   required String systemPromptKey,
@@ -33,13 +37,55 @@ Future<String> _simpleExecute({
   AIModelConfig? modelConfig,
   bool jsonMode = false,
   dynamic ref, // Phase 89: Required for CopilotKit
+  List<AgentTool>? tools, // NEW: tools for ReAct loop
 }) async {
   onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: agentName));
   
   final promptHeader = systemPrompt ?? "You are the $agentName. Act accordingly.";
+  final effectiveConfig = modelConfig ?? AIModelConfig.geminiFlash;
 
-  // COPILOTKIT MIGRATION
-  // If we have a Ref, use the CopilotRepository to execute via the Runtime
+  // ── PRIMARY PATH: AgentExecutor ReAct Loop ──
+  // All agents now route through the ReAct engine which handles tool calling.
+  // This is the March 2026 agentic standard path.
+  try {
+    final executor = AgentExecutor(
+      agentName: agentName,
+      systemPrompt: promptHeader + (jsonMode ? "\n\nCRITICAL: You MUST return a valid JSON object." : ""),
+      tools: tools ?? const [],
+    );
+
+    final config = ExecutorConfig(
+      maxIterations: tools != null && tools.isNotEmpty ? 8 : 1, // Single-shot if no tools
+      modelConfig: jsonMode ? effectiveConfig.copyWith(responseMimeType: 'application/json') : effectiveConfig,
+    );
+
+    final result = await executor.run(
+      userPrompt: userPrompt,
+      context: context,
+      config: config,
+      onEvent: onEvent,
+      ref: ref,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+    );
+
+    String text = result.text;
+    if (jsonMode) {
+      // Clean markdown wrappers from JSON
+      if (text.contains('```json')) {
+        text = text.split('```json').last.split('```').first.trim();
+      } else if (text.contains('```')) {
+        text = text.split('```').last.split('```').first.trim();
+      }
+    }
+
+    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
+    return text;
+  } catch (e) {
+    debugPrint('$agentName: AgentExecutor failed: $e. Trying CopilotKit fallback.');
+  }
+
+  // ── FALLBACK: CopilotKit Runtime ──
   if (ref != null) {
       try {
           final repo = ref.read(vertexChatRepositoryProvider);
@@ -51,8 +97,6 @@ Future<String> _simpleExecute({
              content: promptHeader + (jsonMode ? "\n\nCRITICAL: You MUST return a valid JSON object." : "")
           );
 
-          // We append context to the user prompt for now, as SimpleRunAgentInput has specific context fields
-          // but just prepending is easier for migration.
           String augmentedPrompt = userPrompt;
           if (context.isNotEmpty) {
              augmentedPrompt += "\n\nCONTEXT:\n${context.map((k) => k.content).join('\n')}";
@@ -71,7 +115,6 @@ Future<String> _simpleExecute({
              onDone: () {
                 String text = buffer.toString();
                 if (jsonMode) {
-                  // Basic cleanup for CopilotKit which might not support mimeType directly yet
                   if (text.contains('```json')) {
                     text = text.split('```json').last.split('```').first.trim();
                   } else if (text.contains('```')) {
@@ -89,13 +132,11 @@ Future<String> _simpleExecute({
           onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
           return result;
       } catch (e) {
-          // Fallback to core edge service if copilot fails? 
-          // Or just log and rethrow.
-          print("Copilot Execution Failed: $e. Falling back to EdgeAIService.");
+          debugPrint("Copilot Execution Failed: $e. Falling back to EdgeAIService.");
       }
   }
 
-  // Legacy / Fallback Path
+  // ── LAST RESORT: Legacy EdgeAI direct call ──
   final fullPrompt = "SYSTEM: $promptHeader\nUSER: $userPrompt";
   
   final result = await EdgeAIService.generateText(

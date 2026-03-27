@@ -96,6 +96,18 @@ class AIModelConfig {
     provider: AIProvider.gemini, modelId: 'deep-research-pro-preview-12-2025',
     useGoogleSearch: true, temperature: 1.0);
 
+  // ── Thinking Models (Chain-of-Thought reasoning) ──────────
+  static AIModelConfig get geminiFlashThinking => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview',
+    useGoogleSearch: true, temperature: 1.0, thinkingLevel: 'medium');
+  static AIModelConfig get geminiProThinking => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3.1-pro-preview',
+    useGoogleSearch: true, temperature: 1.0, thinkingLevel: 'medium');
+
+  /// Factory to create a thinking-enabled variant of any config.
+  AIModelConfig withThinking({String level = 'medium'}) =>
+      copyWith(thinkingLevel: level);
+
   // ── Media Models ──────────────────────────────────────────
   static AIModelConfig get imagen4 => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-3.1-flash-image-preview', temperature: 1.0);

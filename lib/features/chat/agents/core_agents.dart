@@ -1,15 +1,61 @@
+/// Core Agents — migrated to AgentExecutor ReAct loop.
+///
+/// Each agent now uses [executeWithTools] for iterative tool calling,
+/// while preserving [execute] as a backward-compatible wrapper.
+///
+/// Eliminated ~400 lines of duplicated boilerplate. Each agent's
+/// personality comes from its system prompt; the execution engine
+/// is shared via [BaseAgent.executeWithTools].
+library;
+
 import 'dart:typed_data';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/services/edge_ai_service.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../agents/base_agent.dart';
 import '../models/chat_models.dart';
 import '../../../core/mcp/agent_tool.dart';
-import '../../../core/mcp/tools/web_search_tool.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/system_prompts_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import 'tools/brainweave_tools.dart';
+
+// ═══════════════════════════════════════════════════════════════════
+// Shared helper: wraps executeWithTools for backward compat with
+// the legacy String-returning execute() signature.
+// ═══════════════════════════════════════════════════════════════════
+
+/// Executes an agent using the new ReAct loop, returning a String
+/// for backward compatibility with the legacy execute() API.
+Future<String> _executeViaReactLoop({
+  required BaseAgent agent,
+  required String userPrompt,
+  required List<KnowledgeSource> context,
+  required String systemPrompt,
+  Uint8List? imageBytes,
+  String? imageMimeType,
+  Function(AdkEvent)? onEvent,
+  dynamic ref,
+}) async {
+  final result = await agent.executeWithTools(
+    userPrompt: userPrompt,
+    context: context,
+    systemPrompt: systemPrompt,
+    imageBytes: imageBytes,
+    imageMimeType: imageMimeType,
+    onEvent: onEvent,
+    ref: ref,
+  );
+
+  // Append sources if present
+  String responseText = result.text;
+  if (result.sourceCitations.isNotEmpty) {
+    responseText += '\n\n**Sources:**\n${result.sourceCitations.map((s) => '- $s').join('\n')}';
+  }
+  return responseText;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Agent Definitions
+// ═══════════════════════════════════════════════════════════════════
 
 class ResearchAgent extends BaseAgent {
   @override
@@ -18,6 +64,10 @@ class ResearchAgent extends BaseAgent {
   MessageSender get type => MessageSender.researchAgent;
   @override
   String get systemPromptKey => "research_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiResearch;
+  @override
+  bool get enableThinking => true; // Research benefits from reasoning
 
   @override
   List<AgentTool> get tools => [
@@ -43,45 +93,24 @@ class ResearchAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(
-      type: AdkEventType.agentStarted,
-      source: name,
-      message: "Researching: $userPrompt",
-    ));
-
-    // Fetch system prompt from service
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getResearchPrompt();
     
-    final systemInstruction = basePrompt
+    final effectivePrompt = basePrompt
         .replaceAll('[TASK]', userPrompt)
         .replaceAll('{{userPrompt}}', userPrompt)
         .replaceAll('{{researchSummary}}', "Use [GROUNDING] to find latest data.");
 
-    // 2. AI Generation Grounded in Research (NATIVE)
-    final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: systemPrompt ?? effectivePrompt,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
       ref: ref,
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    
-    onEvent?.call(AdkEvent(
-      type: AdkEventType.agentCompleted,
-      source: name,
-      message: "Research complete (Found ${aiRes.sourceCitations?.length ?? 0} sources).",
-    ));
-    
-    // We append sources to the text for the Chat UI to handle if it doesn't support metadata citations yet
-    String responseText = aiRes.text;
-    if (aiRes.sourceCitations != null && aiRes.sourceCitations!.isNotEmpty) {
-       responseText += "\n\n**Sources:**\n" + aiRes.sourceCitations!.map((s) => "- $s").join("\n");
-    }
-
-    return responseText;
   }
 }
 
@@ -92,6 +121,8 @@ class CreativeAgent extends BaseAgent {
   MessageSender get type => MessageSender.creativeAgent;
   @override
   String get systemPromptKey => "creative_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiResearch;
 
   @override
   Future<String> execute({
@@ -105,24 +136,20 @@ class CreativeAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getCreativePrompt();
-    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
 
-    final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -133,6 +160,8 @@ class DesignAgent extends BaseAgent {
   MessageSender get type => MessageSender.designAgent;
   @override
   String get systemPromptKey => "design_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiResearch;
 
   @override
   Future<String> execute({
@@ -146,22 +175,20 @@ class DesignAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getDesignPrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[CONCEPT]', userPrompt);
-    
-    final aiRes = await EdgeAIService.generateText(
-      prompt,
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -172,6 +199,8 @@ class VideoProductionAgent extends BaseAgent {
   MessageSender get type => MessageSender.videoProductionAgent;
   @override
   String get systemPromptKey => "video_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiResearch;
 
   @override
   Future<String> execute({
@@ -185,22 +214,18 @@ class VideoProductionAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getVideoPrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[SCRIPT]', userPrompt);
-    
-    final aiRes = await EdgeAIService.generateText(
-      prompt,
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -211,6 +236,8 @@ class CustomerServiceAgent extends BaseAgent {
   MessageSender get type => MessageSender.customerServiceAgent;
   @override
   String get systemPromptKey => "service_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiFlash;
 
   @override
   Future<String> execute({
@@ -224,22 +251,18 @@ class CustomerServiceAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getServicePrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[ISSUE]', userPrompt);
-    
-    final aiRes = await EdgeAIService.generateText(
-      prompt,
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -250,6 +273,8 @@ class CRMAgent extends BaseAgent {
   MessageSender get type => MessageSender.crmAgent;
   @override
   String get systemPromptKey => "crm_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiFlash;
 
   @override
   Future<String> execute({
@@ -263,22 +288,18 @@ class CRMAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getCRMPrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[CLIENT_DATA]', userPrompt);
-    
-    final aiRes = await EdgeAIService.generateText(
-      prompt,
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -289,6 +310,10 @@ class CSuiteAdvisorAgent extends BaseAgent {
   MessageSender get type => MessageSender.cSuiteAdvisorAgent;
   @override
   String get systemPromptKey => "csuite_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiResearch;
+  @override
+  bool get enableThinking => true; // Strategic advice benefits from reasoning
 
   @override
   Future<String> execute({
@@ -302,22 +327,18 @@ class CSuiteAdvisorAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getCSuitePrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[REPORT]', userPrompt);
-    
-    final aiRes = await EdgeAIService.generateText(
-      prompt,
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -328,6 +349,8 @@ class StorytellingAgent extends BaseAgent {
   MessageSender get type => MessageSender.storytellingAgent;
   @override
   String get systemPromptKey => "storytelling_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiFlash;
 
   @override
   Future<String> execute({
@@ -341,23 +364,18 @@ class StorytellingAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getStorytellingPrompt();
     final prompt = systemPrompt ?? basePrompt.replaceAll('[INPUT]', userPrompt);
-    
-    final aiRes = await EdgeAIService.generateText(
-      prompt,
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -368,6 +386,8 @@ class CopywriterAgent extends BaseAgent {
   MessageSender get type => MessageSender.copywriterAgent;
   @override
   String get systemPromptKey => "copywriter_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiFlash;
 
   @override
   Future<String> execute({
@@ -381,24 +401,18 @@ class CopywriterAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getCopywriterPrompt();
-    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
 
-    final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -409,6 +423,10 @@ class DeveloperAgent extends BaseAgent {
   MessageSender get type => MessageSender.developerAgent;
   @override
   String get systemPromptKey => "developer_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiPro;
+  @override
+  bool get enableThinking => true; // Complex code benefits from reasoning
 
   @override
   Future<String> execute({
@@ -422,24 +440,20 @@ class DeveloperAgent extends BaseAgent {
     Function(AdkEvent)? onEvent,
     dynamic ref,
   }) async {
-    onEvent?.call(AdkEvent(type: AdkEventType.agentStarted, source: name));
-    
     final promptService = ref!.read(systemPromptsProvider);
     final basePrompt = await promptService.getDeveloperPrompt();
-    final systemInstruction = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
 
-    final aiRes = await EdgeAIService.generateText(
-      systemInstruction,
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: userPrompt,
       context: context,
-      apiKey: apiKey,
-      gemmaKey: gemmaKey,
+      systemPrompt: prompt,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch, // Enable Google Search
-      tools: tools.map((t) => t.toFunctionSchema()).toList(),
     );
-
-    onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: name));
-    return aiRes.text;
   }
 }
 
@@ -450,6 +464,10 @@ class OrchestratorAgent extends BaseAgent {
   MessageSender get type => MessageSender.orchestratorAgent;
   @override
   String get systemPromptKey => "orchestrator_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiPro;
+  @override
+  bool get enableThinking => true;
 
   @override
   Future<String> execute({
