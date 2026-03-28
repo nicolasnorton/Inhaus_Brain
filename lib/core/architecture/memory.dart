@@ -1,8 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'context_assembler.dart';
 
 /// Tiered Context Memory structure based on the First Principles Audit.
 /// 
 /// Helps prevent "Context Bloat" and reduces latency by only passing relevant tokens.
+///
+/// March 2026 upgrade: Now integrates with [ContextAssembler] for automatic
+/// episodic memory population via BrainWeave vector search.
 class AgentMemory {
   /// Long-term project goals and high-level constraints.
   /// Shared across all agents in the workspace.
@@ -13,14 +16,32 @@ class AgentMemory {
   final WorkingMemory workingMemory;
 
   /// High-level summaries of past decisions and past campaign insights.
-  /// Retrieved via vector search (if implemented) or summarized logs.
+  /// Now populated automatically via BrainWeave vector search through [ContextAssembler].
   final List<EpisodicFragment> episodicMemory;
+
+  /// Structured conversation history for multi-turn context.
+  final List<ConversationTurn> conversationHistory;
 
   AgentMemory({
     required this.globalContext,
     required this.workingMemory,
     this.episodicMemory = const [],
+    this.conversationHistory = const [],
   });
+
+  /// Create an AgentMemory from a [ContextAssembler] result.
+  /// This is the March 2026 standard way to build memory for agents.
+  factory AgentMemory.fromAssembledContext(AssembledContext assembled) {
+    return AgentMemory(
+      globalContext: GlobalContext(
+        projectName: 'InhausBrain',
+        description: assembled.systemPromptFragment,
+      ),
+      workingMemory: WorkingMemory.empty(),
+      episodicMemory: assembled.episodicMemories,
+      conversationHistory: assembled.recentHistory,
+    );
+  }
 
   /// Assembles a system prompt component from the tiered memory.
   String toSystemPromptFragment() {
@@ -37,12 +58,25 @@ class AgentMemory {
     if (episodicMemory.isNotEmpty) {
       buffer.writeln("\n## Relevant Insights (Episodic Memory)");
       for (var fragment in episodicMemory) {
-        buffer.writeln("- ${fragment.summary}");
+        buffer.writeln("- [${(fragment.relevanceScore * 100).toInt()}%] ${fragment.summary}");
+      }
+    }
+
+    if (conversationHistory.isNotEmpty) {
+      buffer.writeln("\n## Recent Conversation");
+      final recent = conversationHistory.length > 10
+          ? conversationHistory.sublist(conversationHistory.length - 10)
+          : conversationHistory;
+      for (var turn in recent) {
+        buffer.writeln(turn.toPromptLine());
       }
     }
     
     return buffer.toString();
   }
+
+  /// Estimated token count for this memory block.
+  int get estimatedTokens => toSystemPromptFragment().length ~/ 4;
 }
 
 class GlobalContext {
@@ -80,11 +114,16 @@ class EpisodicFragment {
   final String summary;
   final double relevanceScore;
   final DateTime timestamp;
+  final String? sourceAgent;
+  final String? nodeType;
 
   EpisodicFragment({
     required this.id,
     required this.summary,
     required this.relevanceScore,
     required this.timestamp,
+    this.sourceAgent,
+    this.nodeType,
   });
 }
+
