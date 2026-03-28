@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../../knowledge/models/knowledge_source.dart';
+import '../../../core/services/budget_governor.dart';
 import '../models/chat_models.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/mcp/agent_tool.dart';
@@ -66,11 +68,28 @@ abstract class BaseAgent {
       tools: tools,
     );
 
-    final executorConfig = config ?? ExecutorConfig(
+    var executorConfig = config ?? ExecutorConfig(
       maxIterations: maxIterations,
       modelConfig: modelConfig,
       enableThinking: enableThinking,
     );
+
+    // Dynamic Model Selection via BudgetGovernor (Phase 5)
+    if (ref != null && config == null) {
+      try {
+        final governor = ref.read(budgetGovernorProvider);
+        final recommendedModelId = governor.recommendModel();
+        if (recommendedModelId.contains('lite') && !enableThinking) {
+           executorConfig = ExecutorConfig(
+             maxIterations: maxIterations,
+             modelConfig: AIModelConfig.geminiFlashLite,
+             enableThinking: enableThinking,
+           );
+        }
+      } catch (e) {
+        debugPrint('BaseAgent: BudgetGovernor model check failed: $e');
+      }
+    }
 
     return executor.run(
       userPrompt: userPrompt,

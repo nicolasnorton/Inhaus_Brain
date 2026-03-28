@@ -1,6 +1,4 @@
 import '../../../../core/mcp/agent_tool.dart';
-import '../../../../core/mcp/tools/firebase_cli_tool.dart';
-import '../../../../core/mcp/tools/google_workspace_tools.dart';
 import 'brainweave_tools.dart';
 
 /// The System of Brains Tool Registry
@@ -24,10 +22,10 @@ class GlobalToolRegistry {
         GraphRagTool(),
         MeetingSyncTool(),
         
-        // External MCP Integrations
-        FirebaseCliTool(),
-        GmailTool(),
-        DriveTool(),
-        CalendarTool(),
+        // External MCP Integrations (Pending implementation)
+        // FirebaseCliTool(),
+        // GmailTool(),
+        // DriveTool(),
+        // CalendarTool(),
       ];
 }

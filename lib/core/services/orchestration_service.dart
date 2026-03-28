@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../architecture/blackboard.dart';
+import '../architecture/agent_dag.dart';
 import '../../features/chat/agents/agency_agents.dart';
+import '../../features/chat/agents/core_agents.dart' hide CopywriterAgent, CreativeAgent;
 import '../../features/proposals/models/proposal_model.dart';
 import '../../features/proposals/services/proposals_lm_service.dart';
 import '../../features/proposals/providers/proposals_provider.dart';
@@ -64,6 +66,12 @@ class OrchestrationService {
         }
       } catch (e, stack) {
         debugPrint('OrchestrationService: CRASH in _handleUserRequest: $e\n$stack');
+      }
+    } else if (action == 'execute_pipeline') {
+      // Execute DAG Pipeline if requested
+      final dagPlan = event.data['dag_plan'] as List<dynamic>?;
+      if (dagPlan != null) {
+        await _executeDagPipeline(dagPlan.cast<Map<String, dynamic>>());
       }
     } else if (action == 'proposal_chat') {
       final message = event.data['message'] as String;
@@ -162,6 +170,63 @@ class OrchestrationService {
       debugPrint('OrchestrationService: Proposal generation failed: $e');
       blackboard.updateAgentStatus('Proposal Specialist', AgentStatus.failed);
       blackboard.addEvent(WorkflowEventType.errorOccurred, "Proposal Generation Failed: $e");
+    }
+  }
+
+  Future<void> _executeDagPipeline(List<Map<String, dynamic>> plan) async {
+    final blackboard = _ref.read(blackboardProvider.notifier);
+    debugPrint('OrchestrationService: Executing AgentDAG with ${plan.length} nodes');
+    
+    final dag = AgentDAG.fromPlan(plan);
+    try {
+      final result = await dag.execute(
+        agentExecutor: (agentName, task, upstreamContext) async {
+          blackboard.updateAgentStatus(agentName, AgentStatus.working);
+          try {
+            // We use the same _triggerAgent logic but wrapped to return String
+            if (agentName == 'Trend Scout') {
+              return await TrendScoutAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            } else if (agentName == 'Strategist') {
+              return await StrategistAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            } else if (agentName == 'Copywriter') {
+              return await CopywriterAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            } else if (agentName == 'Creative') {
+              return await CreativeAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            } else if (agentName == 'Research Agent') {
+              return await ResearchAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            } else if (agentName == 'Editorial Manager') {
+              return await EditorialManagerAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            } else {
+              debugPrint("Orchestration (DAG): Unknown agent $agentName, using generic strategy fallback.");
+              return await StrategistAgent().execute(userPrompt: task, context: upstreamContext, ref: _ref);
+            }
+          } finally {
+            blackboard.updateAgentStatus(agentName, AgentStatus.idle);
+          }
+        },
+        onEvent: (event) {
+          // You could optionally forward ADK events from DAG to blackboard UI
+          debugPrint('DAG Event: \${event.message}');
+        }
+      );
+
+      if (result.allSucceeded) {
+        blackboard.addEvent(
+          WorkflowEventType.taskFinished, 
+          "Pipeline completed successfully",
+          data: {'output': result.mergedOutput}
+        );
+        blackboard.postFact('pipeline_result', result.mergedOutput);
+      } else {
+        blackboard.addEvent(
+          WorkflowEventType.errorOccurred, 
+          "Pipeline partially failed",
+          data: {'output': result.mergedOutput}
+        );
+      }
+    } catch (e) {
+      debugPrint('OrchestrationService: DAG Execution Failed: $e');
+      blackboard.addEvent(WorkflowEventType.errorOccurred, "Pipeline Failed: $e");
     }
   }
 

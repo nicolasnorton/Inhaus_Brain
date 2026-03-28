@@ -104,7 +104,7 @@ class RouterAgent extends BaseAgent {
         ? '${systemPrompt ?? ''}\n\n## Available Agents (Dynamic Registry)\n$dynamicAgentContext'
         : systemPrompt ?? '';
 
-    final classificationPrompt = """
+  final classificationPrompt = """
 $effectiveSystemPrompt
 
 ${tieredMemory.toSystemPromptFragment()}
@@ -114,13 +114,31 @@ $rawMemory
 
 ## User Input:
 ${SanitizationUtils.escapePrompt(userPrompt)}
+
+If the intent is 'pipeline' or requires multiple steps, you MUST define a DAG (Directed Acyclic Graph) of agent tasks in the `dagNodePlan` field.
+
+Valid Agents: Trend Scout, Strategist, Copywriter, Creative, Research, Design.
+
+Return ONLY JSON format:
+```json
+{
+  "intent": "pipeline",
+  "confidence": 0.95,
+  "reasoning": "Needs research then copy.",
+  "pipeline": "custom",
+  "dagNodePlan": [
+    {"id": "research_1", "agent": "Research Agent", "task": "Find market data.", "deps": []},
+    {"id": "copy_1", "agent": "Copywriter", "task": "Write an email based on research", "deps": ["research_1"]}
+  ]
+}
+```
 """;
 
     final aiRes = await EdgeAIService.generateText(
       classificationPrompt,
       apiKey: apiKey,
       ref: ref,
-      modelConfig: AIModelConfig.geminiResearch,
+      modelConfig: AIModelConfig.geminiProThinking, // Use thinking model for complex routing
     );
     
     // Parse Intent & Post to Blackboard
@@ -140,10 +158,14 @@ ${SanitizationUtils.escapePrompt(userPrompt)}
       final intentStr = data['intent']?.toString().toUpperCase() ?? 'DIRECT_CHAT';
       final confidence = data['confidence'] ?? 0.0;
       final reason = data['reasoning'] ?? 'N/A';
+      final dagNodePlan = data['dagNodePlan'] as List<dynamic>?;
 
       // Update Blackboard Facts
       blackboard.postFact('user_intent', intentStr);
       blackboard.postFact('routing_reason', reason);
+      if (dagNodePlan != null) {
+        blackboard.postFact('dag_plan', dagNodePlan);
+      }
 
       if (intentStr == 'PIPELINE') {
           final pipelineKey = data['pipeline'] ?? 'standard-campaign';

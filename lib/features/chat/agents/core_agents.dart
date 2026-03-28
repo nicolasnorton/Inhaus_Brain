@@ -9,12 +9,14 @@
 library;
 
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../../knowledge/models/knowledge_source.dart';
 import '../agents/base_agent.dart';
 import '../models/chat_models.dart';
 import '../../../core/mcp/agent_tool.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/services/system_prompts_service.dart';
+import '../../../core/architecture/context_assembler.dart';
 import '../../../core/tokens/llm_provider.dart';
 import 'tools/brainweave_tools.dart';
 
@@ -35,10 +37,30 @@ Future<String> _executeViaReactLoop({
   Function(AdkEvent)? onEvent,
   dynamic ref,
 }) async {
+  String effectiveSystemPrompt = systemPrompt;
+  if (ref != null) {
+    try {
+      final assembler = ref.read(contextAssemblerProvider);
+      final assembledCtx = await assembler.assemble(
+        currentQuery: userPrompt,
+        agentName: agent.name,
+        attachedKnowledge: context,
+      );
+      
+      // Inject assembled memory block into system prompt
+      effectiveSystemPrompt = '$systemPrompt\n\n${assembledCtx.systemPromptFragment}';
+      
+      // Add user turn to session history
+      assembler.addUserMessage(userPrompt);
+    } catch (e) {
+      debugPrint('CoreAgents: ContextAssembler failed: $e');
+    }
+  }
+
   final result = await agent.executeWithTools(
     userPrompt: userPrompt,
     context: context,
-    systemPrompt: systemPrompt,
+    systemPrompt: effectiveSystemPrompt,
     imageBytes: imageBytes,
     imageMimeType: imageMimeType,
     onEvent: onEvent,
@@ -47,6 +69,23 @@ Future<String> _executeViaReactLoop({
 
   // Append sources if present
   String responseText = result.text;
+  
+  if (ref != null) {
+      try {
+        final assembler = ref.read(contextAssemblerProvider);
+        assembler.addAgentResponse(agent.name, responseText);
+        
+        // Asynchronously save to long-term episodic memory (Phase 5)
+        assembler.saveEpisode(
+           agentName: agent.name,
+           taskSummary: userPrompt,
+           output: responseText,
+        );
+      } catch (e) {
+        debugPrint('CoreAgents: Failed to save episode: $e');
+      }
+  }
+
   if (result.sourceCitations.isNotEmpty) {
     responseText += '\n\n**Sources:**\n${result.sourceCitations.map((s) => '- $s').join('\n')}';
   }
