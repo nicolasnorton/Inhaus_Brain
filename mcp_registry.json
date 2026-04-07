@@ -1,0 +1,6 @@
+{
+  "default": {
+    "instance": "brainweave-graph",
+    "db": "brainweave"
+  }
+}

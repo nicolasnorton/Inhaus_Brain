@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yaml/yaml.dart';
 import '../../../core/mcp/agent_tool.dart';
+import '../../../core/security/skill_vulnerability_scanner.dart';
 import '../models/skill_models.dart';
 // Note: We use a deferred or conditional check for IO logic to avoid web crashes
 import 'skill_discovery_io.dart' if (dart.library.js_interop) 'skill_discovery_web_stub.dart';
@@ -85,9 +86,24 @@ class ActivateSkillTool extends AgentTool {
       return ToolResult.failure('Skill "$name" not found among available skills.');
     }
 
+    // ── Phase 6: Security Scan ──
+    final scanResult = await SkillVulnerabilityScanner.scan(
+      skillName: name,
+      skillContent: foundSkill.instructions,
+      ref: ref,
+    );
+
+    if (!scanResult.isSafe) {
+      debugPrint('ActivateSkillTool: BLOCKED "$name" — ${scanResult.reason}');
+      return ToolResult.failure(
+        'Security scan BLOCKED skill "$name": ${scanResult.reason}\n'
+        'Detected patterns: ${scanResult.detectedPatterns.join(', ')}',
+      );
+    }
+
     return ToolResult.success({
       'instructions': foundSkill.instructions,
-      'message': 'Skill "$name" activated. Please follow the instructions provided below.',
+      'message': 'Skill "$name" activated (security scan passed). Follow the instructions provided below.',
     });
   }
 }

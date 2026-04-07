@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_video_player.dart';
-import 'package:universal_html/html.dart' as html;
+import 'package:web/web.dart' as web;
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class VideoPreviewPlayer extends StatefulWidget {
@@ -41,9 +42,12 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
     }
 
     try {
-      final anchor = html.AnchorElement(href: downloadUrl)
-        ..setAttribute("download", "inhaus_video_${DateTime.now().millisecondsSinceEpoch}.mp4")
-        ..click();
+      final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+      anchor.href = downloadUrl;
+      anchor.download = "inhaus_video_${DateTime.now().millisecondsSinceEpoch}.mp4";
+      web.document.body?.append(anchor);
+      anchor.click();
+      anchor.remove();
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Starting download...')),

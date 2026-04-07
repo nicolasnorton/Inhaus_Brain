@@ -86,6 +86,7 @@ class ProxyStrategy extends AIStrategy {
     String text = '';
     final functionCalls = <FunctionCallRequest>[];
     final thinkingBuffer = StringBuffer();
+    String? interactionId;
 
     final candidates = proxyRes['candidates'] as List?;
     if (candidates != null && candidates.isNotEmpty) {
@@ -143,6 +144,8 @@ class ProxyStrategy extends AIStrategy {
         }
       }
     } else if (proxyRes['custom_type'] == 'interaction_result') {
+      interactionId = proxyRes['id'] as String?;
+      final status = proxyRes['status'] as String?;
       final outputs = proxyRes['outputs'] as List?;
       if (outputs != null && outputs.isNotEmpty) {
         final textBuffer = StringBuffer();
@@ -187,6 +190,8 @@ class ProxyStrategy extends AIStrategy {
       confidence: 1.0,
       functionCalls: functionCalls,
       thinkingContent: thinkingBuffer.isEmpty ? null : thinkingBuffer.toString(),
+      interactionId: interactionId,
+      status: proxyRes['custom_type'] == 'interaction_result' ? proxyRes['status'] as String? : null,
     );
   }
 

@@ -271,22 +271,48 @@ Let me know if you need any other cards!
         
         # Call Generation
         print(f"Gemini Proxy: Attempting to call generation on {model_name}...")
-        response = client.generate_content(
-            model_name=model_name,
-            prompt=prompt,
-            generation_config=config,
-            system_instruction=system_instruction,
-            tools=tools,
-            thinking=thinking,
-            audio=audio,
-            use_google_search=use_google_search,
-            generation_params=data.get("generationParams"),
-            cached_content_name=cached_content_name,
-            response_json_schema=response_json_schema
-        )
-
-        # Use the built-in serializer for clean output
-        result = client._serialize_response(response)
+        
+        # Interactions API Migration (Tier 2)
+        # We route to the stateful Interactions API if previous_interaction_id is provided,
+        # otherwise we maintain backward compatibility with generate_content.
+        use_interactions_api = previous_interaction_id is not None or data.get("useInteractionsApi", False)
+        
+        if use_interactions_api:
+            print(f"Gemini Proxy: Routing to Interactions API (previous_interaction_id={previous_interaction_id})")
+            
+            # Map parameters for create_interaction
+            interaction = client.create_interaction(
+                model=model_name,
+                prompt=prompt,
+                system_instruction=system_instruction,
+                tools=tools,
+                generation_config=config,
+                previous_interaction_id=previous_interaction_id,
+                use_google_search=use_google_search,
+                response_json_schema=response_json_schema
+            )
+            
+            # Use the interactions serializer
+            result = client._serialize_interaction(interaction)
+            
+        else:
+            print(f"Gemini Proxy: Routing to legacy generate_content API")
+            response = client.generate_content(
+                model_name=model_name,
+                prompt=prompt,
+                generation_config=config,
+                system_instruction=system_instruction,
+                tools=tools,
+                thinking=thinking,
+                audio=audio,
+                use_google_search=use_google_search,
+                generation_params=data.get("generationParams"),
+                cached_content_name=cached_content_name,
+                response_json_schema=response_json_schema
+            )
+            
+            # Use the built-in serializer for clean output
+            result = client._serialize_response(response)
         
         return https_fn.Response(
             json.dumps(result),

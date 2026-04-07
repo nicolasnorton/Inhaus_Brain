@@ -6,7 +6,7 @@ description: Logic for generating fast, cloud-based previews using Gemini Flash-
 # Flash Preview Skill
 
 ## Purpose
-To provide near-instantaneous, high-quality visual or conceptual previews using Gemini 2.0 Flash-Lite, allowing users to iterate quickly without the latency of Pro models or the quality loss of on-device models.
+To provide near-instantaneous, high-quality visual or conceptual previews using Gemini 3.1 Flash-Lite, allowing users to iterate quickly without the latency of Pro models or the quality loss of on-device models.
 
 ## Application Rules
 **Apply this skill when:**
@@ -17,7 +17,7 @@ To provide near-instantaneous, high-quality visual or conceptual previews using 
 ## Core Guidelines
 
 ### 1. Routing Logic
-- **Flash First**: ALWAYS attempt initial generation with `gemini-2.0-flash-lite-001`.
+- **Flash First**: ALWAYS attempt initial generation with `gemini-3.1-flash-lite-preview`.
 - **Pro Second**: If the user approves the preview or requests "Final Output", route to the relevant Pro/Specialized model.
 
 ### 2. Performance Constraints

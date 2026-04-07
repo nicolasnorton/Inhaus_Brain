@@ -32,6 +32,11 @@ chrome.runtime.onMessageExternal.addListener(
   (request, sender, sendResponse) => {
     console.log("Received external message:", request);
     
+    // Ignore generic pings (e.g. from Firebase or other extensions)
+    if (!request || !request.action) {
+      return false;
+    }
+
     // Actions that can be handled synchronously
     if (request.action === 'check_status_sync') {
       sendResponse({ installed: true, version: "1.0.1" });
@@ -187,11 +192,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     'login', 'login_google', 'chat_request'
   ];
 
-  if (knownActions.includes(request.action)) {
+  if (request && knownActions.includes(request.action)) {
     handleAsync();
     return true; // Keep channel open
   }
   
+  // Return false if unhandled so we don't hold the channel open improperly
   return false;
 });
 

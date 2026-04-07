@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:universal_html/html.dart' as html;
+import 'package:web/web.dart' as web;
+import 'dart:js_interop';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -129,12 +130,13 @@ class _QuoteEditorViewState extends ConsumerState<QuoteEditorView> {
     }
     
     final pdfBytes = await QuotePdfGenerator.generate(quote, style);
-    final blob = html.Blob([pdfBytes], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'cotizacion_${_client.isEmpty ? "inhaus" : _client.replaceAll(' ', '_')}.pdf')
+    final blob = web.Blob([pdfBytes.toJS].toJS, web.BlobPropertyBag(type: 'application/pdf'));
+    final url = web.URL.createObjectURL(blob);
+    (web.document.createElement('a') as web.HTMLAnchorElement)
+      ..href = url
+      ..download = 'cotizacion_${_client.isEmpty ? "inhaus" : _client.replaceAll(' ', '_')}.pdf'
       ..click();
-    html.Url.revokeObjectUrl(url);
+    web.URL.revokeObjectURL(url);
   }
 
   // ---- item helpers ----

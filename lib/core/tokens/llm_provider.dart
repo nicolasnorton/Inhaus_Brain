@@ -80,7 +80,7 @@ class AIModelConfig {
   static AIModelConfig get geminiFlash => const AIModelConfig(
     provider: AIProvider.gemini, modelId: 'gemini-3-flash-preview', temperature: 1.0);
   static AIModelConfig get geminiFlashLite => const AIModelConfig(
-    provider: AIProvider.gemini, modelId: 'gemini-2.5-flash-lite', temperature: 1.0);
+    provider: AIProvider.gemini, modelId: 'gemini-3.1-flash-lite-preview', temperature: 1.0);
     
   // ── Gemini 3.x Frontier (Preview) ─────────────────────────────
   static AIModelConfig get geminiFlash3 => const AIModelConfig(
@@ -113,6 +113,8 @@ class AIModelConfig {
     provider: AIProvider.gemini, modelId: 'gemini-3.1-flash-image-preview', temperature: 1.0);
   static AIModelConfig get veo31 => const AIModelConfig(
     provider: AIProvider.vertex, modelId: 'veo-3.1-generate-preview');
+  static AIModelConfig get geminiLive => const AIModelConfig(
+    provider: AIProvider.gemini, modelId: 'gemini-3.1-flash-live-preview');
   
   // ── Nano Banana (Native Image Gen) ────────────────────────
   static AIModelConfig get nanoBanana => const AIModelConfig(

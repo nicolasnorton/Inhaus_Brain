@@ -22,9 +22,9 @@ if [[ "$BRANCH" == "main" || "$BRANCH" == "master" ]]; then echo "❌ ABORT: Can
 echo "✅ Branch: $BRANCH"
 ```
 
-2. Build the Flutter web app with staging defines:
+2. Build the Flutter web app with WebAssembly targeting and staging defines:
 ```bash
-cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && flutter build web --release --dart-define=ENVIRONMENT=staging
+cd /Users/nicolasnorton/AudioTherapy/audio_therapy_app/InhausBrain && flutter build web --wasm --release --dart-define=ENVIRONMENT=staging
 ```
 
 3. Deploy to the Firebase Hosting beta target & Cloud Functions (Full Stack):

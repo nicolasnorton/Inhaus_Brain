@@ -101,11 +101,7 @@ final routerProvider = Provider<GoRouter>((ref) {
          // List of restricted prefixes/paths for Client Users
          const restricted = [
            // '/clients', // Restored access 
-           '/workflows', 
-           '/publish', 
-           '/knowledge', 
            '/debug', 
-           '/admin',
            '/workspace',
            '/copilot', // Maybe restrict copilot full mode?
          ];

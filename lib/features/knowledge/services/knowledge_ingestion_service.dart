@@ -239,7 +239,7 @@ ${citations.map((c) => "- $c").join('\n')}
           documentId: const Uuid().v4(),
           title: 'Search: ${query.length > 50 ? query.substring(0, 50) + '...' : query}',
           content: content,
-          mimeType: 'text/markdown',
+          mimeType: 'text/plain',
         );
         debugPrint('✅ Vertex AI Sync Complete for Search Grounding');
       } catch (ingestError) {
@@ -294,7 +294,7 @@ $reportContent
           documentId: const Uuid().v4(),
           title: 'Research: $title',
           content: content,
-          mimeType: 'text/markdown',
+          mimeType: 'text/plain',
         );
         debugPrint('✅ Vertex AI Sync Complete for Deep Research');
       } catch (ingestError) {

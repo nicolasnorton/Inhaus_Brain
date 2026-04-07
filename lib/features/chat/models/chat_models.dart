@@ -123,6 +123,7 @@ class ChatMessage {
   final List<Attachment> attachments;
   final Map<String, dynamic>? metadata; // For tool usage or widget data
   final List<String>? suggestedPrompts; // Phase 1195 - Audit Rec
+  final String? interactionId;
 
   ChatMessage({
     required this.id,
@@ -133,6 +134,7 @@ class ChatMessage {
     this.attachments = const [],
     this.metadata,
     this.suggestedPrompts,
+    this.interactionId,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -191,6 +193,7 @@ class ChatMessage {
       attachments: attachments ?? this.attachments,
       metadata: metadata ?? this.metadata,
       suggestedPrompts: suggestedPrompts ?? this.suggestedPrompts,
+      interactionId: interactionId ?? this.interactionId,
     );
   }
 }
@@ -200,12 +203,14 @@ class ChatSession {
   final String campaignId;
   final List<ChatMessage> messages;
   final DateTime updatedAt;
+  final String? lastInteractionId;
 
   ChatSession({
     required this.id,
     required this.campaignId,
     this.messages = const [],
     required this.updatedAt,
+    this.lastInteractionId,
   });
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
@@ -218,6 +223,7 @@ class ChatSession {
       updatedAt: json['updatedAt'] != null 
           ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      lastInteractionId: json['lastInteractionId']?.toString(),
     );
   }
 
@@ -226,17 +232,20 @@ class ChatSession {
     'campaignId': campaignId,
     'messages': messages.map((m) => m.toJson()).toList(),
     'updatedAt': updatedAt.toIso8601String(),
+    if (lastInteractionId != null) 'lastInteractionId': lastInteractionId,
   };
 
   ChatSession copyWith({
     List<ChatMessage>? messages,
     DateTime? updatedAt,
+    String? lastInteractionId,
   }) {
     return ChatSession(
       id: id,
       campaignId: campaignId,
       messages: messages ?? this.messages,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastInteractionId: lastInteractionId ?? this.lastInteractionId,
     );
   }
 }

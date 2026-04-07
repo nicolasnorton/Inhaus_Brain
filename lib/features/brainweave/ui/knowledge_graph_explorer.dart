@@ -933,7 +933,7 @@ class _KnowledgeGraphExplorerState
               setState(() {
                 final oldScale = _scale;
                 _scale = (_scale - event.scrollDelta.dy * 0.001)
-                    .clamp(0.2, 4.0);
+                    .clamp(0.02, 6.0);
                 // Zoom towards cursor
                 final ratio = _scale / oldScale;
                 _panOffset = event.localPosition -
@@ -1070,9 +1070,9 @@ class _KnowledgeGraphExplorerState
                         }),
                         const SizedBox(width: 4),
                         // Zoom controls
-                        _iconBtn(Icons.add, () => setState(() => _scale = (_scale * 1.3).clamp(0.2, 4.0))),
+                        _iconBtn(Icons.add, () => setState(() => _scale = (_scale * 1.3).clamp(0.02, 6.0))),
                         const SizedBox(width: 4),
-                        _iconBtn(Icons.remove, () => setState(() => _scale = (_scale / 1.3).clamp(0.2, 4.0))),
+                        _iconBtn(Icons.remove, () => setState(() => _scale = (_scale / 1.3).clamp(0.02, 6.0))),
                         const SizedBox(width: 4),
                         _iconBtn(Icons.center_focus_strong, () {
                           setState(() {

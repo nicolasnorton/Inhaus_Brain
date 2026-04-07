@@ -1,10 +1,8 @@
-import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
-import '../../../core/services/edge_ai_service.dart';
 import '../../../core/tokens/llm_provider.dart';
 import '../../../features/knowledge/models/knowledge_source.dart';
 import '../models/chat_models.dart';
@@ -14,15 +12,11 @@ import '../../../core/services/ai_proxy_service.dart';
 import '../../../core/architecture/blackboard.dart';
 import '../../../core/mcp/agent_tool.dart';
 
-/// Helper to reduce boilerplate
-import 'package:inhaus_brain/features/copilot/data/copilot_repository.dart';
-import 'package:inhaus_brain/features/copilot/presentation/copilot_view.dart';
-import 'package:ag_ui/ag_ui.dart';
 import 'agent_executor.dart';
 
-/// Helper to reduce boilerplate — now routes through [AgentExecutor] for
-/// ReAct tool-calling when tools are available, with CopilotKit and
-/// legacy EdgeAI as fallback paths.
+/// Helper to reduce boilerplate — strictly routes through [AgentExecutor] for
+/// ReAct tool-calling. Legacy CopilotKit and EdgeAI fallbacks have been removed
+/// for telemetry and cost control strictness.
 Future<String> _simpleExecute({
   required String agentName,
   required String systemPromptKey,
@@ -82,77 +76,14 @@ Future<String> _simpleExecute({
     onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
     return text;
   } catch (e) {
-    debugPrint('$agentName: AgentExecutor failed: $e. Trying CopilotKit fallback.');
+    debugPrint('$agentName: AgentExecutor failed: $e.');
+    onEvent?.call(AdkEvent(
+      type: AdkEventType.agentError,
+      source: agentName,
+      message: 'AgentExecutor failed: $e',
+    ));
+    throw Exception('$agentName failed to execute: $e');
   }
-
-  // ── FALLBACK: CopilotKit Runtime ──
-  if (ref != null) {
-      try {
-          final repo = ref.read(vertexChatRepositoryProvider);
-          final buffer = StringBuffer();
-          final completer = Completer<String>();
-          
-          final systemMsg = SystemMessage(
-             id: 'sys_${DateTime.now().millisecondsSinceEpoch}',
-             content: promptHeader + (jsonMode ? "\n\nCRITICAL: You MUST return a valid JSON object." : "")
-          );
-
-          String augmentedPrompt = userPrompt;
-          if (context.isNotEmpty) {
-             augmentedPrompt += "\n\nCONTEXT:\n${context.map((k) => k.content).join('\n')}";
-          }
-
-          repo.sendMessage(augmentedPrompt, systemMessage: systemMsg).listen(
-             (event) {
-                if (event is TextMessageContentEvent) {
-                   buffer.write(event.delta);
-                } else if (event is TextMessageChunkEvent) {
-                   if (event.delta != null) buffer.write(event.delta);
-                } else if (event is RunErrorEvent) {
-                   if (!completer.isCompleted) completer.completeError(event.message);
-                }
-             },
-             onDone: () {
-                String text = buffer.toString();
-                if (jsonMode) {
-                  if (text.contains('```json')) {
-                    text = text.split('```json').last.split('```').first.trim();
-                  } else if (text.contains('```')) {
-                    text = text.split('```').last.split('```').first.trim();
-                  }
-                }
-                if (!completer.isCompleted) completer.complete(text);
-             },
-             onError: (err) {
-                 if (!completer.isCompleted) completer.completeError(err);
-             }
-          );
-          
-          final result = await completer.future;
-          onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
-          return result;
-      } catch (e) {
-          debugPrint("Copilot Execution Failed: $e. Falling back to EdgeAIService.");
-      }
-  }
-
-  // ── LAST RESORT: Legacy EdgeAI direct call ──
-  final fullPrompt = "SYSTEM: $promptHeader\nUSER: $userPrompt";
-  
-  final result = await EdgeAIService.generateText(
-    fullPrompt,
-    context: context,
-    imageBytes: imageBytes,
-    imageMimeType: imageMimeType,
-    apiKey: apiKey,
-    gemmaKey: gemmaKey,
-    modelConfig: modelConfig,
-    outputMode: jsonMode ? 'json' : null,
-    ref: ref,
-  );
-  
-  onEvent?.call(AdkEvent(type: AdkEventType.agentCompleted, source: agentName));
-  return result.text;
 }
 
 /// Structured Extraction Helper for Agents

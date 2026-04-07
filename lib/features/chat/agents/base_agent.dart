@@ -6,13 +6,14 @@ import '../models/chat_models.dart';
 import '../../../core/adk/services/adk_event_bus.dart';
 import '../../../core/mcp/agent_tool.dart';
 import '../../../core/tokens/llm_provider.dart';
+import '../../../core/architecture/reflection_loop.dart';
 import 'agent_config.dart';
 import 'agent_executor.dart';
 
 abstract class BaseAgent {
   MessageSender get type;
   String get name;
-  String get systemPromptKey; // Key to fetch from SystemPromptsService if needed, or hardcoded default
+  String get systemPromptKey;
   
   /// Configuration for this agent (model, temp, etc.)
   AgentConfig get config => const AgentConfig();
@@ -21,7 +22,6 @@ abstract class BaseAgent {
   List<AgentTool> get tools => []; 
 
   /// Model configuration for this agent's LLM calls.
-  /// Override in subclasses to customize model tier, temperature, etc.
   AIModelConfig get modelConfig => AIModelConfig.geminiResearch;
 
   /// Maximum tool-calling iterations for the ReAct loop.
@@ -31,33 +31,31 @@ abstract class BaseAgent {
   bool get enableThinking => false;
 
   /// Legacy single-shot execution. Preserved for backward compatibility.
-  /// New agents should prefer [executeWithTools] which enables the ReAct loop.
   Future<String> execute({
     required String userPrompt,
     required List<KnowledgeSource> context,
-    String? systemPrompt, // Optional override from SystemPromptsService
+    String? systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
     String? apiKey,
     String? gemmaKey,
     Function(AdkEvent)? onEvent,
-    dynamic ref, // Phase 89
+    dynamic ref,
   });
 
   /// Execute with the ReAct tool-calling loop via [AgentExecutor].
   ///
-  /// This is the March 2026 agentic standard: agents iteratively call
-  /// tools when the LLM requests them, building on each result until
-  /// producing a final answer.
-  ///
-  /// Falls back to legacy [execute] if no system prompt is provided and
-  /// the agent hasn't been migrated to the new pattern.
+  /// March 2026 agentic standard: agents iteratively call tools when
+  /// the LLM requests them, building on each result until producing
+  /// a final answer. Includes conditional ReflectionLoop quality gate.
   Future<ExecutorResult> executeWithTools({
     required String userPrompt,
     required List<KnowledgeSource> context,
     required String systemPrompt,
     Uint8List? imageBytes,
     String? imageMimeType,
+    String? apiKey,
+    String? gemmaKey,
     Function(AdkEvent)? onEvent,
     dynamic ref,
     ExecutorConfig? config,
@@ -91,14 +89,66 @@ abstract class BaseAgent {
       }
     }
 
-    return executor.run(
+    final result = await executor.run(
       userPrompt: userPrompt,
       context: context,
       config: executorConfig,
       onEvent: onEvent,
-      ref: ref,
       imageBytes: imageBytes,
       imageMimeType: imageMimeType,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
+
+    // ── Conditional Quality Gate ──
+    // Only run ReflectionLoop for tasks explicitly tagged as high-stakes
+    final triggerKeywords = ['highimpact', 'be exact', 'audit', 'verify', 'critical', 'double check'];
+    final needsReflection = triggerKeywords.any((kw) => userPrompt.toLowerCase().contains(kw));
+
+    if (needsReflection && ref != null && result.text.isNotEmpty) {
+      debugPrint('BaseAgent ($name): HighImpact task detected — running ReflectionLoop.');
+      onEvent?.call(AdkEvent(
+        type: AdkEventType.agentThinking,
+        source: name,
+        message: 'Running quality assurance checks...',
+      ));
+
+      try {
+        final reflection = await ReflectionLoop.evaluate(
+          originalPrompt: userPrompt,
+          agentOutput: result.text,
+          agentName: name,
+          ref: ref,
+        );
+
+        if (!reflection.passesThreshold || reflection.score < 0.8) {
+           debugPrint('BaseAgent: Output failed reflection (score=${reflection.score}). Critique: ${reflection.critique}');
+           onEvent?.call(AdkEvent(
+             type: AdkEventType.agentThinking,
+             source: name,
+             message: 'Revising output based on self-critique...',
+           ));
+
+           // Rerun with critique injected
+           final critiquePrompt =
+               'Revise your previous answer based on this critique: ${reflection.critique}\n'
+               'Issues: ${reflection.issues.join(', ')}\n'
+               'Original Prompt: $userPrompt';
+
+           return await executor.run(
+             userPrompt: critiquePrompt,
+             context: context,
+             onEvent: onEvent,
+             ref: ref,
+             apiKey: apiKey,
+             gemmaKey: gemmaKey,
+           );
+        }
+      } catch (e) {
+        debugPrint('BaseAgent: Reflection check failed: $e');
+      }
+    }
+
+    return result;
   }
 }

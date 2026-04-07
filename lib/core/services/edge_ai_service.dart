@@ -50,8 +50,9 @@ class EdgeAIResult {
   final String? modelUsed;
   final double confidence;
   final List<String>? sourceCitations;
+  final String? interactionId;
 
-  EdgeAIResult(this.text, this.proximity, {this.modelUsed, this.confidence = 1.0, this.sourceCitations});
+  EdgeAIResult(this.text, this.proximity, {this.modelUsed, this.confidence = 1.0, this.sourceCitations, this.interactionId});
 }
 
 class EdgeAIService {
@@ -78,6 +79,7 @@ class EdgeAIService {
     String? gemmaKey,
     String? vertexKey,
     List<Map<String, dynamic>>? tools,
+    String? previousInteractionId,
     dynamic ref,
   }) async {
     final effectiveMemory = memoryContext ?? systemInstruction;
@@ -103,6 +105,7 @@ class EdgeAIService {
       pdfBytes: pdfBytes,
       pdfMimeType: pdfMimeType,
       tools: tools,
+      previousInteractionId: previousInteractionId,
       apiKey: apiKey,
       vertexKey: vertexKey,
     );
@@ -150,6 +153,7 @@ class EdgeAIService {
         modelUsed: result.modelUsed,
         confidence: result.confidence,
         sourceCitations: result.sourceCitations.isEmpty ? null : result.sourceCitations,
+        interactionId: result.interactionId,
       );
 
       // Cache + Analytics
@@ -199,6 +203,7 @@ class EdgeAIService {
     String? audioMimeType,
     AIModelConfig? config,
     String? apiKey,
+    String? previousInteractionId,
     dynamic ref,
   }) async* {
     final effectiveConfig = config ?? AIModelConfig.geminiFlash;
@@ -211,6 +216,7 @@ class EdgeAIService {
       imageMimeType: imageMimeType,
       audioBytes: audioBytes,
       audioMimeType: audioMimeType,
+      previousInteractionId: previousInteractionId,
       apiKey: apiKey,
     );
 
@@ -224,6 +230,7 @@ class EdgeAIService {
         imageMimeType: imageMimeType,
         modelConfig: effectiveConfig,
         apiKey: apiKey,
+        previousInteractionId: previousInteractionId,
         ref: ref,
       );
       return;
@@ -231,7 +238,7 @@ class EdgeAIService {
 
     try {
       await for (final result in AIRouter.generateStream(request, ref: ref)) {
-        yield EdgeAIResult(result.text, AIProximity.cloud, modelUsed: result.modelUsed);
+        yield EdgeAIResult(result.text, AIProximity.cloud, modelUsed: result.modelUsed, interactionId: result.interactionId);
       }
     } catch (e) {
       _logger.e('EdgeAI: Stream error: $e');

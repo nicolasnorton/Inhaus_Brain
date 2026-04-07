@@ -110,6 +110,12 @@ class ExecutorResult {
   /// Source citations from grounded responses.
   final List<String> sourceCitations;
 
+  /// The Interaction ID for stateful conversational continuity.
+  final String? interactionId;
+  
+  /// Status of the background interaction, e.g., RUNNING.
+  final String? status;
+
   const ExecutorResult({
     required this.text,
     this.toolExecutions = const [],
@@ -118,6 +124,8 @@ class ExecutorResult {
     this.modelUsed,
     this.thinkingContent,
     this.sourceCitations = const [],
+    this.interactionId,
+    this.status,
   });
 }
 
@@ -179,6 +187,9 @@ class AgentExecutor {
     dynamic ref,
     Uint8List? imageBytes,
     String? imageMimeType,
+    String? previousInteractionId,
+    String? apiKey,
+    String? gemmaKey,
   }) async {
     final stopwatch = Stopwatch()..start();
     final toolExecutions = <ToolExecutionRecord>[];
@@ -201,6 +212,7 @@ class AgentExecutor {
     String? lastThinking;
     List<String> sourceCitations = [];
     String? modelUsed;
+    String? currentInteractionId = previousInteractionId;
 
     while (iteration < config.maxIterations) {
       iteration++;
@@ -229,6 +241,8 @@ class AgentExecutor {
         tools: toolSchemas,
         imageBytes: iteration == 1 ? imageBytes : null,
         imageMimeType: iteration == 1 ? imageMimeType : null,
+        previousInteractionId: currentInteractionId,
+        apiKey: apiKey,
       );
 
       AIGenerationResult result;
@@ -254,6 +268,7 @@ class AgentExecutor {
           iterations: iteration,
           totalDuration: stopwatch.elapsed,
           sourceCitations: sourceCitations,
+          interactionId: currentInteractionId,
         );
       }
 
@@ -263,6 +278,9 @@ class AgentExecutor {
       }
       if (result.sourceCitations.isNotEmpty) {
         sourceCitations = result.sourceCitations;
+      }
+      if (result.interactionId != null) {
+        currentInteractionId = result.interactionId;
       }
 
       // ── Check: Does the LLM want to call tools? ──
@@ -355,6 +373,7 @@ class AgentExecutor {
         modelUsed: modelUsed,
         thinkingContent: lastThinking,
         sourceCitations: sourceCitations,
+        interactionId: currentInteractionId,
       );
     }
 
@@ -380,6 +399,7 @@ class AgentExecutor {
       modelUsed: modelUsed,
       thinkingContent: lastThinking,
       sourceCitations: sourceCitations,
+      interactionId: currentInteractionId,
     );
   }
 

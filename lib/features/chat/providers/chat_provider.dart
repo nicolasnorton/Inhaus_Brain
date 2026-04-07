@@ -19,6 +19,7 @@ import '../agents/utility_agents.dart';
 import '../agents/base_agent.dart';
 import '../agents/router_agent.dart';
 import '../agents/agency_agents.dart';
+import '../agents/core_agents.dart';
 import '../../reports/agents/data_analyst_agent.dart';
 import '../agents/management_agent.dart';
 import '../../../core/services/memory_service.dart';
@@ -289,7 +290,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
         if (bestMatch != null) {
           await _handlePipelineExecution(bestMatch.name, text, context: context, memoryContext: memoryContext);
         } else if (text.toLowerCase().contains('deep research')) {
-          await _handlePipelineExecution('Research Deep Dive', text, context: context, memoryContext: memoryContext);
+          await _handleDeepResearchAgentResponse(text, context: context, memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey);
         } else if (text.toLowerCase().contains('agency flow') || text.toLowerCase().contains('master workflow')) {
           await _handlePipelineExecution('Master Agency Workflow', text, context: context, memoryContext: memoryContext);
         } else {
@@ -429,7 +430,8 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       modelConfig: config,
-      ref: ref, // Phase 89: Pass ref for proximity sync
+      ref: ref, // Phase 89: Pass ref for proximity sync,
+      previousInteractionId: state?.lastInteractionId,
     );
 
     final parsedA2ui = _extractA2uiPayload(aiRes.text);
@@ -448,6 +450,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
       updatedAt: DateTime.now(),
+      lastInteractionId: aiRes.interactionId,
     );
   }
 
@@ -479,6 +482,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      previousInteractionId: state?.lastInteractionId,
     );
 
     final parsedA2ui = _extractA2uiPayload(aiRes.text);
@@ -497,6 +501,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg],
       updatedAt: DateTime.now(),
+      lastInteractionId: aiRes.interactionId,
     );
   }
 
@@ -575,6 +580,47 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     await _handleCreativeAgentResponse(instruction, context: ref.read(knowledgeProvider), memoryContext: memoryContext, apiKey: apiKey, gemmaKey: gemmaKey, imagenKey: imagenKey, bananaKey: bananaKey);
   }
 
+  Future<void> _handleDeepResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey}) async {
+    final toolMsgId = const Uuid().v4();
+    final toolMsg = ChatMessage(
+      id: toolMsgId,
+      content: 'Initiating Deep Research on "$userPrompt". This may take up to 15 minutes...',
+      sender: MessageSender.researchAgent,
+      type: MessageType.toolUsage,
+      createdAt: DateTime.now(),
+      metadata: {'tool': 'google_search_grounding', 'status': 'searching'},
+    );
+    state = state!.copyWith(messages: [...state!.messages, toolMsg]);
+
+    final agent = DeepResearchAgent();
+    final result = await agent.executeWithTools(
+      userPrompt: userPrompt,
+      context: context,
+      systemPrompt: "Deep Research: $userPrompt",
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+      ref: ref,
+    );
+
+    // Orchestrator Audit
+    final auditedContent = await ref.read(orchestratorProvider).auditResponse(result.text, 'DeepResearchAgent');
+
+    final finalMsg = ChatMessage(
+      id: const Uuid().v4(),
+      content: auditedContent,
+      sender: MessageSender.researchAgent,
+      createdAt: DateTime.now(),
+    );
+
+    state = state!.copyWith(
+      messages: [...state!.messages.where((m) => m.id != toolMsgId), finalMsg],
+      updatedAt: DateTime.now(),
+      lastInteractionId: result.interactionId,
+    );
+    
+    // In actual implementation, we'd poll using the interactionId, but for now we rely on the agent wrapper handling the wait.
+  }
+
   Future<void> _handleResearchAgentResponse(String userPrompt, {List<KnowledgeSource> context = const [], String? memoryContext, String? apiKey, String? gemmaKey, AIModelConfig? config}) async {
     // 1. Tool Usage Indicator
     final toolMsgId = const Uuid().v4();
@@ -614,6 +660,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       gemmaKey: gemmaKey,
       ref: ref,
       modelConfig: researchConfig,
+      previousInteractionId: state?.lastInteractionId,
     );
     
     // Update the tool message to show success
@@ -663,6 +710,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsgId), finalMsg, approvalMsg],
       updatedAt: DateTime.now(),
+      lastInteractionId: aiRes.interactionId,
     );
   }
 
@@ -755,6 +803,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       apiKey: apiKey,
       gemmaKey: gemmaKey,
       ref: ref,
+      previousInteractionId: state?.lastInteractionId,
     );
 
     final parsedA2ui = _extractA2uiPayload(aiRes.text);
@@ -783,6 +832,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     state = state!.copyWith(
       messages: [...state!.messages.where((m) => m.id != toolMsg.id), finalMsg, approvalMsg],
       updatedAt: DateTime.now(),
+      lastInteractionId: aiRes.interactionId,
     );
   }
 
@@ -889,6 +939,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
       gemmaKey: gemmaKey,
       modelConfig: config?.copyWith(useGoogleSearch: true) ?? AIModelConfig.geminiResearch,
       ref: ref,
+      previousInteractionId: state?.lastInteractionId,
     );
 
     final parsedA2ui = _extractA2uiPayload(aiRes.text);
@@ -905,6 +956,7 @@ class ChatNotifier extends StateNotifier<ChatSession?> {
     state = state!.copyWith(
       messages: [...state!.messages, finalMsg],
       updatedAt: DateTime.now(),
+      lastInteractionId: aiRes.interactionId,
     );
   }
 
@@ -1063,6 +1115,7 @@ $lastResponse
       type: MessageType.toolUsage,
       createdAt: DateTime.now(),
       metadata: {'tool': 'adk_pipeline_runner', 'pipeline': pipeline.name},
+      interactionId: state?.lastInteractionId,
     );
     state = state!.copyWith(messages: [...state!.messages, startMsg]);
 

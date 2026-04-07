@@ -36,6 +36,8 @@ Future<String> _executeViaReactLoop({
   String? imageMimeType,
   Function(AdkEvent)? onEvent,
   dynamic ref,
+  String? apiKey,
+  String? gemmaKey,
 }) async {
   String effectiveSystemPrompt = systemPrompt;
   if (ref != null) {
@@ -65,6 +67,8 @@ Future<String> _executeViaReactLoop({
     imageMimeType: imageMimeType,
     onEvent: onEvent,
     ref: ref,
+    apiKey: apiKey,
+    gemmaKey: gemmaKey,
   );
 
   // Append sources if present
@@ -74,15 +78,8 @@ Future<String> _executeViaReactLoop({
       try {
         final assembler = ref.read(contextAssemblerProvider);
         assembler.addAgentResponse(agent.name, responseText);
-        
-        // Asynchronously save to long-term episodic memory (Phase 5)
-        assembler.saveEpisode(
-           agentName: agent.name,
-           taskSummary: userPrompt,
-           output: responseText,
-        );
       } catch (e) {
-        debugPrint('CoreAgents: Failed to save episode: $e');
+        debugPrint('CoreAgents: Failed to track context history: $e');
       }
   }
 
@@ -149,6 +146,52 @@ class ResearchAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
+    );
+  }
+}
+
+class DeepResearchAgent extends BaseAgent {
+  @override
+  String get name => "Deep Research Agent";
+  @override
+  MessageSender get type => MessageSender.researchAgent;
+  @override
+  String get systemPromptKey => "research_prompt";
+  @override
+  AIModelConfig get modelConfig => AIModelConfig.geminiDeepResearch;
+  @override
+  bool get enableThinking => true;
+
+  @override
+  Future<String> execute({
+    required String userPrompt,
+    required List<KnowledgeSource> context,
+    String? systemPrompt,
+    String? apiKey,
+    String? gemmaKey,
+    Uint8List? imageBytes,
+    String? imageMimeType,
+    Function(AdkEvent)? onEvent,
+    dynamic ref,
+  }) async {
+    final promptService = ref!.read(systemPromptsProvider);
+    final basePrompt = await promptService.getResearchPrompt();
+    
+    final prompt = systemPrompt ?? basePrompt.replaceAll('[TASK]', userPrompt);
+
+    return _executeViaReactLoop(
+      agent: this,
+      userPrompt: "Deep Research: $userPrompt", // Forces background logic in backend
+      context: context,
+      systemPrompt: prompt,
+      imageBytes: imageBytes,
+      imageMimeType: imageMimeType,
+      onEvent: onEvent,
+      ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -188,6 +231,8 @@ class CreativeAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -227,6 +272,8 @@ class DesignAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -264,6 +311,8 @@ class VideoProductionAgent extends BaseAgent {
       systemPrompt: prompt,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -301,6 +350,8 @@ class CustomerServiceAgent extends BaseAgent {
       systemPrompt: prompt,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -338,6 +389,8 @@ class CRMAgent extends BaseAgent {
       systemPrompt: prompt,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -377,6 +430,8 @@ class CSuiteAdvisorAgent extends BaseAgent {
       systemPrompt: prompt,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -414,6 +469,8 @@ class StorytellingAgent extends BaseAgent {
       systemPrompt: prompt,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -451,6 +508,8 @@ class CopywriterAgent extends BaseAgent {
       systemPrompt: prompt,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
@@ -492,6 +551,8 @@ class DeveloperAgent extends BaseAgent {
       imageMimeType: imageMimeType,
       onEvent: onEvent,
       ref: ref,
+      apiKey: apiKey,
+      gemmaKey: gemmaKey,
     );
   }
 }
