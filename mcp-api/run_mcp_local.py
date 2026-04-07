@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 # Set up environment
 os.environ["GCP_PROJECT"] = "inhausbrain"
 os.environ["WALKTHROUGH_FULL_FIXES_ENABLED"] = "true"
-os.environ["GOOGLE_API_KEY"] = "AIzaSyBhfmPhi3DXMz8ALx02L79fwtrhQfj1hdg"
+# os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY" # Do not hardcode API Keys
 
 # Import main (requires some mocking to avoid full GCP init if possible)
 import main
